@@ -1,0 +1,53 @@
+[
+  {
+    "id":"course-a-z1","groupId":"course-group-a","code":"CS.A1","name":{"fi":"Kurssi A","en":"Course A"},
+    "credits":{"min":5,"max":5},"curriculumPeriodIds":["period-2025","period-2026"],"documentState":"ACTIVE",
+    "validityPeriod":{"startDate":"2025-01-01","endDate":"2027-12-31"},"metadata":{"revision":1,"modificationOrdinal":null},
+    "content":{"fi":"Sisalto A","en":"Content A"},"outcomes":{"fi":"Tulos A","en":"Outcome A"},
+    "prerequisites":{"fi":"Teksti A","en":"Text A"},"additional":{"fi":null,"en":"Additional A"},
+    "compulsoryFormalPrerequisites":[
+      {"prerequisites":[{"type":"CourseUnit","courseUnitGroupId":"course-group-inactive"},{"type":"Module","moduleGroupId":"module-group-study"}]},
+      {"prerequisites":[{"type":"CourseUnit","courseUnitGroupId":"course-group-a"}]}
+    ],
+    "recommendedFormalPrerequisites":[{"prerequisites":[{"type":"Module","moduleGroupId":"module-group-grouping"}]}],
+    "substitutions":[
+      [{"courseUnitGroupId":"course-group-inactive","credits":null},{"courseUnitGroupId":"course-group-a","credits":2.5}],
+      [{"courseUnitGroupId":"course-group-inactive","credits":5}]
+    ]
+  },
+  {
+    "id":"course-a-v2","groupId":"course-group-a","code":"CS.A2","name":{"fi":null,"en":"Course A Revised"},
+    "credits":{"min":5},"curriculumPeriodIds":["period-2026","period-2027"],"documentState":"ACTIVE",
+    "validityPeriod":{"startDate":"2026-01-01","endDate":null},"metadata":{"revision":2,"modificationOrdinal":2},
+    "content":{"fi":null,"en":"Revised content"},"outcomes":null,"prerequisites":null,"additional":null,
+    "compulsoryFormalPrerequisites":[],"recommendedFormalPrerequisites":[],"substitutions":[]
+  },
+  {
+    "id":"course-inactive-v1","groupId":"course-group-inactive","code":"CS.I1","name":{"fi":"Vanha","en":null},
+    "credits":{"min":3,"max":4},"curriculumPeriodIds":["period-2020"],"documentState":"ARCHIVED",
+    "validityPeriod":{"startDate":null,"endDate":"2020-12-31"},"metadata":{"revision":1,"modificationOrdinal":null},
+    "content":null,"outcomes":null,"prerequisites":null,"additional":null,
+    "compulsoryFormalPrerequisites":null,"recommendedFormalPrerequisites":null,"substitutions":null
+  },
+  {
+    "id":"course-future-v1","groupId":"course-group-future","code":"CS.F1","name":{"fi":null,"en":"Future Course"},
+    "credits":{"min":2,"max":null},"curriculumPeriodIds":["period-2027"],"documentState":"DRAFT",
+    "validityPeriod":{"startDate":"2027-01-01","endDate":null},"metadata":{"revision":1,"modificationOrdinal":1},
+    "content":null,"outcomes":null,"prerequisites":null,"additional":null,
+    "compulsoryFormalPrerequisites":[],"recommendedFormalPrerequisites":[],"substitutions":[]
+  },
+  {
+    "id":"course-tie-a","groupId":"course-group-tie","code":"TIE.A","name":{"fi":null,"en":"Tie A"},
+    "credits":{"min":1,"max":1},"curriculumPeriodIds":["period-2020"],"documentState":"ARCHIVED",
+    "validityPeriod":{"startDate":"2020-08-01","endDate":"2021-07-31"},"metadata":{"revision":1,"modificationOrdinal":null},
+    "content":null,"outcomes":null,"prerequisites":null,"additional":null,
+    "compulsoryFormalPrerequisites":[],"recommendedFormalPrerequisites":[],"substitutions":[]
+  },
+  {
+    "id":"course-tie-b","groupId":"course-group-tie","code":"TIE.B","name":{"fi":null,"en":"Tie B"},
+    "credits":{"min":1,"max":1},"curriculumPeriodIds":["period-2020"],"documentState":"ARCHIVED",
+    "validityPeriod":{"startDate":"2020-08-01","endDate":"2021-07-31"},"metadata":{"revision":2,"modificationOrdinal":null},
+    "content":null,"outcomes":null,"prerequisites":null,"additional":null,
+    "compulsoryFormalPrerequisites":[],"recommendedFormalPrerequisites":[],"substitutions":[]
+  }
+]

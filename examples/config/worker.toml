@@ -1,0 +1,29 @@
+# Portable administrative-worker connection contract, validated by course_explorer.config
+# WorkerSetupSettings and the worker connection/dataset/lifecycle settings families.
+#
+# WORKER_SETUP_PROJECT_URL is the expected Git origin that setup and preflight checks compare
+# against. The example value is a placeholder.
+TRANSLATION_CONTROLLER_SSH_CONNECT_TIMEOUT_SECONDS = 10
+WORKER_SETUP_PROJECT_URL = "replace-with-project-url"
+WORKER_SETUP_TIMEOUT_SECONDS = 14400
+# Server/worker database-name prefixes and the one timeout every dataset dump/restore/rotation
+# subprocess receives. The admin state root lives in config/database.toml. AdministrativeDatasetSettings
+# validates these portable values.
+ADMIN_DATASET_DATABASE_PREFIX = "course_admin"
+ADMIN_WORKER_DATABASE_PREFIX = "course_admin_worker"
+ADMIN_DATABASE_OPERATION_TIMEOUT_SECONDS = 3600
+# The one shared local detached-lifecycle policy for both local admin stages: bounded startup
+# acknowledgement polls, the poll interval, and the checkpoint stop/acknowledgement timeout.
+# Portable and device-independent. Validated by LocalLifecycleSettings.
+ADMIN_STARTUP_ATTEMPTS = 120
+ADMIN_POLL_INTERVAL_SECONDS = 0.5
+ADMIN_STOP_TIMEOUT_SECONDS = 660
+# The measured generation CPU geometry (`-t`/`--threads-batch`) for the shared local llama.cpp
+# generation launch. WorkerRuntimeSettings validates these portable, device-independent values.
+WORKER_RUNTIME_THREADS = 8
+WORKER_RUNTIME_THREADS_BATCH = 16
+# The one portable checkpoint-reboot interval shared by every worker GPU mode (translation
+# generation and inference cross-encoder/whole-target generation). A mode reboots the worker at a
+# completed atomic unit once its loaded-GPU time reaches this many minutes. Validated by
+# WorkerGpuRebootSettings.
+WORKER_GPU_REBOOT_INTERVAL_MINUTES = 120

@@ -1,0 +1,48 @@
+/** Shared positioned, animated picker surface and its scrim, used within feature panes. */
+.root-picker-scrim {
+  position: absolute;
+  z-index: 29;
+  inset: 0;
+  background: rgb(0 0 0 / 60%);
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s;
+}
+.root-picker-scrim.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+.root-picker {
+  position: absolute;
+  z-index: 30;
+  top: 24px;
+  left: 50%;
+  width: min(780px, 94%);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -14px) scale(0.98);
+  transition:
+    opacity 0.3s,
+    transform 0.4s cubic-bezier(0.22, 0.8, 0.2, 1);
+}
+.root-picker.open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, 0) scale(1);
+}
+.root-picker-card {
+  padding: 14px;
+  border: 1px solid #b07be8;
+  border-radius: 14px;
+  background: #0a0a0f;
+  box-shadow:
+    0 30px 90px rgb(0 0 0 / 85%),
+    0 0 60px -10px rgb(78 0 142 / 50%);
+}
+.root-picker-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}

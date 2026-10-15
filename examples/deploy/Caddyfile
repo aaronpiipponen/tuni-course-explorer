@@ -1,0 +1,4 @@
+# Example site template. The Caddy environment variable below supplies the domain.
+{$COURSE_EXPLORER_PUBLIC_DOMAIN} {
+	reverse_proxy 127.0.0.1:8027
+}

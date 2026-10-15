@@ -1,0 +1,7 @@
+{
+  "repositoryUrl": "https://github.com/aaronpiipponen/tuni-course-explorer",
+  "repositoryRef": "main",
+  "home": { "id": "home", "path": "docs/placeholder.md", "nav": "Home" },
+  "sections": [],
+  "popular": []
+}

@@ -1,0 +1,18 @@
+[
+  {
+    "id": "course-a-v1",
+    "groupId": "course-group-a",
+    "code": "A.001",
+    "compulsoryFormalPrerequisites": [
+      {"prerequisites": [{"type": "CourseUnit", "courseUnitGroupId": "course-group-b"}]}
+    ],
+    "recommendedFormalPrerequisites": [
+      {"prerequisites": [{"type": "Module", "moduleGroupId": "module-group-aa"}]}
+    ],
+    "substitutions": [
+      [{"courseUnitGroupId": "course-group-c"}],
+      [{"courseUnitGroupId": "course-group-d"}, {"courseUnitGroupId": "course-group-e"}]
+    ]
+  },
+  {"id": "course-b-v1", "groupId": "course-group-b", "code": "B.001"}
+]

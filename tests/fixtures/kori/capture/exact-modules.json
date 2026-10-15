@@ -1,0 +1,1 @@
+[{"id":"module-direct-v1","groupId":"module-group-direct","rule":{"type":"CompositeRule","rules":[{"type":"CourseUnitRule","courseUnitGroupId":"course-group-ref-2"},{"type":"ModuleRule","moduleGroupId":"module-group-cycle"}]}}]

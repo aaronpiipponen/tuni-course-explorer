@@ -1,0 +1,64 @@
+[
+  {
+    "id": "mock-programme-2026",
+    "groupId": "mock-programme",
+    "type": "DegreeProgramme",
+    "code": "DEMO.PROG",
+    "name": {"fi": "Kuvitteellinen relealan opintokokonaisuus", "en": "Fictional Relay Studies Programme"},
+    "targetCredits": {"min": 20, "max": 25},
+    "curriculumPeriodIds": ["mock-period-2026"],
+    "documentState": "ACTIVE",
+    "validityPeriod": {"startDate": "2026-08-01", "endDate": "2027-07-31"},
+    "metadata": {"revision": 1, "modificationOrdinal": 1},
+    "rule": {
+      "type": "CompositeRule",
+      "localId": "programme-root",
+      "require": {"min": 2, "max": 2},
+      "allMandatory": true,
+      "description": {
+        "fi": "Kuvitteellinen esimerkkirakenne: relelaboratorion moduuli ja havaintojen kirjaaminen.",
+        "en": "Fictional demonstration structure: the relay laboratory module plus observation note writing."
+      },
+      "rules": [
+        {"type": "ModuleRule", "localId": "laboratory-module", "moduleGroupId": "mock-laboratory"},
+        {"type": "CourseUnitRule", "localId": "note-writing", "courseUnitGroupId": "mock-note"}
+      ]
+    }
+  },
+  {
+    "id": "mock-laboratory-2026",
+    "groupId": "mock-laboratory",
+    "type": "StudyModule",
+    "code": "DEMO.LAB",
+    "name": {"fi": "Kuvitteellinen relelaboratorion moduuli", "en": "Fictional Relay Laboratory Module"},
+    "targetCredits": {"min": 15, "max": 20},
+    "curriculumPeriodIds": ["mock-period-2026"],
+    "documentState": "ACTIVE",
+    "validityPeriod": {"startDate": "2026-08-01", "endDate": "2027-07-31"},
+    "metadata": {"revision": 1, "modificationOrdinal": 1},
+    "rule": {
+      "type": "CompositeRule",
+      "localId": "laboratory-root",
+      "require": {"min": 3, "max": 3},
+      "allMandatory": true,
+      "description": {
+        "fi": "Kuvitteellinen esimerkkirakenne: signaalit ja laboratorio sekä yksi valinta verkon ja havainnoinnin välillä.",
+        "en": "Fictional demonstration structure: signal patterns and the laboratory plus one choice between the grid and observation relay."
+      },
+      "rules": [
+        {"type": "CourseUnitRule", "localId": "signal-patterns", "courseUnitGroupId": "mock-signal"},
+        {"type": "CourseUnitRule", "localId": "laboratory-practice", "courseUnitGroupId": "mock-lab"},
+        {
+          "type": "CompositeRule",
+          "localId": "bench-choice",
+          "require": {"min": 1, "max": 1},
+          "allMandatory": false,
+          "rules": [
+            {"type": "CourseUnitRule", "localId": "grid", "courseUnitGroupId": "mock-grid"},
+            {"type": "CourseUnitRule", "localId": "observation", "courseUnitGroupId": "mock-observation"}
+          ]
+        }
+      ]
+    }
+  }
+]

@@ -1,0 +1,105 @@
+/** "?" button and the right-hand drawer that explains a screen's options. */
+.help-tip {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgb(255 255 255 / 25%);
+  border-radius: 50%;
+  color: rgb(255 255 255 / 70%);
+  background: transparent;
+  font:
+    600 13px "JetBrains Mono",
+    ui-monospace,
+    monospace;
+  cursor: pointer;
+  transition: 0.2s;
+}
+.help-tip:hover,
+.help-tip[aria-expanded="true"] {
+  border-color: #b07be8;
+  color: #fff;
+  background: rgb(78 0 142 / 25%);
+}
+.help-drawer {
+  position: fixed;
+  z-index: 35;
+  top: 60px;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  width: min(420px, 100vw);
+  flex-direction: column;
+  overflow-y: auto;
+  border-left: 1px solid #b07be8;
+  background: #08080c;
+  box-shadow: -30px 0 80px rgb(0 0 0 / 70%);
+}
+.help-drawer[data-state="open"] {
+  animation: help-in 0.45s cubic-bezier(0.22, 0.8, 0.2, 1) both;
+}
+.help-drawer[data-state="closed"] {
+  animation: help-out 0.45s cubic-bezier(0.22, 0.8, 0.2, 1) both;
+}
+.help-body {
+  padding: 8px 20px 28px;
+}
+.help-body h3 {
+  margin: 22px 0 4px;
+  color: rgb(255 255 255 / 55%);
+  font:
+    500 11px "JetBrains Mono",
+    ui-monospace,
+    monospace;
+  letter-spacing: 0.08em;
+  text-transform: lowercase;
+}
+.help-body dl {
+  margin: 0;
+}
+.help-body dl > div {
+  padding: 12px 0;
+  border-bottom: 1px solid rgb(255 255 255 / 10%);
+}
+.help-body dt {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+}
+.help-body dt.help-tag {
+  display: inline-block;
+  padding: 1px 6px;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 5px;
+  color: rgb(255 255 255 / 55%);
+  font:
+    10.5px "JetBrains Mono",
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+}
+.help-body dd {
+  margin: 4px 0 0;
+  color: rgb(255 255 255 / 60%);
+  font-size: 13px;
+  line-height: 1.5;
+}
+@keyframes help-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes help-out {
+  from {
+    transform: none;
+  }
+  to {
+    transform: translateX(100%);
+  }
+}

@@ -1,0 +1,52 @@
+/** Shared multi-line member and route row layout. */
+.course-list-row {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 96px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border: 0;
+  border: 0;
+  border-radius: 8px;
+  color: #fff;
+  text-align: left;
+  background: transparent;
+  font-size: 13px;
+  cursor: pointer;
+}
+.course-list-row:hover,
+.course-list-row.open {
+  background: rgb(78 0 142 / 35%);
+}
+.course-list-code {
+  overflow: hidden;
+  color: #b07be8;
+  font:
+    11px "JetBrains Mono",
+    ui-monospace,
+    monospace;
+  text-overflow: ellipsis;
+}
+.course-list-name {
+  min-width: 0;
+  overflow: hidden;
+  line-height: inherit;
+}
+.course-list-credit {
+  color: rgb(255 255 255 / 55%);
+  font:
+    11px "JetBrains Mono",
+    ui-monospace,
+    monospace;
+  white-space: nowrap;
+}
+.course-list-inactive {
+  color: #ffb454;
+  font-style: normal;
+}
+@media (max-width: 600px) {
+  .course-list-row {
+    grid-template-columns: 80px minmax(0, 1fr) auto;
+  }
+}

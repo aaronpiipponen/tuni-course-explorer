@@ -1,0 +1,10 @@
+{
+  "start": 0,
+  "limit": 1000,
+  "total": 1,
+  "searchResults": [
+    {"id": "course-a-v1", "groupId": "course-group-a", "code": "A.001", "curriculumPeriodIds": ["uta-lvv-2026"]}
+  ],
+  "truncated": false,
+  "notifications": null
+}

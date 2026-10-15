@@ -1,0 +1,52 @@
+/** Shared activity-switch presentation. */
+.activity-switch {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex: none;
+  padding: 3px;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 999px;
+  font:
+    12px "JetBrains Mono",
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+}
+.activity-switch::before {
+  position: absolute;
+  z-index: 0;
+  top: var(--selection-y);
+  left: 0;
+  width: var(--selection-w);
+  height: var(--selection-h);
+  transform: translateX(var(--selection-x));
+  border-radius: 999px;
+  background: rgb(78 0 142 / 55%);
+  box-shadow: inset 0 0 0 1px rgb(176 123 232 / 50%);
+  transition:
+    transform 0.32s cubic-bezier(0.22, 0.8, 0.2, 1),
+    width 0.32s cubic-bezier(0.22, 0.8, 0.2, 1);
+  content: "";
+  pointer-events: none;
+}
+.activity-switch > button {
+  position: relative;
+  z-index: 1;
+  padding: 7px 14px;
+  border: 0;
+  border-radius: 999px;
+  color: rgb(255 255 255 / 55%);
+  background: transparent;
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.activity-switch > button.on {
+  color: #fff;
+}
+.activity-switch > button:focus-visible {
+  outline: 2px solid #b07be8;
+  outline-offset: 2px;
+}

@@ -1,0 +1,198 @@
+[
+  {
+    "id": "mock-signal-101",
+    "groupId": "mock-signal",
+    "code": "DEMO.SIGNAL.101",
+    "name": {"fi": "Kuvitteellinen lyhtysignaalien kuviot", "en": "Fictional Lantern Signal Patterns"},
+    "credits": {"min": 5, "max": 5},
+    "curriculumPeriodIds": ["mock-period-2026"],
+    "documentState": "ACTIVE",
+    "validityPeriod": {"startDate": "2026-08-01", "endDate": "2027-07-31"},
+    "metadata": {"revision": 1, "modificationOrdinal": 1},
+    "content": {
+      "fi": "Kuvitteellinen esittelysisalto: tämä itse kirjoitettu kurssi esittelee lyhtysignaalien kuvioita, niiden ajoitusta ja valo- ja kasireleiden perussanastoa.",
+      "en": "Fictional demonstration content: this authored course introduces lantern signal patterns, their timing, and the basic vocabulary of light and hand relays."
+    },
+    "outcomes": {
+      "fi": "Kuvitteelliset esimerkkitulokset: tunnistaa lyhtysignaalien kuvioita, lukea yksinkertaista releaikataulua ja kuvata yksi releen vaihto.",
+      "en": "Fictional demonstration outcomes: identify lantern signal patterns, read a simple relay schedule, and describe one relay handover."
+    },
+    "prerequisites": {
+      "fi": "Kuvitteellinen esitietoteksti: ei esitietovaatimuksia.",
+      "en": "Fictional prerequisite note: no previous study is assumed."
+    },
+    "additional": {
+      "fi": null,
+      "en": "Fictional demonstration course."
+    },
+    "compulsoryFormalPrerequisites": [],
+    "recommendedFormalPrerequisites": [],
+    "substitutions": [],
+    "fictionalUrl": "https://example.invalid/fictional-courses/mock-signal-101"
+  },
+  {
+    "id": "mock-grid-101",
+    "groupId": "mock-grid",
+    "code": "DEMO.GRID.101",
+    "name": {"fi": "Kuvitteellinen releverkon perusteet", "en": "Fictional Relay Grid Foundations"},
+    "credits": {"min": 5, "max": 5},
+    "curriculumPeriodIds": ["mock-period-2026"],
+    "documentState": "ACTIVE",
+    "validityPeriod": {"startDate": "2026-08-01", "endDate": "2027-07-31"},
+    "metadata": {"revision": 1, "modificationOrdinal": 1},
+    "content": {
+      "fi": "Kuvitteellinen esittelysisalto: tämä itse kirjoitettu kurssi hahmottelee pienen releverkon, sen solmut ja yhteydet sekä sen, miten signaali kulkee verkon pisteiden valilla.",
+      "en": "Fictional demonstration content: this authored course lays out a small relay grid, its nodes and links, and how a signal travels between grid points."
+    },
+    "outcomes": {
+      "fi": "Kuvitteelliset esimerkkitulokset: kuvata releverkko, jäljittää yksi signaalireitti ja nimetä verkon liitosäännöt.",
+      "en": "Fictional demonstration outcomes: describe a relay grid, trace one signal path, and name the grid connection rules."
+    },
+    "prerequisites": {
+      "fi": "Kuvitteellinen esitietoteksti: ei esitietovaatimuksia.",
+      "en": "Fictional prerequisite note: no previous study is assumed."
+    },
+    "additional": {
+      "fi": null,
+      "en": "Fictional demonstration course."
+    },
+    "compulsoryFormalPrerequisites": [],
+    "recommendedFormalPrerequisites": [],
+    "substitutions": [],
+    "fictionalUrl": "https://example.invalid/fictional-courses/mock-grid-101"
+  },
+  {
+    "id": "mock-lab-201",
+    "groupId": "mock-lab",
+    "code": "DEMO.LAB.201",
+    "name": {"fi": "Kuvitteellinen relelaboratorio", "en": "Fictional Relay Laboratory"},
+    "credits": {"min": 5, "max": 5},
+    "curriculumPeriodIds": ["mock-period-2026"],
+    "documentState": "ACTIVE",
+    "validityPeriod": {"startDate": "2026-08-01", "endDate": "2027-07-31"},
+    "metadata": {"revision": 1, "modificationOrdinal": 1},
+    "content": {
+      "fi": "Kuvitteellinen esittelysisalto: tämä itse kirjoitettu kurssi tekee kaytannon releharjoituksia pienella penkkiverkolla ja kirjaa jokaisen havaintokierroksen.",
+      "en": "Fictional demonstration content: this authored course runs practical relay exercises on a small bench grid and records each observation run."
+    },
+    "outcomes": {
+      "fi": "Kuvitteelliset esimerkkitulokset: rakentaa yksi penkkirele, ajaa se ja kirjata havaittu vaihto.",
+      "en": "Fictional demonstration outcomes: build one bench relay, run it, and record the observed handover."
+    },
+    "prerequisites": {
+      "fi": "Kuvitteellinen esitietoteksti: joko lyhtysignaalien kuviot tai releverkon perusteet odotetaan ensin suoritetuksi.",
+      "en": "Fictional prerequisite note: either the lantern signal patterns course or the relay grid foundations course is expected first."
+    },
+    "additional": {
+      "fi": null,
+      "en": "Fictional demonstration course."
+    },
+    "compulsoryFormalPrerequisites": [
+      {"prerequisites": [{"type": "CourseUnit", "courseUnitGroupId": "mock-signal"}]},
+      {"prerequisites": [{"type": "CourseUnit", "courseUnitGroupId": "mock-grid"}]}
+    ],
+    "recommendedFormalPrerequisites": [],
+    "substitutions": [],
+    "fictionalUrl": "https://example.invalid/fictional-courses/mock-lab-201"
+  },
+  {
+    "id": "mock-observation-301",
+    "groupId": "mock-observation",
+    "code": "DEMO.OBS.301",
+    "name": {"fi": "Kuvitteellinen havaintoreleen harjoitus", "en": "Fictional Observation Relay Practice"},
+    "credits": {"min": 5, "max": 5},
+    "curriculumPeriodIds": ["mock-period-2026"],
+    "documentState": "ACTIVE",
+    "validityPeriod": {"startDate": "2026-08-01", "endDate": "2027-07-31"},
+    "metadata": {"revision": 1, "modificationOrdinal": 1},
+    "content": {
+      "fi": "Kuvitteellinen esittelysisalto: tämä itse kirjoitettu kurssi harjoittaa valitetyn signaalin havainnointia ja sen kirjaamista, mitä rele teki.",
+      "en": "Fictional demonstration content: this authored course practises observing a relayed signal and writing down exactly what the relay did."
+    },
+    "outcomes": {
+      "fi": "Kuvitteelliset esimerkkitulokset: havainnoida releen vaihto ja kuvata havaittu järjestys.",
+      "en": "Fictional demonstration outcomes: observe a relayed handover and describe the observed sequence."
+    },
+    "prerequisites": {
+      "fi": "Kuvitteellinen esitietoteksti: relelaboratorio ja lyhtysignaalien kuviot odotetaan molemmat ensin suoritetuiksi.",
+      "en": "Fictional prerequisite note: the relay laboratory and the lantern signal patterns course are both expected first."
+    },
+    "additional": {
+      "fi": null,
+      "en": "Fictional demonstration course."
+    },
+    "compulsoryFormalPrerequisites": [
+      {
+        "prerequisites": [
+          {"type": "CourseUnit", "courseUnitGroupId": "mock-lab"},
+          {"type": "CourseUnit", "courseUnitGroupId": "mock-signal"}
+        ]
+      }
+    ],
+    "recommendedFormalPrerequisites": [],
+    "substitutions": [],
+    "fictionalUrl": "https://example.invalid/fictional-courses/mock-observation-301"
+  },
+  {
+    "id": "mock-note-101",
+    "groupId": "mock-note",
+    "code": "DEMO.NOTE.101",
+    "name": {"fi": "Kuvitteellinen havaintojen kirjaaminen", "en": "Fictional Observation Note Writing"},
+    "credits": {"min": 5, "max": 5},
+    "curriculumPeriodIds": ["mock-period-2026"],
+    "documentState": "ACTIVE",
+    "validityPeriod": {"startDate": "2026-08-01", "endDate": "2027-07-31"},
+    "metadata": {"revision": 1, "modificationOrdinal": 1},
+    "content": {
+      "fi": "Kuvitteellinen esittelysisalto: tämä itse kirjoitettu kurssi käsittelee lyhyiden ja selkeiden havaintomuistiinpanojen kirjoittamista relepenkkityosta.",
+      "en": "Fictional demonstration content: this authored course covers writing short, clear observation notes for a relay bench session."
+    },
+    "outcomes": {
+      "fi": "Kuvitteelliset esimerkkitulokset: kirjoittaa selkea havaintomuistiinpano ja pitää sen yhdenmukaisena kirjatun ajon kanssa.",
+      "en": "Fictional demonstration outcomes: write a clear observation note and keep it consistent with the recorded run."
+    },
+    "prerequisites": {
+      "fi": "Kuvitteellinen esitietoteksti: itsenäisesti suoritettava, ei esitietovaatimuksia.",
+      "en": "Fictional prerequisite note: independently accessible, with no previous study assumed."
+    },
+    "additional": {
+      "fi": null,
+      "en": "Fictional demonstration course."
+    },
+    "compulsoryFormalPrerequisites": [],
+    "recommendedFormalPrerequisites": [],
+    "substitutions": [],
+    "fictionalUrl": "https://example.invalid/fictional-courses/mock-note-101"
+  },
+  {
+    "id": "mock-signal-001",
+    "groupId": "mock-signal-001",
+    "code": "DEMO.SIGNAL.001",
+    "name": {"fi": "Kuvitteellinen varhainen lyhtysignaali", "en": "Fictional Early Lantern Signals"},
+    "credits": {"min": 5, "max": 5},
+    "curriculumPeriodIds": ["mock-period-2020"],
+    "documentState": "ARCHIVED",
+    "validityPeriod": {"startDate": "2020-08-01", "endDate": "2021-07-31"},
+    "metadata": {"revision": 1, "modificationOrdinal": 1},
+    "content": {
+      "fi": "Kuvitteellinen esittelysisalto: tämä itse kirjoitettu arkistoitu kurssi kuvaa varhaista lyhtysignaalijarjestelmaa, joka on nykyista laboratoriopenkkiä vanhempi.",
+      "en": "Fictional demonstration content: this authored archived course describes an early lantern signalling set that predates the current laboratory bench."
+    },
+    "outcomes": {
+      "fi": "Kuvitteelliset esimerkkitulokset: tunnistaa varhainen lyhtysignaalijarjestelma ja sen rajoitukset.",
+      "en": "Fictional demonstration outcomes: recognise the early lantern signalling set and its limits."
+    },
+    "prerequisites": {
+      "fi": "Kuvitteellinen esitietoteksti: ei esitietovaatimuksia.",
+      "en": "Fictional prerequisite note: no previous study is assumed."
+    },
+    "additional": {
+      "fi": null,
+      "en": "Fictional demonstration course."
+    },
+    "compulsoryFormalPrerequisites": [],
+    "recommendedFormalPrerequisites": [],
+    "substitutions": [],
+    "fictionalUrl": "https://example.invalid/fictional-courses/mock-signal-001"
+  }
+]

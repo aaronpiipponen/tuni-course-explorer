@@ -1,0 +1,25 @@
+/** Shared pill actions used by comparison and graph controls. */
+.pill-btn {
+  padding: 5px 12px;
+  border: 1px solid rgb(255 255 255 / 25%);
+  border-radius: 999px;
+  color: #fff;
+  background: transparent;
+  font:
+    12px "JetBrains Mono",
+    ui-monospace,
+    monospace;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.pill-btn:hover {
+  border-color: #b07be8;
+}
+.pill-btn.danger {
+  border-color: rgb(255 138 168 / 40%);
+  color: #ff8aa8;
+}
+.pill-btn.danger:hover {
+  border-color: #ff8aa8;
+  background: rgb(255 138 168 / 12%);
+}

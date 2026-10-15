@@ -1,0 +1,154 @@
+/** Shared compact graph/structure card cascade, with facts above bottom action chips. */
+.tile {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 0;
+  padding: 9px 11px;
+  border: 1px solid rgb(255 255 255 / 25%);
+  border-radius: 14px;
+  background: #0d0d14;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s,
+    opacity 0.3s;
+}
+.tile:hover {
+  border-color: #b07be8;
+  box-shadow: 0 0 30px -8px rgb(78 0 142 / 50%);
+}
+.tile-trigger {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+.tile-trigger:focus-visible {
+  outline: 2px solid #b07be8;
+  outline-offset: 2px;
+}
+.tile-head,
+.tile-facts {
+  position: relative;
+  pointer-events: none;
+}
+.tile-head {
+  display: flex;
+  min-width: 0;
+  flex: none;
+  flex-direction: column;
+  color: #fff;
+}
+.tile-code {
+  display: flex;
+  height: 16px;
+  align-items: center;
+  gap: 6px;
+  color: #b07be8;
+  font:
+    500 10.5px "JetBrains Mono",
+    ui-monospace,
+    monospace;
+}
+.tile-code > .tag {
+  margin-left: auto;
+}
+.tile-code .code {
+  color: #b07be8;
+}
+.tile-name {
+  min-width: 0;
+  overflow: hidden;
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tile-facts {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-block: auto;
+  color: rgb(255 255 255 / 55%);
+  font:
+    400 10px "JetBrains Mono",
+    ui-monospace,
+    monospace;
+}
+.tile-facts > * {
+  line-height: 1;
+}
+.tile-actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 4px;
+  pointer-events: none;
+}
+.tile-actions button {
+  flex: none;
+  pointer-events: auto;
+  padding: 3px 10px;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 5px;
+  color: rgb(255 255 255 / 55%);
+  background: transparent;
+  font:
+    10.5px "JetBrains Mono",
+    ui-monospace,
+    monospace;
+  cursor: pointer;
+}
+.tile-actions button[aria-pressed] {
+  min-width: calc(9ch + 22px);
+}
+.tile-actions button:hover {
+  border-color: #b07be8;
+  color: #fff;
+}
+.tile-actions button.is-done {
+  border-color: #5ee6a8;
+  color: #00170d;
+  background: #5ee6a8;
+}
+.tile-actions button.is-excl {
+  border-color: #ff5c78;
+  color: #2a0008;
+  background: #ff5c78;
+}
+.tile-tag {
+  margin-left: 6px;
+  color: #b07be8;
+  font:
+    9px "JetBrains Mono",
+    ui-monospace,
+    monospace;
+}
+.tile-tag.inferred-tag {
+  padding: 0 7px;
+  border: 1px solid rgb(74 168 255 / 70%);
+  border-radius: 999px;
+  color: #4aa8ff;
+  font-size: 9.5px;
+  font-style: normal;
+}
+.tile-tag.timeout-tag {
+  padding: 1px 8px;
+  border: 1px solid rgb(255 138 168 / 60%);
+  border-radius: 999px;
+  color: #ff8aa8;
+  font-size: 10px;
+  font-style: normal;
+}
+.tile .course-activity {
+  white-space: normal;
+}

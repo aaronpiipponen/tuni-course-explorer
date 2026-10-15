@@ -1,0 +1,82 @@
+/** Prerequisites controls and root overlay styles. */
+.prereq-pane {
+  position: relative;
+  padding: 24px 24px 40px;
+}
+.prereq-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 14px;
+}
+.prereq-stage {
+  position: relative;
+}
+.root-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  color: rgb(255 255 255 / 55%);
+  font:
+    12px "JetBrains Mono",
+    ui-monospace,
+    monospace;
+  white-space: nowrap;
+}
+.root-chip b {
+  max-width: min(42vw, 520px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #b07be8;
+  font-weight: 500;
+}
+.root-chip .pill-btn {
+  padding: 8px 16px;
+}
+.prereq-empty {
+  display: grid;
+  min-height: 340px;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  color: rgb(255 255 255 / 55%);
+  font:
+    13px "JetBrains Mono",
+    ui-monospace,
+    monospace;
+}
+.graph-skeleton {
+  display: grid;
+  height: min(64vh, 600px);
+  min-height: 400px;
+  grid-template-columns: repeat(4, 1fr);
+  align-content: center;
+  justify-items: center;
+  gap: 42px;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 16px;
+  background: #0a0a0f;
+}
+.graph-skeleton i {
+  width: 180px;
+  height: 72px;
+  border-radius: 12px;
+  background: linear-gradient(90deg, #0a0a0f 25%, #17131f 50%, #0a0a0f 75%);
+  background-size: 200% 100%;
+  animation: search-shimmer 1.1s infinite;
+}
+@media (max-width: 700px) {
+  .prereq-pane {
+    padding-top: 16px;
+  }
+  .root-chip {
+    margin-left: 0;
+    flex-wrap: wrap;
+    white-space: normal;
+  }
+  .graph-skeleton {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

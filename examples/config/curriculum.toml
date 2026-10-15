@@ -1,0 +1,18 @@
+# Curriculum-acquisition values: raw capture, anonymous public Kori, and normalization. The
+# example loads the bundled fictional fixture through scripts/mock_data.py.
+RAW_DATA_ROOT = "data/raw"
+CAPTURE_CHECKPOINT_RESPONSE_COUNT = 100
+KORI_BASE_URL = "https://sisu.tuni.fi/kori"
+TUNI_UNIVERSITY_ID = "tuni-university-root-id"
+KORI_FIRST_ACADEMIC_YEAR = "2006-2007"
+CURRENT_ACADEMIC_YEAR = "2026-2027"
+ACTIVE_ACADEMIC_YEAR_WINDOW = 3
+COURSE_GUIDE_BASE_URL = "https://sisu.tuni.fi/student/courseunit"
+KORI_SEARCH_PAGE_SIZE = 1000
+KORI_BATCH_SIZE = 100
+KORI_REQUEST_TIMEOUT_SECONDS = 30
+KORI_MAX_ATTEMPTS = 3
+KORI_RETRY_BACKOFF_SECONDS = 0.5
+KORI_CONCURRENCY = 4
+KORI_MAX_PARTITION_DEPTH = 8
+INGESTION_CONTROLLER_STATE_ROOT = "data/ingestion/controller"

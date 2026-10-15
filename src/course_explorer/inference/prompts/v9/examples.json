@@ -1,0 +1,588 @@
+[
+ {
+  "name": "direct_single",
+  "explanation": "Curated inference example, not a university-authored fact. ACI-20010 introduces automatic control, feedback, PID control, and dynamic model analysis, exactly the entry knowledge ACI-21080 assumes when it begins multivariate modelling, state feedback, and controller tuning. The relation is direct: no intermediate course is needed between the two teaching descriptors, so ACI-20010 is one required singleton option.",
+  "target": {
+   "course_id": "tut-cu-g-27096",
+   "course_code": "ACI-21080",
+   "name": "Control System Design with Matlab",
+   "name_origin": "official",
+   "content": "<h5>Core content</h5><ul><li>Monimuuttujaprosessin mallinnus, tasapainotilan laskenta, linearisointi; Monimuuttujasäädön erityisluonne, dekoplaus, hienoviritys, simulointimenetelmät.</li><li>Säätöjärjestelmän mallinnus, analyysi ja suunnittelu sekä tilaesityksen että siirtofunktiomatriisin avulla.</li><li>PI-monimuuttujasäätimen viritysmenetelmät.</li><li>Tilatakaisinkytketyn säädön ja tilahavaitsijan viritys napojen asettelumenetelmällä ja analyysi. Ohjattavuuden ja tarkkailtavuuden tutkiminen singulaariarvojen avulla.</li><li>Monimuuttujasäädön neliölliset hyvyysluvut. Tilatakaisinkytketyn säädön viritys <br />LQ-menetelmällä.</li></ul><h5>Complementary knowledge</h5><ul><li>Funktioaliohjelman luomista edellyttävä epälineaarisen yhtälöryhmän ratkaisu ja differentiaaliyhtälömallin simulointi.</li><li>Tilamallin ja siirtofunktiomallin testivasteiden täsmällinen muoto; Viiveellisten säätöpiirin vektoridifferentiaaliyhtälömallit.</li><li>Muuttujavaihdokset, Lyapunovin ja Riccatin yhtälöiden johdot</li></ul><h5>Specialist knowledge</h5><ul><li>Mallien manuaalinen muodostaminen; Ominaisarvojen herkkyys; Leverrier&#39;in algoritmi.</li><li>Napojen asettelu Rank-One -menetelmällä.</li><li>Ohjattavuuden Gram-matriisi.</li></ul>",
+   "content_origin": "official",
+   "learning_outcomes": [
+    "Monimuuttujasäädön ja optimisäädön periaatteiden sekä tietokoneavusteisen mallinnuksen, analyysin ja suunnittelun oppiminen."
+   ],
+   "learning_outcomes_origin": "official"
+  },
+  "candidates": [
+   {
+    "course_id": "tut-cu-g-27105",
+    "course_code": "ACI-20010",
+    "name": "Basic Course in Automation Technology",
+    "name_origin": "official",
+    "content": "<h5>Core content</h5><ul><li>Automaation sovellusalueet ja -tavat. Instrumentointi. Prosessiautomaation laite- ja järjestelmäteknologian alkeet. Automaation suunnittelu.</li><li>Takaisinkytketyn säätöjärjestelmän tarkoitus, rakenne ja toimintaperiaate. PID-säädön ja myötäkytkentäohjauksen ymmärtäminen, säätimien analogiset ja digitaaliset toteutukset.</li><li>Dynaamisen järjestelmän mallintaminen ja Matlab-simulointi alkeislohkokaaviomalleja, tilaesitystä ja siirtofunktiomalleja käyttäen.</li><li>Säätöjärjestelmän stabiiliuteen, stationaaritilaan ja transienttivasteeseen liittyvien ilmiöiden ymmärtäminen ja mallipohjainen kuvaaminen. Ominaisarvojen, napojen ja nollien merkitys. Ohjattavuus ja tarkkailtavuus. Halutun dynamiikan tuottavan kompensaattorin/säätimen johto.</li><li>Mallinnusvirheiden aiheuttaman epävarmuuden huomiointi: stabiiliusvarojen analyysi ja mitoitus Boden ja Nicholsin diagrammien avulla, herkkyys.</li></ul><h5>Complementary knowledge</h5><ul><li>Vierailuluentojen  anti.</li><li>Monimuuttujasäädön periaate.</li><li>Tasemallit differentiaalien ja integraalien avulla.  Mallien erityisterminologia. Täsmällinen Laplace-käänteismuunnos.</li><li>Takaisinkytkennän merkitys epälineaarisen prosessin säädön nopeudelle ja tarkkuudelle.\nJuuriuran alkeet. Askelvasteen mitoitus.</li><li>Nyquist-diagrammi stabiiliusanalyysissä.</li></ul><h5>Specialist knowledge</h5><ul><li> </li><li>Simulink. Siirtofunktion vaihtoehtoiset perustelut. </li></ul>",
+    "content_origin": "official",
+    "learning_outcomes": [
+     "Kurssin suorittanut tuntee erityisesti prosessiautomaation keskeiset osa-alueet ja ongelmanasettelut/haasteet, ohjaamisen sekä laite- ja järjestelmätekniikan pääpiirteet, takaisinkytketyn säätöjärjestelmän ja muun dynaamisen järjestelmän perusilmiöt ja niihin liittyvän mallipohjaisen lineaarisen analyysin ja suunnittelun sekä säätimien tavallisia toteutusvaihtoehtoja."
+    ],
+    "learning_outcomes_origin": "official"
+   }
+  ],
+  "result": {
+   "required": [
+    {
+     "requirement_id": "required_1",
+     "options": [
+      {
+       "course_codes": [
+        "ACI-20010"
+       ],
+       "evidence": "The candidate teaches feedback control, PID control, and dynamic model analysis, which the target assumes as immediate entry knowledge for multivariate modelling and tuning.",
+       "confidence": 0.9,
+       "finding_flags": []
+      }
+     ]
+    }
+   ],
+   "recommended": [],
+   "equivalence": [],
+   "routing": {
+    "confidence": 0.85,
+    "flags": [],
+    "suppressed": []
+   }
+  }
+ },
+ {
+  "name": "required_and",
+  "explanation": "Curated inference example, not a university-authored fact. The target builds real-time automation software from object-oriented architecture, UML models, and programmed structures. Its descriptor assumes programming craft plus abstract data types and dynamic memory skills before entry, so both programming courses are needed together: they are one AND option inside a single required set rather than two alternatives. Whether OHJ-1150 is strictly required at entry rather than expected is a judgement call, so the AND option carries the finding flags `requiredness_uncertain` and `member_uncertain`.",
+  "target": {
+   "course_id": "tut-cu-g-27086",
+   "course_code": "ACI-32020",
+   "name": "Real Time Systems in Automation",
+   "name_origin": "official",
+   "content": "<h5>Core content</h5><ul><li>Arkkitehtuurisuunnittelu, yksityiskohtainen suunnittelu ja toteutus. Suunnittelumallit.</li><li>Automaatio-ohjelmistojen laatu ja luotettavuus. Testausmenetelmät ja -työkalut.</li><li>Automaatiotoimialan ohjelmistojen erityispiirteet ja -vaatimukset.</li><li>Automaatioalan ohjelmistojen (toiminto- ja laatupainotteinen) kehitysprosessi ja vaatimusmäärittely. Käyttötapaukset ja niiden tarkentaminen.\n</li><li>Olioluokka-analyysi ja toimintoanalyysi. UML:n reaaliaikaprofiili. </li></ul><h5>Complementary knowledge</h5><ul><li>Automaatiotoimialalla keskeisten arkkitehtuuri- ja mekanismimallien valinta- ja soveltamiskriteerit.</li><li>Turvallisen käyttöautomaation ja turvallisuuteen liittyvien järjestelmien (TLJ) kehitysprosessien erot ja yhtäläisyydet. Testauksen optimointi.</li><li>Sulautettujen automaatiojärjestelmien, hajautettujen perusautomaatiojärjestelmien ja MES-tason järjestelmien erityisominaisuudet.</li><li>Luotettavuuteen liittyvien erityisvaatimusten huomioonotto. Ohjattavan prosessin/laitteiston automaatioaste, hallintaperiaatteet ja hallintatehtävät.</li><li>Systeemitason UML-profiili, SysML.</li></ul><h5>Specialist knowledge</h5><ul><li>Esimerkkejä automaatio-ohjelmistoista.</li><li>Kokeellinen automaatioalan UML AP-profiili.</li></ul>",
+   "content_origin": "official",
+   "learning_outcomes": [
+    "Sekä automatisoitaviin tuotteisiin integroitavilta sulautetuilta järjestelmiltä että tietoverkkopohjaisilta hajautetuilta järjestelmiltä vaaditaan vahvoja reaaliaikaisuus- ja luotettavuusominaisuuksia.\n\nOpintojakson suoritettuaan opiskelija osaa kehittää automaatioalan ohjelmistopohjaisia reaaliaikajärjestelmiä ja -sovelluksia. Hän ymmärtää ja osaa organisoida automaatioalan reaaliaikajärjestelmien kehitysprosessin. Hän osaa soveltaa eri kehitysvaiheisiin soveltuvia, UML-pohjaisia (Unified Modelling Language) tekniikoita ja työkaluja. Hän osaa käyttää hyväkseen UML-profiileita sovelluksen suorituskyky-, luotettavuus- ja turvallisuusvaatimusten määrittelyyn. Hän osaa suunnitella alan erityyppisiin sovelluksiin tarkoituksenmukaisia ohjelmistoarkkitehtuureita käyttäen hyväkseen suunnittelumalleja (design patterns) ja mallikieliä."
+   ],
+   "learning_outcomes_origin": "official"
+  },
+  "candidates": [
+   {
+    "course_id": "tut-cu-g-26835",
+    "course_code": "OHJ-1100",
+    "name": "Programming I",
+    "name_origin": "official",
+    "content": "<h5>Core content</h5><ul><li>Ohjelman ja algoritmin käsitteet.\nYksinkertaisten ohjelmien suunnitteleminen ja testaus.\n</li><li>Muuttujat.\n\n</li><li>Tyyppikäsite: perustietotyypit, taulukot ja tietueet.</li><li>Ehto- ja silmukkalauseet.</li><li>Suunnitteleminen jakamalla pienempiin osakokonaisuuksiin. Aliohjelmat ja funktiot.\nArvoparametrit ja paluuarvon välitys.</li><li>Ohjelmointityylin perusasiat.</li><li>Syötteiden käsittely, tietovirrat ja tiedostot.</li></ul><h5>Complementary knowledge</h5><ul><li>Muuttujien roolit.\n</li><li>Luettelotyyppi.\n</li><li>Valintalause.</li><li>Viiteparametrit.</li><li>Tyylianalysaattorin käyttö.</li><li>Syötevirheiden käsittely,\nyksinkertaisten syötteiden jäsentely.</li></ul><h5>Specialist knowledge</h5><ul><li>Muuttujien elinaika.</li></ul>",
+    "content_origin": "official",
+    "learning_outcomes": [
+     "Arvosanan &#34;hyvä&#34; saavuttanut opiskelija pystyy toteuttamaan yksinkertaisia ohjelmia itsenäisesti:\nOpiskelija tunnistaa, miten ongelman ratkaisussa käytetään kurssin ydinaineksessa esiteltyjä periaatteita. Opiskelija osaa määritellä ja käyttää tietotyyppejä, muuttujia, kontrollirakenteita ja funktioita. Opiskelija pystyy tulkitsemaan toisen kirjoittamaa ohjelmaa.\n"
+    ],
+    "learning_outcomes_origin": "official"
+   },
+   {
+    "course_id": "tut-cu-g-26769",
+    "course_code": "OHJ-1150",
+    "name": "Programming II",
+    "name_origin": "official",
+    "content": "<h5>Core content</h5><ul><li>Abstraktion käsite.\nAbstraktien tietotyyppien toteutus ja käyttö.</li><li>Modulaarinen suunnittelu ja moduulien toteuttaminen.</li><li>Dynaamiset tietorakenteet ja niiden muistinhallinta: Operaattorit new ja delete.\nOsoittimet.\nListarakenteen hallinta.</li><li>Lisää funktioista: Rekursio, häntärekursio.</li><li>Työkaluohjelmia: Makefile (perusominaisuudet).</li></ul><h5>Complementary knowledge</h5><ul><li>Rakentajat ja purkajat.</li><li>Moduulien riippuvuudet.</li><li>Kopiorakentaja ja sijoitusoperaattori (niiden kieltäminen).</li><li>Versionhallinta.</li></ul><h5>Specialist knowledge</h5><ul><li>Jäljitin (debuggeri).</li></ul>",
+    "content_origin": "official",
+    "learning_outcomes": [
+     "Arvosanan &#34;hyvä&#34; saavuttanut opiskelija pystyy toteuttamaan pienehköjä ohjelmia itsenäisesti:\nOpiskelija osaa soveltaa ongelmien ratkaisemisessa kurssin ydinaineksessa esiteltyjä periaatteita."
+    ],
+    "learning_outcomes_origin": "official"
+   }
+  ],
+  "result": {
+   "required": [
+    {
+     "requirement_id": "required_1",
+     "options": [
+      {
+       "course_codes": [
+        "OHJ-1100",
+        "OHJ-1150"
+       ],
+       "evidence": "OHJ-1100 supplies the programming and data-type foundations and OHJ-1150 supplies abstraction, modular design, and dynamic memory, which together are the immediate programming entry knowledge the target assumes.",
+       "confidence": 0.9,
+       "finding_flags": [
+        "requiredness_uncertain",
+        "member_uncertain"
+       ]
+      }
+     ]
+    }
+   ],
+   "recommended": [],
+   "equivalence": [],
+   "routing": {
+    "confidence": 0.85,
+    "flags": [],
+    "suppressed": []
+   }
+  }
+ },
+ {
+  "name": "alternative_or",
+  "explanation": "Curated inference example, not a university-authored fact. The target divides programs into modules and designs data structures and algorithms. Either programming introduction teaches the functions, control structures, and data types the target assumes, so they are two OR alternatives in one required set: satisfying either one prepares the student, and satisfying both is not required.",
+  "target": {
+   "course_id": "tut-cu-g-45510",
+   "course_code": "COMP.CS.110",
+   "name": "Programming 2: Techniques",
+   "name_origin": "official",
+   "content": "<h5>Core content</h5><ul><li>Dividing program code into manageable parts and other style issues.</li><li>Modularity and use of classes, basics of object-oriented programming.</li><li>Recursion.</li><li>STL (Standard Template Library), basic containers (vector, set, map), iterators.</li><li>Values, references, pointers, indirect memory access.</li><li>Memory and arrays.</li><li>Dynamic memory management, linked list, smart pointers.</li><li><p>Version control (in single programmer&#39;s projects without remote repositories).</p></li><li><p>Compiling compared to interpreting.</p></li></ul><h5>Complementary knowledge</h5><ul><li>STL algorithms, more STL containers (list, deque).</li><li>Function pointers, pointer arithmetics.<br /></li><li>Compilation process (preprocessor, linking).</li></ul>",
+   "content_origin": "official",
+   "learning_outcomes": [
+    "<p>A  student attaining grade &#34;good&#34; can design and implement smallish  (consisting some hundreds lines of code at maximum) programs independently: the student is able to divide the program to  parts that can be implemented separately in a practicable way plus  design simple data structures and algorithms.  Especially the student:</p><ul><li>can use a version control system (in single programmer&#39;s projects without remote repositories)<br /></li><li>can use the most common STL containers, algorithms, and iterators</li><li>can write recursive functions</li><li>can use pointers and indirect pointing</li><li>understands the principles of (dynamic) memory management.<br /></li></ul>"
+   ],
+   "learning_outcomes_origin": "official"
+  },
+  "candidates": [
+   {
+    "course_id": "tut-cu-g-45620",
+    "course_code": "COMP.CS.100",
+    "name": "Programming 1: Introduction to Programming",
+    "name_origin": "official",
+    "content": "<h5>Core content</h5><ul><li>The concepts program and algorithm. Designing and testing small programs. </li><li>Dividing program into smaller entities: functions. Passing parameters and return values. </li><li>Control structures.</li><li>Variables. Scope. Data types.</li><li>Strings and lists.<br /></li><li>Basic operations of file handling.</li><li>Good programming practices.<br /></li></ul><h5>Complementary knowledge</h5><ul><li>Sets and dictionaries.</li><li>Combining data structures.</li><li>Basics of classes and objects.</li></ul><h5>Specialist knowledge</h5><ul><li>Default values of parameters.</li><li>Function parameters.<br /></li><li>Special methods.</li><li>Tuples.<br /></li></ul>",
+    "content_origin": "official",
+    "learning_outcomes": [
+     "After successfully passing the course a student<ul><li>understands the basic concepts of programming (variables and control structures)</li><li>knows how to divide a program into functions</li><li>undestands how to use some basic data structure (lists and dictionaries)</li><li>is able to combine basic data structures to create more complex nested structures</li><li>is capable to solve small programming problems</li><li>is familiar with good programming practices</li><li>understands the basic ideas of object oriented programming (class and object)</li></ul>"
+    ],
+    "learning_outcomes_origin": "official"
+   },
+   {
+    "course_id": "tut-cu-g-45512",
+    "course_code": "TIE-02107",
+    "name": "Programming 1: Introduction",
+    "name_origin": "official",
+    "content": "<h5>Core content</h5><ul><li>The concepts program and algorithm. Designing and testing small programs. </li><li>Dividing program into smaller entities: functions. Passing parameters and return values. </li><li>Control structures.</li><li>Variables. Scope. Data types.</li><li>Basic operations of file handling.</li></ul><h5>Complementary knowledge</h5><ul><li>Programming style.</li><li>Default values of parameters.</li><li>Classes.</li></ul><h5>Specialist knowledge</h5><ul><li>Type-parameters. Lambda-functions.</li><li>Special methods.</li></ul>",
+    "content_origin": "official",
+    "learning_outcomes": [
+     "A student with grade &#34;good&#34; can implement a small program independently. <h5>Excellent / Pass</h5><ul><li>The student is able to divide a program into meaningful parts using functions and classes and is masters the conventions of good programming style.</li></ul><h5>Good</h5><ul><li>The student is able to divide a program into parts using functions and classes and knows the basics of good programming style.</li></ul><h5>Satisfactory</h5><ul><li>The student is able to implement a small program that functions according to the task description.</li></ul>"
+    ],
+    "learning_outcomes_origin": "official"
+   }
+  ],
+  "result": {
+   "required": [
+    {
+     "requirement_id": "required_1",
+     "options": [
+      {
+       "course_codes": [
+        "COMP.CS.100"
+       ],
+       "evidence": "Both candidates teach the program/algorithm concepts, functions, control structures, and data types the target assumes at entry, so either one satisfies the same requirement.",
+       "confidence": 0.9,
+       "finding_flags": []
+      },
+      {
+       "course_codes": [
+        "TIE-02107"
+       ],
+       "evidence": "Both candidates teach the program/algorithm concepts, functions, control structures, and data types the target assumes at entry, so either one satisfies the same requirement.",
+       "confidence": 0.9,
+       "finding_flags": []
+      }
+     ]
+    }
+   ],
+   "recommended": [],
+   "equivalence": [],
+   "routing": {
+    "confidence": 0.85,
+    "flags": [],
+    "suppressed": []
+   }
+  }
+ },
+ {
+  "name": "required_vs_recommended",
+  "explanation": "Curated inference example, not a university-authored fact. The target applies actuator materials and real-time data acquisition. ACI-51006 teaches the microsystem fabrication, sensor, and actuator principles the target expects on entry, so it is required. ACI-51106 is a laboratory course exercising the same sensors and actuators; it is directly relevant background but not an entry condition, so it stays recommended. The categories remain separate. The required/recommended boundary here is a judgement call, so the recommended option carries the finding flag `requiredness_uncertain`.",
+  "target": {
+   "course_id": "tut-cu-g-27271",
+   "course_code": "ACI-51306",
+   "name": "Microrobotics and Microactuators",
+   "name_origin": "official",
+   "content": "<h5>Core content</h5><ul><li>Piezoelectric actuators: effect, design, actuator types, figures of merit. Control aspects of piezoelectric actuators.</li><li>Shape memory actuators: effect, design, actuator types, figures of merit.</li><li>Electroactive polymer actuators: effect, design, actuator types, figures of merit.</li><li>Magnetostrictive actuators: effect, design, actuator types, figures of merit.</li><li>Magnetorheological actuators: effect, design, actuator types, figures of merit.</li><li>Matlab&#39;s xPC Target as a data acquisition and control platform.</li></ul><h5>Complementary knowledge</h5><ul><li>Applications of piezoelectric actuators.</li><li>Control aspects and applications of shape memory actuators.</li><li>Control aspects and applications of electroactive polymer actuators.</li><li>Control aspects and applications of magnetostrictive actuators.</li><li>Control aspects and applications of magnetorheological actuators. </li></ul><h5>Specialist knowledge</h5><ul><li>Fabrication and material issues of piezoelectric actuators.</li><li>Fabrication and material issues of shape memory actuators.</li><li>Fabrication and material issues of electroactive polymer actuators.</li><li>Fabrication and material issues of magnetostrictive actuators.</li><li>Fabrication and material issues of magnetorheological actuators.</li></ul>",
+   "content_origin": "official",
+   "learning_outcomes": [
+    "After the course, the student is able to \n\n- use and implement applications for real-time data acquisition and control using xPC Target environment\n\n- name typical displacement sensors and use laser distance sensors\n\n- explain piezoelectric effect and the operation principles of typical piezoelectric actuators, use piezoelectric actuators, analyse the properties of piezoelectric actuators, and implement feedback control for piezoelectric actuators\n\n- explain shape memory effect and the operation principles of typical shape memory actuators, use shape memory actuators\n\n- explain magnetostrictive effect and the operation principles of magnetostrictive actuators, use magnetostrictive actuators, and analyse their properties using own measurements \n\n- recognise different types of electroactive polymers and explain their operation principles \n\n- explain magnetic shape memory (MSM) effect and the operation principles of MSM actuators \n\n- explain the operation principles magnetorheological fluids\n\n- report own measurement results in a technical writing style"
+   ],
+   "learning_outcomes_origin": "official"
+  },
+  "candidates": [
+   {
+    "course_id": "tut-cu-g-27106",
+    "course_code": "ACI-51006",
+    "name": "Introduction to Microsystem Technology",
+    "name_origin": "official",
+    "content": "<h5>Core content</h5><ul><li>Microfabrication: silicon micromachining, LIGA, bonding techniques</li><li>Scaling effect: basics of scaling, consequences in microrobotics and microfluidics, Trimmer&#39;s notation</li><li>Microsensors: pressure microsensors, microaccelerometers, micro gyrometers, chemical microsensors</li><li>Microactuators and active actuator materials: piezoelectric actuators, shape memory materials, electrostatic actuators, performance measures of actuators</li><li>Applications: overview of application possibilities, microfluidics, microrobotics</li></ul><h5>Complementary knowledge</h5><ul><li>Microinjection molding, soft lithography, laser micromachining, micro electro-discharge machining,  micro stereolithography</li><li>Magnetic microsensors</li><li>Magnetic microactuators, rheologic actuators</li><li>Application examples</li></ul><h5>Specialist knowledge</h5><ul><li>Packaging, interfacing, materials</li><li>Details of the forces dominant in the microscale</li><li>Electric interfacing</li><li>Thermomechanical microactuators, magnetic shape memory actuators, magnetic minimotors, electroactive polymers</li></ul>",
+    "content_origin": "official",
+    "learning_outcomes": [
+     "After the course, the student is able to recognise microsystem technology and name its main applications. The student is also aware of the capabilities and state-of-the-art of microsensors and actuators. The student is able to identify different sensor and actuator principles, explain their working principles and name their benefits and drawbacks. The student can explain the principles of silicon micromachining, LIGA and different bonding techniques\n\nThe course suits especially well for students who aim for R&amp;D tasks."
+    ],
+    "learning_outcomes_origin": "official"
+   },
+   {
+    "course_id": "tut-cu-g-27186",
+    "course_code": "ACI-51106",
+    "name": "Laboratory Course in Microsystem Technology",
+    "name_origin": "official",
+    "content": "<h5>Core content</h5><ul><li>PC-based data acquisition and control systems, the use of basic laboratory equipment.</li><li>Microsensors: accelerometers, hall sensors and magnetoresistive sensors. Advantages and disadvantages, how to use in practice in different applications.</li><li>Active actuator materials: piezoelectric actuators and shape memory actuators. Advantages and disadvantages, how to use in practise.</li><li>Microfluidics: Micropumps, microchannel flows, microchannel flow characterization. How to use.</li></ul><h5>Complementary knowledge</h5><ul><li>Real-time Linux and Labview based data acquisition and control software (how to use).</li><li>Operation principles of acceleration, Hall and magnetoresistive sensors. How to use laser displacement sensors.</li><li>Operation principles of piezoelectric, SMA, voice coil and stepper motor actuators. </li><li>Operation principles of micropumps, operation principles of the characterization methods</li></ul><h5>Specialist knowledge</h5><ul><li>Development of own data acquisition and control software.</li><li>Control issues of the actuators.</li></ul>",
+    "content_origin": "official",
+    "learning_outcomes": [
+     "After the course, the student is able to\n- use different data acquisition software\n- write the results of the works in a form of technical reports\n- use angle sensors, analyse the measurement data and knows their strengths and limitations based on own measurements\n\n- use shape memory actuators, analyse the measurement data and name their strengths and limitations based on own measurements\n\n- use piezoelectric actuators, analyse the measurement data and name their strengths and limitations based on own measurements\n\n- use micropumps and name their strengths and limitations based on own measurements\n\n- implement microfluidic structures using PDMS"
+    ],
+    "learning_outcomes_origin": "official"
+   }
+  ],
+  "result": {
+   "required": [
+    {
+     "requirement_id": "required_1",
+     "options": [
+      {
+       "course_codes": [
+        "ACI-51006"
+       ],
+       "evidence": "The candidate teaches microfabrication, microsensor, and microactuator principles that the target expects students to already hold before applying actuator materials.",
+       "confidence": 0.9,
+       "finding_flags": []
+      }
+     ]
+    }
+   ],
+   "recommended": [
+    {
+     "requirement_id": "recommended_1",
+     "options": [
+      {
+       "course_codes": [
+        "ACI-51106"
+       ],
+       "evidence": "The candidate is a laboratory course exercising microsensors and actuators, directly relevant background but not an expected entry condition.",
+       "confidence": 0.9,
+       "finding_flags": [
+        "requiredness_uncertain"
+       ]
+      }
+     ]
+    }
+   ],
+   "equivalence": [],
+   "routing": {
+    "confidence": 0.85,
+    "flags": [],
+    "suppressed": []
+   }
+  }
+ },
+ {
+  "name": "too_basic_transitive",
+  "explanation": "Curated inference example, not a university-authored fact. The target teaches robust and adaptive control assuming a control-theory level of knowledge. ACI-10010 supplies the mathematics that underpins automatic control, but substantial course-level control learning would normally come between it and the target. It is therefore suppressed as a broad foundation: empty direct sets plus one too_basic_transitive entry, never a direct option.",
+  "target": {
+   "course_id": "tut-cu-g-27175",
+   "course_code": "ACI-42060",
+   "name": "Robust Control",
+   "name_origin": "official",
+   "content": "<h5>Core content</h5><ul><li>Mallien epävarmuuden esittämistavat; stabiiliuden ja tyypillisten testivasteiden robustisuus.</li><li>Robustin säädön taajuusvastemenetelmät.</li><li>Parametrinen robusti säätö siirtofunktio- ja tilamalleja käyttäen.</li><li>Adaptiivinen säätö, erityisesti itsevirittyvä säätö.</li><li>Epälineaarinen säätö.</li></ul>",
+   "content_origin": "official",
+   "learning_outcomes": [
+    "Robustin säädön ajattelu- ja menettelytapoihin perehtyminen."
+   ],
+   "learning_outcomes_origin": "official"
+  },
+  "candidates": [
+   {
+    "course_id": "tut-cu-g-27172",
+    "course_code": "ACI-10010",
+    "name": "Mathematics for Automatic Control",
+    "name_origin": "official",
+    "content": "<h5>Core content</h5><ul><li>Systeemi- ja säätöteorian peruskäsitteistö.<br />Dynaamisten järjestelmien peruskäsitteistö.<br />Matemaattisen mallintamisen peruskäsitteistö.</li><li>Kompleksilukulaskennan alkeet.<br />Kompleksimuuttujan polynomien, rationaalifunktioiden ja eksponenttifunktioiden peruslaskuoppi.<br />Kompleksimuuttujan  funktioiden graafiset esitystavat.<br /><br />Lineaarisuuden käsite ja mallien linearisointi.</li><li>Differentiaaliyhtälöiden peruskäsitteistö.<br />Lineaaristen aikainvarianttien differentiaaliyhtälöiden peruslaskuoppi.<br />Laplace-muunnos ja operointi muunnostaulukolla.</li><li>Siirtofunktiomallien peruskäsitteistö ja -laskuoppi.<br /><br />Taajuusvastetarkastelujen peruskäsitteistö ja -laskuoppi.</li></ul>",
+    "content_origin": "official",
+    "learning_outcomes": [
+     "Harjaannuttaa automaatio- ja systeemitekniikan opiskelijat siihen perusmatematiikkaan, jonka automaatioalan opiskelu edellyttää.<br /><br />Toisin sanoen: 1. Kerrataan joitakin lukiossa ja matematiikan peruskursseilla - jokin IMA- tai LAMA-kokonaisuus - opetettuja asioita <br />2. Tutustutaan joihinkin ei niin tuttuihin matemaattisiin käsitteisiin ja työkaluihin, joita automaatiotekniikan ja systeemitekniikan alalla käytetään.  <br /><br />Lisäksi kurssin tietokoneharjoituksissa tutustutaan systeemitekniikankin alalla yleisesti käytössä olevaan MATLAB-ohjelmistoon. Tavoitteena on, että tietokoneharjoitukset tehtyään opiskelija hallitsee MATLAB-perustyöskentelyn ja kykenee itsenäisesti kartuttamaan osaamistaan, sekä ymmärtää miten systeemiteorian lasku- ja suunnittelutehtävien ratkaisemista voidaan helpottaa ja havainnollistaa MATLABin avulla."
+    ],
+    "learning_outcomes_origin": "official"
+   }
+  ],
+  "result": {
+   "required": [],
+   "recommended": [],
+   "equivalence": [],
+   "routing": {
+    "confidence": 0.85,
+    "flags": [
+     "directness_ambiguity"
+    ],
+    "suppressed": [
+     {
+      "course_code": "ACI-10010",
+      "outcome": "too_basic_transitive",
+      "evidence": "The candidate provides the mathematics foundation beneath automatic control, but substantial course-level control learning would normally be required between it and the target's robust-control entry level."
+     }
+    ]
+   }
+  }
+ },
+ {
+  "name": "reverse_overlap_related_unrelated",
+  "explanation": "Curated inference example, not a university-authored fact. Classical control theory and the candidate control courses overlap in feedback analysis, but the target's descriptor assumes only linear systems analysis at entry, so none of the four candidates is a direct prerequisite. Each is suppressed with the outcome that fits: the target's own subject appears in a later course (reverse), a similar control course covers much of the same material (overlap), a microsystem course shares control concepts only loosely (related), and an accessibility course shares no control knowledge (unrelated). Empty direct sets plus four ordered suppressions.",
+  "target": {
+   "course_id": "tut-cu-g-27083",
+   "course_code": "ACI-20030",
+   "name": "Classical Control Theory",
+   "name_origin": "official",
+   "content": "<h5>Core content</h5><ul><li>Lineaarisiin dynaamisiin järjestelmiin liittyvät analyysimenetelmät.</li><li>Takaisinkytketyn säädön suunnittelun perusteet.</li><li>Kompensaattoreiden suunnittelu.</li></ul>",
+   "content_origin": "official",
+   "learning_outcomes": [
+    "Opiskelija hallitsee suljetun piirin analyysiin, säätäjien ja kompensaattorien klassilliseen suunnitteluun sekä lineaaristen dynaamisten järjestelmien tilatasoesitykseen ja tilasäädön periaatteeseen."
+   ],
+   "learning_outcomes_origin": "official"
+  },
+  "candidates": [
+   {
+    "course_id": "tut-cu-g-27175",
+    "course_code": "ACI-42060",
+    "name": "Robust Control",
+    "name_origin": "official",
+    "content": "<h5>Core content</h5><ul><li>Mallien epävarmuuden esittämistavat; stabiiliuden ja tyypillisten testivasteiden robustisuus.</li><li>Robustin säädön taajuusvastemenetelmät.</li><li>Parametrinen robusti säätö siirtofunktio- ja tilamalleja käyttäen.</li><li>Adaptiivinen säätö, erityisesti itsevirittyvä säätö.</li><li>Epälineaarinen säätö.</li></ul>",
+    "content_origin": "official",
+    "learning_outcomes": [
+     "Robustin säädön ajattelu- ja menettelytapoihin perehtyminen."
+    ],
+    "learning_outcomes_origin": "official"
+   },
+   {
+    "course_id": "tut-cu-g-27096",
+    "course_code": "ACI-21080",
+    "name": "Control System Design with Matlab",
+    "name_origin": "official",
+    "content": "<h5>Core content</h5><ul><li>Monimuuttujaprosessin mallinnus, tasapainotilan laskenta, linearisointi; Monimuuttujasäädön erityisluonne, dekoplaus, hienoviritys, simulointimenetelmät.</li><li>Säätöjärjestelmän mallinnus, analyysi ja suunnittelu sekä tilaesityksen että siirtofunktiomatriisin avulla.</li><li>PI-monimuuttujasäätimen viritysmenetelmät.</li><li>Tilatakaisinkytketyn säädön ja tilahavaitsijan viritys napojen asettelumenetelmällä ja analyysi. Ohjattavuuden ja tarkkailtavuuden tutkiminen singulaariarvojen avulla.</li><li>Monimuuttujasäädön neliölliset hyvyysluvut. Tilatakaisinkytketyn säädön viritys <br />LQ-menetelmällä.</li></ul><h5>Complementary knowledge</h5><ul><li>Funktioaliohjelman luomista edellyttävä epälineaarisen yhtälöryhmän ratkaisu ja differentiaaliyhtälömallin simulointi.</li><li>Tilamallin ja siirtofunktiomallin testivasteiden täsmällinen muoto; Viiveellisten säätöpiirin vektoridifferentiaaliyhtälömallit.</li><li>Muuttujavaihdokset, Lyapunovin ja Riccatin yhtälöiden johdot</li></ul><h5>Specialist knowledge</h5><ul><li>Mallien manuaalinen muodostaminen; Ominaisarvojen herkkyys; Leverrier&#39;in algoritmi.</li><li>Napojen asettelu Rank-One -menetelmällä.</li><li>Ohjattavuuden Gram-matriisi.</li></ul>",
+    "content_origin": "official",
+    "learning_outcomes": [
+     "Monimuuttujasäädön ja optimisäädön periaatteiden sekä tietokoneavusteisen mallinnuksen, analyysin ja suunnittelun oppiminen."
+    ],
+    "learning_outcomes_origin": "official"
+   },
+   {
+    "course_id": "tut-cu-g-27271",
+    "course_code": "ACI-51306",
+    "name": "Microrobotics and Microactuators",
+    "name_origin": "official",
+    "content": "<h5>Core content</h5><ul><li>Piezoelectric actuators: effect, design, actuator types, figures of merit. Control aspects of piezoelectric actuators.</li><li>Shape memory actuators: effect, design, actuator types, figures of merit.</li><li>Electroactive polymer actuators: effect, design, actuator types, figures of merit.</li><li>Magnetostrictive actuators: effect, design, actuator types, figures of merit.</li><li>Magnetorheological actuators: effect, design, actuator types, figures of merit.</li><li>Matlab&#39;s xPC Target as a data acquisition and control platform.</li></ul><h5>Complementary knowledge</h5><ul><li>Applications of piezoelectric actuators.</li><li>Control aspects and applications of shape memory actuators.</li><li>Control aspects and applications of electroactive polymer actuators.</li><li>Control aspects and applications of magnetostrictive actuators.</li><li>Control aspects and applications of magnetorheological actuators. </li></ul><h5>Specialist knowledge</h5><ul><li>Fabrication and material issues of piezoelectric actuators.</li><li>Fabrication and material issues of shape memory actuators.</li><li>Fabrication and material issues of electroactive polymer actuators.</li><li>Fabrication and material issues of magnetostrictive actuators.</li><li>Fabrication and material issues of magnetorheological actuators.</li></ul>",
+    "content_origin": "official",
+    "learning_outcomes": [
+     "After the course, the student is able to \n\n- use and implement applications for real-time data acquisition and control using xPC Target environment\n\n- name typical displacement sensors and use laser distance sensors\n\n- explain piezoelectric effect and the operation principles of typical piezoelectric actuators, use piezoelectric actuators, analyse the properties of piezoelectric actuators, and implement feedback control for piezoelectric actuators\n\n- explain shape memory effect and the operation principles of typical shape memory actuators, use shape memory actuators\n\n- explain magnetostrictive effect and the operation principles of magnetostrictive actuators, use magnetostrictive actuators, and analyse their properties using own measurements \n\n- recognise different types of electroactive polymers and explain their operation principles \n\n- explain magnetic shape memory (MSM) effect and the operation principles of MSM actuators \n\n- explain the operation principles magnetorheological fluids\n\n- report own measurement results in a technical writing style"
+    ],
+    "learning_outcomes_origin": "official"
+   },
+   {
+    "course_id": "otm-0b82ffa3-abf9-4c2f-9caf-e0b094143bf3",
+    "course_code": "ADDS.200",
+    "name": "Accessible Digital Society",
+    "name_origin": "official",
+    "content": "During this course, the student will expand their knowledge of accessibility and disability and how those are discussed in society. Students will be introduced to how disabilities are visible in our society and how people with disabilities wish to be faced in everyday life. In addition, the student will learn how to analyze and produce accessible documents, how to make accessible information visualizations, and how to analyze and create accessible content for social media.<p><br /></p><p>This course is only available for students in the Master&#39;s Programme in Sustainable Societies and Digitalisation.<br /></p>",
+    "content_origin": "official",
+    "learning_outcomes": [
+     "<p>After completing the course, the student will understand the importance of accessibility in digital society. The student is able to analyze and produce accessible content, including information visualization and social media content. </p>"
+    ],
+    "learning_outcomes_origin": "official"
+   }
+  ],
+  "result": {
+   "required": [],
+   "recommended": [],
+   "equivalence": [],
+   "routing": {
+    "confidence": 0.85,
+    "flags": [
+     "substitute_overlap_ambiguity"
+    ],
+    "suppressed": [
+     {
+      "course_code": "ACI-42060",
+      "outcome": "reverse_prerequisite",
+      "evidence": "The candidate teaches robust and adaptive control that builds on the target's classical control theory, so the direction is reversed rather than a prerequisite."
+     },
+     {
+      "course_code": "ACI-21080",
+      "outcome": "overlap",
+      "evidence": "The candidate covers the same control design and analysis material as the target, making it overlapping rather than a prerequisite."
+     },
+     {
+      "course_code": "ACI-51306",
+      "outcome": "related",
+      "evidence": "The candidate shares actuator control aspects with the target but does not teach the classical control theory the target assumes at entry."
+     },
+     {
+      "course_code": "ADDS.200",
+      "outcome": "unrelated",
+      "evidence": "The candidate teaches accessibility and digital-society content with no control-theory knowledge in common with the target."
+     }
+    ]
+   }
+  }
+ },
+ {
+  "name": "global_equivalence",
+  "explanation": "Curated inference example, not a university-authored fact. The two descriptors teach the same robust-control content - model uncertainty, frequency-response robust design, parametric robust control, adaptive control, and non-linear control - in two different implementations. They are proposed as one course-wide equivalence group and no direct option is emitted, because interchangeability is not a prerequisite relation.",
+  "target": {
+   "course_id": "tut-cu-g-27211",
+   "course_code": "ACI-42066",
+   "name": "Robust Control",
+   "name_origin": "official",
+   "content": "<h5>Core content</h5><ul><li>Presentation of uncertainty for analysis and design of robust stability and performance.</li><li>Frequency response methods</li><li>Parametric robust control with both transfer function and state-space methods</li><li>Adaptive control, especially self-tuning control.</li><li>Non-linear control</li></ul>",
+   "content_origin": "official",
+   "learning_outcomes": [
+    "Becoming familiar with different methods to make control robust."
+   ],
+   "learning_outcomes_origin": "official"
+  },
+  "candidates": [
+   {
+    "course_id": "tut-cu-g-27175",
+    "course_code": "ACI-42060",
+    "name": "Robust Control",
+    "name_origin": "official",
+    "content": "<h5>Core content</h5><ul><li>Mallien epävarmuuden esittämistavat; stabiiliuden ja tyypillisten testivasteiden robustisuus.</li><li>Robustin säädön taajuusvastemenetelmät.</li><li>Parametrinen robusti säätö siirtofunktio- ja tilamalleja käyttäen.</li><li>Adaptiivinen säätö, erityisesti itsevirittyvä säätö.</li><li>Epälineaarinen säätö.</li></ul>",
+    "content_origin": "official",
+    "learning_outcomes": [
+     "Robustin säädön ajattelu- ja menettelytapoihin perehtyminen."
+    ],
+    "learning_outcomes_origin": "official"
+   }
+  ],
+  "result": {
+   "required": [],
+   "recommended": [],
+   "equivalence": [
+    {
+     "members": [
+      "ACI-42066",
+      "ACI-42060"
+     ],
+     "evidence": "Both courses teach uncertainty modelling, robust stability and performance, frequency-response methods, parametric robust control, adaptive control, and non-linear control, so they are course-wide interchangeable.",
+     "confidence": 0.9,
+     "finding_flags": []
+    }
+   ],
+   "routing": {
+    "confidence": 0.85,
+    "flags": [],
+    "suppressed": []
+   }
+  }
+ },
+ {
+  "name": "similarity_not_equivalence",
+  "explanation": "Curated inference example, not a university-authored fact. The target's testing content assumes earlier software-engineering and programming foundations. Introduction to Software Engineering plus the programming course together supply the development life-cycle, interface, and software-construction knowledge the target expects on entry, so they form one required two-course AND option. The candidates resemble parts of the target's material but neither is course-wide interchangeable with it, so no equivalence group is proposed.",
+  "target": {
+   "course_id": "tut-cu-g-42031",
+   "course_code": "COMP.SE.200",
+   "name": "Software Testing",
+   "name_origin": "official",
+   "content": "<h5>Core content</h5><ul><li>  Purpose of testing, test Levels, testing in agile software processes</li><li>Testing as a part of quality systems<br /></li><li>Common software errors</li><li>Importance and basis of testing design, reporting of testing and errors</li><li>Identifying test items and common mistakes, designing tests, explorative testing</li><li>Basics of test automation, automation tools for user interface testing</li></ul><h5>Complementary knowledge</h5><ul><li> Test-Driven Development</li><li>Error life cycle</li><li>Risk analysis and prioritization</li><li>Static Testing Techniques</li><li>Coverage meters, process meters, </li><li>Suitability of test automation for different situations</li><li>Model-based testing</li><li>Testing and AI</li></ul><h5>Specialist knowledge</h5><ul><li>Development of testing</li><li>Standards, document frames</li><li>Automatic static analysis of code</li><li>Testability</li><li>Security testing</li></ul>",
+   "content_origin": "official",
+   "learning_outcomes": [
+    "<p>The student knows the basic concepts and techniques of testing at all levels of testing and is able to apply them in software development at all stages of the life cycle. The student identifies tasks related to testing that can be partially or fully automated and is able to do so using appropriate automation tools. The student understands the role of testing in improving software quality and process.<br /></p>"
+   ],
+   "learning_outcomes_origin": "official"
+  },
+  "candidates": [
+   {
+    "course_id": "tut-cu-g-45474",
+    "course_code": "COMP.SE.100",
+    "name": "Introduction to Software Engineering",
+    "name_origin": "official",
+    "content": "<h5>Core content</h5><ul><li>Properties of different types of software. </li><li>Paradigms and notations used in requirements (e.g. the most common UML diagrams). Besides functional requirements, also non-functional requirements (like user experience and IPR) and restrictions. </li><li>Principles of software development life-cycle models and methods. </li><li>Know different phases of SW development, and customer role in each. </li></ul><h5>Complementary knowledge</h5><ul><li><p>Requirements definition and customer-vendor communication.</p></li><li><p>Participation in creation of the requirements documentation.</p></li><li><p>Basics of software project management. <br /></p></li></ul><h5>Specialist knowledge</h5><ul><li><p>Stakeholder analysis and writing software requirements documentation. </p></li></ul>",
+    "content_origin": "official",
+    "learning_outcomes": [
+     "<p>After the course student understands how different types of software is developed in a professional way, and what kind of knowledge and skills it requires. Student knows software engineering terminology and development life cycle phases in general level. The ultimate goal is efficient participation in software projects in various stakeholder roles, for instance as an expert or customer.</p>"
+    ],
+    "learning_outcomes_origin": "official"
+   },
+   {
+    "course_id": "otm-9392333f-bff2-4c3d-b1cf-717ce9990253",
+    "course_code": "COMP.CS.140",
+    "name": "Programming 3: Interfaces and Techniques",
+    "name_origin": "official",
+    "content": "<h5>Core content</h5><ul><li>Modularity: Priciple of Locality, Abstraction, Encapsulation, Interface, Namespaces, design by Contract<br /></li><li>Inheritance: Base and subclasses, ownership of objects, dynamic binding</li><li>Team work: Version control in modern software development, division of labour</li><li>Software Quality: Unit testing</li><li>Exceptions, exception quarantees</li><li>Use of generic programming </li></ul>",
+    "content_origin": "official",
+    "learning_outcomes": [
+     "<p>Reaching a grade &#34;good&#34; indicates the student is able to participate in the implementation of a larger software product. In particular, the student</p><ul><li>knows how to use the typical programming tools and is able to explain their roles in software work.</li><li>knows how to program modules that are in connection to their environment through predefined interfaces.</li><li>is able to interpret interface documentation and understands the principles of design by contract.</li><li>knows more programming language structures than before and is able to use them in their programs.</li><li>can explain the concept of inheritance and is able to use it in their programs.</li></ul>"
+    ],
+    "learning_outcomes_origin": "official"
+   }
+  ],
+  "result": {
+   "required": [
+    {
+     "requirement_id": "required_1",
+     "options": [
+      {
+       "course_codes": [
+        "COMP.SE.100",
+        "COMP.CS.140"
+       ],
+       "evidence": "COMP.SE.100 supplies software life-cycle, requirements, and UML knowledge and COMP.CS.140 supplies modular interfaces, inheritance, and unit-testing practice, which together are the software-engineering entry knowledge the target assumes.",
+       "confidence": 0.9,
+       "finding_flags": []
+      }
+     ]
+    }
+   ],
+   "recommended": [],
+   "equivalence": [],
+   "routing": {
+    "confidence": 0.85,
+    "flags": [],
+    "suppressed": []
+   }
+  }
+ },
+ {
+  "name": "insufficient_information",
+  "explanation": "Curated inference example, not a university-authored fact. The target announces a varying topic per implementation and describes only a general application-area overview, so its descriptor does not state entry knowledge that any candidate course can be matched against. The model therefore emits complete empty direct sets, no equivalence, and the insufficient_course_information flag with low routing confidence instead of guessing.",
+  "target": {
+   "course_id": "tut-cu-g-35286",
+   "course_code": "EE.EES.510",
+   "name": "New Applications in Electrical Energy Engineering",
+   "name_origin": "official",
+   "content": "<p>Varying topic in each implementation.</p>",
+   "content_origin": "official",
+   "learning_outcomes": [
+    "Students having taken the course are able to provide a general overview on the application area and on technologies related to the cource and their implementation to utilise them in practice. \n\nStudents can apply and analyze basic solutions and principles of the applications after completing the course.\n\nStudent can evaluate the importance and feasibility of the applications for the field of electrical energy engineering."
+   ],
+   "learning_outcomes_origin": "official"
+  },
+  "candidates": [
+   {
+    "course_id": "tut-cu-g-27175",
+    "course_code": "ACI-42060",
+    "name": "Robust Control",
+    "name_origin": "official",
+    "content": "<h5>Core content</h5><ul><li>Mallien epävarmuuden esittämistavat; stabiiliuden ja tyypillisten testivasteiden robustisuus.</li><li>Robustin säädön taajuusvastemenetelmät.</li><li>Parametrinen robusti säätö siirtofunktio- ja tilamalleja käyttäen.</li><li>Adaptiivinen säätö, erityisesti itsevirittyvä säätö.</li><li>Epälineaarinen säätö.</li></ul>",
+    "content_origin": "official",
+    "learning_outcomes": [
+     "Robustin säädön ajattelu- ja menettelytapoihin perehtyminen."
+    ],
+    "learning_outcomes_origin": "official"
+   }
+  ],
+  "result": {
+   "required": [],
+   "recommended": [],
+   "equivalence": [],
+   "routing": {
+    "confidence": 0.3,
+    "flags": [
+     "insufficient_course_information"
+    ],
+    "suppressed": []
+   }
+  }
+ }
+]

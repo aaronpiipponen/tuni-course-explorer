@@ -1,0 +1,27 @@
+[
+  {
+    "id":"module-group-degree-v1","groupId":"module-group-degree","type":"DegreeProgramme","code":"DP.A",
+    "name":{"fi":"Tutkinto","en":"Degree"},"targetCredits":{"min":180,"max":null},"curriculumPeriodIds":["period-2026"],
+    "documentState":"ACTIVE","validityPeriod":{"startDate":"2026-01-01","endDate":null},"metadata":{"revision":1,"modificationOrdinal":1},"rule":null
+  },
+  {
+    "id":"module-group-study-v1","groupId":"module-group-study","type":"StudyModule","code":"SM.A",
+    "name":{"fi":null,"en":"Study module"},"targetCredits":{"min":25,"max":30},"curriculumPeriodIds":["period-2025","period-2026"],
+    "documentState":"ACTIVE","validityPeriod":{"startDate":"2025-01-01","endDate":"2027-12-31"},"metadata":{"revision":1,"modificationOrdinal":3},
+    "rule":{"type":"CourseUnitRule","localId":"study-course","courseUnitGroupId":"course-group-a"}
+  },
+  {
+    "id":"module-group-grouping-v1","groupId":"module-group-grouping","type":"GroupingModule","code":null,
+    "name":{"fi":"Ryhmä","en":"Grouping"},"targetCredits":{"min":10,"max":20},"curriculumPeriodIds":["period-2027"],
+    "documentState":"ACTIVE","validityPeriod":null,"metadata":{"revision":1,"modificationOrdinal":null},
+    "rule":{
+      "type":"CompositeRule","localId":"root","require":{"min":1,"max":3},"description":{"fi":"Kuvaus","en":"Description"},"allMandatory":false,
+      "rules":[
+        {"type":"CreditsRule","localId":"credits","credits":{"min":5,"max":null},"rule":{"type":"CourseUnitCountRule","localId":"count","count":{"min":1,"max":2},"rule":{"type":"CourseUnitRule","localId":"course","courseUnitGroupId":"course-group-inactive"}}},
+        {"type":"ModuleRule","localId":"module","moduleGroupId":"module-group-study"},
+        {"type":"AnyCourseUnitRule","localId":"any-course"},
+        {"type":"AnyModuleRule","localId":"any-module"}
+      ]
+    }
+  }
+]

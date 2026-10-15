@@ -1,0 +1,61 @@
+# Stable identity for the example containers and their database volume.
+name: tuni-course-explorer
+
+services:
+  db:
+    image: pgvector/pgvector:0.8.6-pg18-trixie
+    # Shared memory for the HNSW index build that an embedding-inclusive restore performs. Larger
+    # than Docker's 64 MiB default /dev/shm.
+    shm_size: 1g
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:?POSTGRES_PORT is required}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  embedding:
+    build:
+      context: .
+      dockerfile: docker/embedding/Dockerfile
+      args:
+        EMBEDDING_SERVER_IMAGE: ${EMBEDDING_SERVER_IMAGE:?EMBEDDING_SERVER_IMAGE is required}
+        EMBEDDING_RUNTIME_REVISION: ${EMBEDDING_RUNTIME_REVISION:?EMBEDDING_RUNTIME_REVISION is required}
+    network_mode: host
+    environment:
+      EMBEDDING_ARTIFACT_SHA256: ${EMBEDDING_ARTIFACT_SHA256:?EMBEDDING_ARTIFACT_SHA256 is required}
+      EMBEDDING_RUNTIME_REVISION: ${EMBEDDING_RUNTIME_REVISION:?EMBEDDING_RUNTIME_REVISION is required}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:?EMBEDDING_MODEL is required}
+      EMBEDDING_HOST: ${EMBEDDING_HOST:?EMBEDDING_HOST is required}
+      EMBEDDING_PORT: ${EMBEDDING_PORT:?EMBEDDING_PORT is required}
+      EMBEDDING_THREADS: ${EMBEDDING_THREADS:?EMBEDDING_THREADS is required}
+      EMBEDDING_CONTEXT_SIZE: ${EMBEDDING_CONTEXT_SIZE:?EMBEDDING_CONTEXT_SIZE is required}
+      EMBEDDING_POOLING: ${EMBEDDING_POOLING:?EMBEDDING_POOLING is required}
+      EMBEDDING_NORMALIZATION: ${EMBEDDING_NORMALIZATION:?EMBEDDING_NORMALIZATION is required}
+    volumes:
+      - type: bind
+        source: ${EMBEDDING_ARTIFACT_PATH:?EMBEDDING_ARTIFACT_PATH is required}
+        target: /models/embedding.gguf
+        read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - "no-new-privileges:true"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "/usr/bin/curl --fail --silent --show-error http://127.0.0.1:$${EMBEDDING_PORT}/health >/dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+volumes:
+  postgres_data:

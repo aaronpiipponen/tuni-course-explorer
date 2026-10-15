@@ -1,0 +1,17 @@
+# Example web UI service, with its backend bound to loopback.
+[Unit]
+Description=TUNI Course Explorer public example web UI
+
+[Service]
+Type=simple
+WorkingDirectory=@CHECKOUT@
+ExecStart=/usr/bin/bash @CHECKOUT@/scripts/run_web.sh
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+UMask=0077
+StandardOutput=null
+StandardError=journal
+
+[Install]
+WantedBy=default.target

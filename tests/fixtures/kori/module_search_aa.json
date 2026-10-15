@@ -1,0 +1,10 @@
+{
+  "start": 0,
+  "limit": 1000,
+  "total": 1,
+  "searchResults": [
+    {"id": "module-aa-v1", "groupId": "module-group-aa", "curriculumPeriodIds": ["uta-lvv-2026"]}
+  ],
+  "truncated": false,
+  "notifications": null
+}

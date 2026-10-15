@@ -1,0 +1,112 @@
+# Portable prerequisite-inference runtime/provenance contract, validated by
+# course_explorer.config InferenceSettings. One shared pinned Qwen3.8-27B IQ3-MIX artifact serves two
+# measured local fit keys. Inference runs locally.
+#
+# The two keys below carry their achieved ceilings 131072 and 163840. The stored-teaching-text
+# demand estimate is 393216 tokens of arithmetic demand from the stored teaching text, separate from
+# any achieved or context value here. A packet that fits neither key fails through the inference
+# target failure owner as one capacity failure per target, with no truncation and no fallback route.
+INFERENCE_HOST = "127.0.0.1"
+# Ordered local fit keys. First is the MTP key and the request tokenizer authority. Second is the
+# larger no-MTP fallback. Exactly two unique ordered keys are required, ordered by increasing
+# context, with an MTP draft count only on the first. Fields: alias, port, context_size,
+# kv_cache_type, batch_size, ubatch_size, speculative_type, mtp_draft_n_max, achieved_max_context.
+# The second key omits mtp_draft_n_max, so the model default is None.
+INFERENCE_LOCAL_VARIANTS = [
+    { alias = "qwen3.8-27b-iq3-mix-128k-mtp", port = 18140, context_size = 131072, kv_cache_type = "q4_0", batch_size = 256, ubatch_size = 256, speculative_type = "draft-mtp,ngram-mod", mtp_draft_n_max = 2, achieved_max_context = 131072 },
+    { alias = "qwen3.8-27b-iq3-mix-160k", port = 18160, context_size = 163840, kv_cache_type = "q4_0", batch_size = 1024, ubatch_size = 1024, speculative_type = "ngram-mod", achieved_max_context = 163840 },
+]
+INFERENCE_PRIMARY_MODEL_REPOSITORY = "Qwen/Qwen3.8-27B-FP8"
+INFERENCE_PRIMARY_MODEL_REVISION = "017b9c7af6b5689d5dd426a76e0bc077eb5ca20a"
+INFERENCE_PRIMARY_ARTIFACT_REPOSITORY = "vmarcelo/Qwen3.8-27B-MIX_GGUF"
+INFERENCE_PRIMARY_ARTIFACT_REVISION = "f922f9d9bbe67ede1c49e364d71737b8f067e49b"
+INFERENCE_PRIMARY_ARTIFACT_FILE = "Qwen3.8-27B-IQ3-MIX.gguf"
+INFERENCE_PRIMARY_ARTIFACT_PATH = "models/qwen3.8-27b-iq3-mix-f922f9d9/Qwen3.8-27B-IQ3-MIX.gguf"
+INFERENCE_PRIMARY_ARTIFACT_SHA256 = "3089d39401e60551a03e0858d775d6b33f966f6e6513f31f75a011cfc8f56309"
+INFERENCE_PRIMARY_ARTIFACT_QUANT = "IQ3_MIX"
+INFERENCE_RUNTIME_REVISION = "4ff829ec2e2f526aa6afba529eebbfb3ef1f95ec"
+INFERENCE_PARALLEL = 1
+INFERENCE_GPU_LAYERS = "all"
+INFERENCE_FLASH_ATTENTION = "on"
+INFERENCE_REQUEST_TIMEOUT_SECONDS = 600
+INFERENCE_MAX_ATTEMPTS = 3
+INFERENCE_RETRY_BACKOFF_SECONDS = 1
+# Whole-target generation retry policy. The first attempt of a cycle-target calculation is
+# greedy at INFERENCE_TEMPERATURE (zero). Deterministic-seed retries sample at INFERENCE_RETRY_TEMPERATURE
+# from a base of INFERENCE_SEED advanced by the durable lifetime attempt ordinal. The retry wait grows
+# from INFERENCE_RETRY_BACKOFF_SECONDS toward INFERENCE_RETRY_MAX_BACKOFF_SECONDS and is slept in
+# cooperative INFERENCE_RETRY_POLL_SECONDS chunks so pause/stop/reboot admission responds between
+# chunks.
+INFERENCE_RETRY_TEMPERATURE = 0.3
+INFERENCE_RETRY_MAX_BACKOFF_SECONDS = 10
+INFERENCE_RETRY_POLL_SECONDS = 0.1
+# Output cap and template/JSON-mode fit margin. Their sum is strictly below every
+# configured local variant context.
+INFERENCE_MAX_TOKENS = 8192
+INFERENCE_FIT_HEADROOM_TOKENS = 1024
+INFERENCE_TEMPERATURE = 0.0
+INFERENCE_SEED = 0
+INFERENCE_CHAT_TEMPLATE_KWARGS = { enable_thinking = false }
+# Closed policy literals. They bind the run/work policy identity: one solo local model with
+# strict fit-only routing, emitted recommendations retained, and no confidence/flag
+# cutoff, drop, demote, or stronger-model reroute. A target fitting neither local key fails.
+INFERENCE_ROUTING_POLICY = "solo_fit_only"
+INFERENCE_RECOMMENDATION_POLICY = "include"
+INFERENCE_FINDING_FILTER_POLICY = "none"
+# Complete-target prompt version, paired with the result schema version. The only loadable pair is
+# prompt `v9` with schema `v2`. Every option and equivalence group in a result carries zero or more
+# `finding_flags`.
+INFERENCE_PROMPT_VERSION = "v9"
+INFERENCE_SCHEMA_VERSION = "v2"
+INFERENCE_PIPELINE_VERSION = "v1"
+# Inference-owned accepted-result proposal composition version. It binds one proposal identity
+# together with the official snapshot and its source attempt. A composition meaning or dedup-rule
+# change selects a different version.
+INFERENCE_PROPOSAL_VERSION = "v1"
+# Live multiview field views and the reciprocal-rank fusion offset wired into the installed
+# operational CE-only selection stage `select_operational_multiview_pool`. They are label-free
+# selection mechanics. The solo fit-only MIX model above is the operating local policy.
+INFERENCE_MULTIVIEW_EVALUATION_FIELDS = ["name", "content", "outcomes"]
+INFERENCE_MULTIVIEW_FUSION_RANK_OFFSET = 60
+# Embedding pool depth consumed by the installed operational CE-only selection stage
+# `select_operational_multiview_pool`. K=1000 is the operational selection depth.
+INFERENCE_SELECTION_POOL_K = 1000
+# The CE-only top-50 candidate count the operational whole-target packet carries. It is wired into
+# `rerank_operational_pool`.
+INFERENCE_SELECTION_FINAL_K = 50
+
+# Cross-encoder reranking: one pinned multilingual BGE reranker served by the same pinned
+# llama.cpp revision on its own loopback port with the cross-encoder --reranking endpoint.
+# These keys pin the rerank artifact and runtime.
+INFERENCE_RERANK_HOST = "127.0.0.1"
+INFERENCE_RERANK_PORT = 18083
+INFERENCE_RERANK_MODEL_ALIAS = "bge-reranker-v2-m3-q8"
+INFERENCE_RERANK_MODEL_REPOSITORY = "BAAI/bge-reranker-v2-m3"
+INFERENCE_RERANK_MODEL_REVISION = "953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e"
+INFERENCE_RERANK_ARTIFACT_REPOSITORY = "gpustack/bge-reranker-v2-m3-GGUF"
+INFERENCE_RERANK_ARTIFACT_REVISION = "3093af03b1a635e67b084b1d8c03c5f5e020fd05"
+INFERENCE_RERANK_ARTIFACT_FILE = "bge-reranker-v2-m3-Q8_0.gguf"
+INFERENCE_RERANK_ARTIFACT_PATH = "models/bge-reranker-v2-m3-3093af03/bge-reranker-v2-m3-Q8_0.gguf"
+INFERENCE_RERANK_ARTIFACT_SHA256 = "a43c7c9b11a4c1517e5bf95151960e1621d1b72f7a493364b01e386cf1aaa1d3"
+INFERENCE_RERANK_ARTIFACT_QUANT = "Q8_0"
+INFERENCE_RERANK_CONTEXT_SIZE = 8192
+# Physical batch geometry. One value drives both --batch-size and --ubatch-size so
+# the pinned --embedding clamp cannot reduce the physical batch below a real 1536-character
+# document. It is serving geometry.
+INFERENCE_RERANK_BATCH_SIZE = 2048
+# Bounded per-request timeout for one cross-encoder request through the loopback scorer. It is part
+# of the derived rerank runtime identity, so a timeout change selects a different rerank input identity.
+INFERENCE_RERANK_REQUEST_TIMEOUT_SECONDS = 60
+# Bounded shared input limits and layout for one label-free real-course cross-encoder input. These
+# are the teaching-text construction used by the operational packet. The layout is the closed
+# content-first teaching-text order.
+INFERENCE_RERANK_QUERY_MAX_CHARACTERS = 1536
+INFERENCE_RERANK_DOCUMENT_MAX_CHARACTERS = 1536
+INFERENCE_RERANK_TEXT_LAYOUT = "content-first"
+
+# Inference remote-controller lifecycle policy. The repository-relative state root holds
+# current/state.json plus one session receipt directory per session. The derived worker database
+# name comes from the shared administrative dataset settings. The health attempt count bounds one
+# detached child's startup observation.
+INFERENCE_CONTROLLER_STATE_ROOT = "data/inference/controller"
+INFERENCE_CONTROLLER_HEALTH_ATTEMPTS = 120

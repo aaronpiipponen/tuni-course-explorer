@@ -1,0 +1,23 @@
+/** Compact toggle-chip treatment shared by feature controls. */
+.toggle-chip {
+  padding: 7px 14px;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 999px;
+  color: rgb(255 255 255 / 55%);
+  background: transparent;
+  font:
+    12px "JetBrains Mono",
+    ui-monospace,
+    monospace;
+  cursor: pointer;
+  transition: 0.2s;
+}
+.toggle-chip:hover {
+  color: #fff;
+  border-color: rgb(255 255 255 / 25%);
+}
+.toggle-chip.on {
+  color: #fff;
+  border-color: #b07be8;
+  background: rgb(78 0 142 / 55%);
+}

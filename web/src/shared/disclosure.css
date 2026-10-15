@@ -1,0 +1,25 @@
+/** Grid-clipped disclosure motion shared by route and member panels. */
+.disclosure {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 0.4s cubic-bezier(0.22, 0.8, 0.2, 1),
+    opacity 0.3s;
+}
+.disclosure.open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+.disclosure.anim {
+  transition:
+    grid-template-rows 0.4s cubic-bezier(0.22, 0.8, 0.2, 1),
+    opacity 0.3s;
+}
+.disclosure.open:not(.anim) > .panelclip {
+  overflow: visible;
+}
+.disclosure > .panelclip {
+  min-height: 0;
+  overflow: hidden;
+}

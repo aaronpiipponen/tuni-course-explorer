@@ -1,0 +1,26 @@
+# Portable translation worker runtime/provenance contract plus the remote translation-controller
+# state-root/health policy values, validated by course_explorer.config TranslationSettings and
+# TranslationControllerSettings. The neutral SSH connect timeout lives in config/worker.toml. The
+# shared health interval and stop timeout are assigned here for both worker stages. The translation
+# state root holds current/state.json plus one session receipt directory per session.
+TRANSLATION_HOST = "127.0.0.1"
+TRANSLATION_PORT = 18081
+TRANSLATION_MODEL_ALIAS = "translategemma-12b-it"
+TRANSLATION_MODEL_REPOSITORY = "google/translategemma-12b-it"
+TRANSLATION_MODEL_REVISION = "d1b225e1caa17f1ddc7e62065d8637d0923f34e2"
+TRANSLATION_ARTIFACT_PATH = "models/translategemma-12b-it-d1b225e1caa17f1ddc7e62065d8637d0923f34e2/translategemma-12b-it-Q5_K_M.gguf"
+TRANSLATION_ARTIFACT_SHA256 = "6a4cd9eae938fd869ceeb310ed9c8de2f44bacb0c2d79541a4f4dbf2b201c6da"
+TRANSLATION_ARTIFACT_QUANT = "Q5_K_M"
+TRANSLATION_RUNTIME_REVISION = "bb02f74c612064947e51d23269a1cf810b67c9a7"
+TRANSLATION_CONTEXT_SIZE = 16384
+TRANSLATION_PARALLEL = 1
+TRANSLATION_GPU_LAYERS = "all"
+TRANSLATION_REQUEST_TIMEOUT_SECONDS = 600
+TRANSLATION_MAX_ATTEMPTS = 3
+TRANSLATION_RETRY_BACKOFF_SECONDS = 1
+TRANSLATION_MAX_TOKENS = 8192
+TRANSLATION_TEMPERATURE = 0
+TRANSLATION_CONTROLLER_STATE_ROOT = "data/translations/controller"
+TRANSLATION_CONTROLLER_HEALTH_ATTEMPTS = 120
+TRANSLATION_CONTROLLER_HEALTH_INTERVAL_SECONDS = 2
+TRANSLATION_CONTROLLER_STOP_TIMEOUT_SECONDS = 660

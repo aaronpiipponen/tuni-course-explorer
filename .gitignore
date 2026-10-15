@@ -1,0 +1,48 @@
+# Ignore rules for the repository: keep the committed examples and reusable source publishable and
+# exclude runtime configuration, local secrets, dependencies, caches, model and data artifacts, and
+# build output.
+
+# Runtime configuration and local environment files.
+/config/
+/.env
+/.env.*
+/web/.env
+/web/.env.*
+/docker-compose.yml
+/docker-compose.*.yml
+/compose.override.yml
+/deploy/
+
+# Runtime data and models. The fictional example fixture is the tracked data: keep its five exact
+# files and ignore every other data, model, and runtime artifact.
+/data/*
+!/data/mock/
+/data/mock/*
+!/data/mock/dataset.json
+!/data/mock/periods.json
+!/data/mock/courses.json
+!/data/mock/modules.json
+!/data/mock/embeddings.json
+/models/
+/runtime/
+
+# Python bytecode, packaging metadata, environments, caches and coverage output.
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.cache/
+.coverage
+htmlcov/
+
+# Frontend dependencies and build output.
+node_modules/
+/web/node_modules/
+/web/dist/
+/web/.vite/
+/web/coverage/
+build/
+dist/
