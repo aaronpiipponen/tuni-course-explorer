@@ -21,6 +21,7 @@ from course_explorer_admin.commands import (
     operator_guidance,
     run_administrative_command,
     run_administrative_coverage,
+    run_administrative_hubs,
     run_administrative_migration,
     run_administrative_preflight,
     run_administrative_setup,
@@ -59,6 +60,7 @@ def _parser() -> argparse.ArgumentParser:
         stage_parser.add_argument("action", choices=_ACTIONS)
     coverage = subparsers.add_parser("coverage", help="narrow server coverage report")
     coverage.add_argument("kind", choices=["teaching-text", "embedding", "inference"])
+    subparsers.add_parser("hubs", help="write both embedding hub files from the selected dataset")
     summary = subparsers.add_parser("summary", help="server catalogue or inference summary")
     summary.add_argument("kind", choices=["catalogue", "inference"])
     return parser
@@ -74,7 +76,7 @@ def _emit(report: object) -> None:
 
 def _fail(
     exc: Exception,
-    operation: Literal["setup", "preflight", "stage", "report", "migration", "disposition"],
+    operation: Literal["setup", "preflight", "stage", "report", "migration", "disposition", "hubs"],
 ) -> None:
     print(format_operator_error(exc), file=sys.stderr)
     print(
@@ -119,6 +121,9 @@ def main(
             disposition = None if args.disposition == "nothing" else args.disposition
             _emit(set_inference_target_disposition(args.target_id, disposition))
             return 0
+        if args.command == "hubs":
+            _emit(run_administrative_hubs())
+            return 0
         if args.command in _STAGES:
             _emit(stage_command(args.command, args.action))
             return 0
@@ -141,6 +146,8 @@ def main(
             if args.command == "migrate"
             else "disposition"
             if args.command == "dispose"
+            else "hubs"
+            if args.command == "hubs"
             else "report"
             if args.command in {"coverage", "summary"}
             else "stage"

@@ -2,10 +2,10 @@
 
 This module is the one normal operator surface. It owns the stage/action dispatcher, the two
 separate setup choices (selected-dataset enrollment and worker preparation), the read-only worker
-preflight, the routine read-only server reports, the server-only target-disposition entry, the
-presentation-only safe failure surface, and the numbered menu. Every call delegates exactly once to
-its owning module and returns that owner's exact DTO. The menu keeps running until Exit,
-EOF, or interrupt. Reports read the server state read-only.
+preflight, the routine read-only server reports, the embedding hub writer, the server-only
+target-disposition entry, the presentation-only safe failure surface, and the numbered menu. Every
+call delegates exactly once to its owning module and returns that owner's exact DTO. The menu keeps
+running until Exit, EOF, or interrupt. Reports read the server state read-only.
 """
 
 from __future__ import annotations
@@ -21,12 +21,20 @@ from course_explorer.administration import repository_root
 from course_explorer.config import (
     DatabaseSettings,
     load_database_settings,
+    load_embedding_runtime_settings,
     load_inference_selection_settings,
     load_inference_settings,
 )
+from course_explorer.configuration import hub_reference_path
 from course_explorer.curriculum_repository import CurriculumRepository
 from course_explorer.datasets import DatasetVerification
 from course_explorer.db.session import database_context
+from course_explorer.embeddings.hub_files import (
+    EmbeddingHubReport,
+    compute_embedding_hubs,
+    read_current_chunk_vectors,
+    write_hub_file,
+)
 from course_explorer.embeddings.repository import CourseEmbeddingRepository
 from course_explorer.inference.diagnostics import (
     InferenceCoverageSummary,
@@ -217,6 +225,29 @@ def run_administrative_summary(kind: AdministrativeSummary) -> BaseModel:
         )
 
 
+def run_administrative_hubs() -> EmbeddingHubReport:
+    """Compute both embedding hubs from the selected dataset and write their configured files.
+
+    Both means are computed before either file is written, so incomplete embedding coverage fails
+    without touching the hub files. The files are the paths ``EMBEDDING_HUB_VECTOR`` and
+    ``EMBEDDING_OUTCOMES_HUB_VECTOR`` reference. A running web server reads the hubs at start.
+    """
+    root = repository_root()
+    catalogue_path = hub_reference_path(root, "EMBEDDING_HUB_VECTOR")
+    outcomes_path = hub_reference_path(root, "EMBEDDING_OUTCOMES_HUB_VECTOR")
+    with database_context(_private_database_settings()) as factory:
+        current = read_current_chunk_vectors(factory, load_embedding_runtime_settings())
+    hubs = compute_embedding_hubs(current)
+    write_hub_file(root / catalogue_path, hubs.catalogue)
+    write_hub_file(root / outcomes_path, hubs.outcomes)
+    return EmbeddingHubReport(
+        catalogue_path=catalogue_path.as_posix(),
+        outcomes_path=outcomes_path.as_posix(),
+        chunk_count=hubs.chunk_count,
+        outcomes_chunk_count=hubs.outcomes_chunk_count,
+    )
+
+
 def format_operator_error(exc: Exception) -> str:
     """Return one content-free single-line JSON error token for any operation exception.
 
@@ -230,7 +261,7 @@ def format_operator_error(exc: Exception) -> str:
 
 
 def operator_guidance(
-    operation: Literal["setup", "preflight", "stage", "report", "migration", "disposition"],
+    operation: Literal["setup", "preflight", "stage", "report", "migration", "disposition", "hubs"],
     *,
     configuration_error: bool = False,
 ) -> str:
@@ -259,6 +290,11 @@ def operator_guidance(
             "ordinary-stop all four stages, select the verified returned selected dataset and keep "
             "the server db running at the current schema, then retry; see "
             "docs/operations/administration.md"
+        )
+    if operation == "hubs":
+        return (
+            "complete the embedding stage on the selected dataset, ensure the server db is running, "
+            "then retry and restart the web server; see docs/operations/administration.md"
         )
     if operation == "stage":
         return (
@@ -318,9 +354,12 @@ _TOOL_ACTIONS = {
     "5": "stop",
 }
 
-# The inference tool adds the operator disposition surface. Every other tool uses the base options.
-# The inference menu inserts `6 Dispose target` before the trailing `0 Back` row.
+# The inference and embedding tools add one extra option before the trailing `0 Back` row. Every
+# other tool uses the base options.
+# The inference menu inserts `6 Dispose target`.
 _INFERENCE_TOOL_OPTIONS = (*_TOOL_OPTIONS[:-1], ("6", "Dispose target"), _TOOL_OPTIONS[-1])
+# The embedding menu inserts `6 Write hubs`.
+_EMBEDDING_TOOL_OPTIONS = (*_TOOL_OPTIONS[:-1], ("6", "Write hubs"), _TOOL_OPTIONS[-1])
 
 _DISPOSITION_OPTIONS = (
     ("1", "NOTHING (automatic/no override)"),
@@ -359,7 +398,7 @@ def _prompt(
 
 def _perform(
     write: Callable[[str], None],
-    operation: Literal["setup", "preflight", "stage", "report", "migration", "disposition"],
+    operation: Literal["setup", "preflight", "stage", "report", "migration", "disposition", "hubs"],
     call: Callable[[], object],
 ) -> None:
     """Run one operation, printing its DTO and notice or the shared safe error and guidance."""
@@ -415,13 +454,18 @@ def _tool_menu(
     *,
     run_command: Callable[..., BaseModel],
 ) -> None:
-    options = _INFERENCE_TOOL_OPTIONS if stage == "inference" else _TOOL_OPTIONS
+    options = {"inference": _INFERENCE_TOOL_OPTIONS, "embedding": _EMBEDDING_TOOL_OPTIONS}.get(
+        stage, _TOOL_OPTIONS
+    )
     while True:
         choice = _prompt(read, write, f"{stage.capitalize()} tool", options)
         if choice == "0":
             return
         if stage == "inference" and choice == "6":
             _dispose_target_menu(read, write)
+            continue
+        if stage == "embedding" and choice == "6":
+            _perform(write, "hubs", run_administrative_hubs)
             continue
         action = _TOOL_ACTIONS.get(choice)
         if action is None:
@@ -536,6 +580,7 @@ __all__ = [
     "read_inference_target_disposition",
     "run_administrative_command",
     "run_administrative_coverage",
+    "run_administrative_hubs",
     "run_administrative_migration",
     "run_administrative_preflight",
     "run_administrative_setup",

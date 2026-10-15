@@ -11,6 +11,7 @@ Usage:
     uv run python scripts/admin.py <ingestion|translation|embedding|inference> <start|pause|resume|status|stop>
     uv run python scripts/admin.py coverage <teaching-text|embedding|inference>
     uv run python scripts/admin.py summary <catalogue|inference>
+    uv run python scripts/admin.py hubs
 
 This adapter delegates once to the engine-owned ``course_explorer_admin.cli`` dispatcher, which
 owns the parser, the JSON output and the safe-error presentation.

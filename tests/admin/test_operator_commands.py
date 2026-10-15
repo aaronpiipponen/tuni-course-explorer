@@ -45,6 +45,7 @@ class _Sentinel:
         "report-safe-failure",
         "migrate-cli",
         "migrate-safe-failure",
+        "hubs-cli",
         "dispose-nothing",
         "dispose-done",
         "dispose-failed",
@@ -219,6 +220,19 @@ def test_operator_setup_preflight_and_cli_preserve_owners_notices_and_safe_failu
         assert json.loads(captured.err.splitlines()[0]) == {"error": "RuntimeError"}
         assert "migration-payload-value" not in captured.err
         assert "administration" in captured.err
+        return
+
+    if case == "hubs-cli":
+        # `hubs` delegates once to the hub writer and emits its report.
+        hubs = _Sentinel("hubs")
+        hub_calls: list[object] = []
+        monkeypatch.setattr(
+            _CLI_MODULE, "run_administrative_hubs", lambda: hub_calls.append(hubs) or hubs
+        )
+        assert _CLI_MODULE.main(["hubs"]) == 0
+        captured = capsys.readouterr()
+        assert json.loads(captured.out)["label"] == "hubs"
+        assert len(hub_calls) == 1
         return
 
     # The explicit `dispose inference ...` machine command: one delegation or safe-failure case.

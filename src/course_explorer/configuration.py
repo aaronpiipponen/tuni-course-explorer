@@ -61,14 +61,19 @@ def _read_toml_file(path: Path) -> dict[str, Any]:
         raise ValueError(f"public configuration file is not valid TOML: {path.name}") from exc
 
 
-def _resolve_hub_reference(root: Path, alias: str, value: object) -> object:
-    if isinstance(value, list):
-        return value
+def _hub_reference_path(alias: str, value: object) -> Path:
     if not isinstance(value, dict) or set(value) != {"path"} or not isinstance(value["path"], str):
         raise ValueError(f"{alias} must reference a derived artifact by a single path key")
     reference = Path(value["path"])
     if reference.is_absolute():
         raise ValueError(f"{alias} derived artifact path must be repository-relative")
+    return reference
+
+
+def _resolve_hub_reference(root: Path, alias: str, value: object) -> object:
+    if isinstance(value, list):
+        return value
+    reference = _hub_reference_path(alias, value)
     try:
         payload = (root / reference).read_text(encoding="utf-8")
     except OSError as exc:
@@ -120,6 +125,21 @@ def read_public_configuration(
         if alias in selected:
             selected[alias] = _resolve_hub_reference(root, alias, selected[alias])
     return selected
+
+
+def hub_reference_path(root: Path, alias: str) -> Path:
+    """Return the repository-relative artifact path that one hub alias references.
+
+    Only ``EMBEDDING_HUB_VECTOR`` and ``EMBEDDING_OUTCOMES_HUB_VECTOR`` are accepted. The referenced
+    artifact is not opened, so the path is available before the file exists. An absent alias, an
+    inline vector value or an absolute path raises ``ValueError``.
+    """
+    if alias not in _HUB_REFERENCE_ALIASES:
+        raise ValueError(f"{alias} is not an embedding hub alias")
+    merged = _read_merged_public_configuration_cached(str(root))
+    if alias not in merged:
+        raise ValueError(f"{alias} is not configured")
+    return _hub_reference_path(alias, merged[alias])
 
 
 @cache

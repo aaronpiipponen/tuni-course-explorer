@@ -29,6 +29,10 @@ from course_explorer.enums import (
     TeachingTextOrigin,
 )
 
+# The number of requested representative triples per statement. One row-value IN list over a whole
+# catalogue exceeds the database's expression stack depth.
+_REQUEST_BATCH_SIZE = 1000
+
 
 @dataclass(frozen=True)
 class TeachingEmbeddingChunk:
@@ -95,12 +99,14 @@ class TeachingEmbeddingRepository:
     ) -> tuple[TeachingEmbeddingChunk, ...]:
         """Return every compatible chunk for the requested current representatives.
 
-        An empty request returns `()` before opening a session. Otherwise one column-projected
-        statement joins `course_embedding_chunks -> course_versions -> courses`, scoped by the exact
-        requested `(group_id, sisu_course_unit_id, representative_source_hash)` triples, and returns
-        only completed, non-null, exact-configuration rows. A missing compatible row is absent, and the
-        read generates or repairs nothing. Results are ordered by group, field, language
-        and chunk index, and vector components are returned as ordinary floats.
+        An empty request returns `()` before opening a session. Otherwise column-projected
+        statements join `course_embedding_chunks -> course_versions -> courses`, scoped by the exact
+        requested `(group_id, sisu_course_unit_id, representative_source_hash)` triples in sorted
+        batches of `_REQUEST_BATCH_SIZE`, so a whole-catalogue request stays within the database's
+        expression depth. Each course has one requested triple, so the batches concatenate in
+        order. The read returns only completed, non-null, exact-configuration rows. A missing
+        compatible row is absent, and the read generates or repairs nothing. Results are ordered by
+        group, field, language and chunk index, and vector components are returned as ordinary floats.
         """
         requested = {
             (
@@ -112,7 +118,24 @@ class TeachingEmbeddingRepository:
         }
         if not requested:
             return ()
+        ordered = sorted(requested)
+        with self._factory() as session:
+            return tuple(
+                chunk
+                for start in range(0, len(ordered), _REQUEST_BATCH_SIZE)
+                for chunk in self._read_batch(
+                    session,
+                    ordered[start : start + _REQUEST_BATCH_SIZE],
+                    embedding_configuration_hash,
+                )
+            )
 
+    @staticmethod
+    def _read_batch(
+        session: Session,
+        requested: Sequence[tuple[str, str, str]],
+        embedding_configuration_hash: str,
+    ) -> tuple[TeachingEmbeddingChunk, ...]:
         statement = (
             select(
                 Course.group_id,
@@ -130,7 +153,7 @@ class TeachingEmbeddingRepository:
                     Course.group_id,
                     CourseVersion.sisu_course_unit_id,
                     CourseEmbeddingChunk.representative_source_hash,
-                ).in_(tuple(sorted(requested))),
+                ).in_(tuple(requested)),
                 CourseEmbeddingChunk.status == CourseEmbeddingStatus.COMPLETED,
                 CourseEmbeddingChunk.embedding.is_not(None),
                 CourseEmbeddingChunk.embedding_configuration_hash == embedding_configuration_hash,
@@ -142,27 +165,26 @@ class TeachingEmbeddingRepository:
                 CourseEmbeddingChunk.chunk_index,
             )
         )
-        with self._factory() as session:
-            return tuple(
-                TeachingEmbeddingChunk(
-                    group_id=group_id,
-                    field=field,
-                    language=language,
-                    chunk_index=chunk_index,
-                    text_origin=text_origin,
-                    character_count=character_count,
-                    embedding=tuple(embedding),
-                )
-                for (
-                    group_id,
-                    field,
-                    language,
-                    chunk_index,
-                    text_origin,
-                    character_count,
-                    embedding,
-                ) in session.execute(statement)
+        return tuple(
+            TeachingEmbeddingChunk(
+                group_id=group_id,
+                field=field,
+                language=language,
+                chunk_index=chunk_index,
+                text_origin=text_origin,
+                character_count=character_count,
+                embedding=tuple(embedding),
             )
+            for (
+                group_id,
+                field,
+                language,
+                chunk_index,
+                text_origin,
+                character_count,
+                embedding,
+            ) in session.execute(statement)
+        )
 
     def find_nearest_chunks(
         self,

@@ -102,6 +102,15 @@ def test_runtime_configuration_does_not_require_similarity_hubs(
 
     with pytest.raises(ValueError):
         EmbeddingSettings()
+    # The hub writer resolves its target paths without the artifacts.
+    assert configuration.hub_reference_path(root, "EMBEDDING_HUB_VECTOR") == Path(
+        "config/derived/embedding-hub.json"
+    )
+    assert configuration.hub_reference_path(root, "EMBEDDING_OUTCOMES_HUB_VECTOR") == Path(
+        "config/derived/embedding-outcomes-hub.json"
+    )
+    with pytest.raises(ValueError, match="not an embedding hub alias"):
+        configuration.hub_reference_path(root, "EMBEDDING_PORT")
 
 
 def test_public_configuration_rejects_duplicate_alias(tmp_path: Path) -> None:

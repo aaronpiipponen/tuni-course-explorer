@@ -51,6 +51,7 @@ class _ScriptedRead:
         ("dispose-nothing", ["5", "6", "disp-target", "1", "0", "0"], "main"),
         ("dispose-done", ["5", "6", "disp-target", "2", "0", "0"], "main"),
         ("dispose-failed", ["5", "6", "disp-target", "3", "0", "0"], "main"),
+        ("embedding-write-hubs", ["4", "6", "0", "0"], "main"),
         ("supplied-callbacks", ["2", "4", "0", "6", "4", "0", "0"], "main"),
     ],
 )
@@ -71,6 +72,7 @@ def test_operator_menu_routes_explicit_choices_and_uses_server_setup_branch(
     disposition_reads: list[str] = []
     disposition_sets: list[tuple[str, object]] = []
     checkout_calls: list[object] = []
+    hub_calls: list[object] = []
 
     def fake_checkout(runner, root):
         checkout_calls.append((runner, root))
@@ -108,6 +110,9 @@ def test_operator_menu_routes_explicit_choices_and_uses_server_setup_branch(
         commands,
         "run_administrative_migration",
         lambda: migration_calls.append(sentinel) or sentinel,
+    )
+    monkeypatch.setattr(
+        commands, "run_administrative_hubs", lambda: hub_calls.append(sentinel) or sentinel
     )
     monkeypatch.setattr(
         commands,
@@ -151,9 +156,17 @@ def test_operator_menu_routes_explicit_choices_and_uses_server_setup_branch(
         assert tool_calls == [("ingestion", "status")]
         # The ingestion tool menu shows no dispose entry and status touches only the ingestion tool.
         assert "6 Dispose target" not in writes
+        assert "6 Write hubs" not in writes
         assert report_calls == [] and setup_calls == [] and migration_calls == []
         assert preflight_calls == [] and disposition_reads == [] and disposition_sets == []
         assert checkout_calls == []
+        return
+    if scenario == "embedding-write-hubs":
+        # Only the embedding tool offers the hub writer, and choosing it calls the writer once.
+        assert "6 Write hubs" in writes
+        assert len(hub_calls) == 1
+        assert tool_calls == [] and report_calls == [] and setup_calls == []
+        assert disposition_reads == [] and disposition_sets == [] and checkout_calls == []
         return
     if scenario == "catalogue-summary":
         assert report_calls == [("summary", "catalogue")]

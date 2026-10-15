@@ -44,10 +44,12 @@ from course_explorer.embeddings.generation import (
     CourseEmbeddingCoverageReport,
     CourseEmbeddingResult,
     build_course_embedding_chunks,
-    embedding_configuration_sha256,
 )
-from course_explorer.embeddings.hub import mean_unit_vectors
-from course_explorer.embeddings.read import TeachingEmbeddingRepository
+from course_explorer.embeddings.hub_files import (
+    compute_embedding_hubs,
+    read_current_chunk_vectors,
+    write_hub_file,
+)
 from course_explorer.embeddings.repository import CourseEmbeddingRepository
 from course_explorer.enums import (
     IngestionRunStatus,
@@ -467,55 +469,34 @@ def write_mock_artifacts(
     This writer is database-read-only. At entry it prepares the named fixture and applies the same
     projected fixture-identity guard the loader uses, so a foreign or changed retained dataset is
     refused before the teaching catalogue is built, vectors are read or any output path is touched.
-    Both hub means are then computed from the exact current key set before the first ``_write_json``
-    or ``hubs_dir.mkdir``, so a not-ready dataset fails without mutating the fixture bundle or the
-    derived hubs. It reads the stored vectors and writes the fixture bundle and both hub files.
+    Both hub means are then computed from the exact current key set before the first bundle or hub
+    write, so a not-ready dataset fails without mutating the fixture bundle or the derived hubs. It
+    reads the stored vectors and writes the fixture bundle and both hub files.
     """
     _, _, batch = _prepare_mock_fixture(
         fixture_dir=fixture_dir, raw_root=raw_root, normalization=normalization
     )
     _require_fixture_dataset(factory, batch)
-    catalogue = TeachingTextService(
-        CurriculumRepository(factory), DerivedTranslationRepository(factory)
-    ).build_catalogue()
-    chunks = build_course_embedding_chunks(catalogue, embedding)
-    repository = CourseEmbeddingRepository(factory)
-    repository.require_current_chunks(chunks)
-    stored = TeachingEmbeddingRepository(factory).get_chunks(
-        CurriculumRepository(factory).list_represented_summaries(),
-        embedding_configuration_hash=embedding_configuration_sha256(embedding),
-    )
-    vectors = {
-        (chunk.group_id, chunk.field, chunk.language, chunk.chunk_index): chunk.embedding
-        for chunk in stored
-    }
-    keys = [(chunk.group_id, chunk.field, chunk.language, chunk.chunk_index) for chunk in chunks]
-    missing = [key for key in keys if key not in vectors]
-    if missing:
-        raise ValueError("current compatible fixture vectors are incomplete")
-    catalogue_hub = mean_unit_vectors([vectors[key] for key in keys])
-    outcomes_hub = mean_unit_vectors(
-        [vectors[key] for key in keys if key[1] is TeachingTextField.OUTCOMES]
-    )
+    current = read_current_chunk_vectors(factory, embedding)
+    hubs = compute_embedding_hubs(current)
     _write_json(
         fixture_dir / _BUNDLE_NAME,
         {
-            "input_sha256": _bundle_input_sha256(chunks),
+            "input_sha256": _bundle_input_sha256(current.chunks),
             "chunks": [
                 {
-                    "group_id": key[0],
-                    "field": key[1].value,
-                    "language": key[2].value,
-                    "chunk_index": key[3],
-                    "embedding": list(vectors[key]),
+                    "group_id": chunk.group_id,
+                    "field": chunk.field.value,
+                    "language": chunk.language.value,
+                    "chunk_index": chunk.chunk_index,
+                    "embedding": list(vector),
                 }
-                for key in keys
+                for chunk, vector in zip(current.chunks, current.vectors, strict=True)
             ],
         },
     )
-    hubs_dir.mkdir(parents=True, exist_ok=True)
-    _write_json(hubs_dir / _CATALOGUE_HUB_NAME, list(catalogue_hub))
-    _write_json(hubs_dir / _OUTCOMES_HUB_NAME, list(outcomes_hub))
+    write_hub_file(hubs_dir / _CATALOGUE_HUB_NAME, hubs.catalogue)
+    write_hub_file(hubs_dir / _OUTCOMES_HUB_NAME, hubs.outcomes)
 
 
 def run_mock_data_command(
