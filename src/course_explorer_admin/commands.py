@@ -271,10 +271,7 @@ def operator_guidance(
     guidance and never includes the exception's errors, inputs or environment values.
     """
     if configuration_error:
-        return (
-            "check the tracked config/*.toml and this device's ignored .env per "
-            "config/README.md, then retry the same command"
-        )
+        return "check config/*.toml and this device's ignored .env, then retry the same command"
     if operation in {"setup", "preflight"}:
         return (
             "finish or stop retained stages before updates, then check the prepared clean checkout "

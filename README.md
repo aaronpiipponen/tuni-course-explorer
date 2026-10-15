@@ -68,15 +68,19 @@ Requirements:
 
 Runtime configuration and deployment files are provided as examples under `examples/`. The files a running copy uses are local to each checkout and are ignored by Git.
 
-1. Install the Python and browser dependencies, then build the browser application.
+1. Install the Python and browser dependencies.
 
    ```bash
    uv sync --locked
    npm --prefix web ci --no-audit --no-fund
-   npm --prefix web run build
    ```
 
-2. Copy the example files to their working paths:
+2. Create the working folders, then copy the example files to their working paths:
+
+   ```bash
+   mkdir -p config/derived deploy
+   ```
+
    - the seven `examples/config/*.toml` files into `config/`
    - `examples/config/wiki.json` into `config/wiki.json`
    - the two `examples/config/derived/*.json` files into `config/derived/`
@@ -84,25 +88,31 @@ Runtime configuration and deployment files are provided as examples under `examp
    - `examples/docker-compose.yml` into the repository root
    - `examples/deploy/Caddyfile` and `examples/deploy/systemd/tuni-course-explorer-web.service.in` into `deploy/`
 
-3. Edit `.env`: set a database password and keep the file readable only by you (mode 0600).
+3. Build the browser application. The build reads `config/wiki.json`, so it runs after the copy.
 
-4. Place the embedding model file named by `EMBEDDING_ARTIFACT_URL`, `EMBEDDING_ARTIFACT_PATH` and `EMBEDDING_ARTIFACT_SHA256` at the configured path. The project does not download it. The embedding image is built from `docker/embedding/Dockerfile`.
+   ```bash
+   npm --prefix web run build
+   ```
 
-5. Build and start the database and the embedding service.
+4. Edit `.env`: set a database password and keep the file readable only by you (mode 0600).
+
+5. Place the embedding model file named by `EMBEDDING_ARTIFACT_URL`, `EMBEDDING_ARTIFACT_PATH` and `EMBEDDING_ARTIFACT_SHA256` at the configured path. The project does not download it. The embedding image is built from `docker/embedding/Dockerfile`.
+
+6. Build and start the database and the embedding service.
 
    ```bash
    uv run python -m course_explorer_admin.compose -- build
    uv run python -m course_explorer_admin.compose -- up -d --wait db embedding
    ```
 
-6. Create the schema and load the example dataset.
+7. Create the schema and load the example dataset.
 
    ```bash
    uv run python -m alembic upgrade head
    uv run python scripts/mock_data.py load
    ```
 
-7. Start the site.
+8. Start the site.
 
    ```bash
    bash scripts/run_web.sh
