@@ -163,6 +163,10 @@ export async function buildWiki({ repoRoot }) {
     );
     const source = await readFile(absolute, "utf8");
     const sourceDirectory = dirname(resolve(root, page.path));
+    const resolveFrom = (destinationPath) =>
+      destinationPath.startsWith("/")
+        ? resolve(root, destinationPath.slice(1))
+        : resolve(sourceDirectory, destinationPath);
     const sourceImageTokens = new Map();
     const ast = resolveMarkdownReferences(
       unified().use(remarkParse).parse(source),
@@ -172,11 +176,11 @@ export async function buildWiki({ repoRoot }) {
     const localLinks = [];
     visit(ast, "link", (link) => localLinks.push(link.url));
     for (const destination of localLinks) {
-      if (/^(?:https?:|mailto:|\/\/|\/)/iu.test(destination)) continue;
+      if (/^(?:https?:|mailto:|\/\/)/iu.test(destination)) continue;
       const rawPath = destination.split("#", 1)[0];
       if (!rawPath) continue;
       const decodedPath = decodeURIComponent(rawPath);
-      const resolvedPath = resolve(sourceDirectory, decodedPath);
+      const resolvedPath = resolveFrom(decodedPath);
       const relativePath = relative(root, resolvedPath);
       if (relativePath.startsWith(`..${sep}`) || relativePath === "..")
         continue;
@@ -195,8 +199,7 @@ export async function buildWiki({ repoRoot }) {
     }
     for (const destination of localImages) {
       if (/^(?:https?:|\/\/)/iu.test(destination)) continue;
-      const imageFile = resolve(
-        sourceDirectory,
+      const imageFile = resolveFrom(
         decodeURIComponent(destination.split("#", 1)[0]),
       );
       if (destination.includes("#") || destination.includes("?"))

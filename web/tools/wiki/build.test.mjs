@@ -237,3 +237,72 @@ test("supports three-level navigation and rejects deeper nesting", async (t) => 
     /nested deeper than 3/u,
   );
 });
+
+test("resolves root-relative links and images from nested pages", async (t) => {
+  const settings = config();
+  settings.sections[0].pages[0].path = "docs/guide/a/b/first.md";
+  settings.sections[0].pages[0].children = [
+    { id: "second", path: "docs/guide/second.md", nav: "Second", children: [] },
+  ];
+  const root = await selectedTree(t, {
+    config: settings,
+    files: {
+      "docs/guide/home.md": "# Home\n\nWelcome.",
+      "docs/guide/a/b/first.md":
+        "# First\n\nSummary.\n\n[Second](/docs/guide/second.md#two), [Source](/docs/guide/unlisted.md#part), [Folder](/docs/guide/), [Config](/config/wiki.json), [Same page](#local).\n\n![Flow diagram](/docs/diagrams/flow.svg)\n\n## Local\n",
+      "docs/guide/second.md": "# Second\n\nSecond summary.\n\n## Two\n",
+      "docs/guide/unlisted.md": "# Unlisted\n\nSource.",
+      "docs/diagrams/flow.svg": '<svg xmlns="http://www.w3.org/2000/svg"/>',
+    },
+  });
+  const { registry, assets } = await buildWiki({ repoRoot: root });
+  const html = registry.pages.page.html;
+  assert.match(html, /href="\/docs#second\/two"/u);
+  assert.match(
+    html,
+    /href="https:\/\/github\.com\/owner\/repo\/blob\/main\/docs\/guide\/unlisted\.md#part" target="_blank"/u,
+  );
+  assert.match(
+    html,
+    /href="https:\/\/github\.com\/owner\/repo\/tree\/main\/docs\/guide\/" target="_blank"/u,
+  );
+  assert.match(
+    html,
+    /href="https:\/\/github\.com\/owner\/repo\/blob\/main\/config\/wiki\.json" target="_blank"/u,
+  );
+  assert.match(html, /href="\/docs#page\/local"/u);
+  assert.equal(Object.values(assets).length, 1);
+  assert.match(Object.values(assets)[0], /docs[\\/]diagrams[\\/]flow\.svg$/u);
+  assert.match(html, /__WIKI_ASSET_0__/u);
+});
+
+test("fails on a missing root-relative image", async (t) => {
+  const root = await selectedTree(t, {
+    config: config(),
+    files: {
+      "docs/guide/home.md": "# Home\n\nWelcome.",
+      "docs/guide/page.md":
+        "# Page\n\nSummary.\n\n![Missing](/docs/screenshots/absent.png)\n",
+    },
+  });
+  await assert.rejects(
+    () => buildWiki({ repoRoot: root }),
+    /missing source docs\/screenshots\/absent\.png/u,
+  );
+});
+
+test("leaves external and protocol-relative destinations unchanged", async (t) => {
+  const root = await selectedTree(t, {
+    config: config(),
+    files: {
+      "docs/guide/home.md": "# Home\n\nWelcome.",
+      "docs/guide/page.md":
+        "# Page\n\nSummary.\n\n[a](https://example.com/x), [b](mailto:a@example.com), [c](//example.com/x).\n",
+    },
+  });
+  const { registry } = await buildWiki({ repoRoot: root });
+  const html = registry.pages.page.html;
+  assert.match(html, /href="https:\/\/example\.com\/x"/u);
+  assert.match(html, /href="mailto:a@example\.com"/u);
+  assert.match(html, /href="\/\/example\.com\/x"/u);
+});

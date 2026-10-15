@@ -101,7 +101,7 @@ function remarkWiki({
       }
     });
     const resolveDestination = (destination, image) => {
-      if (/^(?:https?:|mailto:|\/\/|\/)/iu.test(destination))
+      if (/^(?:https?:|mailto:|\/\/)/iu.test(destination))
         return { url: destination };
       const hashIndex = destination.indexOf("#");
       const rawPath =
