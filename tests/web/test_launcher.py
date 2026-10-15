@@ -60,7 +60,7 @@ def test_web_launcher_excludes_operator_credentials(
 
     assert observed["POSTGRES_PASSWORD"] == "synthetic-database-password"
     assert observed["WEB_HOST"] == "127.0.0.1"
-    assert observed["WEB_PORT"] == "8027"
+    assert observed["WEB_PORT"] == "8037"
     assert observed["WEB_WORKERS"] == "2"
     assert {"HOME", "PATH", "LANG"} <= observed.keys()
     assert observed[SETTINGS_SOURCE_MARKER] == ENVIRONMENT_ONLY_SETTINGS_SOURCE
@@ -84,7 +84,7 @@ def test_web_launcher_excludes_operator_credentials(
     assert DatabaseSettings().postgres_password.get_secret_value() == (
         "synthetic-database-password"
     )
-    assert WebSettings().web_port == 8027
+    assert WebSettings().web_port == 8037
     assert WebSettings().web_workers == 2
 
     # Continue the same handoff through the actual entry point, binding only a temporary test port.

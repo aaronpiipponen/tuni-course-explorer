@@ -1,4 +1,15 @@
-# Example site template. The Caddy environment variable below supplies the domain.
-{$COURSE_EXPLORER_PUBLIC_DOMAIN} {
-	reverse_proxy 127.0.0.1:8027
+# HTTPS site template. The Caddy environment variable COURSE_EXPLORER_PUBLIC_DOMAIN supplies the domain.
+# The certificate is issued through TLS-ALPN-01 on port 443, so Caddy does not bind port 80.
+{
+	admin off
+	auto_https disable_redirects
+}
+
+https://{$COURSE_EXPLORER_PUBLIC_DOMAIN} {
+	tls {
+		issuer acme {
+			disable_http_challenge
+		}
+	}
+	reverse_proxy 127.0.0.1:8037
 }

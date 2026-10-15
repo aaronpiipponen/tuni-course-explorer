@@ -1,6 +1,6 @@
 # Portable loopback bind, process count and browser-drawing policy for read-only HTTP serving.
 WEB_HOST = "127.0.0.1"
-WEB_PORT = 8027
+WEB_PORT = 8037
 WEB_WORKERS = 2
 # Maximum report-graph drawing nodes plus edges before the browser refuses layout.
 PREREQUISITE_GRAPH_MAX_ELEMENTS = 500
