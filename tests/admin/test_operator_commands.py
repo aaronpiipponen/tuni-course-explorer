@@ -219,7 +219,7 @@ def test_operator_setup_preflight_and_cli_preserve_owners_notices_and_safe_failu
         captured = capsys.readouterr()
         assert json.loads(captured.err.splitlines()[0]) == {"error": "RuntimeError"}
         assert "migration-payload-value" not in captured.err
-        assert "administration" in captured.err
+        assert "ordinary-stop all four stages" in captured.err
         return
 
     if case == "hubs-cli":
@@ -280,4 +280,4 @@ def test_operator_setup_preflight_and_cli_preserve_owners_notices_and_safe_failu
     captured = capsys.readouterr()
     assert json.loads(captured.err.splitlines()[0]) == {"error": "RuntimeError"}
     assert "disposition-payload-value" not in captured.err
-    assert "administration" in captured.err
+    assert "ordinary-stop all four stages" in captured.err

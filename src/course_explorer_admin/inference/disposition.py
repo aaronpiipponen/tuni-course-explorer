@@ -63,7 +63,7 @@ def _disposition_context(*, mutating: bool) -> Iterator[tuple[str, sessionmaker[
     with mechanics.exclusive_action_lock(root, controller_name="datasets", create=mutating):
         raw = load_raw_database_settings()
         if not raw.selected_dataset_enabled:
-            raise ValueError("target disposition requires the selected private server dataset")
+            raise ValueError("target disposition requires the selected dataset")
         receipt = resolve_selected_dataset(root)
         if receipt.kind != "returned":
             raise ValueError("target disposition requires a verified returned selected dataset")

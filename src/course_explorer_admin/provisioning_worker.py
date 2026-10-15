@@ -56,8 +56,8 @@ SYSTEM_PACKAGES = (
 
 _RUNTIME_CLONE_URL = "https://github.com/ggml-org/llama.cpp.git"
 _TRANSLATION_GUIDANCE = (
-    "missing translation artifact: reproduce it with the remote-worker runbook "
-    "(docs/getting-started/remote-worker.md section 8); no automated converter is provided"
+    "missing translation artifact: reproduce it with the worker setup runbook; "
+    "no automated converter is provided"
 )
 
 

@@ -168,8 +168,8 @@ class InferenceAdministrativeSummary(BaseModel):
     operator_failed_target_group_ids: tuple[str, ...]
 
 
-def _private_database_settings() -> DatabaseSettings:
-    """Resolve the selected server database settings without opening an engine.
+def _selected_dataset_settings() -> DatabaseSettings:
+    """Resolve the selected dataset database settings without opening an engine.
 
     The explicit admin read requires the selected-dataset switch. Missing pointer or database
     failures propagate to the caller.
@@ -177,7 +177,7 @@ def _private_database_settings() -> DatabaseSettings:
     settings = load_database_settings()
     if not settings.selected_dataset_enabled:
         raise ValueError(
-            "administrative reports require the selected private server dataset; "
+            "administrative reports require the selected dataset; "
             "run setup with `uv run python scripts/admin.py setup datasets`"
         )
     return settings
@@ -187,7 +187,7 @@ def run_administrative_coverage(kind: AdministrativeCoverage) -> BaseModel:
     """Return one coverage report from its owning repository."""
     if kind not in _COVERAGE_KINDS:
         raise ValueError("coverage kind must be teaching-text, embedding, or inference")
-    with database_context(_private_database_settings()) as factory:
+    with database_context(_selected_dataset_settings()) as factory:
         if kind == "teaching-text":
             return TeachingTextService(
                 CurriculumRepository(factory), DerivedTranslationRepository(factory)
@@ -201,7 +201,7 @@ def run_administrative_summary(kind: AdministrativeSummary) -> BaseModel:
     """Return the catalogue summary or the one explicit detailed inference summary."""
     if kind not in _SUMMARY_KINDS:
         raise ValueError("summary kind must be catalogue or inference")
-    with database_context(_private_database_settings()) as factory:
+    with database_context(_selected_dataset_settings()) as factory:
         if kind == "catalogue":
             return CurriculumRepository(factory).summary()
         repository = InferenceSchedulingRepository(factory)
@@ -235,7 +235,7 @@ def run_administrative_hubs() -> EmbeddingHubReport:
     root = repository_root()
     catalogue_path = hub_reference_path(root, "EMBEDDING_HUB_VECTOR")
     outcomes_path = hub_reference_path(root, "EMBEDDING_OUTCOMES_HUB_VECTOR")
-    with database_context(_private_database_settings()) as factory:
+    with database_context(_selected_dataset_settings()) as factory:
         current = read_current_chunk_vectors(factory, load_embedding_runtime_settings())
     hubs = compute_embedding_hubs(current)
     write_hub_file(root / catalogue_path, hubs.catalogue)
@@ -277,34 +277,24 @@ def operator_guidance(
         )
     if operation in {"setup", "preflight"}:
         return (
-            "finish or stop retained stages before updates, check the prepared clean checkout and "
-            "the configured origin, and see docs/getting-started/remote-worker.md"
+            "finish or stop retained stages before updates, then check the prepared clean checkout "
+            "and the configured origin"
         )
     if operation == "migration":
-        return (
-            "ordinary-stop all four stages, ensure the server db is running, then retry; see "
-            "docs/operations/administration.md"
-        )
+        return "ordinary-stop all four stages, ensure the server db is running, then retry"
     if operation == "disposition":
         return (
             "ordinary-stop all four stages, select the verified returned selected dataset and keep "
-            "the server db running at the current schema, then retry; see "
-            "docs/operations/administration.md"
+            "the server db running at the current schema, then retry"
         )
     if operation == "hubs":
         return (
             "complete the embedding stage on the selected dataset, ensure the server db is running, "
-            "then retry and restart the web server; see docs/operations/administration.md"
+            "then retry and restart the web server"
         )
     if operation == "stage":
-        return (
-            "inspect this tool's status, retry its ordinary stop/resume as appropriate, and see "
-            "docs/operations/administration.md"
-        )
-    return (
-        "enroll the selected dataset and ensure the server PostgreSQL service is running; see "
-        "docs/operations/administration.md"
-    )
+        return "inspect this tool's status, then retry its ordinary stop or resume as appropriate"
+    return "enroll the selected dataset and ensure the server PostgreSQL service is running"
 
 
 def worker_origin_notice(report: object) -> str | None:
@@ -331,7 +321,7 @@ _MAIN_OPTIONS = (
 )
 
 _SETUP_OPTIONS = (
-    ("1", "Enroll/select private server dataset"),
+    ("1", "Enroll/select dataset"),
     ("2", "Worker setup/update"),
     ("3", "Read-only worker preflight"),
     ("4", "Migrate selected dataset"),
@@ -378,7 +368,7 @@ _REPORT_OPTIONS = (
 )
 
 REPORT_SCOPE = (
-    "Reports read the selected PRIVATE SERVER state, not unreturned worker progress; "
+    "Reports read the selected dataset state, not unreturned worker progress; "
     "use that tool's Status for the latter."
 )
 

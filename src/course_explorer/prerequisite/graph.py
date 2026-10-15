@@ -7,8 +7,8 @@ one root-specific recursive calculation tree
 obligations, expanding a canonical course in every mandatory position, and one
 deterministic drawing graph derived only from that tree.
 
-The tree is the sole calculation authority. The mandatory-position rule is stated in
-`docs/architecture/seams/prerequisites.md`. Every tree occurrence carries one producer-bound stable
+The tree is the sole calculation authority. The mandatory-position rule is part of the compilation
+contract. Every tree occurrence carries one producer-bound stable
 action identity: course/module/opaque nodes use their canonical source identity and every structural
 node uses a `requirement:` key derived once at creation from its complete reaching source lineage,
 explicit role and ordered child source identities, never from filtered drawing positions or
@@ -2950,8 +2950,8 @@ class PrerequisiteGraphCompiler:
         Under active-only scope a non-root inactive course whose canonical ID is not in
         `context.retained_group_ids` returns `None`, so the caller drops the whole branch. An active
         course expands its children, substitutions and equivalences, while a retained inactive course
-        is a childless leaf. The mandatory-position rule is stated in
-        `docs/architecture/seams/prerequisites.md`.
+        is a childless leaf. The mandatory-position rule is part of the compilation
+        contract.
         `allow_substitutions` and `allow_equivalences` control only this head occurrence's
         official substitution options and inferred equivalent-member alternatives. Ordinary
         descendant course occurrences keep normal expansion either way. The course's own branch is
@@ -3459,8 +3459,8 @@ def _mandatory_child_pairs(
 
     A child of an `AndRequirement`, `ModuleBlockRequirement`, `CreditRequirement` or
     `CourseCountRequirement` inherits the parent's flag, and every `OrRequirement` child is
-    non-mandatory. The mandatory-position classification is stated in
-    `docs/architecture/seams/prerequisites.md`.
+    non-mandatory. The mandatory-position classification is part of the compilation
+    contract.
     """
     if isinstance(
         expression,
@@ -3499,7 +3499,7 @@ def _prune_redundant_expansions(
     `mandatory_heads` is the canonical-ID set that `_mandatory_expanded_heads` collects and that
     `_mandatory_child_pairs` classifies. A rebuilt node carries the bound action key, credit extent,
     module boundary and ignored-part anchors of its source object, so occurrence identity is stable.
-    The mandatory-position rule is stated in `docs/architecture/seams/prerequisites.md`.
+    The mandatory-position rule is part of the compilation contract.
     """
     if not mandatory_heads:
         return expression
