@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 624" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Next-course discovery</title>
+  <desc id="d">The chosen basis supplies source identities to candidate discovery, a bounded reverse
+  read that returns a candidate set. Each candidate is compiled to its direct prerequisite options,
+  and the prerequisite mode decides which candidates are eligible. The eligible candidates carry
+  their prerequisite coverage and their inferred dependence into the list, which is ordered for the
+  mode.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="624" rx="12" fill="#232434"/>
+
+  <rect x="344" y="48" width="272" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="74" text-anchor="middle" font-size="16" fill="#ececf2">Basis</text>
+  <text x="480" y="96" text-anchor="middle" font-size="14" fill="#a3a4b8">chosen course set</text>
+
+  <rect x="344" y="144" width="272" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="170" text-anchor="middle" font-size="16" fill="#ececf2">Candidate discovery</text>
+  <text x="480" y="192" text-anchor="middle" font-size="14" fill="#a3a4b8">bounded reverse read</text>
+
+  <rect x="344" y="240" width="272" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="266" text-anchor="middle" font-size="16" fill="#ececf2">Direct compilation</text>
+  <text x="480" y="288" text-anchor="middle" font-size="14" fill="#a3a4b8">candidate options</text>
+
+  <rect x="344" y="336" width="272" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="362" text-anchor="middle" font-size="16" fill="#ececf2">Eligibility</text>
+  <text x="480" y="384" text-anchor="middle" font-size="14" fill="#a3a4b8">the prerequisite mode</text>
+
+  <rect x="344" y="432" width="272" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="458" text-anchor="middle" font-size="16" fill="#ececf2">Result measures</text>
+  <text x="480" y="480" text-anchor="middle" font-size="14" fill="#a3a4b8">coverage, inferred dependence</text>
+
+  <rect x="344" y="528" width="272" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="554" text-anchor="middle" font-size="16" fill="#ececf2">Ordered list</text>
+  <text x="480" y="576" text-anchor="middle" font-size="14" fill="#a3a4b8">name or coverage key</text>
+
+  <line x1="480" y1="112" x2="480" y2="144" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="494" y="133" font-size="14" fill="#a3a4b8">source identities</text>
+
+  <line x1="480" y1="208" x2="480" y2="240" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="494" y="229" font-size="14" fill="#a3a4b8">candidate set</text>
+
+  <line x1="480" y1="304" x2="480" y2="336" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="494" y="325" font-size="14" fill="#a3a4b8">direct options</text>
+
+  <line x1="480" y1="400" x2="480" y2="432" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="494" y="421" font-size="14" fill="#a3a4b8">eligible candidates</text>
+
+  <line x1="480" y1="496" x2="480" y2="528" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="494" y="517" font-size="14" fill="#a3a4b8">ordered for the mode</text>
+</svg>

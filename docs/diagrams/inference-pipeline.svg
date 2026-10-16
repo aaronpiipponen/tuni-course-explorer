@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 560" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Inference pipeline</title>
+  <desc id="d">Effective text feeds a candidate pool and a rerank, and the packet carries the
+  effective text to the local language model. The accent frame marks the label-safe model inputs, which
+  exclude official prerequisite structure. Validation reads the model's untrusted output, the proposal
+  deduplicates the accepted result against the official prerequisites, which enter only there, and
+  publication writes the inferred set.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="560" rx="12" fill="#232434"/>
+
+  <rect x="64" y="44" width="706" height="256" rx="12" fill="none" stroke="#a98ae0"
+        stroke-width="1.5"/>
+  <text x="88" y="72" font-size="16" fill="#a98ae0">Label-safe model inputs</text>
+
+  <rect x="88" y="84" width="253" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="214" y="110" text-anchor="middle" font-size="16" fill="#ececf2">Effective text</text>
+  <text x="214" y="132" text-anchor="middle" font-size="14" fill="#a3a4b8">Name, content, outcomes</text>
+
+  <rect x="389" y="84" width="167" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="472" y="110" text-anchor="middle" font-size="16" fill="#ececf2">Candidate pool</text>
+  <text x="472" y="132" text-anchor="middle" font-size="14" fill="#a3a4b8">Configured depth</text>
+
+  <rect x="604" y="84" width="142" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="675" y="110" text-anchor="middle" font-size="16" fill="#ececf2">Rerank</text>
+  <text x="675" y="132" text-anchor="middle" font-size="14" fill="#a3a4b8">Cross-encoder</text>
+
+  <rect x="88" y="212" width="116" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="146" y="238" text-anchor="middle" font-size="16" fill="#ececf2">Packet</text>
+  <text x="146" y="260" text-anchor="middle" font-size="14" fill="#a3a4b8">Texts only</text>
+
+  <rect x="389" y="212" width="224" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="501" y="238" text-anchor="middle" font-size="16" fill="#ececf2">Local language model</text>
+  <text x="501" y="260" text-anchor="middle" font-size="14" fill="#a3a4b8">Generates one result</text>
+
+  <rect x="88" y="344" width="167" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="171" y="370" text-anchor="middle" font-size="16" fill="#ececf2">Validation</text>
+  <text x="171" y="392" text-anchor="middle" font-size="14" fill="#a3a4b8">Untrusted output</text>
+
+  <rect x="365" y="328" width="133" height="96" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="431" y="370" text-anchor="middle" font-size="16" fill="#ececf2">Proposal</text>
+  <text x="431" y="392" text-anchor="middle" font-size="14" fill="#a3a4b8">Deduplicated</text>
+
+  <rect x="610" y="344" width="200" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="710" y="370" text-anchor="middle" font-size="16" fill="#ececf2">Publication</text>
+  <text x="710" y="392" text-anchor="middle" font-size="14" fill="#a3a4b8">Writes the whole set</text>
+
+  <rect x="88" y="464" width="243" height="40" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="209" y="490" text-anchor="middle" font-size="16" fill="#ececf2">Official prerequisites</text>
+
+  <rect x="636" y="464" width="148" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="710" y="490" text-anchor="middle" font-size="16" fill="#ececf2">Inferred set</text>
+  <text x="710" y="512" text-anchor="middle" font-size="14" fill="#a3a4b8">Stored apart</text>
+
+  <line x1="341" y1="116" x2="389" y2="116" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="556" y1="116" x2="604" y2="116" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <polyline points="675,148 675,184 146,184 146,212" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="204" y1="244" x2="389" y2="244" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <polyline points="501,276 501,316 171,316 171,344" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <polyline points="255,376 300,376 300,356 365,356" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="498" y1="376" x2="610" y2="376" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="710" y1="408" x2="710" y2="464" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <polyline points="331,496 356,496 356,388 365,388" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+</svg>

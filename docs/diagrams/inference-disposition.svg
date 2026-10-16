@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 376" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Operator disposition of one target course</title>
+  <desc id="d">One target course holds one operator decision. The three decisions are Automatic,
+  Done and Failed. From Automatic an operator sets done or sets failed. From Done an operator sets
+  failed or clears. From Failed an operator sets done or clears. Clearing returns the target course
+  to Automatic. A repeated decision draws no self transition.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="376" rx="12" fill="#232434"/>
+
+  <rect x="64" y="48" width="252" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="190" y="74" text-anchor="middle" font-size="16" fill="#ececf2">Done</text>
+  <text x="190" y="96" text-anchor="middle" font-size="14" fill="#a3a4b8">Complete without output</text>
+
+  <rect x="616" y="48" width="252" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="742" y="74" text-anchor="middle" font-size="16" fill="#ececf2">Failed</text>
+  <text x="742" y="96" text-anchor="middle" font-size="14" fill="#a3a4b8">Skipped, cycle incomplete</text>
+
+  <rect x="354" y="280" width="252" height="64" rx="8" fill="#2e3045" stroke="#a98ae0" stroke-width="1.5"/>
+  <text x="480" y="306" text-anchor="middle" font-size="16" fill="#ececf2">Automatic</text>
+  <text x="480" y="328" text-anchor="middle" font-size="14" fill="#a3a4b8">Ordinary scheduling</text>
+
+  <polyline points="190,112 190,196 440,196 440,280" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="250" y="185" font-size="14" fill="#a3a4b8">clear</text>
+
+  <polyline points="742,112 742,216 520,216 520,280" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="600" y="205" font-size="14" fill="#a3a4b8">clear</text>
+
+  <polyline points="354,312 48,312 48,80 64,80" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="110" y="301" font-size="14" fill="#a3a4b8">set done</text>
+
+  <polyline points="606,312 930,312 930,80 868,80" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="700" y="301" font-size="14" fill="#a3a4b8">set failed</text>
+
+  <line x1="316" y1="64" x2="616" y2="64" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <text x="420" y="53" font-size="14" fill="#a3a4b8">set failed</text>
+
+  <line x1="616" y1="104" x2="316" y2="104" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <text x="420" y="124" font-size="14" fill="#a3a4b8">set done</text>
+</svg>

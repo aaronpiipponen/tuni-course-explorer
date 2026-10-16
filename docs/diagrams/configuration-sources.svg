@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 628" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Configuration sources and consumers</title>
+  <desc id="d">Example files are copied at setup into the subsystem files and the hub files. The
+  settings owner reads the subsystem files, the hub files, the environment file, and the process
+  environment, and hands settings to the stages, the web server, and the Compose environment file,
+  which feeds Docker Compose.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+    <marker id="arrow-accent" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a98ae0"/>
+    </marker>
+  </defs>
+  <rect width="960" height="628" rx="12" fill="#232434"/>
+
+  <rect x="48" y="48" width="300" height="64" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="198" y="74" text-anchor="middle" font-size="16" fill="#ececf2">Example files</text>
+  <text x="198" y="96" text-anchor="middle" font-size="14" fill="#a3a4b8">examples/</text>
+
+  <rect x="88" y="156" width="210" height="64" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="193" y="182" text-anchor="middle" font-size="16" fill="#ececf2">Subsystem files</text>
+  <text x="193" y="204" text-anchor="middle" font-size="14" fill="#a3a4b8">config/*.toml</text>
+
+  <rect x="88" y="252" width="210" height="64" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="193" y="278" text-anchor="middle" font-size="16" fill="#ececf2">Hub files</text>
+  <text x="193" y="300" text-anchor="middle" font-size="14" fill="#a3a4b8">config/derived/</text>
+
+  <rect x="88" y="348" width="210" height="64" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="193" y="374" text-anchor="middle" font-size="16" fill="#ececf2">Environment file</text>
+  <text x="193" y="396" text-anchor="middle" font-size="14" fill="#a3a4b8">.env</text>
+
+  <rect x="88" y="444" width="210" height="40" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="193" y="470" text-anchor="middle" font-size="16" fill="#ececf2">Process environment</text>
+
+  <rect x="380" y="240" width="220" height="160" rx="8" fill="#2e3045"
+        stroke="#a98ae0" stroke-width="1.5"/>
+  <text x="490" y="314" text-anchor="middle" font-size="16" fill="#ececf2">Settings owner</text>
+  <text x="490" y="336" text-anchor="middle" font-size="14" fill="#a3a4b8">Composes the values</text>
+
+  <rect x="650" y="168" width="270" height="64" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="785" y="194" text-anchor="middle" font-size="16" fill="#ececf2">Stages</text>
+  <text x="785" y="216" text-anchor="middle" font-size="14" fill="#a3a4b8">Preparation commands</text>
+
+  <rect x="650" y="288" width="270" height="64" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="785" y="314" text-anchor="middle" font-size="16" fill="#ececf2">Web server</text>
+  <text x="785" y="336" text-anchor="middle" font-size="14" fill="#a3a4b8">Serving settings only</text>
+
+  <rect x="650" y="400" width="270" height="64" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="785" y="426" text-anchor="middle" font-size="16" fill="#ececf2">Compose environment file</text>
+  <text x="785" y="448" text-anchor="middle" font-size="14" fill="#a3a4b8">Generated per Compose run</text>
+
+  <rect x="650" y="508" width="270" height="40" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="785" y="534" text-anchor="middle" font-size="16" fill="#ececf2">Docker Compose</text>
+
+  <line x1="193" y1="112" x2="193" y2="156" stroke="#a3a4b8" stroke-width="1.5"
+        stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+  <polyline points="68,112 68,284 88,284" fill="none" stroke="#a3a4b8" stroke-width="1.5"
+            stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+
+  <polyline points="298,188 336,188 336,264 380,264" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <polyline points="298,284 312,284 312,296 380,296" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <polyline points="298,380 356,380 356,328 380,328" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <polyline points="298,464 372,464 372,360 380,360" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <polyline points="600,272 616,272 616,200 650,200" fill="none" stroke="#a98ae0"
+            stroke-width="1.5" marker-end="url(#arrow-accent)"/>
+  <line x1="600" y1="320" x2="650" y2="320" stroke="#a98ae0" stroke-width="1.5"
+        marker-end="url(#arrow-accent)"/>
+  <polyline points="600,368 636,368 636,432 650,432" fill="none" stroke="#a98ae0"
+            stroke-width="1.5" marker-end="url(#arrow-accent)"/>
+  <line x1="785" y1="464" x2="785" y2="508" stroke="#a98ae0" stroke-width="1.5"
+        marker-end="url(#arrow-accent)"/>
+
+  <rect x="48" y="548" width="210" height="48" rx="8" fill="none" stroke="#4a4c6b"
+        stroke-width="1.5"/>
+  <line x1="64" y1="572" x2="104" y2="572" stroke="#a3a4b8" stroke-width="1.5"
+        stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+  <text x="116" y="577" font-size="14" fill="#a3a4b8">Copied at setup</text>
+</svg>

@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 480" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Translation session from the dataset copy to the dataset return</title>
+  <desc id="d">The worker reads its own copy of the selected dataset. The selector queues the cells to
+  translate, the translation runtime answers one cell per request, and the output file is republished
+  after every entry. The import writes the entries into the translation store of the same copy, and
+  the dataset return brings the whole copy back. The accent frame marks the steps that run on the
+  worker.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="480" rx="12" fill="#232434"/>
+
+  <rect x="24" y="44" width="906" height="292" rx="12" fill="none" stroke="#a98ae0"
+        stroke-width="1.5"/>
+  <text x="48" y="76" font-size="16" fill="#a98ae0">On the worker</text>
+
+  <rect x="40" y="96" width="252" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="166" y="122" text-anchor="middle" font-size="16" fill="#ececf2">Dataset copy</text>
+  <text x="166" y="144" text-anchor="middle" font-size="14" fill="#a3a4b8">The selected dataset</text>
+
+  <rect x="351" y="96" width="252" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="477" y="122" text-anchor="middle" font-size="16" fill="#ececf2">Selector</text>
+  <text x="477" y="144" text-anchor="middle" font-size="14" fill="#a3a4b8">Queues cells to translate</text>
+
+  <rect x="662" y="96" width="252" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="788" y="122" text-anchor="middle" font-size="16" fill="#ececf2">Translation runtime</text>
+  <text x="788" y="144" text-anchor="middle" font-size="14" fill="#a3a4b8">One cell per request</text>
+
+  <rect x="40" y="248" width="252" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="166" y="274" text-anchor="middle" font-size="16" fill="#ececf2">Output file</text>
+  <text x="166" y="296" text-anchor="middle" font-size="14" fill="#a3a4b8">Republished per entry</text>
+
+  <rect x="351" y="248" width="252" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="477" y="274" text-anchor="middle" font-size="16" fill="#ececf2">Import</text>
+  <text x="477" y="296" text-anchor="middle" font-size="14" fill="#a3a4b8">Into the translation store</text>
+
+  <rect x="351" y="384" width="252" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="477" y="410" text-anchor="middle" font-size="16" fill="#ececf2">Dataset return</text>
+  <text x="477" y="432" text-anchor="middle" font-size="14" fill="#a3a4b8">The copy comes back whole</text>
+
+  <line x1="292" y1="128" x2="351" y2="128" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="603" y1="128" x2="662" y2="128" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <polyline points="788,160 788,200 166,200 166,248" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="292" y1="280" x2="351" y2="280" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="477" y1="312" x2="477" y2="384" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+</svg>

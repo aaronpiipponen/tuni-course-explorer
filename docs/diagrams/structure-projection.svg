@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 624" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Study structure projection</title>
+  <desc id="d">A canonical structure root enters version selection for the configured academic year,
+  and the one selected version is walked as its official rule tree. A course reference resolves to a
+  shared course summary, a module reference resolves to a nested module whose own rule tree is
+  walked, and a reference that cannot be resolved appears as a node with a reason. Both the resolved
+  nodes and the unresolved nodes are part of the structure report, which carries the academic year
+  and the projected tree.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="624" rx="12" fill="#232434"/>
+
+  <rect x="140" y="48" width="680" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="74" text-anchor="middle" font-size="16" fill="#ececf2">Structure root</text>
+  <text x="480" y="96" text-anchor="middle" font-size="14" fill="#a3a4b8">programme or module</text>
+
+  <rect x="140" y="160" width="680" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="186" text-anchor="middle" font-size="16" fill="#ececf2">Version selection</text>
+  <text x="480" y="208" text-anchor="middle" font-size="14" fill="#a3a4b8">official version of the year</text>
+
+  <rect x="140" y="272" width="680" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="298" text-anchor="middle" font-size="16" fill="#ececf2">Rule tree walk</text>
+  <text x="480" y="320" text-anchor="middle" font-size="14" fill="#a3a4b8">every official rule in order</text>
+
+  <rect x="48" y="400" width="260" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="178" y="426" text-anchor="middle" font-size="16" fill="#ececf2">Resolved course</text>
+  <text x="178" y="448" text-anchor="middle" font-size="14" fill="#a3a4b8">course summary</text>
+
+  <rect x="368" y="400" width="224" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="426" text-anchor="middle" font-size="16" fill="#ececf2">Resolved module</text>
+  <text x="480" y="448" text-anchor="middle" font-size="14" fill="#a3a4b8">recurses into the walk</text>
+
+  <rect x="652" y="400" width="260" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="782" y="426" text-anchor="middle" font-size="16" fill="#ececf2">Unresolved node</text>
+  <text x="782" y="448" text-anchor="middle" font-size="14" fill="#a3a4b8">with its reason</text>
+
+  <rect x="140" y="528" width="680" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="554" text-anchor="middle" font-size="16" fill="#ececf2">Structure report</text>
+  <text x="480" y="576" text-anchor="middle" font-size="14" fill="#a3a4b8">academic year and root tree</text>
+
+  <line x1="480" y1="112" x2="480" y2="160" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="492" y="141" font-size="14" fill="#a3a4b8">canonical identity</text>
+
+  <line x1="480" y1="224" x2="480" y2="272" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="492" y="253" font-size="14" fill="#a3a4b8">selected version</text>
+
+  <line x1="178" y1="336" x2="178" y2="400" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="190" y="373" font-size="14" fill="#a3a4b8">course reference</text>
+
+  <line x1="480" y1="336" x2="480" y2="400" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="492" y="373" font-size="14" fill="#a3a4b8">module reference</text>
+
+  <line x1="782" y1="336" x2="782" y2="400" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="794" y="373" font-size="14" fill="#a3a4b8">unresolved</text>
+
+  <line x1="178" y1="464" x2="178" y2="528" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="190" y="501" font-size="14" fill="#a3a4b8">course node</text>
+
+  <line x1="480" y1="464" x2="480" y2="528" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="492" y="501" font-size="14" fill="#a3a4b8">nested module</text>
+
+  <line x1="782" y1="464" x2="782" y2="528" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="794" y="501" font-size="14" fill="#a3a4b8">unresolved node</text>
+</svg>

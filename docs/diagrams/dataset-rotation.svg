@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 436" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Dataset rotation over the receipt chain</title>
+  <desc id="d">The selected dataset names its predecessor back to the zero-id initial receipt, and
+  every dataset in that chain keeps its small receipt. The selected dataset and its immediate
+  predecessor keep their database and dump, while older datasets lose their database and dump. The
+  backups directory is kept outside the chain.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="436" rx="12" fill="#232434"/>
+
+  <rect x="24" y="48" width="912" height="232" rx="12" fill="none" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="48" y="80" font-size="16" fill="#a3a4b8">Dataset chain, checked before any deletion</text>
+
+  <rect x="48" y="96" width="180" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="138" y="122" text-anchor="middle" font-size="16" fill="#ececf2">Initial dataset</text>
+  <text x="138" y="144" text-anchor="middle" font-size="14" fill="#a3a4b8">database dropped</text>
+
+  <rect x="276" y="96" width="180" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="366" y="122" text-anchor="middle" font-size="16" fill="#ececf2">Older dataset</text>
+  <text x="366" y="144" text-anchor="middle" font-size="14" fill="#a3a4b8">database dropped</text>
+
+  <rect x="504" y="96" width="180" height="64" rx="8" fill="#2e3045" stroke="#a98ae0" stroke-width="1.5"/>
+  <text x="594" y="122" text-anchor="middle" font-size="16" fill="#ececf2">Predecessor</text>
+  <text x="594" y="144" text-anchor="middle" font-size="14" fill="#a3a4b8">database kept</text>
+
+  <rect x="732" y="96" width="180" height="64" rx="8" fill="#2e3045" stroke="#a98ae0" stroke-width="1.5"/>
+  <text x="822" y="122" text-anchor="middle" font-size="16" fill="#ececf2">Selected dataset</text>
+  <text x="822" y="144" text-anchor="middle" font-size="14" fill="#a3a4b8">database kept</text>
+
+  <line x1="228" y1="128" x2="276" y2="128" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="456" y1="128" x2="504" y2="128" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="684" y1="128" x2="732" y2="128" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <rect x="86" y="216" width="104" height="40" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="138" y="242" text-anchor="middle" font-size="14" fill="#ececf2">Receipt</text>
+  <rect x="314" y="216" width="104" height="40" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="366" y="242" text-anchor="middle" font-size="14" fill="#ececf2">Receipt</text>
+  <rect x="542" y="216" width="104" height="40" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="594" y="242" text-anchor="middle" font-size="14" fill="#ececf2">Receipt</text>
+  <rect x="770" y="216" width="104" height="40" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="822" y="242" text-anchor="middle" font-size="14" fill="#ececf2">Receipt</text>
+
+  <line x1="138" y1="160" x2="138" y2="216" stroke="#a3a4b8" stroke-width="1.5"
+        stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+  <line x1="366" y1="160" x2="366" y2="216" stroke="#a3a4b8" stroke-width="1.5"
+        stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+  <line x1="594" y1="160" x2="594" y2="216" stroke="#a3a4b8" stroke-width="1.5"
+        stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+  <line x1="822" y1="160" x2="822" y2="216" stroke="#a3a4b8" stroke-width="1.5"
+        stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+
+  <rect x="560" y="328" width="360" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="740" y="354" text-anchor="middle" font-size="16" fill="#ececf2">Backups</text>
+  <text x="740" y="376" text-anchor="middle" font-size="14" fill="#a3a4b8">kept outside the chain</text>
+
+  <rect x="48" y="328" width="264" height="76" rx="8" fill="none" stroke="#4a4c6b" stroke-width="1.5"/>
+  <line x1="64" y1="358" x2="104" y2="358" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="120" y="363" font-size="14" fill="#a3a4b8">Returned dataset link</text>
+  <line x1="64" y1="386" x2="104" y2="386" stroke="#a3a4b8" stroke-width="1.5"
+        stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+  <text x="120" y="391" font-size="14" fill="#a3a4b8">Retained record</text>
+</svg>

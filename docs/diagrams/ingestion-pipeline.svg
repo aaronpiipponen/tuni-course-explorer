@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 448" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Ingestion pipeline</title>
+  <desc id="d">A capture reads the anonymous public curriculum source and writes one manifest and one
+  stored response per response it receives. A stopped or failed capture resumes from its committed
+  checkpoints, so the capture and the verification step are the two resume points, drawn with a dashed
+  outline. Verification checks every stored response against the manifest. Normalization then converts
+  the whole capture into the official catalogue of the selected dataset in one transaction.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="448" rx="12" fill="#232434"/>
+
+  <rect x="30" y="72" width="268" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="164" y="98" text-anchor="middle" font-size="16" fill="#ececf2">Public curriculum source</text>
+  <text x="164" y="120" text-anchor="middle" font-size="14" fill="#a3a4b8">Anonymous public JSON</text>
+
+  <rect x="346" y="72" width="268" height="64" rx="8" fill="#2e3045" stroke="#a98ae0"
+        stroke-width="1.5" stroke-dasharray="6 4"/>
+  <text x="480" y="98" text-anchor="middle" font-size="16" fill="#ececf2">Capture</text>
+  <text x="480" y="120" text-anchor="middle" font-size="14" fill="#a3a4b8">One run of source reads</text>
+
+  <rect x="662" y="72" width="268" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="796" y="98" text-anchor="middle" font-size="16" fill="#ececf2">Stored responses</text>
+  <text x="796" y="120" text-anchor="middle" font-size="14" fill="#a3a4b8">With the manifest</text>
+
+  <rect x="30" y="248" width="268" height="64" rx="8" fill="#2e3045" stroke="#a98ae0"
+        stroke-width="1.5" stroke-dasharray="6 4"/>
+  <text x="164" y="274" text-anchor="middle" font-size="16" fill="#ececf2">Verification</text>
+  <text x="164" y="296" text-anchor="middle" font-size="14" fill="#a3a4b8">Every stored response</text>
+
+  <rect x="346" y="248" width="268" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="274" text-anchor="middle" font-size="16" fill="#ececf2">Normalization</text>
+  <text x="480" y="296" text-anchor="middle" font-size="14" fill="#a3a4b8">One transaction</text>
+
+  <rect x="662" y="248" width="268" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="796" y="274" text-anchor="middle" font-size="16" fill="#ececf2">Official catalogue</text>
+  <text x="796" y="296" text-anchor="middle" font-size="14" fill="#a3a4b8">In the selected dataset</text>
+
+  <line x1="298" y1="104" x2="346" y2="104" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="614" y1="104" x2="662" y2="104" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <polyline points="796,136 796,192 164,192 164,248" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="298" y1="280" x2="346" y2="280" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="614" y1="280" x2="662" y2="280" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <text x="480" y="178" text-anchor="middle" font-size="14" fill="#a3a4b8">the completed capture</text>
+
+  <rect x="30" y="368" width="316" height="48" rx="8" fill="none" stroke="#4a4c6b" stroke-width="1.5"/>
+  <rect x="46" y="385" width="24" height="14" rx="8" fill="#2e3045" stroke="#a98ae0"
+        stroke-width="1.5" stroke-dasharray="6 4"/>
+  <text x="86" y="397" font-size="14" fill="#a3a4b8">Resume point for a stopped run</text>
+</svg>

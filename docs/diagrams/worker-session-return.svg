@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 652" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Worker session and dataset return</title>
+  <desc id="d">The selected dataset becomes a verified input copy that the worker restores into its
+  own copy, where the remote stage runs and records checkpoints. The stage exports a verified return
+  snapshot, that snapshot is restored and promoted as the selected dataset, and the worker copy is
+  dropped only after the verified receipt exists. A worker session box owns the session commands, and
+  its dashed links show the run control and the finalize and cleanup it performs.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="652" rx="12" fill="#232434"/>
+
+  <rect x="64" y="240" width="256" height="64" rx="8" fill="#2e3045" stroke="#a98ae0" stroke-width="1.5"/>
+  <text x="192" y="266" text-anchor="middle" font-size="16" fill="#ececf2">Worker session</text>
+  <text x="192" y="288" text-anchor="middle" font-size="14" fill="#a3a4b8">run, pause, stop, finalize</text>
+
+  <rect x="376" y="48" width="480" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="616" y="74" text-anchor="middle" font-size="16" fill="#ececf2">Selected dataset</text>
+  <text x="616" y="96" text-anchor="middle" font-size="14" fill="#a3a4b8">Read by the web server and the stages</text>
+
+  <rect x="376" y="144" width="480" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="616" y="170" text-anchor="middle" font-size="16" fill="#ececf2">Verified input copy</text>
+  <text x="616" y="192" text-anchor="middle" font-size="14" fill="#a3a4b8">Checked when the worker restores it</text>
+
+  <rect x="376" y="240" width="480" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="616" y="266" text-anchor="middle" font-size="16" fill="#ececf2">Worker stage and checkpoints</text>
+  <text x="616" y="288" text-anchor="middle" font-size="14" fill="#a3a4b8">Runs on the worker's own copy</text>
+
+  <rect x="376" y="336" width="480" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="616" y="362" text-anchor="middle" font-size="16" fill="#ececf2">Verified return</text>
+  <text x="616" y="384" text-anchor="middle" font-size="14" fill="#a3a4b8">Digest and verification are checked</text>
+
+  <rect x="376" y="432" width="480" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="616" y="458" text-anchor="middle" font-size="16" fill="#ececf2">Selected dataset promotion</text>
+  <text x="616" y="480" text-anchor="middle" font-size="14" fill="#a3a4b8">Restored into the derived database</text>
+
+  <rect x="376" y="556" width="480" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="616" y="582" text-anchor="middle" font-size="16" fill="#ececf2">Permitted cleanup</text>
+  <text x="616" y="604" text-anchor="middle" font-size="14" fill="#a3a4b8">Dropped after the verified receipt</text>
+
+  <line x1="616" y1="112" x2="616" y2="144" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="622" y="132" font-size="14" fill="#a3a4b8">full snapshot</text>
+  <line x1="616" y1="208" x2="616" y2="240" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="622" y="228" font-size="14" fill="#a3a4b8">worker restore</text>
+  <line x1="616" y1="304" x2="616" y2="336" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="622" y="324" font-size="14" fill="#a3a4b8">return snapshot</text>
+  <line x1="616" y1="400" x2="616" y2="432" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="622" y="420" font-size="14" fill="#a3a4b8">restore and verify</text>
+  <line x1="616" y1="496" x2="616" y2="556" stroke="#a3a4b8" stroke-width="1.5"
+        stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+  <text x="622" y="528" font-size="14" fill="#a3a4b8">after the verified receipt</text>
+
+  <polyline points="320,258 344,258 344,272 376,272" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+  <polyline points="320,290 366,290 366,588 376,588" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+
+  <rect x="64" y="420" width="214" height="76" rx="8" fill="none" stroke="#4a4c6b" stroke-width="1.5"/>
+  <line x1="80" y1="448" x2="120" y2="448" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="136" y="453" font-size="14" fill="#a3a4b8">Dataset copy</text>
+  <line x1="80" y1="476" x2="120" y2="476" stroke="#a3a4b8" stroke-width="1.5"
+        stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+  <text x="136" y="481" font-size="14" fill="#a3a4b8">Session control</text>
+</svg>

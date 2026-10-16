@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 376" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Boundaries between the read-only side and the preparation side</title>
+  <desc id="d">A preparation side holds the administration command and the worker. A read-only side,
+  outlined in accent, holds the browser app and the web server. A database between the two sides
+  holds the selected dataset: the administration command writes it, and the web server reads it.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="376" rx="12" fill="#232434"/>
+
+  <rect x="40" y="56" width="300" height="288" rx="12" fill="none"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="56" y="88" font-size="16" fill="#a3a4b8">Preparation side</text>
+
+  <rect x="640" y="56" width="296" height="288" rx="12" fill="none"
+        stroke="#a98ae0" stroke-width="1.5"/>
+  <text x="656" y="88" font-size="16" fill="#a98ae0">Read-only side</text>
+
+  <rect x="68" y="112" width="244" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="190" y="138" text-anchor="middle" font-size="16" fill="#ececf2">Administration command</text>
+  <text x="190" y="160" text-anchor="middle" font-size="14" fill="#a3a4b8">Operator menu and stages</text>
+
+  <rect x="68" y="256" width="244" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="190" y="282" text-anchor="middle" font-size="16" fill="#ececf2">Worker</text>
+  <text x="190" y="304" text-anchor="middle" font-size="14" fill="#a3a4b8">Runs the remote stages</text>
+
+  <rect x="400" y="168" width="180" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="490" y="194" text-anchor="middle" font-size="16" fill="#ececf2">Database</text>
+  <text x="490" y="216" text-anchor="middle" font-size="14" fill="#a3a4b8">Selected dataset</text>
+
+  <rect x="664" y="112" width="248" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="788" y="138" text-anchor="middle" font-size="16" fill="#ececf2">Browser app</text>
+  <text x="788" y="160" text-anchor="middle" font-size="14" fill="#a3a4b8">Profiles in browser state</text>
+
+  <rect x="676" y="248" width="220" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="786" y="274" text-anchor="middle" font-size="16" fill="#ececf2">Web server</text>
+  <text x="786" y="296" text-anchor="middle" font-size="14" fill="#a3a4b8">Read-only feature API</text>
+
+  <line x1="190" y1="176" x2="190" y2="256" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <text x="200" y="220" font-size="14" fill="#a3a4b8">Remote stages</text>
+
+  <polyline points="788,176 788,196 690,196 690,248" fill="none" stroke="#a3a4b8" stroke-width="1.5"
+            marker-end="url(#arrow)"/>
+  <text x="704" y="228" font-size="14" fill="#a3a4b8">requests with user state</text>
+
+  <polyline points="312,144 366,144 366,200 400,200" fill="none" stroke="#a3a4b8" stroke-width="1.5"
+            marker-end="url(#arrow)"/>
+  <text x="350" y="130" font-size="14" fill="#a3a4b8">writes</text>
+
+  <polyline points="676,280 626,280 626,200 580,200" fill="none" stroke="#a3a4b8" stroke-width="1.5"
+            marker-end="url(#arrow)"/>
+  <text x="616" y="268" text-anchor="end" font-size="14" fill="#a3a4b8">reads</text>
+</svg>

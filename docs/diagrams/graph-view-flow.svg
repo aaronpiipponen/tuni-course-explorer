@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 444" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Prerequisite graph view reads and drawing</title>
+  <desc id="d">One profile input snapshot feeds the graph read and the explicit route read on the
+  server. The graph read returns the graph report and the route read returns the route result. The
+  browser lays the report out as the drawing and shows the returned route in the route panel. A
+  dashed box marks the browser drawing side.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="444" rx="12" fill="#232434"/>
+
+  <rect x="40" y="186" width="180" height="64" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="130" y="212" text-anchor="middle" font-size="16" fill="#ececf2">Profile inputs</text>
+  <text x="130" y="234" text-anchor="middle" font-size="14" fill="#a3a4b8">shared snapshot</text>
+
+  <rect x="264" y="96" width="186" height="64" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="357" y="122" text-anchor="middle" font-size="16" fill="#ececf2">Graph read</text>
+  <text x="357" y="144" text-anchor="middle" font-size="14" fill="#a3a4b8">backend graph read</text>
+
+  <rect x="264" y="244" width="186" height="64" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="357" y="270" text-anchor="middle" font-size="16" fill="#ececf2">Route read</text>
+  <text x="357" y="292" text-anchor="middle" font-size="14" fill="#a3a4b8">explicit click</text>
+
+  <rect x="494" y="96" width="186" height="64" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="587" y="122" text-anchor="middle" font-size="16" fill="#ececf2">Graph report</text>
+  <text x="587" y="144" text-anchor="middle" font-size="14" fill="#a3a4b8">nodes and states</text>
+
+  <rect x="494" y="244" width="186" height="64" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="587" y="270" text-anchor="middle" font-size="16" fill="#ececf2">Route result</text>
+  <text x="587" y="292" text-anchor="middle" font-size="14" fill="#a3a4b8">occurrences</text>
+
+  <rect x="704" y="56" width="232" height="276" rx="12" fill="none"
+        stroke="#a98ae0" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="720" y="84" font-size="16" fill="#a98ae0">Browser drawing</text>
+
+  <rect x="736" y="96" width="168" height="64" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="820" y="122" text-anchor="middle" font-size="16" fill="#ececf2">Draw the graph</text>
+  <text x="820" y="144" text-anchor="middle" font-size="14" fill="#a3a4b8">lays out the nodes</text>
+
+  <rect x="736" y="244" width="168" height="64" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="820" y="270" text-anchor="middle" font-size="16" fill="#ececf2">Route panel</text>
+  <text x="820" y="292" text-anchor="middle" font-size="14" fill="#a3a4b8">rows and lighting</text>
+
+  <polyline points="220,202 234,202 234,128 264,128" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <polyline points="220,234 256,234 256,276 264,276" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="450" y1="128" x2="494" y2="128" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="450" y1="276" x2="494" y2="276" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="680" y1="128" x2="736" y2="128" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="680" y1="276" x2="736" y2="276" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+
+  <rect x="40" y="364" width="280" height="48" rx="8" fill="none" stroke="#4a4c6b"
+        stroke-width="1.5"/>
+  <line x1="56" y1="388" x2="96" y2="388" stroke="#a98ae0" stroke-width="1.5"
+        stroke-dasharray="5 4"/>
+  <text x="108" y="393" font-size="14" fill="#a3a4b8">Derived from the reports</text>
+</svg>

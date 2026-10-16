@@ -1,7 +1,336 @@
 {
   "repositoryUrl": "https://github.com/aaronpiipponen/tuni-course-explorer",
   "repositoryRef": "main",
-  "home": { "id": "home", "path": "docs/placeholder.md", "nav": "Home" },
-  "sections": [],
+  "home": {
+    "id": "home",
+    "path": "docs/README.md",
+    "nav": "Home"
+  },
+  "sections": [
+    {
+      "title": "Guides",
+      "description": "How to use the app: a first session, each tab, profiles and language.",
+      "page": {
+        "id": "quickstart",
+        "path": "docs/guides/README.md",
+        "nav": "Quickstart",
+        "children": [
+          {
+            "id": "guide-search",
+            "path": "docs/guides/search.md",
+            "nav": "Searching for courses",
+            "children": []
+          },
+          {
+            "id": "guide-compare",
+            "path": "docs/guides/compare.md",
+            "nav": "Comparing two courses",
+            "children": []
+          },
+          {
+            "id": "guide-prerequisites",
+            "path": "docs/guides/prerequisites.md",
+            "nav": "Exploring prerequisites",
+            "children": []
+          },
+          {
+            "id": "guide-discover",
+            "path": "docs/guides/discover.md",
+            "nav": "Discovering courses",
+            "children": []
+          },
+          {
+            "id": "guide-structure",
+            "path": "docs/guides/structure-of-studies.md",
+            "nav": "Structure of studies",
+            "children": []
+          },
+          {
+            "id": "guide-profiles",
+            "path": "docs/guides/profiles-and-language.md",
+            "nav": "Profiles and language",
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "title": "Architecture",
+      "description": "The parts of the system, how they connect, and the boundaries between them.",
+      "page": {
+        "id": "architecture",
+        "path": "docs/architecture/README.md",
+        "nav": "Architecture overview",
+        "children": [
+          {
+            "id": "system-context",
+            "path": "docs/architecture/system-context.md",
+            "nav": "System context",
+            "children": []
+          },
+          {
+            "id": "boundaries",
+            "path": "docs/architecture/boundaries.md",
+            "nav": "System boundaries",
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "title": "Backend",
+      "description": "How the server side behaves: configuration, data, search, prerequisites, discovery and inference.",
+      "page": {
+        "id": "backend",
+        "path": "docs/backend/README.md",
+        "nav": "Backend overview",
+        "children": [
+          {
+            "id": "configuration",
+            "path": "docs/backend/configuration.md",
+            "nav": "Configuration",
+            "children": []
+          },
+          {
+            "id": "catalogue",
+            "path": "docs/backend/catalogue/README.md",
+            "nav": "Catalogue",
+            "children": [
+              {
+                "id": "data-model",
+                "path": "docs/backend/catalogue/data-model.md",
+                "nav": "Data model",
+                "children": []
+              },
+              {
+                "id": "representative-versions",
+                "path": "docs/backend/catalogue/representative-versions.md",
+                "nav": "Representative versions",
+                "children": []
+              },
+              {
+                "id": "ingestion",
+                "path": "docs/backend/catalogue/ingestion.md",
+                "nav": "Ingestion",
+                "children": []
+              },
+              {
+                "id": "study-structure",
+                "path": "docs/backend/catalogue/study-structure.md",
+                "nav": "Catalogue structure of studies",
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "text-and-vectors",
+            "path": "docs/backend/text-and-vectors/README.md",
+            "nav": "Text and vectors",
+            "children": [
+              {
+                "id": "teaching-text",
+                "path": "docs/backend/text-and-vectors/teaching-text.md",
+                "nav": "Teaching text",
+                "children": []
+              },
+              {
+                "id": "translation",
+                "path": "docs/backend/text-and-vectors/translation.md",
+                "nav": "Translation",
+                "children": []
+              },
+              {
+                "id": "embeddings",
+                "path": "docs/backend/text-and-vectors/embeddings.md",
+                "nav": "Embeddings",
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "search-and-discovery",
+            "path": "docs/backend/search-and-discovery/README.md",
+            "nav": "Search and discovery",
+            "children": [
+              {
+                "id": "search",
+                "path": "docs/backend/search-and-discovery/search.md",
+                "nav": "Search",
+                "children": []
+              },
+              {
+                "id": "comparison",
+                "path": "docs/backend/search-and-discovery/comparison.md",
+                "nav": "Comparison",
+                "children": []
+              },
+              {
+                "id": "next-courses",
+                "path": "docs/backend/search-and-discovery/next-courses.md",
+                "nav": "Next courses",
+                "children": []
+              },
+              {
+                "id": "recommendations",
+                "path": "docs/backend/search-and-discovery/recommendations.md",
+                "nav": "Recommendations",
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "prerequisites",
+            "path": "docs/backend/prerequisites/README.md",
+            "nav": "Prerequisites",
+            "children": [
+              {
+                "id": "prerequisite-graph",
+                "path": "docs/backend/prerequisites/prerequisite-graph.md",
+                "nav": "Prerequisite graph",
+                "children": []
+              },
+              {
+                "id": "minimum-route",
+                "path": "docs/backend/prerequisites/minimum-route.md",
+                "nav": "Minimum route",
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "inference-processing",
+            "path": "docs/backend/inference/README.md",
+            "nav": "Inference",
+            "children": [
+              {
+                "id": "inference",
+                "path": "docs/backend/inference/inference.md",
+                "nav": "Pipeline and outputs",
+                "children": []
+              },
+              {
+                "id": "inference-scheduling",
+                "path": "docs/backend/inference/inference-scheduling.md",
+                "nav": "Scheduling and disposition",
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "interfaces",
+            "path": "docs/backend/interfaces/README.md",
+            "nav": "Interfaces",
+            "children": [
+              {
+                "id": "web-api",
+                "path": "docs/backend/interfaces/web-api.md",
+                "nav": "Web API",
+                "children": []
+              },
+              {
+                "id": "command-line",
+                "path": "docs/backend/interfaces/command-line.md",
+                "nav": "Command line",
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "title": "Frontend",
+      "description": "Browser state, shared interactions, graph rendering, the structure of studies, and the documentation wiki.",
+      "page": {
+        "id": "frontend-overview",
+        "path": "docs/frontend/README.md",
+        "nav": "Frontend overview",
+        "children": [
+          {
+            "id": "browser-app",
+            "path": "docs/frontend/browser-app.md",
+            "nav": "Browser app",
+            "children": []
+          },
+          {
+            "id": "structure-editor",
+            "path": "docs/frontend/structure-editor.md",
+            "nav": "Structure editor",
+            "children": []
+          },
+          {
+            "id": "prerequisite-graph-view",
+            "path": "docs/frontend/prerequisite-graph-view.md",
+            "nav": "Prerequisite graph view",
+            "children": []
+          },
+          {
+            "id": "documentation-wiki",
+            "path": "docs/frontend/documentation-wiki.md",
+            "nav": "Documentation wiki",
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "title": "Operations",
+      "description": "Running the administration command, the preparation stages, the worker, and the selected dataset.",
+      "page": {
+        "id": "operations",
+        "path": "docs/operations/README.md",
+        "nav": "Operations overview",
+        "children": [
+          {
+            "id": "operator-menu",
+            "path": "docs/operations/operator-menu.md",
+            "nav": "Operator menu",
+            "children": []
+          },
+          {
+            "id": "stage-lifecycle",
+            "path": "docs/operations/stage-lifecycle.md",
+            "nav": "Stage lifecycle",
+            "children": []
+          },
+          {
+            "id": "worker-sessions",
+            "path": "docs/operations/worker-sessions.md",
+            "nav": "Worker sessions",
+            "children": []
+          },
+          {
+            "id": "datasets",
+            "path": "docs/operations/datasets.md",
+            "nav": "Datasets",
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "title": "Reference",
+      "description": "Terms and the licence.",
+      "page": {
+        "id": "reference",
+        "path": "docs/reference/README.md",
+        "nav": "Reference guide",
+        "children": [
+          {
+            "id": "glossary",
+            "path": "docs/reference/glossary.md",
+            "nav": "Glossary",
+            "children": []
+          },
+          {
+            "id": "licence",
+            "path": "docs/reference/licence.md",
+            "nav": "Licence",
+            "children": []
+          }
+        ]
+      }
+    }
+  ],
   "popular": []
 }

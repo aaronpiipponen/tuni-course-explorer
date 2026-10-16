@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 536" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Documentation wiki build and reading</title>
+  <desc id="d">The wiki configuration, the selected Markdown pages, and the local images they
+  reference feed the wiki build compiler. The compiler produces page records in a registry, which
+  the wiki reader shows. A dashed arrow marks that a link to a file the wiki does not render
+  becomes an address in the GitHub repository.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="536" rx="12" fill="#232434"/>
+
+  <rect x="64" y="96" width="260" height="64" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="194" y="122" text-anchor="middle" font-size="16" fill="#ececf2">Wiki configuration</text>
+  <text x="194" y="144" text-anchor="middle" font-size="14" fill="#a3a4b8">config/wiki.json</text>
+
+  <rect x="64" y="216" width="260" height="64" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="194" y="242" text-anchor="middle" font-size="16" fill="#ececf2">Selected Markdown</text>
+  <text x="194" y="264" text-anchor="middle" font-size="14" fill="#a3a4b8">docs/ pages</text>
+
+  <rect x="64" y="336" width="260" height="64" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="194" y="362" text-anchor="middle" font-size="16" fill="#ececf2">Local images</text>
+  <text x="194" y="384" text-anchor="middle" font-size="14" fill="#a3a4b8">diagrams and screenshots</text>
+
+  <rect x="400" y="200" width="240" height="96" rx="8" fill="#2e3045"
+        stroke="#a98ae0" stroke-width="1.5"/>
+  <text x="520" y="240" text-anchor="middle" font-size="16" fill="#ececf2">Wiki build compiler</text>
+  <text x="520" y="262" text-anchor="middle" font-size="14" fill="#a3a4b8">Selection, text, assets</text>
+
+  <rect x="700" y="128" width="224" height="64" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="812" y="154" text-anchor="middle" font-size="16" fill="#ececf2">Page registry</text>
+  <text x="812" y="176" text-anchor="middle" font-size="14" fill="#a3a4b8">metadata and HTML</text>
+
+  <rect x="700" y="300" width="224" height="64" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="812" y="326" text-anchor="middle" font-size="16" fill="#ececf2">Wiki reader</text>
+  <text x="812" y="348" text-anchor="middle" font-size="14" fill="#a3a4b8">sidebar and search</text>
+
+  <rect x="700" y="440" width="224" height="64" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="812" y="466" text-anchor="middle" font-size="16" fill="#ececf2">GitHub repository</text>
+  <text x="812" y="488" text-anchor="middle" font-size="14" fill="#a3a4b8">blob and tree views</text>
+
+  <polyline points="324,128 340,128 340,216 400,216" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="324" y1="248" x2="400" y2="248" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <polyline points="324,368 366,368 366,280 400,280" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <polyline points="640,216 664,216 664,160 700,160" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <polyline points="640,280 684,280 684,472 700,472" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+  <text x="694" y="392" font-size="14" fill="#a3a4b8">unlisted file links</text>
+  <line x1="812" y1="192" x2="812" y2="300" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+
+  <rect x="48" y="440" width="252" height="48" rx="8" fill="none" stroke="#4a4c6b"
+        stroke-width="1.5"/>
+  <line x1="64" y1="464" x2="104" y2="464" stroke="#a3a4b8" stroke-width="1.5"
+        stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+  <text x="116" y="469" font-size="14" fill="#a3a4b8">Unlisted file links</text>
+</svg>

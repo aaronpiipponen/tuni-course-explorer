@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 656" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Resolution of one teaching-text field and language</title>
+  <desc id="d">The flow resolves one field and one language of a representative version. A non-blank
+  official value is used as it stands. Without it, a stored translation is used when the official
+  text of the same field in the translation's source language hashes to the recorded source hash. A
+  stored translation whose source value differs is reported as stale and yields no effective text,
+  and a cell with neither text nor a usable translation yields no effective text.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+    <marker id="arrow-accent" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a98ae0"/>
+    </marker>
+  </defs>
+  <rect width="960" height="656" rx="12" fill="#232434"/>
+
+  <rect x="350" y="48" width="260" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="74" text-anchor="middle" font-size="16" fill="#ececf2">One field and language</text>
+  <text x="480" y="96" text-anchor="middle" font-size="14" fill="#a3a4b8">of a representative version</text>
+
+  <rect x="350" y="176" width="260" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="202" text-anchor="middle" font-size="16" fill="#ececf2">Official text</text>
+  <text x="480" y="224" text-anchor="middle" font-size="14" fill="#a3a4b8">present?</text>
+
+  <rect x="48" y="304" width="200" height="64" rx="8" fill="#2e3045" stroke="#a98ae0" stroke-width="1.5"/>
+  <text x="148" y="330" text-anchor="middle" font-size="16" fill="#ececf2">Official text</text>
+  <text x="148" y="352" text-anchor="middle" font-size="14" fill="#a3a4b8">is effective</text>
+
+  <rect x="350" y="304" width="260" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="330" text-anchor="middle" font-size="16" fill="#ececf2">A translation</text>
+  <text x="480" y="352" text-anchor="middle" font-size="14" fill="#a3a4b8">is stored?</text>
+
+  <rect x="350" y="432" width="260" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="458" text-anchor="middle" font-size="16" fill="#ececf2">Recorded source</text>
+  <text x="480" y="480" text-anchor="middle" font-size="14" fill="#a3a4b8">hash matches?</text>
+
+  <rect x="736" y="432" width="200" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="836" y="458" text-anchor="middle" font-size="16" fill="#ececf2">No effective text</text>
+  <text x="836" y="480" text-anchor="middle" font-size="14" fill="#a3a4b8">for this cell</text>
+
+  <rect x="350" y="560" width="260" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="586" text-anchor="middle" font-size="16" fill="#ececf2">Stale translation</text>
+  <text x="480" y="608" text-anchor="middle" font-size="14" fill="#a3a4b8">reported, not used</text>
+
+  <rect x="736" y="560" width="200" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="836" y="586" text-anchor="middle" font-size="16" fill="#ececf2">The translation</text>
+  <text x="836" y="608" text-anchor="middle" font-size="14" fill="#a3a4b8">is effective</text>
+
+  <line x1="480" y1="112" x2="480" y2="176" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <polyline points="430,240 430,272 148,272 148,304" fill="none" stroke="#a98ae0"
+            stroke-width="1.5" marker-end="url(#arrow-accent)"/>
+  <text x="350" y="259" text-anchor="middle" font-size="14" fill="#a3a4b8">Yes</text>
+  <line x1="480" y1="240" x2="480" y2="304" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <text x="492" y="282" font-size="14" fill="#a3a4b8">No</text>
+  <line x1="480" y1="368" x2="480" y2="432" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <text x="492" y="406" font-size="14" fill="#a3a4b8">Yes</text>
+  <polyline points="530,368 530,400 836,400 836,432" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="545" y="388" font-size="14" fill="#a3a4b8">No</text>
+  <line x1="480" y1="496" x2="480" y2="560" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <text x="492" y="534" font-size="14" fill="#a3a4b8">No</text>
+  <polyline points="530,496 530,528 836,528 836,560" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="545" y="516" font-size="14" fill="#a3a4b8">Yes</text>
+</svg>

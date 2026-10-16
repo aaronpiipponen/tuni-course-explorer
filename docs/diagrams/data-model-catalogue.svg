@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 588" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Official catalogue data model</title>
+  <desc id="d">Course and module identities with their exact versions, the curriculum periods a
+  version belongs to, and the rows a version holds: one official teaching-text row, many derived
+  translation rows, embedding chunks, official prerequisite options, and official substitution
+  options for a course version, and the rule nodes of a module version. Every line is orthogonal and
+  carries a 1 or N label at the end it describes.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="588" rx="12" fill="#232434"/>
+
+  <rect x="40" y="76" width="160" height="56" rx="8" fill="#2e3045" stroke="#4a4c6b"
+        stroke-width="1.5"/>
+  <text x="120" y="109" text-anchor="middle" font-size="15" fill="#ececf2">Course</text>
+
+  <rect x="40" y="300" width="160" height="56" rx="8" fill="#2e3045" stroke="#4a4c6b"
+        stroke-width="1.5"/>
+  <text x="120" y="324" text-anchor="middle" font-size="15" fill="#ececf2">Curriculum</text>
+  <text x="120" y="344" text-anchor="middle" font-size="15" fill="#ececf2">Period</text>
+
+  <rect x="40" y="470" width="160" height="56" rx="8" fill="#2e3045" stroke="#4a4c6b"
+        stroke-width="1.5"/>
+  <text x="120" y="503" text-anchor="middle" font-size="15" fill="#ececf2">Module</text>
+
+  <rect x="290" y="48" width="260" height="224" rx="8" fill="#2e3045" stroke="#4a4c6b"
+        stroke-width="1.5"/>
+  <text x="420" y="165" text-anchor="middle" font-size="15" fill="#ececf2">CourseVersion</text>
+
+  <rect x="290" y="448" width="260" height="108" rx="8" fill="#2e3045" stroke="#4a4c6b"
+        stroke-width="1.5"/>
+  <text x="420" y="507" text-anchor="middle" font-size="15" fill="#ececf2">ModuleVersion</text>
+
+  <rect x="650" y="54" width="266" height="52" rx="8" fill="#2e3045" stroke="#4a4c6b"
+        stroke-width="1.5"/>
+  <text x="783" y="85" text-anchor="middle" font-size="15" fill="#ececf2">CourseText</text>
+
+  <rect x="650" y="138" width="266" height="52" rx="8" fill="#2e3045" stroke="#4a4c6b"
+        stroke-width="1.5"/>
+  <text x="783" y="169" text-anchor="middle" font-size="15" fill="#ececf2">DerivedCourseText</text>
+
+  <rect x="650" y="222" width="266" height="52" rx="8" fill="#2e3045" stroke="#4a4c6b"
+        stroke-width="1.5"/>
+  <text x="783" y="253" text-anchor="middle" font-size="15" fill="#ececf2">CourseEmbeddingChunk</text>
+
+  <rect x="650" y="306" width="266" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b"
+        stroke-width="1.5"/>
+  <text x="783" y="332" text-anchor="middle" font-size="15" fill="#ececf2">OfficialPrerequisiteOption</text>
+  <text x="783" y="354" text-anchor="middle" font-size="14" fill="#a3a4b8">with ordered members</text>
+
+  <rect x="650" y="402" width="266" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b"
+        stroke-width="1.5"/>
+  <text x="783" y="428" text-anchor="middle" font-size="15" fill="#ececf2">OfficialSubstitutionOption</text>
+  <text x="783" y="450" text-anchor="middle" font-size="14" fill="#a3a4b8">one direction only</text>
+
+  <rect x="650" y="498" width="266" height="52" rx="8" fill="#2e3045" stroke="#4a4c6b"
+        stroke-width="1.5"/>
+  <text x="783" y="529" text-anchor="middle" font-size="15" fill="#ececf2">ModuleRuleNode</text>
+
+  <polyline points="200,104 208,104 208,128 290,128" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="206" y="96" font-size="14" fill="#a3a4b8">1</text>
+  <text x="284" y="120" text-anchor="end" font-size="14" fill="#a3a4b8">N</text>
+
+  <polyline points="200,312 228,312 228,192 290,192" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="206" y="304" font-size="14" fill="#a3a4b8">N</text>
+  <text x="284" y="184" text-anchor="end" font-size="14" fill="#a3a4b8">N</text>
+
+  <polyline points="200,344 248,344 248,480 290,480" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="206" y="336" font-size="14" fill="#a3a4b8">N</text>
+  <text x="284" y="472" text-anchor="end" font-size="14" fill="#a3a4b8">N</text>
+
+  <polyline points="200,498 268,498 268,524 290,524" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="206" y="490" font-size="14" fill="#a3a4b8">1</text>
+  <text x="284" y="516" text-anchor="end" font-size="14" fill="#a3a4b8">N</text>
+
+  <line x1="550" y1="80" x2="650" y2="80" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <text x="556" y="72" font-size="14" fill="#a3a4b8">1</text>
+  <text x="644" y="72" text-anchor="end" font-size="14" fill="#a3a4b8">1</text>
+
+  <polyline points="550,120 620,120 620,164 650,164" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="556" y="112" font-size="14" fill="#a3a4b8">1</text>
+  <text x="644" y="156" text-anchor="end" font-size="14" fill="#a3a4b8">N</text>
+
+  <polyline points="550,160 600,160 600,248 650,248" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="556" y="152" font-size="14" fill="#a3a4b8">1</text>
+  <text x="644" y="240" text-anchor="end" font-size="14" fill="#a3a4b8">N</text>
+
+  <polyline points="550,200 580,200 580,338 650,338" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="556" y="192" font-size="14" fill="#a3a4b8">1</text>
+  <text x="644" y="330" text-anchor="end" font-size="14" fill="#a3a4b8">N</text>
+
+  <polyline points="550,240 560,240 560,434 650,434" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="556" y="232" font-size="14" fill="#a3a4b8">1</text>
+  <text x="644" y="426" text-anchor="end" font-size="14" fill="#a3a4b8">N</text>
+
+  <line x1="550" y1="524" x2="650" y2="524" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <text x="556" y="516" font-size="14" fill="#a3a4b8">1</text>
+  <text x="644" y="516" text-anchor="end" font-size="14" fill="#a3a4b8">N</text>
+</svg>

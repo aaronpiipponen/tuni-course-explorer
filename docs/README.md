@@ -1,0 +1,40 @@
+# Course explorer documentation
+
+TUNI Course Explorer is a read-only web app for exploring a university course catalogue, and this page introduces its five tabs and their shared course state.
+
+## The five tabs
+
+The app opens on one of five tabs, and the top bar switches between them: **Search**, **Compare**, **Prerequisites**, **Discover**, and **Structure of studies**.
+
+- **Search** matches a query against a course's official code, its name, or the meaning of its teaching text. The results group under the search method that matched them, and each result shows its official code and name, its credits, and whether the course is active. **Active only** leaves inactive courses out of the results.
+- **Compare** places two courses in the slots A and B and reports how they relate. The report holds five percentage meters and one verdict, from **Heavily overlapping** to **Unrelated**, and it states that the comparison is course information analysis rather than official equivalence.
+- **Prerequisites** draws the prerequisite graph of one course. The **Recommended** toggle includes recommended prerequisites, and **Inferred** includes prerequisites found by analysis. Excluding a course blocks routes through that course, while its prerequisites can contribute through other branches. **Find minimum route** calculates a temporary route with the fewest credits beyond the chosen basis.
+- **Discover** holds two lists drawn from a chosen basis: **Next courses**, whose prerequisites your courses cover, and **Recommended**, courses whose teaching text is similar to your courses. The basis is your completed courses or every selected course. **All** lists a next course when the basis covers every one of its prerequisites, and **At least one** lists it when any one is covered.
+- **Structure of studies** follows the official structure of a degree programme or module. **Choose root** sets the programme at the top, and a selected course that belongs to no module appears under **Unplaced studies**.
+
+![The Search tab with the query field, the Active only toggle, and a list of five results. Each result shows its official code and name, the Substring match mark, its credits, and an active label, with the five tabs, Docs, the profile control, and the language control in the top bar.](/docs/screenshots/search-course-list.png)
+
+## Profiles and shared course state
+
+A profile is one named set of the app state: the language, the open tab, the selected and completed courses, and the settings of each tab. A browser with no saved state starts with one profile named My plan.
+
+The selection and the completion are shared by all five tabs, so a course selected in one tab is selected in every other. Each course card opens the same menu, with **Add to comparison**, **Open prerequisite graph**, **Add to Unplaced studies**, **Mark completed**, and **Open in Sisu**. Marking a course completed also selects it, and unmarking the completion leaves it selected.
+
+The profile control opens the profile list, which shows the selected and completed counts of each profile and holds the rename and delete controls. The language control switches the interface between FI and EN, and a course name follows the chosen language when the catalogue holds one for it.
+
+![The profile control open, listing the profiles My plan and Alternative plan with their selected and completed counts and their rename and delete controls. Below the list is a New profile form with a name field and a Save button, and the FI and EN language control sits beside the profile control.](/docs/screenshots/profile-controls.png)
+
+## Official and inferred information
+
+The app shows course and module information as the university publishes it. Prerequisites that the university lists are official prerequisites. Prerequisites found by analysis of teaching text are shown apart from them, while **Inferred** is on, and each one is marked **inferred**.
+
+A comparison states that it is course information analysis rather than official equivalence. A next course that is listed only because of inferred prerequisites carries the mark **inferred**. A recommended course's similarity meter shows the note **Teaching text includes derived translations** when the text compared on either side comes from a translation.
+
+TUNI Course Explorer is an independent project that is not affiliated with Tampere University, and [Licence](/docs/reference/licence.md) states the terms that apply to the university's curriculum material.
+
+## Where to read more
+
+- [Quickstart](/docs/guides/README.md) walks through a first session, and the guides beside it explain each tab, profiles, and the language control step by step.
+- [Architecture](/docs/architecture/README.md) explains how the browser app, the read-only web server, the prepared data, and the administration command fit together.
+- [Backend](/docs/backend/README.md) explains how the official catalogue and its derived text, vectors, and inferred prerequisites are prepared and read.
+- [Reference](/docs/reference/README.md) explains how to read the vocabulary of the documentation, and the [Glossary](/docs/reference/glossary.md) defines every term.

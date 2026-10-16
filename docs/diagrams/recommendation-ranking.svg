@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 720" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Recommendation ranking</title>
+  <desc id="d">The content and learning-outcomes chunks of the basis enter a nearest chunk search,
+  whose hits choose the candidates and order the pool. The pool leaves out the basis courses and the
+  next courses, and every candidate is then measured over all of its descriptive chunks against the
+  trimmed basis profile. A candidate below the relatedness floor is left out, a candidate that
+  duplicates one basis course is dropped, the whole-basis overlap reduces the score, and the list is
+  ordered by score, then relatedness, then name.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="720" rx="12" fill="#232434"/>
+
+  <rect x="336" y="48" width="288" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="74" text-anchor="middle" font-size="16" fill="#ececf2">Basis chunks</text>
+  <text x="480" y="96" text-anchor="middle" font-size="14" fill="#a3a4b8">content and outcomes</text>
+
+  <rect x="336" y="144" width="288" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="170" text-anchor="middle" font-size="16" fill="#ececf2">Nearest chunk search</text>
+  <text x="480" y="192" text-anchor="middle" font-size="14" fill="#a3a4b8">per basis chunk</text>
+
+  <rect x="336" y="240" width="288" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="266" text-anchor="middle" font-size="16" fill="#ececf2">Candidate pool</text>
+  <text x="480" y="288" text-anchor="middle" font-size="14" fill="#a3a4b8">minus basis and next courses</text>
+
+  <rect x="336" y="336" width="288" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="362" text-anchor="middle" font-size="16" fill="#ececf2">Profile relatedness</text>
+  <text x="480" y="384" text-anchor="middle" font-size="14" fill="#a3a4b8">trimmed basis profile</text>
+
+  <rect x="336" y="432" width="288" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="458" text-anchor="middle" font-size="16" fill="#ececf2">Near-duplicate rejection</text>
+  <text x="480" y="480" text-anchor="middle" font-size="14" fill="#a3a4b8">per basis course</text>
+
+  <rect x="336" y="528" width="288" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="554" text-anchor="middle" font-size="16" fill="#ececf2">Overlap penalty score</text>
+  <text x="480" y="576" text-anchor="middle" font-size="14" fill="#a3a4b8">penalty on the score</text>
+
+  <rect x="336" y="624" width="288" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="650" text-anchor="middle" font-size="16" fill="#ececf2">Ordering</text>
+  <text x="480" y="672" text-anchor="middle" font-size="14" fill="#a3a4b8">score, then relatedness</text>
+
+  <line x1="480" y1="112" x2="480" y2="144" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="494" y="133" font-size="14" fill="#a3a4b8">query vectors</text>
+
+  <line x1="480" y1="208" x2="480" y2="240" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="494" y="229" font-size="14" fill="#a3a4b8">aggregate best score</text>
+
+  <line x1="480" y1="304" x2="480" y2="336" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="494" y="325" font-size="14" fill="#a3a4b8">candidate chunks</text>
+
+  <line x1="480" y1="400" x2="480" y2="432" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="494" y="421" font-size="14" fill="#a3a4b8">above the floor</text>
+
+  <line x1="480" y1="496" x2="480" y2="528" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="494" y="517" font-size="14" fill="#a3a4b8">surviving candidates</text>
+
+  <line x1="480" y1="592" x2="480" y2="624" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="494" y="613" font-size="14" fill="#a3a4b8">scored candidates</text>
+</svg>

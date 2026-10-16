@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 688" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Comparison meters</title>
+  <desc id="d">Two courses enter the comparison through the stored chunk vectors of their
+  representative versions. Every vector is centred by subtracting the hub of its teaching-text
+  field: the embedding hub for a name or content chunk and the outcomes hub for a learning-outcomes
+  chunk. Five meters then report overall relatedness, content similarity, learning-outcome
+  similarity, and overlap in each direction. The strongest directional overlap and otherwise the
+  overall relatedness decide the verdict.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="688" rx="12" fill="#232434"/>
+
+  <rect x="40" y="96" width="140" height="40" rx="8" fill="#2e3045" stroke="#4a4c6b"
+        stroke-width="1.5"/>
+  <text x="110" y="122" text-anchor="middle" font-size="16" fill="#ececf2">Course A</text>
+
+  <rect x="40" y="176" width="140" height="40" rx="8" fill="#2e3045" stroke="#4a4c6b"
+        stroke-width="1.5"/>
+  <text x="110" y="202" text-anchor="middle" font-size="16" fill="#ececf2">Chunks of A</text>
+
+  <rect x="40" y="300" width="140" height="40" rx="8" fill="#2e3045" stroke="#4a4c6b"
+        stroke-width="1.5"/>
+  <text x="110" y="326" text-anchor="middle" font-size="16" fill="#ececf2">Course B</text>
+
+  <rect x="40" y="380" width="140" height="40" rx="8" fill="#2e3045" stroke="#4a4c6b"
+        stroke-width="1.5"/>
+  <text x="110" y="406" text-anchor="middle" font-size="16" fill="#ececf2">Chunks of B</text>
+
+  <rect x="260" y="224" width="220" height="160" rx="8" fill="#2e3045" stroke="#a98ae0"
+        stroke-width="1.5"/>
+  <text x="370" y="300" text-anchor="middle" font-size="16" fill="#ececf2">Hub centring</text>
+  <text x="370" y="322" text-anchor="middle" font-size="14" fill="#a3a4b8">minus each field's hub</text>
+
+  <rect x="590" y="64" width="196" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b"
+        stroke-width="1.5"/>
+  <text x="688" y="90" text-anchor="middle" font-size="14" fill="#ececf2">Overall relatedness</text>
+  <text x="688" y="112" text-anchor="middle" font-size="14" fill="#a3a4b8">whole text</text>
+
+  <rect x="590" y="160" width="196" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b"
+        stroke-width="1.5"/>
+  <text x="688" y="186" text-anchor="middle" font-size="14" fill="#ececf2">Content similarity</text>
+  <text x="688" y="208" text-anchor="middle" font-size="14" fill="#a3a4b8">content only</text>
+
+  <rect x="590" y="256" width="196" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b"
+        stroke-width="1.5"/>
+  <text x="688" y="282" text-anchor="middle" font-size="14" fill="#ececf2">Learning-outcome</text>
+  <text x="688" y="304" text-anchor="middle" font-size="14" fill="#a3a4b8">similarity</text>
+
+  <rect x="590" y="352" width="196" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b"
+        stroke-width="1.5"/>
+  <text x="688" y="378" text-anchor="middle" font-size="14" fill="#ececf2">Overlap: A in B</text>
+  <text x="688" y="400" text-anchor="middle" font-size="14" fill="#a3a4b8">share of A</text>
+
+  <rect x="590" y="448" width="196" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b"
+        stroke-width="1.5"/>
+  <text x="688" y="474" text-anchor="middle" font-size="14" fill="#ececf2">Overlap: B in A</text>
+  <text x="688" y="496" text-anchor="middle" font-size="14" fill="#a3a4b8">share of B</text>
+
+  <rect x="656" y="592" width="280" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b"
+        stroke-width="1.5"/>
+  <text x="796" y="618" text-anchor="middle" font-size="16" fill="#ececf2">Verdict</text>
+  <text x="796" y="640" text-anchor="middle" font-size="14" fill="#a3a4b8">overlap, then relatedness</text>
+
+  <line x1="110" y1="136" x2="110" y2="176" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="110" y1="340" x2="110" y2="380" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+
+  <polyline points="180,196 220,196 220,264 260,264" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <polyline points="180,400 240,400 240,344 260,344" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <polyline points="480,240 500,240 500,96 590,96" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <polyline points="480,272 580,272 580,192 590,192" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <polyline points="480,304 540,304 540,288 590,288" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <polyline points="480,336 560,336 560,384 590,384" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <polyline points="480,368 520,368 520,480 590,480" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <polyline points="786,96 890,96 890,592" fill="none" stroke="#a3a4b8" stroke-width="1.5"
+            marker-end="url(#arrow)"/>
+  <polyline points="786,384 820,384 820,592" fill="none" stroke="#a3a4b8" stroke-width="1.5"
+            marker-end="url(#arrow)"/>
+  <line x1="750" y1="512" x2="750" y2="592" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+</svg>

@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 712" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">System context of TUNI Course Explorer</title>
+  <desc id="d">The browser app and the web server form the request path, which reads the PostgreSQL
+  database with pgvector and embeds query text through the embedding service. The administration
+  command and the worker form the preparation path, which fills the selected dataset. The ingestion
+  stage reads the public curriculum source, and the worker runs the translation and inference stages
+  on its copy. The accent outline marks the request path.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="712" rx="12" fill="#232434"/>
+
+  <rect x="64" y="56" width="320" height="256" rx="12" fill="none"
+        stroke="#a98ae0" stroke-width="1.5"/>
+  <text x="80" y="88" font-size="16" fill="#a98ae0">Request path</text>
+
+  <rect x="96" y="104" width="256" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="224" y="130" text-anchor="middle" font-size="16" fill="#ececf2">Browser app</text>
+  <text x="224" y="152" text-anchor="middle" font-size="14" fill="#a3a4b8">Browser state</text>
+
+  <rect x="96" y="216" width="256" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="224" y="242" text-anchor="middle" font-size="16" fill="#ececf2">Web server</text>
+  <text x="224" y="264" text-anchor="middle" font-size="14" fill="#a3a4b8">Read-only API and app shell</text>
+
+  <rect x="560" y="104" width="320" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="720" y="130" text-anchor="middle" font-size="16" fill="#ececf2">Embedding service</text>
+  <text x="720" y="152" text-anchor="middle" font-size="14" fill="#a3a4b8">Pinned embedding model</text>
+
+  <rect x="560" y="216" width="320" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="720" y="242" text-anchor="middle" font-size="16" fill="#ececf2">PostgreSQL with pgvector</text>
+  <text x="720" y="264" text-anchor="middle" font-size="14" fill="#a3a4b8">Selected dataset</text>
+
+  <rect x="96" y="344" width="280" height="40" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="236" y="370" text-anchor="middle" font-size="16" fill="#ececf2">Public curriculum source</text>
+
+  <rect x="64" y="416" width="400" height="264" rx="12" fill="none"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="80" y="448" font-size="16" fill="#a3a4b8">Preparation path</text>
+
+  <rect x="96" y="472" width="256" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="224" y="498" text-anchor="middle" font-size="16" fill="#ececf2">Administration command</text>
+  <text x="224" y="520" text-anchor="middle" font-size="14" fill="#a3a4b8">Operator menu and stages</text>
+
+  <rect x="96" y="584" width="256" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="224" y="610" text-anchor="middle" font-size="16" fill="#ececf2">Worker</text>
+  <text x="224" y="632" text-anchor="middle" font-size="14" fill="#a3a4b8">Translation and inference</text>
+
+  <line x1="224" y1="168" x2="224" y2="216" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <text x="238" y="196" font-size="14" fill="#a3a4b8">App requests</text>
+
+  <polyline points="352,264 560,264" fill="none" stroke="#a3a4b8" stroke-width="1.5"
+            marker-end="url(#arrow)"/>
+  <text x="404" y="288" font-size="14" fill="#a3a4b8">Reads the dataset</text>
+
+  <polyline points="352,232 500,232 500,136 560,136" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="516" y="200" font-size="14" fill="#a3a4b8">Embeds query text</text>
+
+  <line x1="280" y1="384" x2="280" y2="472" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <text x="300" y="440" font-size="14" fill="#a3a4b8">Published data</text>
+
+  <line x1="224" y1="536" x2="224" y2="584" stroke="#a3a4b8" stroke-width="1.5"
+        marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text x="238" y="565" font-size="14" fill="#a3a4b8">Copy out and back</text>
+
+  <polyline points="352,504 928,504 928,248 880,248" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="912" y="330" text-anchor="end" font-size="14" fill="#a3a4b8">Writes the selected dataset</text>
+</svg>

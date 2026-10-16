@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 672" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Representative version selection</title>
+  <desc id="d">Each version of a course keeps its greatest curriculum-period membership year at or
+  before the current academic year. A version listed only after the current academic year is left
+  out, and a course with no remaining version has no representative. The remaining candidates are
+  ordered by the current academic year, then by the greatest year inside the activity window, then by
+  the greatest earlier year. Ties break on the greater source modification ordinal and then on the
+  greatest exact source version identity.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="672" rx="12" fill="#232434"/>
+
+  <rect x="272" y="48" width="360" height="40" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="452" y="74" text-anchor="middle" font-size="16" fill="#ececf2">Versions of one course</text>
+
+  <rect x="272" y="120" width="360" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="452" y="146" text-anchor="middle" font-size="16" fill="#ececf2">Listed at or before</text>
+  <text x="452" y="168" text-anchor="middle" font-size="14" fill="#a3a4b8">the current academic year?</text>
+
+  <rect x="692" y="120" width="240" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="812" y="146" text-anchor="middle" font-size="16" fill="#ececf2">Version left out</text>
+  <text x="812" y="168" text-anchor="middle" font-size="14" fill="#a3a4b8">Only future listings</text>
+
+  <rect x="272" y="216" width="360" height="40" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="452" y="242" text-anchor="middle" font-size="16" fill="#ececf2">Keep each version's greatest year</text>
+
+  <rect x="272" y="288" width="360" height="40" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="452" y="314" text-anchor="middle" font-size="16" fill="#ececf2">Prefer a current-year version</text>
+
+  <rect x="272" y="360" width="360" height="40" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="452" y="386" text-anchor="middle" font-size="16" fill="#ececf2">Then the greatest window year</text>
+
+  <rect x="272" y="432" width="360" height="40" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="452" y="458" text-anchor="middle" font-size="16" fill="#ececf2">Then the greatest earlier year</text>
+
+  <rect x="272" y="504" width="360" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="452" y="530" text-anchor="middle" font-size="16" fill="#ececf2">Break ties deterministically</text>
+  <text x="452" y="552" text-anchor="middle" font-size="14" fill="#a3a4b8">ordinal, then version id</text>
+
+  <rect x="272" y="600" width="360" height="40" rx="8" fill="#2e3045" stroke="#a98ae0" stroke-width="1.5"/>
+  <text x="452" y="626" text-anchor="middle" font-size="16" fill="#ececf2">The representative version</text>
+
+  <line x1="452" y1="88" x2="452" y2="120" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="452" y1="184" x2="452" y2="216" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="452" y1="256" x2="452" y2="288" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="452" y1="328" x2="452" y2="360" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="452" y1="400" x2="452" y2="432" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="452" y1="472" x2="452" y2="504" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="452" y1="568" x2="452" y2="600" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="632" y1="152" x2="692" y2="152" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <text x="662" y="140" text-anchor="middle" font-size="14" fill="#a3a4b8">No</text>
+  <text x="464" y="204" font-size="14" fill="#a3a4b8">Yes</text>
+</svg>
