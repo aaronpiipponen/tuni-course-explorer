@@ -628,14 +628,21 @@ class EmbeddingSettings(EmbeddingRuntimeSettings):
 
     @field_validator("embedding_hub_vector", "embedding_outcomes_hub_vector")
     @classmethod
-    def validate_hub_vector(cls, value: tuple[float, ...]) -> tuple[float, ...]:
-        """Require one finite hub vector at the fixed embedding dimension."""
+    def validate_hub_vector(
+        cls, value: tuple[float, ...], info: ValidationInfo
+    ) -> tuple[float, ...]:
+        """Require one finite hub vector at the fixed embedding dimension.
+
+        The failure message names the field under validation, so a malformed value reports the
+        setting it came from.
+        """
+        setting_name = (info.field_name or "").upper()
         if len(value) != COURSE_EMBEDDING_DIMENSION:
             raise ValueError(
-                f"EMBEDDING_HUB_VECTOR must have exactly {COURSE_EMBEDDING_DIMENSION} components"
+                f"{setting_name} must have exactly {COURSE_EMBEDDING_DIMENSION} components"
             )
         if any(not math.isfinite(component) for component in value):
-            raise ValueError("EMBEDDING_HUB_VECTOR components must be finite")
+            raise ValueError(f"{setting_name} components must be finite")
         return value
 
 

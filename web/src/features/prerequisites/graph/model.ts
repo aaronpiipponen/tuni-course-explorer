@@ -132,9 +132,11 @@ export function buildGraphModel(
         item.module.name_en,
         item.module.code ?? uiText(language, "module"),
       ),
-      subtitle: uiText(language, "{count} courses", {
-        count: item.member_courses.length,
-      }),
+      subtitle: uiText(
+        language,
+        item.member_courses.length === 1 ? "{count} course" : "{count} courses",
+        { count: item.member_courses.length },
+      ),
       module: item,
       members: item.member_courses,
     });

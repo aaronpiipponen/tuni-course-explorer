@@ -27,14 +27,12 @@ function config() {
       {
         title: "Guides",
         description: "Selected guides.",
-        pages: [
-          {
-            id: "page",
-            path: "docs/guide/page.md",
-            nav: "Guide",
-            children: [],
-          },
-        ],
+        page: {
+          id: "page",
+          path: "docs/guide/page.md",
+          nav: "Guide",
+          children: [],
+        },
       },
     ],
     popular: ["page"],
@@ -59,7 +57,7 @@ test("publishes only config-listed documents in navigation order", async (t) => 
   assert.equal(registry.pages.page.text.includes("Private selection"), false);
 
   const missing = config();
-  missing.sections[0].pages[0].path = "docs/guide/absent.md";
+  missing.sections[0].page.path = "docs/guide/absent.md";
   const missingRoot = await selectedTree(t, {
     config: missing,
     files: { "docs/guide/home.md": "# Home\n\nWelcome." },
@@ -84,7 +82,7 @@ test("publishes only config-listed documents in navigation order", async (t) => 
   );
 
   const protectedSource = config();
-  protectedSource.sections[0].pages[0].path = "docs/USER-OWNED-TODO.md";
+  protectedSource.sections[0].page.path = "docs/USER-OWNED-TODO.md";
   const protectedRoot = await selectedTree(t, {
     config: protectedSource,
     files: {
@@ -126,8 +124,8 @@ test("builds an empty Home from a plain directory using source metadata", async 
 
 test("preserves Markdown cross-page and heading destinations", async (t) => {
   const settings = config();
-  settings.sections[0].pages[0].path = "docs/guide/first.md";
-  settings.sections[0].pages[0].children = [
+  settings.sections[0].page.path = "docs/guide/first.md";
+  settings.sections[0].page.children = [
     { id: "second", path: "docs/guide/second.md", nav: "Second", children: [] },
   ];
   const root = await selectedTree(t, {
@@ -170,7 +168,7 @@ test("does not turn Markdown into executable HTML", async (t) => {
 
 test("supports three-level navigation and rejects deeper nesting", async (t) => {
   const settings = config();
-  settings.sections[0].pages[0].children = [
+  settings.sections[0].page.children = [
     {
       id: "child",
       path: "docs/guide/child.md",
@@ -203,7 +201,7 @@ test("supports three-level navigation and rejects deeper nesting", async (t) => 
   assert.equal(registry.pages.grandchild.text.includes("Deep."), true);
 
   const deep = config();
-  deep.sections[0].pages[0].children = [
+  deep.sections[0].page.children = [
     {
       id: "child",
       path: "docs/guide/child.md",
@@ -240,8 +238,8 @@ test("supports three-level navigation and rejects deeper nesting", async (t) => 
 
 test("resolves root-relative links and images from nested pages", async (t) => {
   const settings = config();
-  settings.sections[0].pages[0].path = "docs/guide/a/b/first.md";
-  settings.sections[0].pages[0].children = [
+  settings.sections[0].page.path = "docs/guide/a/b/first.md";
+  settings.sections[0].page.children = [
     { id: "second", path: "docs/guide/second.md", nav: "Second", children: [] },
   ];
   const root = await selectedTree(t, {

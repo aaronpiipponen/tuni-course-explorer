@@ -324,6 +324,10 @@ export const UI_TEXT = {
     en: "basis · {basis} · {count} courses",
     fi: "perusta · {basis} · {count} kurssia",
   },
+  "basis · {basis} · {count} course": {
+    en: "basis · {basis} · {count} course",
+    fi: "perusta · {basis} · {count} kurssi",
+  },
   "+{count} more": { en: "+{count} more", fi: "+{count} lisää" },
   "Loading course details…": {
     en: "Loading course details…",
@@ -332,6 +336,10 @@ export const UI_TEXT = {
   "{total} cr total · {count} courses": {
     en: "{total} cr total · {count} courses",
     fi: "{total} op yhteensä · {count} kurssia",
+  },
+  "{total} cr total · {count} course": {
+    en: "{total} cr total · {count} course",
+    fi: "{total} op yhteensä · {count} kurssi",
   },
   "Calculating recommendations…": {
     en: "Calculating recommendations…",
@@ -436,6 +444,10 @@ export const UI_TEXT = {
   fulfilled: { en: "fulfilled", fi: "täyttynyt" },
   module: { en: "module", fi: "moduuli" },
   members: { en: "members", fi: "jäsenet" },
+  "total · {count} course": {
+    en: "total · {count} course",
+    fi: "yhteensä · {count} kurssi",
+  },
   "total · {count} courses": {
     en: "total · {count} courses",
     fi: "yhteensä · {count} kurssia",

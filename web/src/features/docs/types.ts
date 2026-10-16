@@ -21,7 +21,8 @@ export type DocsPage = {
 export type DocsSection = {
   title: string;
   description: string;
-  pages: readonly DocsPageId[];
+  /** The page the section opens on, with every other page of the section nested below it. */
+  page: DocsPageId;
 };
 export type DocsRegistry = {
   pages: Readonly<Record<DocsPageId, DocsPage>>;

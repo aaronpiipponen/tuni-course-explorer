@@ -1,6 +1,32 @@
-/** Ephemeral plain-substring search over generated page titles and Markdown text. */
+/** Ephemeral plain-substring search over generated page titles and Markdown text, title matches first. */
 import { useEffect, useRef, useState } from "react";
-import { DOCS_ORDER, DOCS_PAGES } from "./registry";
+import { DOCS_ORDER, DOCS_PAGES, type DocsPageId } from "./registry";
+
+/**
+ * Return the pages whose title or text contains the query, title matches first.
+ *
+ * A title that starts with the query ranks before a title that contains it, and both rank before
+ * a page that matches only in its text. Pages in the same rank keep their navigation order.
+ */
+function matchPages(query: string): { id: DocsPageId; snippet: string }[] {
+  if (!query) return [];
+  const ranked = ["home", ...DOCS_ORDER].flatMap((id) => {
+    const page = DOCS_PAGES[id];
+    const title = page.title.toLocaleLowerCase();
+    const text = `${page.title} ${page.text}`;
+    const at = text.toLocaleLowerCase().indexOf(query);
+    if (!title.includes(query) && at < 0) return [];
+    const rank = title.startsWith(query) ? 0 : title.includes(query) ? 1 : 2;
+    const snippet =
+      at >= 0
+        ? `…${text.slice(Math.max(0, at - 40), at + 90)}…`
+        : (page.section ?? "");
+    return [{ id, snippet, rank }];
+  });
+  return ranked
+    .sort((a, b) => a.rank - b.rank)
+    .map(({ id, snippet }) => ({ id, snippet }));
+}
 
 export function DocsSearch() {
   const [query, setQuery] = useState("");
@@ -8,24 +34,7 @@ export function DocsSearch() {
   const root = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const value = query.trim().toLocaleLowerCase();
-  const matches = value
-    ? ["home", ...DOCS_ORDER].flatMap((id) => {
-        const page = DOCS_PAGES[id];
-        const text = `${page.title} ${page.text}`;
-        const at = text.toLocaleLowerCase().indexOf(value);
-        return page.title.toLocaleLowerCase().includes(value) || at >= 0
-          ? [
-              {
-                id,
-                snippet:
-                  at >= 0
-                    ? `…${text.slice(Math.max(0, at - 40), at + 90)}…`
-                    : (page.section ?? ""),
-              },
-            ]
-          : [];
-      })
-    : [];
+  const matches = matchPages(value);
 
   useEffect(() => {
     const outside = (event: MouseEvent) => {

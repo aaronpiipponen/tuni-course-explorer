@@ -105,10 +105,9 @@ export async function buildWiki({ repoRoot }) {
       section?.description,
       `description for ${title}`,
     );
-    if (!Array.isArray(section.pages))
-      fail(`pages for ${title} must be an array`);
-    for (const page of section.pages)
-      addPage(page, null, { title, description }, 1);
+    if (!section.page || typeof section.page !== "object")
+      fail(`page for ${title} must be an object`);
+    addPage(section.page, null, { title, description }, 1);
   }
   if (
     !Array.isArray(config.popular) ||
@@ -257,20 +256,16 @@ export async function buildWiki({ repoRoot }) {
       section: page.section?.title ?? null,
     };
   }
-  const sections = config.sections.map(
-    ({ title, description, pages: sectionPages }) => ({
-      title,
-      description,
-      pages: sectionPages.map(({ id }) => id),
-    }),
-  );
+  const sections = config.sections.map(({ title, description, page }) => ({
+    title,
+    description,
+    page: page.id,
+  }));
   const flattenIds = (page) => [
     page.id,
     ...(page.children ?? []).flatMap(flattenIds),
   ];
-  const order = config.sections.flatMap(({ pages: sectionPages }) =>
-    sectionPages.flatMap(flattenIds),
-  );
+  const order = config.sections.flatMap(({ page }) => flattenIds(page));
   return {
     registry: {
       pages: registryPages,

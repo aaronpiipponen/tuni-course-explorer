@@ -26,7 +26,12 @@ export function MemberPanel({
             <small>{t("members")}</small>
             <b>{node?.title}</b>
             <span>
-              {t("total · {count} courses", { count: members.length })}
+              {t(
+                members.length === 1
+                  ? "total · {count} course"
+                  : "total · {count} courses",
+                { count: members.length },
+              )}
             </span>
           </div>
           <button className="pill-btn" type="button" onClick={onClose}>

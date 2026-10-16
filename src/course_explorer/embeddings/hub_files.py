@@ -3,12 +3,14 @@
 The catalogue hub is the mean of every current chunk vector of the represented courses, and the
 outcomes hub is the same mean over the learning-outcome chunks. Both read only from complete current
 embedding coverage, so a dataset whose desired chunks are not all completed under the configured
-embedding contract fails before any file is written.
+embedding contract fails before any file is written. The two files are written as one publish, so
+both destinations change together or not at all.
 """
 
 from __future__ import annotations
 
 import json
+import os
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -112,3 +114,22 @@ def write_hub_file(path: Path, hub: Sequence[float]) -> None:
     path.write_text(
         json.dumps(list(hub), separators=(",", ":"), ensure_ascii=True) + "\n", encoding="utf-8"
     )
+
+
+def write_hub_files(catalogue_path: Path, outcomes_path: Path, hubs: EmbeddingHubs) -> None:
+    """Publish both hubs so a failure leaves neither destination updated.
+
+    Each hub is written to a temporary file beside its destination, then both temporary files
+    replace their destinations. Every temporary file is removed, so the two destinations hold the
+    written hubs together or keep the content they had when the publish started.
+    """
+    targets = (catalogue_path, outcomes_path)
+    temporary_paths = tuple(path.with_name(f"{path.name}.tmp") for path in targets)
+    try:
+        for temporary, hub in zip(temporary_paths, (hubs.catalogue, hubs.outcomes), strict=True):
+            write_hub_file(temporary, hub)
+        for temporary, path in zip(temporary_paths, targets, strict=True):
+            os.replace(temporary, path)
+    finally:
+        for temporary in temporary_paths:
+            temporary.unlink(missing_ok=True)

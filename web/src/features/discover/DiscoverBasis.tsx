@@ -44,10 +44,12 @@ export function DiscoverBasis({
     >
       <div className="discover-basis-summary">
         <span className="eyebrow">
-          {t("basis · {basis} · {count} courses", {
-            basis: basisLabel,
-            count: courseIds.length,
-          })}
+          {t(
+            courseIds.length === 1
+              ? "basis · {basis} · {count} course"
+              : "basis · {basis} · {count} courses",
+            { basis: basisLabel, count: courseIds.length },
+          )}
         </span>
         <div className="discover-chips">
           {courses.slice(0, 4).map((course) => (
@@ -77,10 +79,12 @@ export function DiscoverBasis({
         eyebrow={`// ${t("basis {basis}", { basis: basisLabel })}`}
       >
         <p className="discover-total">
-          {t("{total} cr total · {count} courses", {
-            total: totalCredits,
-            count: courseIds.length,
-          })}
+          {t(
+            courseIds.length === 1
+              ? "{total} cr total · {count} course"
+              : "{total} cr total · {count} courses",
+            { total: totalCredits, count: courseIds.length },
+          )}
         </p>
         <div className="discover-basis-list">
           {courses.map((course) => (

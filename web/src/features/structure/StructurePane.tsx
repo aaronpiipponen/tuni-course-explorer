@@ -40,15 +40,17 @@ export function StructurePane() {
   const notice = useNotice();
   const closePicker = useCallback(() => setPickerOpen(false), []);
   const choose = (module: Parameters<typeof chooser.choose>[0]) => {
+    const changedRoot = rootGroupId !== null && module.group_id !== rootGroupId;
     void chooser.choose(module).then((success) => {
       if (success) {
         closePicker();
-        notice.show((language) =>
-          uiText(
-            language,
-            "Root changed: customisation discarded, completed courses retained",
-          ),
-        );
+        if (changedRoot)
+          notice.show((language) =>
+            uiText(
+              language,
+              "Root changed: customisation discarded, completed courses retained",
+            ),
+          );
       }
     });
   };

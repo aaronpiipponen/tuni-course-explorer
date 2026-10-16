@@ -33,7 +33,7 @@ from course_explorer.embeddings.hub_files import (
     EmbeddingHubReport,
     compute_embedding_hubs,
     read_current_chunk_vectors,
-    write_hub_file,
+    write_hub_files,
 )
 from course_explorer.embeddings.repository import CourseEmbeddingRepository
 from course_explorer.inference.diagnostics import (
@@ -229,7 +229,8 @@ def run_administrative_hubs() -> EmbeddingHubReport:
     """Compute both embedding hubs from the selected dataset and write their configured files.
 
     Both means are computed before either file is written, so incomplete embedding coverage fails
-    without touching the hub files. The files are the paths ``EMBEDDING_HUB_VECTOR`` and
+    without touching the hub files. The two files are written as one publish, so both destinations
+    change together or not at all. The files are the paths ``EMBEDDING_HUB_VECTOR`` and
     ``EMBEDDING_OUTCOMES_HUB_VECTOR`` reference. A running web server reads the hubs at start.
     """
     root = repository_root()
@@ -238,8 +239,7 @@ def run_administrative_hubs() -> EmbeddingHubReport:
     with database_context(_selected_dataset_settings()) as factory:
         current = read_current_chunk_vectors(factory, load_embedding_runtime_settings())
     hubs = compute_embedding_hubs(current)
-    write_hub_file(root / catalogue_path, hubs.catalogue)
-    write_hub_file(root / outcomes_path, hubs.outcomes)
+    write_hub_files(root / catalogue_path, root / outcomes_path, hubs)
     return EmbeddingHubReport(
         catalogue_path=catalogue_path.as_posix(),
         outcomes_path=outcomes_path.as_posix(),

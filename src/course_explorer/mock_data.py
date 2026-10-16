@@ -48,7 +48,7 @@ from course_explorer.embeddings.generation import (
 from course_explorer.embeddings.hub_files import (
     compute_embedding_hubs,
     read_current_chunk_vectors,
-    write_hub_file,
+    write_hub_files,
 )
 from course_explorer.embeddings.repository import CourseEmbeddingRepository
 from course_explorer.enums import (
@@ -495,8 +495,7 @@ def write_mock_artifacts(
             ],
         },
     )
-    write_hub_file(hubs_dir / _CATALOGUE_HUB_NAME, hubs.catalogue)
-    write_hub_file(hubs_dir / _OUTCOMES_HUB_NAME, hubs.outcomes)
+    write_hub_files(hubs_dir / _CATALOGUE_HUB_NAME, hubs_dir / _OUTCOMES_HUB_NAME, hubs)
 
 
 def run_mock_data_command(

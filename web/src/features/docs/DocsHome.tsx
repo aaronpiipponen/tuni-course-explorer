@@ -1,26 +1,5 @@
-/** Wiki home with configured section panels and the complete sanitized source body. */
-import {
-  DOCS_PAGES,
-  DOCS_POPULAR,
-  DOCS_SECTIONS,
-  type DocsPageId,
-} from "./registry";
-
-function HomePageLink({ id }: { id: DocsPageId }) {
-  const page = DOCS_PAGES[id];
-  return (
-    <li>
-      <a href={`/docs#${id}`}>{page.nav}</a>
-      {page.children.length > 0 && (
-        <ul>
-          {page.children.map((child) => (
-            <HomePageLink key={child} id={child} />
-          ))}
-        </ul>
-      )}
-    </li>
-  );
-}
+/** Wiki home with one card per configured section and the complete sanitized source body. */
+import { DOCS_PAGES, DOCS_POPULAR, DOCS_SECTIONS } from "./registry";
 
 export function DocsHome() {
   return (
@@ -32,17 +11,14 @@ export function DocsHome() {
           dangerouslySetInnerHTML={{ __html: DOCS_PAGES.home.html }}
         />
       </div>
-      {DOCS_SECTIONS.map((section) => (
-        <section className="docs-sec" key={section.title}>
-          <h3>{section.title}</h3>
-          <p>{section.description}</p>
-          <ul>
-            {section.pages.map((id) => (
-              <HomePageLink key={id} id={id} />
-            ))}
-          </ul>
-        </section>
-      ))}
+      <div className="docs-cards">
+        {DOCS_SECTIONS.map((section) => (
+          <a href={`/docs#${section.page}`} key={section.title}>
+            <b>{section.title}</b>
+            <span>{section.description}</span>
+          </a>
+        ))}
+      </div>
       {DOCS_POPULAR.length > 0 && (
         <>
           <h2 className="docs-popular-title" id="popular">

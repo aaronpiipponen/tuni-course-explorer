@@ -16,12 +16,17 @@ export function DocsBreadcrumbs({ pageId }: { pageId: DocsPageId }) {
   const section = DOCS_SECTIONS.find(
     (candidate) => candidate.title === page.section,
   )!;
+  const below = chain.slice(1);
   return (
     <div className="docs-crumbs">
       <a href="/docs#home">{DOCS_PAGES.home.nav}</a>
       <span>/</span>
-      <a href={`/docs#${section.pages[0]}`}>{section.title}</a>
-      {chain.map((id) => (
+      {below.length === 0 ? (
+        section.title
+      ) : (
+        <a href={`/docs#${section.page}`}>{section.title}</a>
+      )}
+      {below.map((id) => (
         <Fragment key={id}>
           <span>/</span>
           {id === pageId ? (

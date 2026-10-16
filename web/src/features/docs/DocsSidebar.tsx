@@ -1,4 +1,5 @@
-/** Persistent config-driven wiki navigation with inert animated child groups. */
+/** Persistent config-driven wiki navigation with independently collapsible sections that open their own page. */
+import { useEffect, useState } from "react";
 import {
   DOCS_PAGES,
   DOCS_SECTIONS,
@@ -53,6 +54,24 @@ function SidebarBranch({
 
 export function DocsSidebar({ pageId }: { pageId: DocsPageId | null }) {
   const ancestors = new Set(pageId ? getDocsAncestors(pageId) : []);
+  const currentSection = pageId ? DOCS_PAGES[pageId].section : null;
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(
+    () => new Set(currentSection ? [currentSection] : []),
+  );
+  useEffect(() => {
+    if (currentSection)
+      setExpanded((previous) =>
+        previous.has(currentSection)
+          ? previous
+          : new Set(previous).add(currentSection),
+      );
+  }, [currentSection]);
+  const toggle = (title: string) =>
+    setExpanded((previous) => {
+      const next = new Set(previous);
+      if (!next.delete(title)) next.add(title);
+      return next;
+    });
   return (
     <aside className="docs-nav">
       <a
@@ -62,20 +81,49 @@ export function DocsSidebar({ pageId }: { pageId: DocsPageId | null }) {
       >
         {DOCS_PAGES.home.nav}
       </a>
-      {DOCS_SECTIONS.map((section) => (
-        <div className="docs-nav-section" key={section.title}>
-          <h6>{section.title}</h6>
-          {section.pages.map((id) => (
-            <SidebarBranch
-              key={id}
-              id={id}
-              pageId={pageId}
-              ancestors={ancestors}
-              depth={1}
-            />
-          ))}
-        </div>
-      ))}
+      {DOCS_SECTIONS.map((section) => {
+        const open = expanded.has(section.title);
+        const root = DOCS_PAGES[section.page];
+        return (
+          <div className="docs-nav-section" key={section.title}>
+            <h6 className={pageId === section.page ? "on" : undefined}>
+              <button
+                type="button"
+                aria-expanded={open}
+                aria-label={section.title}
+                onClick={() => toggle(section.title)}
+              >
+                <i aria-hidden="true">›</i>
+              </button>
+              <a
+                href={`/docs#${section.page}`}
+                aria-current={pageId === section.page ? "page" : undefined}
+                onClick={(event) => {
+                  if (open && pageId === section.page) {
+                    event.preventDefault();
+                    toggle(section.title);
+                  } else if (!open) toggle(section.title);
+                }}
+              >
+                {section.title}
+              </a>
+            </h6>
+            <div className={`docs-subs${open ? " open" : ""}`} inert={!open}>
+              <div>
+                {root.children.map((id) => (
+                  <SidebarBranch
+                    key={id}
+                    id={id}
+                    pageId={pageId}
+                    ancestors={ancestors}
+                    depth={1}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })}
     </aside>
   );
 }
