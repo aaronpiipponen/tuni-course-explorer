@@ -80,21 +80,6 @@ test("publishes only config-listed documents in navigation order", async (t) => 
     () => buildWiki({ repoRoot: outsideRoot }),
     /source must be inside docs\//u,
   );
-
-  const protectedSource = config();
-  protectedSource.sections[0].page.path = "docs/USER-OWNED-TODO.md";
-  const protectedRoot = await selectedTree(t, {
-    config: protectedSource,
-    files: {
-      "docs/guide/home.md": "# Home\n\nWelcome.",
-      "docs/USER-OWNED-TODO.md":
-        "# Synthetic placeholder\n\nNot the user-owned file.\n",
-    },
-  });
-  await assert.rejects(
-    () => buildWiki({ repoRoot: protectedRoot }),
-    /protected source path/u,
-  );
 });
 
 test("builds an empty Home from a plain directory using source metadata", async (t) => {

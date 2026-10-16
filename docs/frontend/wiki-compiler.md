@@ -11,7 +11,7 @@ The configuration is validated before any page is read:
 - `repositoryUrl` must parse as an HTTPS `github.com` URL with no credentials, query or fragment and one owner and repository in the path, and `repositoryRef` must be nonblank text.
 - `home.id` must be `home`, sections must be an array, and every section needs a nonblank title, a nonblank description and a `page` object that is validated as one of its pages.
 - A page needs a nonblank `id` matching `^[a-z0-9]+(?:-[a-z0-9]+)*$` and unique across the selection, a `nav` of at most 32 characters, a source path, and an array of children.
-- A source path holds no backslash and no empty, `.` or `..` segment, is unique across the selection, and is not the one reserved path.
+- A source path holds no backslash and no empty, `.` or `..` segment, and is unique across the selection.
 - A page nested deeper than `maxNavDepth` (3) fails the build.
 - `popular` must be an array of known page identities with no duplicates.
 
@@ -19,7 +19,7 @@ The configuration is validated before any page is read:
 
 ## Source selection and containment
 
-`selected(absolutePath, sourcePath)` resolves the destination with `realpath` first, so a symbolic link cannot satisfy the containment check. It fails when the destination is missing, when the resolved path is outside the repository root, when it is not inside `docs/`, when its extension differs from the extension in the configured path, when it is the reserved path, and when it is not a regular file. It returns the resolved absolute path, the repository-relative path and `updated`, the source's modification time as a date. Every later read uses that resolved path.
+`selected(absolutePath, sourcePath)` resolves the destination with `realpath` first, so a symbolic link cannot satisfy the containment check. It fails when the destination is missing, when the resolved path is outside the repository root, when it is not inside `docs/`, when its extension differs from the extension in the configured path, and when it is not a regular file. It returns the resolved absolute path, the repository-relative path and `updated`, the source's modification time as a date. Every later read uses that resolved path.
 
 ## Markdown compilation
 
@@ -76,7 +76,7 @@ The view components:
 
 | Test file | Covers |
 |---|---|
-| `web/tools/wiki/build.test.mjs` | Only configured pages in navigation order, a missing source, a source outside `docs/` and the reserved path all failing, an empty page built from source metadata, cross-page and same-page destinations, duplicated headings receiving distinct slugs, a script, an event handler and a `javascript:` address not reaching the HTML, three-level navigation with a fourth level failing, root-relative links and images from a nested page, the GitHub `blob` and `tree` fallbacks, a missing image failing, and external and protocol-relative destinations left alone |
+| `web/tools/wiki/build.test.mjs` | Only configured pages in navigation order, a missing source and a source outside `docs/` all failing, an empty page built from source metadata, cross-page and same-page destinations, duplicated headings receiving distinct slugs, a script, an event handler and a `javascript:` address not reaching the HTML, three-level navigation with a fourth level failing, root-relative links and images from a nested page, the GitHub `blob` and `tree` fallbacks, a missing image failing, and external and protocol-relative destinations left alone |
 
 ## Where a change belongs
 

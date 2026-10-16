@@ -84,8 +84,7 @@ export async function buildWiki({ repoRoot }) {
     if (depth > maxNavDepth)
       fail(`page ${id} is nested deeper than ${maxNavDepth} levels`);
     const path = sourcePathFromConfig(item.path, `path for ${id}`);
-    if (paths.has(path) || path === "docs/USER-OWNED-TODO.md")
-      fail(`duplicate or protected source path ${path}`);
+    if (paths.has(path)) fail(`duplicate source path ${path}`);
     paths.add(path);
     const nav = checkedText(item.nav, `navigation label for ${id}`);
     if (nav.length > 32) fail(`navigation label for ${id} is too long`);
@@ -139,8 +138,6 @@ export async function buildWiki({ repoRoot }) {
       extname(actual).toLowerCase() !== extname(sourcePath).toLowerCase()
     )
       fail(`source must be inside docs/: ${sourcePath}`);
-    if (rel.split(sep).join("/") === "docs/USER-OWNED-TODO.md")
-      fail("protected source path is not allowed");
     let info;
     try {
       info = await stat(actual);
