@@ -16,7 +16,7 @@ A read in the browser and the equivalent machine command reach the same command 
 
 ## Course state in the browser
 
-The selected and completed courses, the exclusions, the open tab, and the app language belong to a profile in the browser state, which the browser holds in local storage. A profile holds the settings of each tab as well, so switching the profile rebuilds every tab from the state of the chosen profile.
+The selected and completed courses, the exclusions, and the app language belong to a profile in the browser state, which the browser holds in local storage. A profile holds the settings of each tab as well, so switching the profile rebuilds every tab from the state of the chosen profile. The open tab belongs to the browser tab that shows it.
 
 The web server stores no profile and returns none. The selected and completed courses reach it only as request inputs, and a read that needs courses accepts the canonical course identities and the toggles the browser sends. A course carries one canonical identity, so a selection made in one tab counts the same in every other tab and in every request.
 

@@ -5,12 +5,20 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 
+import httpx
 import pytest
 
 from course_explorer.config import SearchSettings
 from course_explorer.db import session as session_module
 from course_explorer.search import commands as command_module
-from tests.support import settings_factory
+from tests.search._service_support import embedding_settings
+from tests.support import (
+    FakeCurriculum,
+    course,
+    represented_rows,
+    settings_factory,
+    version,
+)
 
 _CLI_SPEC = importlib.util.spec_from_file_location(
     "search", Path(__file__).parents[2] / "scripts" / "search.py"
@@ -29,15 +37,16 @@ def search_settings(semantic: float | str = "0.40", fuzzy: float | str = "80") -
     )
 
 
-def test_unified_search_command_wires_both_services_disposes_engine_and_reports_policy(
+def test_unified_search_command_wires_the_services_disposes_engine_and_returns_the_report(
     monkeypatch,
 ) -> None:
-    """One engine/provider, both composed services, one unified call, and the actual report policy."""
+    """One engine/provider, both composed services, one unified call, and its report returned as-is."""
     engine = type(
         "Engine", (), {"disposed": False, "dispose": lambda self: setattr(self, "disposed", True)}
     )()
     factory = object()
     settings = search_settings(semantic="0.45", fuzzy="70")
+    embedding = embedding_settings()
     calls: list[tuple] = []
 
     class Lookup:
@@ -46,7 +55,9 @@ def test_unified_search_command_wires_both_services_disposes_engine_and_reports_
 
     class Semantic:
         def __init__(self, curriculum, repository, provider, embedding_settings, search_settings):
-            calls.append(("semantic", curriculum, repository, provider, search_settings))
+            calls.append(
+                ("semantic", curriculum, repository, provider, embedding_settings, search_settings)
+            )
 
     class Unified:
         def __init__(self, curriculum, semantic_search, course_lookup, search_settings):
@@ -54,7 +65,7 @@ def test_unified_search_command_wires_both_services_disposes_engine_and_reports_
 
         def search(self, query, **kwargs):
             calls.append(("unified-search", query, kwargs))
-            return ()
+            return expected
 
     class Repository:
         def __init__(self, value):
@@ -70,8 +81,18 @@ def test_unified_search_command_wires_both_services_disposes_engine_and_reports_
         def __exit__(self, *args):
             return None
 
+    expected = command_module.UnifiedSearchReport(
+        display_language="fi",
+        semantic_min_score=0.45,
+        fuzzy_min_score=70,
+        include_inactive=True,
+        semantic_available=False,
+        tier_priority=settings.search_tier_priority,
+        results=(),
+    )
+
     monkeypatch.setattr(command_module, "load_database_settings", lambda: object())
-    monkeypatch.setattr(command_module, "load_embedding_settings", lambda: "embedding-settings")
+    monkeypatch.setattr(command_module, "load_embedding_settings", lambda: embedding)
     monkeypatch.setattr(command_module, "load_search_settings", lambda: settings)
     monkeypatch.setattr(session_module, "create_database_engine", lambda value: engine)
     monkeypatch.setattr(session_module, "create_session_factory", lambda value: factory)
@@ -84,14 +105,8 @@ def test_unified_search_command_wires_both_services_disposes_engine_and_reports_
 
     report = command_module.run_search_command("tensorit", display_language="fi")
 
-    assert report.display_language == "fi"
-    assert report.semantic_min_score == 0.45
-    assert report.fuzzy_min_score == 70
-    assert report.include_inactive is True
-    assert report.tier_priority == settings.search_tier_priority
-    assert report.results == ()
+    assert report is expected
     assert ("repository", factory) in calls
-    assert ("provider", "embedding-settings") in calls
     assert ("lookup", "curriculum", settings) in calls
     assert (
         "unified-search",
@@ -105,7 +120,20 @@ def test_unified_search_command_wires_both_services_disposes_engine_and_reports_
     ) in calls
     semantic_call = next(entry for entry in calls if entry[0] == "semantic")
     assert isinstance(semantic_call[3], Provider)
-    assert semantic_call[4] is settings
+    # The provider gets the query-local projection, and every similarity consumer keeps the
+    # stage's own embedding settings.
+    query_embedding_settings = next(entry[1] for entry in calls if entry[0] == "provider")
+    assert query_embedding_settings is not embedding
+    assert query_embedding_settings.embedding_request_timeout_seconds == (
+        settings.search_embedding_request_timeout_seconds
+    )
+    assert query_embedding_settings.embedding_max_attempts == settings.search_embedding_max_attempts
+    assert query_embedding_settings.embedding_model == embedding.embedding_model
+    assert query_embedding_settings.embedding_hub_vector == embedding.embedding_hub_vector
+    assert embedding.embedding_request_timeout_seconds == 30
+    assert embedding.embedding_max_attempts == 3
+    assert semantic_call[4] is embedding
+    assert semantic_call[5] is settings
     unified_call = next(entry for entry in calls if entry[0] == "unified")
     assert unified_call[1] == "curriculum"
     assert isinstance(unified_call[2], Semantic)
@@ -122,9 +150,7 @@ def test_unified_search_command_wires_both_services_disposes_engine_and_reports_
         fuzzy_min_score=90,
         include_inactive=False,
     )
-    assert override.semantic_min_score == 0.25
-    assert override.fuzzy_min_score == 90
-    assert override.include_inactive is False
+    assert override is expected
     assert (
         "unified-search",
         "tensorit",
@@ -152,6 +178,56 @@ def test_unified_search_command_wires_both_services_disposes_engine_and_reports_
     assert calls == []
 
 
+def test_search_command_limits_query_embedding_to_one_short_attempt(monkeypatch) -> None:
+    """One query embedding request carries the configured short timeout, and one attempt suffices."""
+    engine = type(
+        "Engine", (), {"disposed": False, "dispose": lambda self: setattr(self, "disposed", True)}
+    )()
+    settings = search_settings()
+    embedding = embedding_settings()
+    records = represented_rows(
+        (
+            course(
+                "group-target",
+                version("source-target", code="COMP.CS.100", name_en="Data Structures"),
+            ),
+        )
+    )
+    attempts: list[object] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        attempts.append(request.extensions["timeout"]["read"])
+        raise httpx.ReadTimeout("synthetic query embedding timeout", request=request)
+
+    provider_class = command_module.EmbeddingProvider
+
+    def provider(configured):
+        return provider_class(configured, transport=httpx.MockTransport(handler))
+
+    monkeypatch.setattr(command_module, "EmbeddingProvider", provider)
+    monkeypatch.setattr(command_module, "load_database_settings", lambda: object())
+    monkeypatch.setattr(command_module, "load_embedding_settings", lambda: embedding)
+    monkeypatch.setattr(command_module, "load_search_settings", lambda: settings)
+    monkeypatch.setattr(session_module, "create_database_engine", lambda value: engine)
+    monkeypatch.setattr(session_module, "create_session_factory", lambda value: object())
+    monkeypatch.setattr(
+        command_module,
+        "CurriculumRepository",
+        lambda value: FakeCurriculum((), summaries_by_activity={None: records}),
+    )
+    monkeypatch.setattr(command_module, "SemanticSearchRepository", lambda value: object())
+
+    report = command_module.run_search_command("COMP.CS.100", display_language="fi")
+
+    assert attempts == [settings.search_embedding_request_timeout_seconds]
+    assert attempts == [5.0]
+    assert report.semantic_available is False
+    assert [result.course.group_id for result in report.results] == ["group-target"]
+    assert report.results[0].match_sources == ("exact_code", "substring")
+    assert report.results[0].semantic_score is None
+    assert engine.disposed
+
+
 def test_search_cli_forwards_options_and_prints_one_report(monkeypatch, capsys) -> None:
     """CLI delegates once to the unified command, requires locale, and prints one unified report."""
     expected = command_module.UnifiedSearchReport(
@@ -159,6 +235,7 @@ def test_search_cli_forwards_options_and_prints_one_report(monkeypatch, capsys) 
         semantic_min_score=0.40,
         fuzzy_min_score=80,
         include_inactive=True,
+        semantic_available=False,
         tier_priority=("exact_code", "substring", "fuzzy_name", "semantic"),
         results=(),
     )
@@ -177,7 +254,9 @@ def test_search_cli_forwards_options_and_prints_one_report(monkeypatch, capsys) 
         "fuzzy_min_score": None,
         "include_inactive": True,
     }
-    assert capsys.readouterr().out == expected.model_dump_json() + "\n"
+    printed = capsys.readouterr().out
+    assert printed == expected.model_dump_json() + "\n"
+    assert '"semantic_available":false' in printed
 
     assert (
         _CLI_MODULE.main(

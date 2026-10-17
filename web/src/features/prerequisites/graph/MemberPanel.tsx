@@ -57,7 +57,6 @@ export function MemberPanel({
             {t("Add all module courses to structure")}
           </button>
         )}
-        {freeChoice.prompt}
       </aside>
     </Disclosure>
   );

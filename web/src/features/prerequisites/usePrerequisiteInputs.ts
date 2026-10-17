@@ -1,5 +1,6 @@
 /** One live-profile prerequisite input snapshot shared by both request owners. */
 import { useProfileSelector } from "../../state/useProfileSelector";
+import { useActiveTab } from "../../app/sessionTab";
 import type { PrerequisitesRequest } from "../../api/types";
 
 export function usePrerequisiteInputs(): {
@@ -37,7 +38,7 @@ export function usePrerequisiteInputs(): {
   const { value: excludedNodes } = useProfileSelector(
     (state) => state.prerequisites.excludedNodeKeys,
   );
-  const { value: activeTab } = useProfileSelector((state) => state.activeTab);
+  const activeTab = useActiveTab();
   const request: PrerequisitesRequest | null = root
     ? {
         target_code: root,

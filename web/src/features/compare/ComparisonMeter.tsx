@@ -1,5 +1,6 @@
 /** One comparison percentage row with a cancellable animated bar and null state. */
 import { useEffect, useRef, useState } from "react";
+import { useReducedMotion } from "../../shared/useReducedMotion";
 import { useWording } from "../../shared/useWording";
 
 export function ComparisonMeter({
@@ -14,10 +15,16 @@ export function ComparisonMeter({
   pending: boolean;
 }) {
   const { t } = useWording();
+  const reducedMotion = useReducedMotion();
   const target = value ?? 0;
   const [shown, setShown] = useState(0);
   const displayed = useRef(0);
   useEffect(() => {
+    if (reducedMotion) {
+      displayed.current = target;
+      setShown(target);
+      return;
+    }
     const from = displayed.current;
     const started = performance.now();
     let frame = 0;
@@ -32,7 +39,7 @@ export function ComparisonMeter({
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [target]);
+  }, [target, reducedMotion]);
   return (
     <div
       className={`comparison-meter${!pending && value === null ? " na" : ""}`}
@@ -45,7 +52,11 @@ export function ComparisonMeter({
         <i style={{ width: `${target}%` }} />
       </div>
       <b>
-        {pending ? "–" : value === null ? t("not available") : `${shown} %`}
+        {pending
+          ? "–"
+          : value === null
+            ? t("not available")
+            : `${reducedMotion ? Math.round(target) : shown} %`}
       </b>
     </div>
   );

@@ -48,7 +48,7 @@ Every node in the drawing has one kind, and the kind decides what the node shows
 | Reason | A located reason for a requirement that cannot be resolved | None |
 | Ignored part | A muted note naming a source part that the calculation leaves out | None |
 
-The member panel lists the official member courses and offers **Add all module courses to structure**. The ignored parts are the ones [Prerequisite graph](/docs/backend/prerequisites/prerequisite-graph.md#unresolved-requirements-and-ignored-parts) describes, and each sits beside the node it belongs to.
+The member panel lists the official member courses, and for a module it also offers **Add all module courses to structure**. The ignored parts are the ones [Prerequisite graph](/docs/backend/prerequisites/prerequisite-graph.md#unresolved-requirements-and-ignored-parts) describes, and each sits beside the node it belongs to.
 
 A [recommended prerequisite](/docs/reference/glossary.md#prerequisites-and-routes) is drawn apart from the required ones, as a dashed connection. A course node that only inferred occurrences reach carries the **inferred** mark and a distinct outline, and one that an official occurrence also reaches is drawn as official, so an official prerequisite is never shown as inferred.
 
@@ -64,7 +64,7 @@ The two controls on a node differ by what the mark belongs to.
 
 **Find minimum route** starts one request for the same inputs as the drawing, and the control holds its place in the pane.
 
-The result lives with the pane. A change to the root, the basis, the toggles, the activity scope, the course sets, the marks on the graph, or the open tab clears it back to the plain drawing, and clicking the control again clears it as well. While the request runs, the panel shows **Calculating…** and the connections dim.
+The result lives with the pane. A change to the root, the basis, the toggles, the activity scope, the course sets, the marks on the graph, or the pane leaving the view clears it back to the plain drawing, and clicking the control again clears it as well. While the request runs, the panel shows **Calculating…** and the connections dim.
 
 A result lights its own path. The connections the route selects and the nodes on them are lit in order from the root outward, and everything else is dimmed. The panel header reads the new credits beside the full route credits, an exact route whose new credits are zero reads **Nothing new**, and the route is listed row by row under **Expand** and **Collapse**: a course the route adds, the unexpandable content it charges, and a course that the basis already covers marked done. **Add all missing courses to structure** adds the route's new courses to Unplaced studies.
 

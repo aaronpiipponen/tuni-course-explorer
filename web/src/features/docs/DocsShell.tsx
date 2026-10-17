@@ -1,5 +1,6 @@
 /** Docs route shell joining native hash routing, persistent navigation, article and TOC. */
 import { useEffect, useRef } from "react";
+import { useReducedMotion } from "../../shared/useReducedMotion";
 import { DOCS_PAGES } from "./registry";
 import { useDocsRoute } from "./useDocsRoute";
 import { DocsHeader } from "./DocsHeader";
@@ -9,6 +10,7 @@ import { DocsToc } from "./DocsToc";
 
 export function DocsShell({ returnToApp }: { returnToApp: () => void }) {
   const { pageId, anchor } = useDocsRoute();
+  const reducedMotion = useReducedMotion();
   const previousPage = useRef(pageId);
   const appTitle = useRef(document.title);
   useEffect(() => {
@@ -57,9 +59,11 @@ export function DocsShell({ returnToApp }: { returnToApp: () => void }) {
     }
     if (pageId && anchor)
       requestAnimationFrame(() =>
-        document.getElementById(anchor)?.scrollIntoView({ behavior: "smooth" }),
+        document.getElementById(anchor)?.scrollIntoView({
+          behavior: reducedMotion ? "instant" : "smooth",
+        }),
       );
-  }, [pageId, anchor]);
+  }, [pageId, anchor, reducedMotion]);
   return (
     <div className="docs-shell">
       <DocsHeader returnToApp={returnToApp} />

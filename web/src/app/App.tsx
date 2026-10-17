@@ -4,6 +4,7 @@ import { TopBar } from "./TopBar";
 import { TabCarousel } from "./TabCarousel";
 import { AppFooter } from "./AppFooter";
 import { DocsShell } from "../features/docs/DocsShell";
+import { DOCS_REPOSITORY_URL } from "../features/docs/registry";
 import { usePage } from "./usePage";
 import { useCurrentProfileId } from "../state/useCurrentProfile";
 import { useWording } from "../shared/useWording";
@@ -21,7 +22,7 @@ export function App() {
     <div key={entranceKey} className="app-shell">
       <TopBar openDocs={() => navigate("docs")} />
       <TabCarousel key={currentProfileId} />
-      <AppFooter />
+      <AppFooter repositoryUrl={DOCS_REPOSITORY_URL} />
     </div>
   );
 }

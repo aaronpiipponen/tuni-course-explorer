@@ -49,6 +49,7 @@ class SemanticSearchRead(Protocol):
         self,
         query_embedding: Sequence[float],
         *,
+        hub: Sequence[float],
         min_score: float,
         embedding_configuration_hash: str,
         include_inactive: bool,

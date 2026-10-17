@@ -4,6 +4,7 @@ import type { DocsPageId, DocsRegistry } from "./types";
 
 const typedRegistry = generated as DocsRegistry;
 
+export const DOCS_REPOSITORY_URL = typedRegistry.repositoryUrl;
 export const DOCS_PAGES = typedRegistry.pages;
 export const DOCS_SECTIONS = typedRegistry.sections;
 export const DOCS_ORDER = typedRegistry.order;

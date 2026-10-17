@@ -25,6 +25,8 @@ export type DocsSection = {
   page: DocsPageId;
 };
 export type DocsRegistry = {
+  /** The validated HTTPS GitHub address of the repository, without a trailing slash. */
+  repositoryUrl: string;
   pages: Readonly<Record<DocsPageId, DocsPage>>;
   sections: readonly DocsSection[];
   order: readonly DocsPageId[];

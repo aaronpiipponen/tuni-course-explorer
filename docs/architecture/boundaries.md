@@ -16,7 +16,7 @@ The reason is that the request path serves readers only. Model credentials, stag
 
 ## User state in the browser
 
-The selected and completed courses, the exclusions, the structure edits, the open tab, and the app language live in profiles in the browser's local storage. They reach the server only as request inputs, and a route that needs courses accepts the canonical identities and the toggles the browser sends. The server stores no profile and returns none, so the profiles belong to the browser that holds them.
+The selected and completed courses, the exclusions, the structure edits, and the app language live in profiles in the browser's local storage. They reach the server only as request inputs, and a route that needs courses accepts the canonical identities and the toggles the browser sends. The server stores no profile and returns none, so the profiles belong to the browser that holds them. The open tab lives in the browser tab's own session storage and reaches no server either.
 
 ## Official and inferred data apart
 

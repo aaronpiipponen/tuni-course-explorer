@@ -43,7 +43,13 @@ The two keys in `config/search.toml` set the fuzzy cutoff and the semantic thres
 uv run python scripts/search.py "data structures" --display-language en --active-only
 ```
 
-The command runs one unified search and prints one JSON report with the merged results, the effective fuzzy cutoff, the effective semantic threshold, the activity scope, and the tier order.
+The command runs one unified search and prints one JSON report with the merged results, the effective fuzzy cutoff, the effective semantic threshold, the activity scope, the tier order, and whether semantic matching was available.
+
+## When the query embedding request fails
+
+The semantic method needs a query vector, and a search makes one query embedding request for it. `SEARCH_EMBEDDING_REQUEST_TIMEOUT_SECONDS` in `config/search.toml` is the timeout of that request in seconds and is greater than 0, and the example sets 5. `SEARCH_EMBEDDING_MAX_ATTEMPTS` is its attempt count including the first, at least 1, and the example sets 1. The timeout bounds the network phases of each attempt, so it is not a deadline for the whole search. The two keys are separate from the generation policy of the embedding stage, which `EMBEDDING_REQUEST_TIMEOUT_SECONDS` and `EMBEDDING_MAX_ATTEMPTS` set for its batch requests.
+
+A transport failure, a 429 status, and a status from 500 to 599 are retried while attempts remain, up to the attempt count `SEARCH_EMBEDDING_MAX_ATTEMPTS` sets, with a wait that grows between attempts, and every other non-200 status ends the request at once. The query embedding request fails when no attempt succeeds. When it fails, the search returns the exact-code, substring, and fuzzy matches it found. The report then carries `semantic_available` false, no semantic match source, and no semantic score in any result, and it may carry no result at all. A request that reaches the service and returns no course above the threshold reports `semantic_available` true, because the method ran and found nothing. A malformed successful response, a database failure, and an invalid input are not request failures, and each one ends the search with a failure and no report.
 
 ## Scores and match sources
 
@@ -69,7 +75,7 @@ Whether inactive courses take part is one setting of a request, and every method
 
 ## Validation outcomes
 
-The search refuses a blank query, an app language other than Finnish or English, a semantic threshold outside -1 to 1, and a fuzzy cutoff outside 0 to 100. It decides all four before it loads any settings or reads the database, and its report repeats the thresholds and the inactive-course setting it used.
+The search refuses a blank query, an app language other than Finnish or English, a semantic threshold outside -1 to 1, and a fuzzy cutoff outside 0 to 100. It decides all four before it loads any settings or reads the database, and its report repeats the thresholds, the inactive-course setting, and the semantic availability it used.
 
 ## Other reads over official identity
 
@@ -94,5 +100,7 @@ The Compare, Prerequisites, Discover, and Structure of studies tabs hold courses
 | `SEARCH_TIER_PRIORITY` | The order of the four search methods that sorts merged results. The example sets `exact_code`, `substring`, `fuzzy_name`, and `semantic` in that order. |
 | `SEMANTIC_SEARCH_MIN_SCORE` | The smallest semantic score that returns a course, from -1 to 1. The example sets 0.30. |
 | `FUZZY_SEARCH_MIN_SCORE` | The smallest name-similarity score that returns a course, from 0 to 100. The example sets 80. |
+| `SEARCH_EMBEDDING_REQUEST_TIMEOUT_SECONDS` | The timeout of the one query embedding request a search makes, in seconds and greater than 0. The example sets 5. |
+| `SEARCH_EMBEDDING_MAX_ATTEMPTS` | The attempt count of that query embedding request, the first included, at least 1. The example sets 1. |
 
 The services behind the four methods, the read that the semantic method measures against, and the merge are described in [Search queries and merge](/docs/backend/search-and-discovery/search-queries.md).

@@ -1878,7 +1878,7 @@ _SEARCH_METHODS: tuple[SearchMethod, ...] = (
 
 
 class SearchSettings(ConfiguredSettings):
-    """Validated search, comparison, recommendation, and prerequisite route policy."""
+    """Validated search, query-embedding request, comparison, recommendation, and route policy."""
 
     model_config = SettingsConfigDict(extra="ignore", env_prefix="")
 
@@ -1893,6 +1893,14 @@ class SearchSettings(ConfiguredSettings):
         ge=0,
         le=100,
         allow_inf_nan=False,
+    )
+    search_embedding_request_timeout_seconds: float = Field(
+        validation_alias="SEARCH_EMBEDDING_REQUEST_TIMEOUT_SECONDS",
+        gt=0,
+        allow_inf_nan=False,
+    )
+    search_embedding_max_attempts: int = Field(
+        validation_alias="SEARCH_EMBEDDING_MAX_ATTEMPTS", ge=1
     )
     search_tier_priority: tuple[SearchMethod, ...] = Field(validation_alias="SEARCH_TIER_PRIORITY")
     comparison_name_weight: float = Field(

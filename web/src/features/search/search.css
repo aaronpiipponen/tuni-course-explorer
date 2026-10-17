@@ -103,6 +103,16 @@
 .search-results {
   margin-top: 56px;
 }
+.search-semantic-notice {
+  margin: 0 0 14px;
+  color: rgb(255 255 255 / 55%);
+  font:
+    13px "JetBrains Mono",
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+}
 .search-results .head {
   display: flex;
   align-items: baseline;

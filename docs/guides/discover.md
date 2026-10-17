@@ -11,7 +11,7 @@ The tab opens on **Next courses**, the first of the two lists, chosen by the tab
 
 The **Next courses** list opens with a header holding its name and the number of results, and the **Recommended** list opens with a header reading "recommended for you" and the same count.
 
-![The Discover tab with the Next courses and Recommended list switch, the All and At least one switch, the Completed and Selected basis switch, the Active only toggle and the help button. The basis line names the basis and counts its courses, and one next course row shows the Required and Recommended coverage meters.](/docs/screenshots/discover-next-courses.png)
+![The Discover tab on the At least one mode, with the list switch, the mode switch, the Completed and Selected basis switch, the Active only toggle and the help button. The basis line counts three completed courses with their chips, and the two next-course rows each carry a Required meter, at 100 % and 50 %.](/docs/screenshots/discover-next-courses.png)
 
 ## Set the basis
 
@@ -32,15 +32,15 @@ The **All** and **At least one** switch belongs to the **Next courses** list, an
 
 **Active only** is on by default. While it is on, only active courses are proposed, and turning it off adds inactive courses to both lists. An inactive course that you have selected or completed counts as done either way, so it can cover a prerequisite.
 
-The **?** button opens a drawer that explains the basis, the mode and **Active only**. The coverage rule behind next courses is described in [Next courses](/docs/backend/search-and-discovery/next-courses.md).
+The **?** button opens a drawer that explains the basis, the mode under **Next courses**, **Active only**, and the percentages of the open list: what **Required** and **Recommended** measure under **Next courses**, and what **Similarity** measures under **Recommended**. The drawer also explains the three marks a row can carry: **inferred** means the course is listed only because of inferred prerequisites, **selected** means the course is in your selection but not completed, and **completed** means you marked it completed. The coverage rule behind next courses is described in [Next courses](/docs/backend/search-and-discovery/next-courses.md).
 
 ## Read a result row
 
 Every row is a course card with its code, its name, its credits, an **active** or **inactive** label, and a **completed** or **selected** badge when the course is in your own sets.
 
-- A next course row carries two coverage meters. **Required** is the share of the course's required prerequisites that your basis covers, and **Recommended** is the share of its recommended prerequisites. Each is shown as a whole percentage.
+- A next course row carries a coverage meter for each category that holds course prerequisites. **Required** is the share of the courses of the required prerequisite option your basis covers best, and **Recommended** does the same over its recommended options. Each is shown as a whole percentage, and a category with no course prerequisites shows no meter at all. Under **All** a row carries no coverage meter, because that list shows only courses whose prerequisite requirements your basis satisfies, and a numeric choice requirement can be satisfied by fewer than all of its options. The freed width goes to the course name.
 - A next course that is listed only because of inferred prerequisites carries the **inferred** mark.
-- A recommended row carries one meter, **Similarity**, with the percentage of how close its teaching text is to your basis. Hovering the meter shows the note "Teaching text includes derived translations" when the text compared on either side comes from a translation rather than from official text.
+- A recommended row carries one meter, **Similarity**, with the percentage of how close its teaching text is to your whole basis. Hovering the meter shows the note "Teaching text includes derived translations" when the text compared on either side comes from a translation rather than from official text.
 
 > [!NOTE]
 > The **inferred** mark means that prerequisites found by analysis are what bring the course onto the list. The rest of the row is official course data.

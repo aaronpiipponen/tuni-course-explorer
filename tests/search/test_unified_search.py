@@ -1,19 +1,23 @@
 """Contracts for the unified single-query search composition.
 
 The per-method matching algorithms are proved in `tests/search/test_search_service.py` and
-`tests/search/test_course_lookup.py`. This file records dispatch, merge, tagging, tiering, activity, and
-score-separation behavior through compact recording fakes over real shared-summary DTOs.
+`tests/search/test_course_lookup.py`. This file records dispatch, merge, tagging, tiering, activity,
+score-separation, and report availability behavior through compact recording fakes over real
+shared-summary DTOs.
 """
 
 from __future__ import annotations
 
 from decimal import Decimal
 
+import pytest
+
 from course_explorer.config import SearchSettings
 from course_explorer.curriculum import (
     CourseSummary,
     RepresentedCourseSummary,
 )
+from course_explorer.embeddings.provider import EmbeddingContractError, EmbeddingRequestError
 from course_explorer.search.lookup import FuzzyCourseResult
 from course_explorer.search.service import CourseSearchResult
 from course_explorer.search.unified import UnifiedCourseSearchService
@@ -102,16 +106,21 @@ class FakeLookup:
 
 
 class FakeSemantic:
-    """Recording stand-in for the semantic service returning caller-supplied results."""
+    """Recording stand-in for the semantic service returning caller-supplied results or an error."""
 
-    def __init__(self, results: tuple[CourseSearchResult, ...] = ()) -> None:
+    def __init__(
+        self, results: tuple[CourseSearchResult, ...] = (), error: BaseException | None = None
+    ) -> None:
         self._results = results
+        self._error = error
         self.calls: list[tuple] = []
         self.represented: list[object] = []
 
     def search_courses(self, query, *, min_score=None, include_inactive=True, represented=None):
         self.calls.append(("semantic", query, min_score, include_inactive))
         self.represented.append(represented)
+        if self._error is not None:
+            raise self._error
         return self._results
 
 
@@ -122,10 +131,11 @@ def service(
     substring: tuple[CourseSummary, ...] = (),
     fuzzy: tuple[FuzzyCourseResult, ...] = (),
     semantic: tuple[CourseSearchResult, ...] = (),
+    semantic_error: BaseException | None = None,
     records: tuple[RepresentedCourseSummary, ...] = (),
 ) -> tuple[UnifiedCourseSearchService, FakeLookup, FakeSemantic, FakeCurriculum]:
     lookup = FakeLookup(exact=exact, substring=substring, fuzzy=fuzzy)
-    semantic_service = FakeSemantic(semantic)
+    semantic_service = FakeSemantic(semantic, semantic_error)
     curriculum = FakeCurriculum(records)
     composed = UnifiedCourseSearchService(
         curriculum, semantic_service, lookup, search_settings(priority)
@@ -145,14 +155,19 @@ def test_unified_search_dispatches_every_method_merges_sources_and_preserves_sco
         semantic=(CourseSearchResult(course=shared, score=0.71),),
     )
 
-    results = composed.search(
+    report = composed.search(
         "comp.cs",
         display_language="fi",
         semantic_min_score=0.25,
         fuzzy_min_score=90,
         include_inactive=False,
     )
+    results = report.results
 
+    assert report.semantic_available is True
+    # An explicit override replaces the configured threshold in the report.
+    assert report.semantic_min_score == 0.25
+    assert report.fuzzy_min_score == 90
     assert lookup.calls == [
         ("exact_code", "comp.cs", "fi", False),
         ("substring", "comp.cs", "fi", False),
@@ -190,7 +205,12 @@ def test_unified_search_uses_configured_tiers_then_activity_and_method_order() -
         substring=(substring,),
         semantic=(CourseSearchResult(course=semantic, score=0.5),),
     )
-    results = composed.search("q", display_language="en")
+    report = composed.search("q", display_language="en")
+    assert report.semantic_available is True
+    # With no override the report carries the configured thresholds.
+    assert report.semantic_min_score == 0.30
+    assert report.fuzzy_min_score == 80
+    results = report.results
 
     # Exact tier first (active before inactive, then primary-method position), then substring, then semantic.
     assert [result.course.group_id for result in results] == [
@@ -210,7 +230,7 @@ def test_unified_search_uses_configured_tiers_then_activity_and_method_order() -
         )
     )
     assert [
-        result.course.group_id for result in fuzzy_order.search("q", display_language="en")
+        result.course.group_id for result in fuzzy_order.search("q", display_language="en").results
     ] == [
         "group-fuzzy-high",
         "group-fuzzy-low",
@@ -222,7 +242,9 @@ def test_unified_search_uses_configured_tiers_then_activity_and_method_order() -
         exact=(active_exact,),
         semantic=(CourseSearchResult(course=semantic, score=0.5),),
     )
-    assert [result.course.group_id for result in reordered.search("q", display_language="en")] == [
+    assert [
+        result.course.group_id for result in reordered.search("q", display_language="en").results
+    ] == [
         "group-sem",
         "group-exact-a",
     ]
@@ -232,5 +254,59 @@ def test_unified_search_returns_every_unique_match_without_a_cap() -> None:
     """No cap discards matches, and every unique exact match is returned once."""
     many = tuple(summary(f"group-{index:02d}") for index in range(15))
     composed, _, _, _ = service(exact=many)
-    results = composed.search("q", display_language="fi")
-    assert len(results) == 15
+    report = composed.search("q", display_language="fi")
+    assert len(report.results) == 15
+    # A successful semantic request that matched no course leaves semantic matching available.
+    assert report.semantic_available is True
+
+
+@pytest.mark.parametrize("populated", [True, False])
+def test_unified_search_preserves_lexical_matches_when_embedding_is_unavailable(
+    populated: bool,
+) -> None:
+    """An embedding request failure keeps the lexical matches and reports unavailability."""
+    shared = summary("group-shared", code="COMP.CS.100")
+    exact_only = summary("group-exact", code="COMP.CS.200")
+    substring = summary("group-sub")
+
+    composed, _, semantic, curriculum = service(
+        exact=(shared, exact_only) if populated else (),
+        substring=(substring,) if populated else (),
+        fuzzy=(FuzzyCourseResult(course=shared, score=88.0),) if populated else (),
+        semantic_error=EmbeddingRequestError("POST /v1/embeddings: transport ReadTimeout"),
+    )
+
+    report = composed.search("comp.cs", display_language="fi", semantic_min_score=0.25)
+
+    assert report.semantic_available is False
+    assert report.semantic_min_score == 0.25
+    assert [result.course.group_id for result in report.results] == (
+        ["group-shared", "group-exact", "group-sub"] if populated else []
+    )
+    assert all("semantic" not in result.match_sources for result in report.results)
+    assert all(result.semantic_score is None for result in report.results)
+    if populated:
+        # Canonical merge and tier order are the available-semantic ones: the shared course keeps
+        # its exact and fuzzy sources in one entry and stays ahead of the other exact match.
+        assert report.results[0].match_sources == ("exact_code", "fuzzy_name")
+        assert report.results[0].fuzzy_score == 88.0
+    assert semantic.calls == [("semantic", "comp.cs", 0.25, True)]
+    assert curriculum.calls == [None]
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        EmbeddingContractError("POST /v1/embeddings: response violates embedding schema"),
+        ValueError("synthetic invalid embedding input"),
+        RuntimeError("synthetic non-embedding failure"),
+    ],
+)
+def test_unified_search_propagates_non_request_failures(error: Exception) -> None:
+    """A non-request failure from the semantic seam propagates instead of a partial report."""
+    composed, _, _, _ = service(semantic_error=error)
+
+    with pytest.raises(type(error)) as raised:
+        composed.search("q", display_language="en")
+
+    assert raised.value is error

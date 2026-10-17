@@ -14,6 +14,15 @@
   line-height: 1.5;
   text-align: center;
 }
+.app-footer a {
+  color: inherit;
+  white-space: nowrap;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.app-footer a:hover {
+  color: var(--color-text);
+}
 @keyframes appin {
   from {
     opacity: 0;
@@ -39,7 +48,10 @@
 }
 .topbar {
   position: relative;
-  z-index: 2;
+  /* The open profile panel takes pointer input above the carousel arrows at 15, so its Help and
+     Export controls are reachable at narrow widths. The portalled help drawer at 35 and the modal
+     layers at 40 and 41 sit above the topbar. */
+  z-index: 20;
   display: flex;
   align-items: center;
   gap: 40px;

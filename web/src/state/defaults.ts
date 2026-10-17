@@ -9,7 +9,6 @@ import type { BrowserState, ProfileState } from "./types";
 export function initialProfileState(): ProfileState {
   return {
     language: "en",
-    activeTab: "search",
     selectedCourseIds: [],
     completedCourseIds: [],
     search: initialSearchState(),
@@ -17,12 +16,13 @@ export function initialProfileState(): ProfileState {
     prerequisites: initialPrerequisitesState(),
     discover: initialDiscoverState(),
     structure: initialStructureState(),
+    pendingSisuImport: null,
   };
 }
 
 export function initialBrowserState(): BrowserState {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     currentProfileId: "default",
     profiles: { default: { name: "My plan", state: initialProfileState() } },
   };

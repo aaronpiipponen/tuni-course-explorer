@@ -61,9 +61,17 @@ function SearchResultsView({
       aria-label={t("Search results")}
       aria-busy={loading}
     >
+      {!report.semantic_available && (
+        <p className="search-semantic-notice" role="status">
+          {t(
+            "Semantic search is unavailable. Showing matches by code and name only.",
+          )}
+        </p>
+      )}
       <div className="head">
         <div className="eyebrow">
-          // <b>{report.results.length}</b> {t("courses")}
+          // <b>{report.results.length}</b>{" "}
+          {t(report.results.length === 1 ? "course" : "courses")}
         </div>
       </div>
       {report.results.length === 0 ? (

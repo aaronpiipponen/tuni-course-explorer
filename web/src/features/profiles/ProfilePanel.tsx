@@ -1,11 +1,15 @@
-/** Profile list, rename and delete prompts and copy form. */
+/** Profile list, rename and delete prompts, copy form and file transfer. */
 import { useState, type FormEvent } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { AnimatePresence, motion } from "framer-motion";
 import type { BrowserState } from "../../state/types";
+import type { BrowserStore } from "../../state/store";
 import { ErrorNotice } from "../../shared/ErrorNotice";
 import { TRASH } from "../../shared/icons";
+import { useReducedMotion } from "../../shared/useReducedMotion";
 import { useWording } from "../../shared/useWording";
+import { ProfileNotice } from "./ProfileNotice";
+import { ProfileTransfer } from "./ProfileTransfer";
 
 export function ProfilePanel({
   profiles,
@@ -16,6 +20,7 @@ export function ProfilePanel({
   onRename,
   error,
   renameError,
+  store,
 }: {
   profiles: BrowserState["profiles"];
   currentProfileId: string;
@@ -25,8 +30,10 @@ export function ProfilePanel({
   onRename(id: string, name: string): boolean;
   error: Error | null;
   renameError: Error | null;
+  store: BrowserStore;
 }) {
   const { language, t } = useWording();
+  const reducedMotion = useReducedMotion();
   const [name, setName] = useState("");
   // The targets are held after a dialog closes so its content outlasts the close animation.
   const [renameOpen, setRenameOpen] = useState(false);
@@ -40,10 +47,9 @@ export function ProfilePanel({
     current: false,
   });
   const collapsed = { opacity: 0, height: 0 };
-  const rowTransition = {
-    duration: 0.3,
-    ease: [0.22, 0.8, 0.2, 1] as const,
-  };
+  const rowTransition = reducedMotion
+    ? { duration: 0 }
+    : { duration: 0.3, ease: [0.22, 0.8, 0.2, 1] as const };
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (onSaveAs(name)) setName("");
@@ -128,7 +134,14 @@ export function ProfilePanel({
           </button>
         </div>
       </form>
-      {error && <ErrorNotice error={error} language={language} />}
+      <AnimatePresence initial={false}>
+        {error && (
+          <ProfileNotice key="profile-save-error">
+            <ErrorNotice error={error} language={language} />
+          </ProfileNotice>
+        )}
+      </AnimatePresence>
+      <ProfileTransfer store={store} />
       <Dialog.Root open={renameOpen} onOpenChange={setRenameOpen}>
         <Dialog.Portal>
           <Dialog.Overlay className="dialog-scrim" />
@@ -153,9 +166,13 @@ export function ProfilePanel({
                 onFocus={(event) => event.target.select()}
                 onChange={(event) => setRenameName(event.target.value)}
               />
-              {renameFailed && renameError && (
-                <ErrorNotice error={renameError} language={language} />
-              )}
+              <AnimatePresence initial={false}>
+                {renameFailed && renameError && (
+                  <ProfileNotice key="profile-rename-error">
+                    <ErrorNotice error={renameError} language={language} />
+                  </ProfileNotice>
+                )}
+              </AnimatePresence>
               <div className="dialog-foot dialog-foot-wrap">
                 <Dialog.Close asChild>
                   <button className="dialog-cancel" type="button">

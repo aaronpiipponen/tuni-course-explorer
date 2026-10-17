@@ -56,7 +56,7 @@ def test_automatic_configuration_and_override_precedence(
     # Example TOML values load with no sourcing, and the local .env supplies the secret and
     # overrides the example web port.
     database = DatabaseSettings()
-    assert database.postgres_db == "course_explorer_public"
+    assert database.postgres_db == "course_explorer"
     assert database.postgres_password.get_secret_value() == "synthetic-secret"
     assert database.selected_dataset_enabled is False
     assert WebSettings().web_port == 18026
@@ -71,15 +71,21 @@ def test_automatic_configuration_and_override_precedence(
     assert embedding.embedding_outcomes_hub_vector[:1] == (-0.03813977011063868,)
 
     assert SearchSettings().comparison_overlap_floor == 0.20
+    assert SearchSettings().search_embedding_request_timeout_seconds == 5
+    assert SearchSettings().search_embedding_max_attempts == 1
     assert load_worker_gpu_reboot_settings().worker_gpu_reboot_interval_minutes == 120
     assert LocalLifecycleSettings().poll_interval_seconds == 0.5
 
     # An explicit process override wins over both files.
     monkeypatch.setenv("EMBEDDING_PORT", "18080")
     monkeypatch.setenv("COMPARISON_OVERLAP_CEILING", "0.5")
+    monkeypatch.setenv("SEARCH_EMBEDDING_REQUEST_TIMEOUT_SECONDS", "7")
+    monkeypatch.setenv("SEARCH_EMBEDDING_MAX_ATTEMPTS", "2")
     monkeypatch.setenv("WEB_PORT", "18028")
     assert EmbeddingSettings().embedding_port == 18080
     assert SearchSettings().comparison_overlap_ceiling == 0.5
+    assert SearchSettings().search_embedding_request_timeout_seconds == 7
+    assert SearchSettings().search_embedding_max_attempts == 2
     assert WebSettings().web_port == 18028
 
 
@@ -87,18 +93,18 @@ def test_runtime_configuration_does_not_require_similarity_hubs(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     """A complete example seed without hub artifacts loads runtime/Compose inputs and refuses sim reads."""
-    root = tmp_path / "public-checkout"
+    root = tmp_path / "checkout"
     write_example_config_tree(root, include_derived=False)
     assert not (root / "config" / "derived").exists()
     _bind_checkout(monkeypatch, root)
-    monkeypatch.setenv("POSTGRES_PASSWORD", "synthetic-public-password")
+    monkeypatch.setenv("POSTGRES_PASSWORD", "synthetic-password")
 
     runtime = EmbeddingRuntimeSettings()
     assert runtime.embedding_port == 8081
     assert runtime.embedding_model == "BAAI/bge-m3"
     environment = compose.compose_environment()
     assert environment["EMBEDDING_PORT"] == "8081"
-    assert environment["POSTGRES_DB"] == "course_explorer_public"
+    assert environment["POSTGRES_DB"] == "course_explorer"
 
     with pytest.raises(ValueError):
         EmbeddingSettings()
@@ -243,7 +249,7 @@ def test_unsourced_cli_loads_policy(tmp_path: Path) -> None:
         key, _, quoted = line.removeprefix("export ").partition("=")
         exported[key] = shlex.split(quoted)[0]
 
-    assert exported["POSTGRES_DB"] == "course_explorer_public"
+    assert exported["POSTGRES_DB"] == "course_explorer"
     assert exported["EMBEDDING_PORT"] == "8081"
     assert exported["SEARCH_TIER_PRIORITY"] == '["exact_code","substring","fuzzy_name","semantic"]'
     assert exported["WORKER_GPU_REBOOT_INTERVAL_MINUTES"] == "120"

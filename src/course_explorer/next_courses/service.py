@@ -62,14 +62,15 @@ class NextCourseResult(_NextCourseModel):
     """One proposed next course with its direct-prerequisite coverage and inferred attribution.
 
     Coverage is a fraction `[0, 1]` of the best-matching option's direct course slots the basis
-    satisfies. `depends_on_inferred` is relationship-local with
+    satisfies, and `None` when the category holds no course slot at all. `depends_on_inferred`
+    is relationship-local with
     official precedence: true only when enabled inferred relationships make the course eligible but
     its official-only direct compilation leaves it ineligible under the same basis and mode.
     """
 
     course: CourseSummary
-    required_coverage: float
-    recommended_coverage: float
+    required_coverage: float | None
+    recommended_coverage: float | None
     depends_on_inferred: bool
 
 
@@ -87,6 +88,16 @@ def _fraction(slots: frozenset[_CoverageSlot]) -> float:
         return 0.0
     covered = sum(1 for slot in slots if slot.covered)
     return covered / len(slots)
+
+
+def _coverage(slots: frozenset[_CoverageSlot]) -> float | None:
+    """Return the covered share of one slot set, or `None` when the set holds no slot."""
+    return None if not slots else _fraction(slots)
+
+
+def _ranked(fraction: float | None) -> float:
+    """Return one coverage fraction for ordering, where a category without slots counts as zero."""
+    return 0.0 if fraction is None else fraction
 
 
 def _head_course_group_id(expression: PrerequisiteExpression) -> str:
@@ -198,11 +209,12 @@ def _candidate_outcome(
     compilation: DirectPrerequisiteCompilation,
     basis_group_ids: frozenset[str],
     mode: NextCourseMode,
-) -> tuple[float, float] | None:
+) -> tuple[float | None, float | None] | None:
     """Return one candidate's `(required, recommended)` coverage, or `None` when ineligible.
 
     A basis course, an activity-ineligible candidate, and a candidate with no enabled prerequisite
-    category are always excluded. AT LEAST ONE requires one covered direct prerequisite slot. ALL
+    category are always excluded, and a category whose slot set is empty reports no coverage
+    rather than a zero share. AT LEAST ONE requires one covered direct prerequisite slot. ALL
     requires both category roots satisfied through the shared satisfaction owner (a `None` category
     is neutral). One session per candidate shares subtree results between the coverage fold and the
     ALL root check.
@@ -242,7 +254,7 @@ def _candidate_outcome(
                 continue
             if session.evaluate(pool) is not PrerequisiteSatisfactionState.SATISFIED:
                 return None
-    return _fraction(required_slots), _fraction(recommended_slots)
+    return _coverage(required_slots), _coverage(recommended_slots)
 
 
 def evaluate_next_course_outcomes(
@@ -250,7 +262,7 @@ def evaluate_next_course_outcomes(
     basis_group_ids: Collection[str],
     *,
     mode: NextCourseMode,
-) -> dict[str, tuple[float, float] | None]:
+) -> dict[str, tuple[float | None, float | None] | None]:
     """Return one root-keyed `(required, recommended)` outcome per compilation.
 
     Every root is recorded, including `None` for an ineligible candidate, so a caller can evaluate
@@ -269,7 +281,7 @@ def eligible_next_course_group_ids(
     basis_group_ids: Collection[str],
     *,
     mode: NextCourseMode,
-    candidate_outcomes: Mapping[str, tuple[float, float] | None] | None = None,
+    candidate_outcomes: Mapping[str, tuple[float | None, float | None] | None] | None = None,
 ) -> tuple[str, ...]:
     """Return the sorted canonical IDs eligible in one direct-compilation pass.
 
@@ -299,7 +311,7 @@ def next_courses_from_compilations(
     mode: NextCourseMode,
     display_language: DisplayLanguage,
     official_compilations: Sequence[DirectPrerequisiteCompilation] = (),
-    candidate_outcomes: Mapping[str, tuple[float, float] | None] | None = None,
+    candidate_outcomes: Mapping[str, tuple[float | None, float | None] | None] | None = None,
 ) -> tuple[NextCourseResult, ...]:
     """Return the ordered next-course list for one already-compiled candidate set.
 
@@ -360,8 +372,8 @@ def _sorted_results(
             sorted(
                 results,
                 key=lambda result: (
-                    -result.required_coverage,
-                    -result.recommended_coverage,
+                    -_ranked(result.required_coverage),
+                    -_ranked(result.recommended_coverage),
                     name_key(result),
                 ),
             )

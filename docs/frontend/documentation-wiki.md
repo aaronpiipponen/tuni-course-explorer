@@ -52,6 +52,8 @@ Every heading carries a slug built from its text, so the same heading twice on o
 
 Above the article, breadcrumbs lead from the home page through the section title and the pages below the section page. On the section's own page the crumb is the home label and the section title with no link on the title. Beside the article, the sidebar lists the home entry above one row for each section, and a section row carries a toggle button and a link that opens the section's page. The toggle opens and closes its section on its own, so several sections can be open at once, and a section opens when the open page is in it. Selecting the link of an open section while its own page is the open page closes the section and leaves the reader on the page. A page with children inside a section opens its child group only while that page or one of its descendants is the open page. Below the article, the previous and next links follow the configuration order, so the first page of the wiki follows the home page. The "On this page" list beside the article gives the page's second-level headings and marks the one the reader is at.
 
+A section toggle, a page entrance, a scroll to a heading and the return to the app animate under normal motion. Each of them follows the operating system's reduced-motion preference, so with reduced motion the section, the page, the heading position and the app change at once.
+
 An address holds the page identity in the hash, with the heading as an optional second part. An identity the configuration does not hold shows a not-found page with a link to the home page.
 
 ## The search
@@ -90,6 +92,6 @@ The build reads the selected files when the app is built, so a served copy shows
 
 ## The wiki in the app
 
-The wiki is English only, and its own controls are English whatever the profile language is. It opens from **Docs**, and **Back to the app** and the brand in its header return to the app. A page is compiled text with its images, so the app renders it from the built registry. Opening the wiki writes no profile field, so the open tab and the course sets are there when the app returns.
+The wiki is English only, and its own controls are English whatever the profile language is. It opens from **Docs**, and **Back to the app** and the brand in its header return to the app. **GitHub**, beside **Back to the app**, opens the repository address that `repositoryUrl` in `config/wiki.json` sets in a new browser tab, and the app footer links the same address. A page is compiled text with its images, so the app renders it from the built registry. Opening the wiki writes no profile field, so the open tab and the course sets are there when the app returns.
 
 The build, its selection rules, its Markdown pipeline and the tests that cover it are described in [Wiki compiler](/docs/frontend/wiki-compiler.md).

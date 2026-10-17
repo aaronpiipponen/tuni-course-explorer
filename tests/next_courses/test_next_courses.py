@@ -362,11 +362,11 @@ def test_supplied_next_course_outcomes_preserve_results(mode) -> None:
 @pytest.mark.parametrize(
     ("group_id", "required", "recommended", "inferred"),
     [
-        ("best", 1.0, 0.0, False),
-        ("recdep", 0.0, 1.0, False),
-        ("sub", 1.0, 0.0, False),
-        ("equiv", 1.0, 0.0, True),
-        ("inferredonly", 1.0, 0.0, True),
+        ("best", 1.0, None, False),
+        ("recdep", None, 1.0, False),
+        ("sub", 1.0, None, False),
+        ("equiv", 1.0, None, True),
+        ("inferredonly", 1.0, None, True),
     ],
 )
 def test_next_course_coverage_and_official_wins_attribution(

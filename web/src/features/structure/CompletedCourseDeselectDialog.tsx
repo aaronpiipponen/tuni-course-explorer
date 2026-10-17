@@ -1,10 +1,17 @@
-/** Choice of where a completed course goes when it is deselected from Structure. */
+/**
+ * One choice for a completed course that is deselected from Structure.
+ *
+ * A course that already sits under Unplaced studies is only removed, because keeping it loose there
+ * changes nothing. Any other completed course offers keeping it under Unplaced studies or removing
+ * it from the selection together with its completion.
+ */
 import * as Dialog from "@radix-ui/react-dialog";
 import { useWording } from "../../shared/useWording";
 
 export function CompletedCourseDeselectDialog({
   open,
   courseCode,
+  unplaced,
   onCancel,
   onKeepLoose,
   onRemove,
@@ -12,6 +19,8 @@ export function CompletedCourseDeselectDialog({
 }: {
   open: boolean;
   courseCode: string;
+  /** Whether the course already sits under Unplaced studies, where keeping it loose changes nothing. */
+  unplaced: boolean;
   onCancel(): void;
   onKeepLoose(): void;
   onRemove(): void;
@@ -36,10 +45,15 @@ export function CompletedCourseDeselectDialog({
         >
           <Dialog.Title>{t("Completed course")}</Dialog.Title>
           <Dialog.Description>
-            {t(
-              "{code} is completed. Move it to Unplaced studies and keep it completed, or remove it from your selection? Removing also removes its completion.",
-              { code: courseCode },
-            )}
+            {unplaced
+              ? t(
+                  "This removes {code} from your selection together with its completion.",
+                  { code: courseCode },
+                )
+              : t(
+                  "This moves {code} to Unplaced studies and keeps its completion, or removes it from your selection together with its completion.",
+                  { code: courseCode },
+                )}
           </Dialog.Description>
           <div className="dialog-foot dialog-foot-wrap">
             <Dialog.Close asChild>
@@ -47,13 +61,15 @@ export function CompletedCourseDeselectDialog({
                 {t("Cancel")}
               </button>
             </Dialog.Close>
-            <button
-              className="dialog-cancel"
-              type="button"
-              onClick={onKeepLoose}
-            >
-              {t("Move")}
-            </button>
+            {!unplaced && (
+              <button
+                className="dialog-cancel"
+                type="button"
+                onClick={onKeepLoose}
+              >
+                {t("Move")}
+              </button>
+            )}
             <button className="dialog-confirm" type="button" onClick={onRemove}>
               {t("Remove")}
             </button>

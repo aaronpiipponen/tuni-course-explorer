@@ -4,7 +4,7 @@ Graph layout turns the server's prerequisite report into positioned drawing node
 
 ## The three hooks
 
-`usePrerequisiteInputs` in `web/src/features/prerequisites/usePrerequisiteInputs.ts` reads ten profile values and the open tab through `useProfileSelector` and builds one `PrerequisitesRequest`: `target_code`, `completed_codes`, `selected_codes`, `excluded_codes`, `include_recommended`, `include_inferred`, `active_only`, `basis`, `completed_node_keys` and `excluded_node_keys`. It returns the request, its `key` as `JSON.stringify(request)`, and `active` as `activeTab === "prerequisites"`. With no root the request is `null`, so a pane with no root asks for nothing.
+`usePrerequisiteInputs` in `web/src/features/prerequisites/usePrerequisiteInputs.ts` reads ten profile values through `useProfileSelector` and the open tab from `useActiveTab` in `web/src/app/sessionTab.ts`, and builds one `PrerequisitesRequest`: `target_code`, `completed_codes`, `selected_codes`, `excluded_codes`, `include_recommended`, `include_inferred`, `active_only`, `basis`, `completed_node_keys` and `excluded_node_keys`. It returns the request, its `key` as `JSON.stringify(request)`, and `active` as `activeTab === "prerequisites"`. With no root the request is `null`, so a pane with no root asks for nothing.
 
 `usePrerequisiteReport` in `web/src/features/prerequisites/usePrerequisiteReport.ts` owns the graph read.
 
@@ -45,6 +45,7 @@ The result is read into a node map of positions and sizes and an edge map of poi
 
 - The first graph, a changed root, and a frame whose geometry already equals the target publish the exact target with no transition. `sameGeometry` compares every node position and footprint and every edge point list.
 - Any other change animates over `duration` 600 ms with a cubic ease. A node interpolates its position and footprint and fades in or out, and an exiting node holds its frame on screen until the animation ends.
+- Under the operating system's reduced-motion preference the exact target frame is published with no transition: every node takes its target position and footprint at full opacity, an exiting node leaves the frame at once, and no glide or fade runs. The classes of the frame supply the static route lighting, dimming and selection styles.
 - An edge whose points changed is fully transparent at the midpoint, where its drawn geometry swaps from the previous route to the new one, so a layout change never shows a slanted partial route.
 - An edge whose points are identical produces no fade and no movement, so a drawing-neutral refresh moves nothing.
 - The final tick publishes the exact target frame and cancels the pending animation frame, and the effect cancels it on cleanup.
@@ -63,7 +64,7 @@ The rendering state on the canvas:
 - A node that an `approximation_failed` result marks carries the `timeout` flag, and an inactive course node renders at reduced opacity.
 - `PrerequisiteEdge` draws the ELK point list as a polyline with a rounded corner per bend, plus a dark halo edge and the parent hue as the stroke. A `recommended` edge is dashed. The component carries the fade opacity and the lighting delay on its own group, because React Flow hands an edge's style to the edge component rather than to its wrapper group.
 
-`centerRoot` sets the viewport so the root sits at the top of the panel, without animation on the first layout of a root and with a 450 ms animation from **Recenter**, which `PrerequisitesPane` calls through `recenterRef`. The open panel closes when a layout starts, and the open menu or panel closes when the node it names leaves the model. Dragging, connecting, selecting and keyboard focus are all off, and the zoom range is 0.15 to 2.2.
+`centerRoot` sets the viewport so the root sits at the top of the panel, without animation on the first layout of a root and with a 450 ms animation from **Recenter** while the operating system asks for normal motion, and with no animation under the reduced-motion preference, which `PrerequisitesPane` calls through `recenterRef`. The open panel closes when a layout starts, and the open menu or panel closes when the node it names leaves the model. Dragging, connecting, selecting and keyboard focus are all off, and the zoom range is 0.15 to 2.2.
 
 `CourseNode` renders a `CourseTile` with the shared course menu and with **Complete** and **Exclude** actions that call `toggleCompleted` and `toggleExcludedCourse`. `ModuleNode` and a numeric `ConnectorNode` render **Complete** and **Exclude** actions that call `toggleNodeCompleted` and `toggleNodeExcluded` with the node's `actionKey`. Opening a module or an internal-requirement connector sets the panel identity, and `MemberPanel` lists its `members` with the shared course rows and the module add control.
 
@@ -73,7 +74,7 @@ The rendering state on the canvas:
 
 `buildRouteSummary(graph, path, language)`:
 
-- `edgeLights(relationships, selected)` is true when some relationship has an `occurrence_id` in the selected set and every `condition_occurrence_ids` entry in it, so one supplied connection lights through any complete member relationship of its own.
+- `edgeLights(relationships, selected)` is true when some relationship has one of its `occurrence_ids` in the selected set and every `condition_occurrence_ids` entry in it, so one supplied connection lights through any complete member relationship of its own.
 - Rows exist for the `exact`, `approximate` and `shortfall` states: every `new_courses` entry first as uncovered, then every course node that a lit connection reaches and that is not new, as covered.
 - `newCredits` comes from `total_new_credits` and `fullCredits` adds the credits of the covered course nodes. A null total means no credits.
 - `problems` are de-duplicated by `occurrence_id|action_key|reason`, and each carries the title of its action key resolved through the course, module or connector nodes.
@@ -90,7 +91,7 @@ The rendering state on the canvas:
 
 ## Graph actions and stored state
 
-`web/src/features/prerequisites/actions.ts` exports `setPrerequisitesRoot`, `setPrerequisitesQuery`, `setPrerequisitesActiveOnly`, `setPrerequisitesBasis`, `setIncludeRecommended`, `setIncludeInferred`, `toggleExcludedCourse`, `toggleNodeCompleted` and `toggleNodeExcluded`. Every writer goes through the local `update` helper and `store.updateCurrent`. `toggleNode` adds or removes one `actionKey` in `completedNodeKeys` or `excludedNodeKeys` and drops it from the opposite list when it is added. `web/src/features/prerequisites/state.ts` holds `PrerequisitesState` and `initialPrerequisitesState()`, and `mergePrerequisitesState` in `web/src/state/store.ts` projects a saved slice onto those fields.
+`web/src/features/prerequisites/actions.ts` exports `setPrerequisitesRoot`, `setPrerequisitesQuery`, `setPrerequisitesActiveOnly`, `setPrerequisitesBasis`, `setIncludeRecommended`, `setIncludeInferred`, `toggleExcludedCourse`, `toggleNodeCompleted` and `toggleNodeExcluded`. Every writer goes through the local `update` helper and `store.updateCurrent`. `toggleNode` adds or removes one `actionKey` in `completedNodeKeys` or `excludedNodeKeys` and drops it from the opposite list when it is added. `web/src/features/prerequisites/state.ts` holds `PrerequisitesState` and `initialPrerequisitesState()`, and `validateProfileState` in `web/src/state/validation.ts` projects a saved slice onto those fields.
 
 ## Tests
 
@@ -105,4 +106,4 @@ The rendering state on the canvas:
 - A node footprint belongs in `NODE_SIZES`, and a spacing or routing value belongs in `SPACING` and in the `layoutOptions` of `layoutGraph`.
 - A transition belongs in `useAnimatedGraph`, and the layout reuse rule belongs in the signature of `useGraphLayout`.
 - A route presentation rule belongs in `route.ts`, and the row, note or control that shows it belongs in `RoutePanel` or `RouteControl`.
-- A stored prerequisite setting belongs in `state.ts`, in `mergePrerequisitesState` in `web/src/state/store.ts`, and in the action that writes it.
+- A stored prerequisite setting belongs in `state.ts`, in `validateProfileState` in `web/src/state/validation.ts`, and in the action that writes it.

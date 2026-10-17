@@ -17,6 +17,7 @@ import {
 import "@xyflow/react/dist/base.css";
 import type { PrerequisiteGraphReport } from "../../../api/types";
 import { useProfileSelector } from "../../../state/useProfileSelector";
+import { useReducedMotion } from "../../../shared/useReducedMotion";
 import { toggleExcludedCourse } from "../actions";
 import { buildGraphModel, connectionChain } from "./model";
 import { useGraphLayout } from "./useGraphLayout";
@@ -56,6 +57,7 @@ function GraphCanvas({
   graphLoading: boolean;
 }) {
   const { value: language } = useProfileSelector((state) => state.language);
+  const reducedMotion = useReducedMotion();
   const { store } = useProfileSelector(
     (state) => state.prerequisites.excludedCourseIds,
   );
@@ -204,10 +206,10 @@ function GraphCanvas({
           y: 30 - (root.y + 30) * zoom,
           zoom,
         },
-        { duration: animated ? 450 : 0 },
+        { duration: animated && !reducedMotion ? 450 : 0 },
       );
     },
-    [layout, model.rootId, setViewport],
+    [layout, model.rootId, setViewport, reducedMotion],
   );
   useEffect(() => {
     recenterRef.current = () => centerRoot(true);

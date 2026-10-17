@@ -1,4 +1,7 @@
-/** Presentation-only flattening of transparent mandatory groups without changing resolver identity. */
+/**
+ * Presentation-only flattening of transparent mandatory groups and the displayed place of a module
+ * identity, without changing resolver identity.
+ */
 import type { CourseSummary } from "../../api/types";
 import type { ResolvedNode, StructureNode } from "./model";
 
@@ -31,4 +34,22 @@ export function displayContents(resolved: ResolvedNode): DisplayContents {
     appendVisible(child);
   }
   return result;
+}
+
+/**
+ * Return the node whose displayed children hold one module identity, or null when none does.
+ *
+ * The walk reads displayed children, so a module inside a chosen option or a transparent wrapper is
+ * attributed to the programme, module or Unplaced studies node that the tree draws it in.
+ */
+export function moduleSource(
+  resolved: ResolvedNode,
+  moduleId: string,
+): ResolvedNode | null {
+  for (const child of displayContents(resolved).children) {
+    if (child.node.module?.group_id === moduleId) return resolved;
+    const found = moduleSource(child, moduleId);
+    if (found) return found;
+  }
+  return null;
 }

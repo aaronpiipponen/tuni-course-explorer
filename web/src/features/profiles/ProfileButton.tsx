@@ -4,9 +4,8 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { useCurrentProfile } from "../../state/useCurrentProfile";
 import { useAction } from "../../shared/useAction";
 import { useWording } from "../../shared/useWording";
+import { PROFILE_NOTICE_MS } from "./ProfileNotice";
 import { ProfilePanel } from "./ProfilePanel";
-
-const ERROR_SECONDS = 5;
 
 function succeeded(
   run: (action: () => void) => void,
@@ -24,10 +23,9 @@ export function ProfileButton() {
   const { store, profile, currentProfileId, profiles } = useCurrentProfile();
   const { t } = useWording();
   const [open, setOpen] = useState(false);
-  const { runAction, error } = useAction(ERROR_SECONDS * 1000);
-  const { runAction: runRename, error: renameError } = useAction(
-    ERROR_SECONDS * 1000,
-  );
+  const { runAction, error } = useAction(PROFILE_NOTICE_MS);
+  const { runAction: runRename, error: renameError } =
+    useAction(PROFILE_NOTICE_MS);
   const switchProfile = (id: string) =>
     runAction(() => {
       store.switchProfile(id);
@@ -63,6 +61,7 @@ export function ProfileButton() {
             }
             error={error}
             renameError={renameError}
+            store={store}
           />
         </Dialog.Content>
       </div>

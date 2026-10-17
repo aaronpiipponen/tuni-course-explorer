@@ -68,10 +68,12 @@ export function connectorLabel(
       return uiText(language, "{value} cr", {
         value: range(node.credits_min, node.credits_max),
       });
-    case "course_count":
-      return uiText(language, "{value} courses", {
-        value: range(node.count_min, node.count_max),
-      });
+    case "course_count": {
+      const value = range(node.count_min, node.count_max);
+      return value === "1"
+        ? uiText(language, "1 course")
+        : uiText(language, "{value} courses", { value });
+    }
     case "opaque_credits":
       return uiText(language, "{value} cr other", {
         value: range(node.credits_min, node.credits_max),

@@ -15,7 +15,7 @@ const FILTER_KEYS = {
   all: "All",
   course: "Courses",
   module: "Modules",
-  programme: "Degrees",
+  programme: "Programmes",
 } as const;
 export function DrawerSearch({
   node,
@@ -101,7 +101,7 @@ export function DrawerSearch({
         </svg>
         <input
           value={query}
-          placeholder={t("Search courses, modules and degrees to add")}
+          placeholder={t("Add a course, module or programme")}
           onFocus={() => onOpenChange(true)}
           onClick={() => onOpenChange(true)}
           onChange={(event) => {
@@ -128,7 +128,7 @@ export function DrawerSearch({
         </div>
         {!query.trim() ? (
           <div className="dnote">
-            {t("Type to search courses, modules and degrees.")}
+            {t("Type to search courses, modules and programmes.")}
           </div>
         ) : (
           <>
@@ -156,7 +156,7 @@ export function DrawerSearch({
             )}
             {showCourses && !courses.loading && !courses.error && (
               <section className="tier eyebrow">
-                <div>// {t("courses")}</div>
+                <div>// {t("courses (heading)")}</div>
                 {courses.report?.results.length ? (
                   <div className="plist">
                     {courses.report.results.map((course) => (
@@ -185,7 +185,7 @@ export function DrawerSearch({
             {showModules && !modules.loading && !modules.error && (
               <section className="tier eyebrow">
                 {filter === "programme" ? (
-                  <div>// {t("degrees")}</div>
+                  <div>// {t("programmes")}</div>
                 ) : (
                   <div>// {t("modules")}</div>
                 )}
@@ -204,7 +204,7 @@ export function DrawerSearch({
                         <span className="cr">
                           {t(
                             item.module_type === "DegreeProgramme"
-                              ? "degree"
+                              ? "programme"
                               : "module",
                           )}
                         </span>

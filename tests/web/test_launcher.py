@@ -13,6 +13,7 @@ from course_explorer.config import (
     ENVIRONMENT_ONLY_SETTINGS_SOURCE,
     SETTINGS_SOURCE_MARKER,
     DatabaseSettings,
+    SearchSettings,
     WebSettings,
 )
 from course_explorer_web import __main__ as entry_point
@@ -24,7 +25,7 @@ def test_web_launcher_excludes_operator_credentials(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     """Hand only the required web aliases and the marker to a file-free child process."""
-    root = tmp_path / "public-checkout"
+    root = tmp_path / "checkout"
     write_example_config_tree(root)
     local = root / ".env"
     local.write_text("POSTGRES_PASSWORD=synthetic-database-password\n", encoding="utf-8")
@@ -86,6 +87,9 @@ def test_web_launcher_excludes_operator_credentials(
     )
     assert WebSettings().web_port == 8037
     assert WebSettings().web_workers == 2
+    # The handoff carries the search policy for one query embedding request as well.
+    assert SearchSettings().search_embedding_request_timeout_seconds == 5
+    assert SearchSettings().search_embedding_max_attempts == 1
 
     # Continue the same handoff through the actual entry point, binding only a temporary test port.
     with socket.socket() as probe:

@@ -104,9 +104,9 @@ This glossary defines the terms the documentation uses for courses, search, comp
 | Inferred dependence | The mark on a next course that is listed only because of inferred prerequisites. |
 | Recommendations | Courses with teaching text similar to the basis, ranked by similarity and listed in the **Discover** tab as **Recommended for you**. |
 | Near-duplicate | A candidate recommendation that overlaps a basis course above a configured share. Near-duplicates are left out of recommendations. |
-| Structure of studies | The official structure of one degree programme or module, shown as modules, courses, and rules in the **Structure of studies** tab. |
-| Structure root | The degree programme or module at the top of the structure of studies. The app sets it with **Choose root**. |
-| Unplaced studies | The part of the structure of studies that holds selected courses not placed under any module. |
+| Structure of studies | The official structure of each programme in the **Structure of studies** tab, shown as modules, courses, and rules. |
+| Programme | A degree programme or a bare module at the top level of the structure of studies. The app adds one with **Add programme** and orders them in the tab. |
+| Unplaced studies | The part of the structure of studies that holds selected courses not placed under any programme or module. |
 
 ## Browser app
 
@@ -116,7 +116,8 @@ This glossary defines the terms the documentation uses for courses, search, comp
 | Selected course | A course added to the current profile's selection. |
 | Completed course | A course marked with **Mark completed**. A completed course is always selected. |
 | Course menu | The menu of actions on a course: **Add to comparison**, **Open prerequisite graph**, **Add to Unplaced studies**, **Mark completed**, and **Open in Sisu**. |
-| Profile | A named set of the app's state in the browser: language, open tab, selected and completed courses, and the state of each tab. |
+| Profile | A named set of the app's state in the browser: language, selected and completed courses, and the state of each tab. |
+| Open tab | The tab a browser tab shows. It belongs to that browser tab's session storage rather than to a profile. |
 | App language | The language of the app's interface and course names in a profile, either Finnish or English. |
 | Browser state | The saved state of every profile, kept in the browser's local storage. |
 | Docs | The documentation wiki inside the app, opened from **Docs**. |

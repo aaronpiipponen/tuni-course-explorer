@@ -54,7 +54,7 @@ export function DiscoverResults({
 
   return (
     <div className="discover-results">
-      {list === "next" && nextRows.length > 0 && (
+      {list === "next" && next && nextRows.length > 0 && (
         <section aria-label={t("Next courses")}>
           <h2 className="discover-tier">
             // {t("next courses · {count}", { count: nextRows.length })}
@@ -65,6 +65,7 @@ export function DiscoverResults({
                 key={result.course.group_id}
                 kind="next"
                 result={result}
+                mode={next.mode}
               />
             ))}
           </div>

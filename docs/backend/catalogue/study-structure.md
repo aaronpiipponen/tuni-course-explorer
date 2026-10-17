@@ -1,6 +1,6 @@
 # Structure of studies in the catalogue
 
-The structure of studies is the official rule tree of one structure root for the configured academic year, projected as modules, courses, and rules.
+The structure of studies is the official rule tree of one programme or module root for the configured academic year, projected as modules, courses, and rules.
 
 ## What the projection is
 
@@ -10,11 +10,11 @@ It is a separate projection from the prerequisite graph. The graph compiles a mi
 
 The diagram follows one read from the root identity to the structure report.
 
-![A canonical structure root enters version selection for the configured academic year, and the selected version is walked as its official rule tree. A course reference resolves to a shared course summary, a module reference resolves to a nested module whose own rule tree is walked, and a reference that cannot be resolved appears as a node with a reason. All of them are part of the structure report.](/docs/diagrams/structure-projection.svg)
+![A canonical programme or module root enters version selection for the configured academic year, and the selected version is walked as its official rule tree. A course reference resolves to a shared course summary, a module reference resolves to a nested module whose own rule tree is walked, and a reference that cannot be resolved appears as a node with a reason. All of them are part of the structure report.](/docs/diagrams/structure-projection.svg)
 
-## The structure root and the version
+## The root and the version
 
-A structure read takes one canonical root identity, the [structure root](/docs/reference/glossary.md#discovery-and-the-structure-of-studies). The browser sends the identity the reader chooses with **Choose root**, and the read answers for that root alone.
+A structure read takes one canonical root identity, which is a [programme](/docs/reference/glossary.md#discovery-and-the-structure-of-studies). The browser sends the identity of each programme it holds, one ordinary read at a time, and the read answers for that root alone. The interface issues that same read when a programme joins its ordered list and when it needs the report again.
 
 The academic year is the configured current academic year, `CURRENT_ACADEMIC_YEAR` in `config/curriculum.toml`. The example sets `2026-2027`, so the projection uses the academic year that starts in 2026.
 

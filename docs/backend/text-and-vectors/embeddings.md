@@ -20,9 +20,9 @@ The artifact at `EMBEDDING_ARTIFACT_PATH` must exist as a regular file and match
 
 Each request carries a batch of texts to the service's `v1/embeddings` endpoint together with the configured model, and the response holds one vector per input. A vector has 1024 components, the one dimension the settings and the vector column allow, and a stored vector has unit length.
 
-A transport failure and a 429 or 5xx status are retried up to `EMBEDDING_MAX_ATTEMPTS` attempts, the first attempt included, with a wait that grows between attempts. Every other status ends the request. A response that breaks the contract ends it as well: the body must be JSON, the results must match the inputs one for one with unique indices, every vector must hold exactly 1024 finite components, and a response that names a model must name the configured one. A batch that fails stores no vector and marks its chunks failed, so the next run retries them.
+A transport failure and a 429 or 5xx status of a generation request are retried up to `EMBEDDING_MAX_ATTEMPTS` attempts, the first attempt included, with a wait that grows between attempts. Every other status ends the request. A response that breaks the contract ends it as well: the body must be JSON, the results must match the inputs one for one with unique indices, every vector must hold exactly 1024 finite components, and a response that names a model must name the configured one. A batch that fails stores no vector and marks its chunks failed, so the next run retries them.
 
-The same service embeds the text of a search query at request time, so a query vector and a stored vector come from one model. [Search](/docs/backend/search-and-discovery/search.md) describes that path.
+The same service embeds the text of a search query at request time, so a query vector and a stored vector come from one model. A query embedding request follows the search policy instead: `SEARCH_EMBEDDING_REQUEST_TIMEOUT_SECONDS` sets its timeout and `SEARCH_EMBEDDING_MAX_ATTEMPTS` sets its attempt count. That timeout bounds the network phases of the one request, so it is not a deadline for the whole search. [Search](/docs/backend/search-and-discovery/search.md#when-the-query-embedding-request-fails) describes the search path and what a failed request leaves in the report.
 
 ## Chunking
 
@@ -92,8 +92,8 @@ A similarity read uses completed rows whose configuration hash equals the config
 | `EMBEDDING_NORMALIZATION` | The normalization the runtime applies, from -1 upward. The example sets 2. |
 | `EMBEDDING_THREADS` | How many threads the runtime uses. The example sets 2. |
 | `EMBEDDING_CONTEXT_SIZE` | The context window of the runtime, which also sets its batch and micro-batch size. The example sets 2048. |
-| `EMBEDDING_REQUEST_TIMEOUT_SECONDS` | How long one request may take, up to 600 seconds. The example sets 600. |
-| `EMBEDDING_MAX_ATTEMPTS` | How many attempts one request gets, the first included, from 1 to 5. The example sets 3. |
+| `EMBEDDING_REQUEST_TIMEOUT_SECONDS` | How long one generation request may take, up to 600 seconds. The example sets 600. |
+| `EMBEDDING_MAX_ATTEMPTS` | How many attempts one generation request gets, the first included, from 1 to 5. The example sets 3. |
 | `EMBEDDING_RETRY_BACKOFF_SECONDS` | The wait before the first retry, doubled for each further retry, up to 10 seconds. The example sets 0.5. |
 | `EMBEDDING_GENERATION_BATCH_SIZE` | How many chunks one request carries, from 1 to 128. The example sets 32. |
 | `EMBEDDING_CHUNK_MAX_CHARACTERS` | The length of one chunk window, from 2 to 8192 characters. The example sets 1200. |

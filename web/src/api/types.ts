@@ -295,6 +295,7 @@ export type UnifiedSearchReport = {
   semantic_min_score: number;
   fuzzy_min_score: number;
   include_inactive: boolean;
+  semantic_available: boolean;
   tier_priority: readonly SearchMethod[];
   results: readonly UnifiedCourseSearchResult[];
 };
@@ -311,8 +312,8 @@ export type DiscoveryRequest = {
 };
 export type NextCourseResult = {
   course: CourseSummary;
-  required_coverage: number;
-  recommended_coverage: number;
+  required_coverage: number | null;
+  recommended_coverage: number | null;
   depends_on_inferred: boolean;
 };
 export type NextCoursesReport = {

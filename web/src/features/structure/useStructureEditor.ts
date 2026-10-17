@@ -4,43 +4,91 @@ import type { CourseSummary, ModuleSummary } from "../../api/types";
 import { readStudyStructure } from "../../api/study-structure";
 import { useProfileSelector } from "../../state/useProfileSelector";
 import { useAction } from "../../shared/useAction";
-import { applyStructure, resetUnplaced } from "./actions";
-import { emptyEdits, UNPLACED_KEY, type StructureEdits } from "./state";
+import {
+  applyStructure,
+  programmeForest,
+  resetCompletionChange,
+  resetUnplaced,
+  sameIdList,
+  type StructureChange,
+} from "./actions";
+import {
+  UNPLACED_KEY,
+  type StructureEdits,
+  type StructureState,
+} from "./state";
 import {
   indexResolved,
   nextChoices,
   officialHomes,
   resolveStructure,
-  NO_CONTENT,
   type PlacedContent,
   type ResolvedNode,
   type StructureNode,
   type StructureRuleItem,
 } from "./model";
 import {
+  clearedScopePlacements,
+  hasScopedEdits,
+  insideScope,
+  keepCoursePlacements,
   placeCourse,
   placeModule,
   placeModuleWithCourses,
+  removalPlacements,
   resetScope,
+  scopePulls,
+  type PulledCourse,
 } from "./edits";
-import { moduleName } from "./presentation";
+import { moduleName, nodeWordingKind, resolvedNodeLabel } from "./presentation";
+import type {
+  CourseMoveAnswer,
+  CourseMoveRequest,
+} from "./CourseMoveConfirmDialog";
 import { toggleCompleted } from "../../state/course-actions";
-import { displayContents } from "./display";
+import { displayContents, moduleSource } from "./display";
 import type { DisplayLanguage } from "../../state/types";
 import { uiText } from "../../shared/wording";
 
+const asEdits = (state: StructureState): StructureEdits => ({
+  choices: state.choices,
+  coursePlacements: state.coursePlacements,
+  modulePlacements: state.modulePlacements,
+});
+
+/**
+ * Return an ordered programme list without one identity.
+ *
+ * A module the ordered list holds renders at the programme level, so placing it in a node takes it
+ * out of that list and its entry resolves at the destination instead.
+ */
+const withoutProgrammeGroupId = (
+  programmeGroupIds: readonly string[],
+  id: string,
+): string[] => programmeGroupIds.filter((programmeId) => programmeId !== id);
+
+/**
+ * Return the localized place a module source names.
+ *
+ * A source whose node is the forest wrapper places the module at the programme level, while every
+ * other source is the programme or module node that displays the module.
+ */
+const modulePlaceText =
+  (source: ResolvedNode) =>
+  (language: DisplayLanguage): string =>
+    source.node.kind === "group"
+      ? uiText(language, "the programme list")
+      : resolvedNodeLabel(source, language);
+
 export function useStructureEditor({
-  rootGroupId,
-  tree,
   resolved,
   edits,
   freeIds,
   content,
   extend,
   notify,
+  confirmMoves,
 }: {
-  rootGroupId: string;
-  tree: StructureNode;
   resolved: ResolvedNode;
   edits: StructureEdits;
   freeIds: readonly string[];
@@ -52,12 +100,12 @@ export function useStructureEditor({
     >;
   }): PlacedContent;
   notify(text: (language: DisplayLanguage) => string): void;
+  confirmMoves(request: CourseMoveRequest): Promise<CourseMoveAnswer>;
 }) {
-  const { store } = useProfileSelector((state) => state.structure);
-  const moduleOperation = useRef<AbortController | null>(null);
-  const completedCourseIds = useProfileSelector(
+  const { store, value: completedCourseIds } = useProfileSelector(
     (state) => state.completedCourseIds,
-  ).value;
+  );
+  const moduleOperation = useRef<AbortController | null>(null);
   const { runAction, error: actionError } = useAction();
   const [error, setError] = useState<Error | null>(null);
   const [pendingModuleId, setPendingModuleId] = useState<string | null>(null);
@@ -68,27 +116,61 @@ export function useStructureEditor({
     },
     [],
   );
+  const forestFor = (state: StructureState, ctx: PlacedContent) => {
+    const forest = programmeForest(state.programmeGroupIds, ctx);
+    if (!forest) throw new Error("Programme is unavailable");
+    return forest;
+  };
+  const projectionFor = (state: StructureState, ctx: PlacedContent) =>
+    indexResolved(resolveStructure(forestFor(state, ctx), state, ctx));
+  /** The open profile's stored structure, as the interfaces that compare without writing read it. */
+  const storedStructure = (): StructureState => {
+    const snapshot = store.getSnapshot();
+    return snapshot.profiles[snapshot.currentProfileId].state.structure;
+  };
+  // A node-key action applies only while the latest forest holds its target.
+  const requireNode = (
+    state: StructureState,
+    ctx: PlacedContent,
+    key: string,
+  ) => {
+    if (!projectionFor(state, ctx).byKey.has(key))
+      throw new Error("Structure target is unavailable");
+  };
   const commit = (
-    next: StructureEdits,
+    updateEdits: (current: StructureState) => StructureEdits,
     ctx: PlacedContent,
     removed: readonly string[] = [],
+    nextProgrammes?: (current: StructureState) => string[],
   ) => {
-    const projection = resolveStructure(tree, next, ctx);
-    applyStructure(
-      store,
-      {
-        rootGroupId,
-        ...next,
-        placedCourseIds: projection.subtree.map((course) => course.group_id),
-      },
-      removed,
-    );
+    applyStructure(store, (state) => {
+      const current = state.structure;
+      const programmeGroupIds = nextProgrammes
+        ? nextProgrammes(current)
+        : [...current.programmeGroupIds];
+      const forest = forestFor({ ...current, programmeGroupIds }, ctx);
+      const next = updateEdits(current);
+      const projection = resolveStructure(forest, next, ctx);
+      return {
+        next: {
+          programmeGroupIds,
+          ...next,
+          placedCourseIds: projection.subtree.map((course) => course.group_id),
+        },
+        removedCourseIds: removed,
+      };
+    });
   };
   const choose = (node: StructureNode, optionKey: string) =>
     runAction(() => {
-      const next = nextChoices(edits.choices, node, optionKey);
-      if (next === edits.choices) return;
-      commit({ ...edits, choices: next }, content);
+      if (nextChoices(edits.choices, node, optionKey) === edits.choices) return;
+      commit((current) => {
+        requireNode(current, content, node.key);
+        return {
+          ...asEdits(current),
+          choices: nextChoices(current.choices, node, optionKey),
+        };
+      }, content);
       notify((messageLanguage) =>
         uiText(
           messageLanguage,
@@ -105,125 +187,284 @@ export function useStructureEditor({
       const placed = index.courseAt.get(id);
       if (placed === index.byKey.get(node.key)) {
         notify((messageLanguage) =>
-          uiText(messageLanguage, "Already in this module"),
+          uiText(
+            messageLanguage,
+            nodeWordingKind(node) === "programme"
+              ? "Already in this programme"
+              : "Already in this module",
+          ),
         );
         return;
       }
       const ctx = extend({ courses: [course] });
-      const homes = officialHomes(tree, edits, ctx);
-      const next = {
-        ...edits,
-        coursePlacements: placeCourse(edits, homes, id, node.key)
-          .coursePlacements,
-      };
-      commit(next, ctx);
+      commit((current) => {
+        requireNode(current, ctx, node.key);
+        const homes = officialHomes(forestFor(current, ctx), current, ctx);
+        return {
+          ...asEdits(current),
+          coursePlacements: placeCourse(current, homes, id, node.key)
+            .coursePlacements,
+        };
+      }, ctx);
     });
-  const addModule = async (module: ModuleSummary, node: StructureNode) => {
+  /**
+   * Prepare one module operation's records and the moves it authorizes, on the supplied state.
+   *
+   * An official selection extends the stored choices along the item's choice path first, so an owner
+   * inside the selected option exists before the module is placed. The module source is the
+   * visible node that renders the module now, and `moveKey` names that source together with the node
+   * key the module itself renders at and the pulled courses with the nodes they leave, so the write
+   * compares the authorized moves against the latest state once. A module the ordered programme
+   * list holds is taken out of that list as it is placed, so its entry resolves at the destination
+   * node and not at the programme level. The node key the tree the choice extension has not reached
+   * renders the module at decides whether the placement moves the module's whole current subtree or
+   * takes its scope's official defaults. `pull` is whether that adoption moves the listed courses
+   * into the module or leaves them where they are.
+   */
+  const modulePlacement = (
+    current: StructureState,
+    ctx: PlacedContent,
+    module: ModuleSummary,
+    targetKey: string,
+    item: StructureRuleItem | null,
+    pull = true,
+  ): {
+    edits: StructureEdits;
+    moves: readonly PulledCourse[];
+    moduleFrom: ResolvedNode | null;
+    moveKey: string;
+  } => {
     const id = module.group_id;
-    const currentIndex = indexResolved(resolved);
-    const current = currentIndex.moduleAt.get(id);
-    if (
-      current &&
-      (node.key === current.node.key ||
-        node.key.startsWith(`${current.node.key}/`))
-    ) {
-      setError(new Error("A module cannot be added inside itself"));
-      return;
-    }
-    const target = currentIndex.byKey.get(node.key);
-    if (
-      target &&
-      displayContents(target).children.some(
-        (child) => child.node.module?.group_id === id,
-      )
-    ) {
-      notify((messageLanguage) =>
-        uiText(messageLanguage, "Already in this module"),
-      );
-      return;
-    }
-    moduleOperation.current?.abort();
-    const controller = new AbortController();
-    moduleOperation.current = controller;
-    const profileId = store.getSnapshot().currentProfileId;
-    setPendingModuleId(id);
-    setError(null);
-    try {
-      const report = await readStudyStructure(id, controller.signal);
+    let choices = current.choices;
+    if (item)
+      for (const step of item.origin.choicePath)
+        if (!(choices[step.node.key] ?? []).includes(step.optionKey))
+          choices = nextChoices(choices, step.node, step.optionKey);
+    const forest = forestFor(current, ctx);
+    const edits = { ...asEdits(current), choices };
+    const beforeTree = resolveStructure(forest, asEdits(current), ctx);
+    const before = indexResolved(beforeTree);
+    const candidate = indexResolved(resolveStructure(forest, edits, ctx));
+    const held = candidate.moduleAt.get(id);
+    if (held && insideScope(held.node.key, targetKey))
+      throw new Error("A module cannot be added inside itself");
+    if (!candidate.byKey.has(targetKey))
+      throw new Error("Structure target is unavailable");
+    // The module leaves the programme list as it is placed, so the destination placement renders
+    // its entry instead of the reservation suppressing it.
+    const afterForest = forestFor(
+      {
+        ...current,
+        programmeGroupIds: withoutProgrammeGroupId(
+          current.programmeGroupIds,
+          id,
+        ),
+      },
+      ctx,
+    );
+    const placed = placeModuleWithCourses(
+      afterForest,
+      edits,
+      ctx,
+      id,
+      targetKey,
+      before.moduleAt.get(id)?.node ?? null,
+      pull,
+    );
+    const source = moduleSource(beforeTree, id);
+    // The forest wrapper is the programme level, so a top-level entry moves with its list place.
+    const moduleFrom =
+      source &&
+      source.node.key !== targetKey &&
+      (source.node.kind === "programme" ||
+        source.node.kind === "module" ||
+        source.node.kind === "group")
+        ? source
+        : null;
+    const moveIds: [string, string | null][] = placed.moves.map((move) => [
+      move.course.group_id,
+      before.courseAt.get(move.course.group_id)?.node.key ?? null,
+    ]);
+    return {
+      edits: placed.edits,
+      moves: placed.moves,
+      moduleFrom,
+      moveKey: JSON.stringify([
+        moduleFrom?.node.key ?? null,
+        before.moduleAt.get(id)?.node.key ?? null,
+        moveIds.sort((left, right) => (left[0] < right[0] ? -1 : 1)),
+      ]),
+    };
+  };
+  /**
+   * Read the stored envelope and refuse a profile or ordered programme list that moved on.
+   *
+   * A profile that differs returns null, and a different programme list raises the finite changed
+   * programmes failure.
+   */
+  const refreshModuleOperation = (
+    profileId: string,
+    programmes: readonly string[],
+  ): StructureState | null => {
+    const latest = store.refreshFromStorage();
+    if (latest.currentProfileId !== profileId) return null;
+    const state = latest.profiles[profileId].state.structure;
+    if (!sameIdList(state.programmeGroupIds, programmes))
+      throw new Error("Structure programmes changed while adding a module");
+    return state;
+  };
+  /**
+   * Confirm and apply one module operation on the latest structure.
+   *
+   * The saved envelope is read before the question and again after it, so a profile switch or a
+   * different programme list fails the operation instead of writing to another profile or another
+   * forest. The write recomputes the placement inside the store callback, and a move identity that
+   * differs from the authorized one fails with `Structure moves changed while confirming a module`.
+   */
+  const finishModulePlacement = async (
+    module: ModuleSummary,
+    targetKey: string,
+    item: StructureRuleItem | null,
+    ctx: PlacedContent,
+    controller: AbortController,
+    profileId: string,
+    programmes: readonly string[],
+  ): Promise<void> => {
+    const state = refreshModuleOperation(profileId, programmes);
+    if (!state) return;
+    if (item === null) {
+      const target = projectionFor(state, ctx).byKey.get(targetKey);
       if (
-        controller.signal.aborted ||
-        store.getSnapshot().currentProfileId !== profileId
-      )
-        return;
-      const ctx = extend({ reports: { [id]: report } });
-      const snapshot = store.getSnapshot();
-      const state = snapshot.profiles[snapshot.currentProfileId].state;
-      const currentEdits = state.structure;
-      if (currentEdits.rootGroupId !== rootGroupId)
-        throw new Error("Structure root changed while adding a module");
-      const currentResolved = resolveStructure(tree, currentEdits, ctx);
-      const currentIndex = indexResolved(currentResolved);
-      const currentModule = currentIndex.moduleAt.get(id);
-      if (
-        currentModule &&
-        (node.key === currentModule.node.key ||
-          node.key.startsWith(`${currentModule.node.key}/`))
-      )
-        throw new Error("A module cannot be added inside itself");
-      const actualTarget = currentIndex.byKey.get(node.key);
-      if (
-        actualTarget &&
-        displayContents(actualTarget).children.some(
-          (child) => child.node.module?.group_id === id,
+        target &&
+        displayContents(target).children.some(
+          (child) => child.node.module?.group_id === module.group_id,
         )
       ) {
         notify((messageLanguage) =>
-          uiText(messageLanguage, "Already in this module"),
+          uiText(
+            messageLanguage,
+            nodeWordingKind(target.node) === "programme"
+              ? "Already in this programme"
+              : "Already in this module",
+          ),
         );
         return;
       }
-      const { edits: placed, movedCourseCount } = placeModuleWithCourses(
-        tree,
-        currentEdits,
-        ctx,
-        id,
-        node.key,
-        currentEdits.placedCourseIds,
-      );
-      const next = {
-        ...placed,
-      };
-      notify((messageLanguage) => {
-        const moved = movedCourseCount
+    }
+    const preview = modulePlacement(state, ctx, module, targetKey, item);
+    const source = preview.moduleFrom;
+    let pulls = true;
+    if (source || preview.moves.length > 0) {
+      const answer = await confirmMoves({
+        holder: module,
+        moves: preview.moves,
+        moduleFrom: source ? modulePlaceText(source) : undefined,
+      });
+      if (answer === false) return;
+      pulls = answer !== "keep";
+    }
+    if (controller.signal.aborted) return;
+    if (!refreshModuleOperation(profileId, programmes)) return;
+    const latestContent = extend({});
+    let applied: readonly PulledCourse[] = [];
+    commit(
+      (current) => {
+        if (!sameIdList(current.programmeGroupIds, programmes))
+          throw new Error("Structure programmes changed while adding a module");
+        const placement = modulePlacement(
+          current,
+          latestContent,
+          module,
+          targetKey,
+          item,
+          pulls,
+        );
+        if (placement.moveKey !== preview.moveKey)
+          throw new Error("Structure moves changed while confirming a module");
+        applied = placement.moves;
+        return placement.edits;
+      },
+      latestContent,
+      [],
+      (current) =>
+        withoutProgrammeGroupId(current.programmeGroupIds, module.group_id),
+    );
+    notify((messageLanguage) => {
+      // A kept course stays where it is, so only a pulled one is reported as moved.
+      const moved =
+        pulls && applied.length
           ? ` · ${uiText(
               messageLanguage,
-              movedCourseCount === 1
+              applied.length === 1
                 ? "{count} course moved here"
                 : "{count} courses moved here",
-              { count: movedCourseCount },
+              { count: applied.length },
             )}`
           : "";
-        return `${uiText(messageLanguage, "Added {name}", {
-          name: moduleName(module, messageLanguage),
-        })}${moved}`;
-      });
-      commit(next, ctx);
-    } catch (caught) {
-      if (
-        controller.signal.aborted ||
-        store.getSnapshot().currentProfileId !== profileId
-      )
-        return;
-      setError(caught instanceof Error ? caught : new Error(String(caught)));
-    } finally {
-      if (
-        moduleOperation.current === controller &&
-        !controller.signal.aborted
-      ) {
-        moduleOperation.current = null;
-        setPendingModuleId(null);
+      return `${uiText(messageLanguage, "Added {name}", {
+        name: moduleName(module, messageLanguage),
+      })}${moved}`;
+    });
+  };
+  /**
+   * Run one module operation through the shared abort, pending, error and cleanup lifecycle.
+   *
+   * The profile identity and the ordered programme list are captured before any read, so the
+   * operation compares its confirmation against the state it started from. `prepare` returns the
+   * placed content the operation reads into, and its failures reach the editor error state.
+   */
+  const runModuleOperation = (
+    module: ModuleSummary,
+    targetKey: string,
+    item: StructureRuleItem | null,
+    prepare: ((signal: AbortSignal) => Promise<PlacedContent | null>) | null,
+  ): Promise<void> => {
+    moduleOperation.current?.abort();
+    const controller = new AbortController();
+    moduleOperation.current = controller;
+    const snapshot = store.getSnapshot();
+    const profileId = snapshot.currentProfileId;
+    const programmes =
+      snapshot.profiles[profileId].state.structure.programmeGroupIds;
+    setPendingModuleId(module.group_id);
+    setError(null);
+    return (async () => {
+      try {
+        const ctx = prepare ? await prepare(controller.signal) : content;
+        if (ctx === null || controller.signal.aborted) return;
+        await finishModulePlacement(
+          module,
+          targetKey,
+          item,
+          ctx,
+          controller,
+          profileId,
+          programmes,
+        );
+      } catch (caught) {
+        if (
+          controller.signal.aborted ||
+          store.getSnapshot().currentProfileId !== profileId
+        )
+          return;
+        setError(caught instanceof Error ? caught : new Error(String(caught)));
+      } finally {
+        if (
+          moduleOperation.current === controller &&
+          !controller.signal.aborted
+        ) {
+          moduleOperation.current = null;
+          setPendingModuleId(null);
+        }
       }
-    }
+    })();
+  };
+  /** Add one searched module to a node, reading its official report into the placed content. */
+  const addModule = (module: ModuleSummary, node: StructureNode): void => {
+    void runModuleOperation(module, node.key, null, async (signal) => {
+      const report = await readStudyStructure(module.group_id, signal);
+      return extend({ reports: { [module.group_id]: report } });
+    });
   };
   const deselectRuleCourse = (
     course: CourseSummary,
@@ -233,33 +474,37 @@ export function useStructureEditor({
       if (freeIds.includes(course.group_id)) {
         if (completedCourseIds.includes(course.group_id) && !removeCompletion)
           return;
-        commit(edits, content, [course.group_id]);
+        commit(asEdits, content, [course.group_id]);
         return;
       }
-      const homes = officialHomes(tree, edits, content);
       commit(
-        {
-          ...edits,
-          coursePlacements: placeCourse(edits, homes, course.group_id, null)
-            .coursePlacements,
-        },
+        (current) => ({
+          ...asEdits(current),
+          coursePlacements: placeCourse(
+            current,
+            officialHomes(forestFor(current, content), current, content),
+            course.group_id,
+            null,
+          ).coursePlacements,
+        }),
         content,
         removeCompletion ? [course.group_id] : [],
       );
     });
   const placeRuleCourse = (course: CourseSummary, item: StructureRuleItem) => {
-    let choices = edits.choices;
-    for (const step of item.origin.choicePath)
-      if (!(choices[step.node.key] ?? []).includes(step.optionKey))
-        choices = nextChoices(choices, step.node, step.optionKey);
-    const homes = officialHomes(tree, edits, content);
-    const nextEdits = placeCourse(
-      { ...edits, choices },
-      homes,
-      course.group_id,
-      item.origin.ownerKey,
-    );
-    commit(nextEdits, content);
+    commit((current) => {
+      requireNode(current, content, item.origin.ownerKey);
+      let choices = current.choices;
+      for (const step of item.origin.choicePath)
+        if (!(choices[step.node.key] ?? []).includes(step.optionKey))
+          choices = nextChoices(choices, step.node, step.optionKey);
+      return placeCourse(
+        { ...asEdits(current), choices },
+        officialHomes(forestFor(current, content), current, content),
+        course.group_id,
+        item.origin.ownerKey,
+      );
+    }, content);
   };
   const selectRuleCourse = (course: CourseSummary, item: StructureRuleItem) =>
     runAction(() => placeRuleCourse(course, item));
@@ -272,87 +517,181 @@ export function useStructureEditor({
       if (item) placeRuleCourse(course, item);
       toggleCompleted(store, course.group_id);
     });
-  const selectRuleModule = (module: ModuleSummary, item: StructureRuleItem) =>
-    runAction(() => {
-      let choices = edits.choices;
-      for (const step of item.origin.choicePath)
-        if (!(choices[step.node.key] ?? []).includes(step.optionKey))
-          choices = nextChoices(choices, step.node, step.optionKey);
-      const { edits: next } = placeModuleWithCourses(
-        tree,
-        { ...edits, choices },
-        content,
-        module.group_id,
-        item.origin.ownerKey,
-        resolved.subtree.map((course) => course.group_id),
-      );
-      commit(next, content);
-    });
-  const deselectRuleModule = (module: ModuleSummary) =>
-    runAction(() => {
-      const homes = officialHomes(tree, edits, content);
+  /**
+   * Select one official module option, confirming the module move and every course it pulls first.
+   */
+  const selectRuleModule = (
+    module: ModuleSummary,
+    item: StructureRuleItem,
+  ): Promise<void> =>
+    runModuleOperation(module, item.origin.ownerKey, item, null);
+  /**
+   * Remove one module from the structure.
+   *
+   * A completed course it held moves to Unplaced studies and keeps its completion. The identities
+   * in `removedCourseIds` are the destructive choice: they leave both course sets and the tree
+   * together with the module.
+   */
+  const deselectRuleModule = (
+    module: ModuleSummary,
+    removedCourseIds: readonly string[] = [],
+  ) =>
+    runAction(() =>
       commit(
-        {
-          ...edits,
-          modulePlacements: placeModule(edits, homes, module.group_id, null)
-            .modulePlacements,
+        (current) => {
+          const forest = forestFor(current, content);
+          const next = placeModule(
+            current,
+            officialHomes(forest, current, content),
+            module.group_id,
+            null,
+          );
+          // The courses this module held follow the ordinary removal outcome, so no stale place
+          // keeps them out of a node a later addition gives them.
+          const held = indexResolved(
+            resolveStructure(forest, current, content),
+          ).moduleAt.get(module.group_id);
+          const courses = held?.subtree.map((course) => course.group_id) ?? [];
+          const dropped = new Set(removedCourseIds);
+          return {
+            choices: next.choices,
+            modulePlacements: next.modulePlacements,
+            coursePlacements: {
+              ...next.coursePlacements,
+              ...removalPlacements(courses, completedCourseIds),
+              ...Object.fromEntries(
+                courses.filter((id) => dropped.has(id)).map((id) => [id, null]),
+              ),
+            },
+          };
         },
         content,
-      );
-    });
-  // Name of the other node a course/module is placed in, or null if it is not placed
-  // elsewhere than `targetKey`.
+        removedCourseIds,
+      ),
+    );
+  // Name of the other node a course is placed in, or null when the move needs no confirmation.
+  // Unplaced studies holds unplaced items by definition, so leaving it is not a move between
+  // official owners.
   const courseHome = (
     courseId: string,
     targetKey: string,
     language: DisplayLanguage,
   ): string | null => {
     const at = indexResolved(resolved).courseAt.get(courseId);
-    if (at) return at.node.key === targetKey ? null : nodeLabel(at, language);
-    return freeIds.includes(courseId) && targetKey !== UNPLACED_KEY
-      ? uiText(language, "Unplaced studies")
-      : null;
+    if (!at || at.node.key === targetKey || at.node.kind === "unplaced")
+      return null;
+    return resolvedNodeLabel(at, language);
   };
-  const moduleHome = (
-    moduleId: string,
-    targetKey: string,
-    language: DisplayLanguage,
-  ): string | null => {
-    const at = indexResolved(resolved).moduleAt.get(moduleId);
-    return at && at.node.key !== targetKey ? nodeLabel(at, language) : null;
+  /**
+   * Whether one node's current contents differ from the contents its own place draws for it.
+   *
+   * The open profile's structure is read from the store and its forest derived, so a choice, an
+   * addition, a move out of an official home or a deselection inside that scope is compared
+   * against the scope's own official defaults in its own place, which is the rendering the holder
+   * shows when an addition first places it. A record that leaves the rendered contents unchanged
+   * is not a difference. It reads and derives only.
+   */
+  const hasNodeEdits = (node: StructureNode): boolean => {
+    const current = storedStructure();
+    return hasScopedEdits(
+      forestFor(current, content),
+      asEdits(current),
+      content,
+      node.key,
+    );
   };
-  const resetNode = (node: StructureNode) =>
+  /**
+   * The courses one reset returns to its scope from the nodes that render them now.
+   *
+   * The reset returns every course whose official home is inside that scope and which another node
+   * renders now, so an interface can ask about them before the write and keep them where they are.
+   */
+  const resetPulls = (node: StructureNode): readonly PulledCourse[] => {
+    const current = storedStructure();
+    return scopePulls(
+      forestFor(current, content),
+      asEdits(current),
+      content,
+      node.key,
+    );
+  };
+  /**
+   * Reset one node to its official contents.
+   *
+   * The scoped edits and the completion clearing both derive from the same latest profile state
+   * read inside the write callback, so an edit another tab saved while a confirmation waited is
+   * seen. `removeCompletedCourses` is the destructive `Reset all` choice, which clears exactly the
+   * completions the affected subtree held before the reset and reaches the completion owner in
+   * every state, including a scope that holds no edit. `pull` is whether the reset returns the
+   * courses `resetPulls` lists. A kept course holds its place. Unplaced studies clears
+   * the places it owns and offers no such choice.
+   */
+  const resetNode = (
+    node: StructureNode,
+    removeCompletedCourses = false,
+    pull = true,
+  ) =>
     runAction(() => {
       if (node.kind === "unplaced") {
-        resetUnplaced(store, tree, content);
+        resetUnplaced(store, content);
         notify((messageLanguage) =>
           uiText(messageLanguage, "Unplaced studies reset"),
         );
         return;
       }
-      commit(
-        resetScope(edits, officialHomes(tree, edits, content), node.key),
-        content,
-      );
+      applyStructure(store, (state) => {
+        const current = state.structure;
+        const forest = forestFor(current, content);
+        requireNode(current, content, node.key);
+        const homes = officialHomes(forest, current, content);
+        const cleared = resetScope(current, homes, node.key);
+        const scoped = pull
+          ? cleared
+          : keepCoursePlacements(
+              cleared,
+              current,
+              scopePulls(forest, current, content, node.key),
+            );
+        const affected = indexResolved(
+          resolveStructure(forest, current, content),
+        ).byKey.get(node.key);
+        if (!affected) throw new Error("Structure target is unavailable");
+        // A course this node held through a placement does not fall back into another node.
+        const kept = clearedScopePlacements(
+          affected,
+          current,
+          forest,
+          scoped,
+          content,
+          node.key,
+          (key) => key === UNPLACED_KEY || insideScope(node.key, key),
+          state.completedCourseIds,
+        );
+        const edits: StructureEdits = {
+          ...scoped,
+          coursePlacements: { ...scoped.coursePlacements, ...kept },
+        };
+        const projection = resolveStructure(forest, edits, content);
+        const ordinary: StructureChange = {
+          next: {
+            programmeGroupIds: [...current.programmeGroupIds],
+            ...edits,
+            placedCourseIds: projection.subtree.map(
+              (course) => course.group_id,
+            ),
+          },
+        };
+        return removeCompletedCourses
+          ? resetCompletionChange(state, node.key, content, ordinary)
+          : ordinary;
+      });
       notify((messageLanguage) =>
-        uiText(messageLanguage, "Module reset to its official contents"),
-      );
-    });
-  const resetAll = () =>
-    runAction(() => {
-      const projection = resolveStructure(tree, emptyEdits(), NO_CONTENT);
-      applyStructure(
-        store,
-        {
-          rootGroupId,
-          ...emptyEdits(),
-          placedCourseIds: projection.subtree.map((course) => course.group_id),
-        },
-        [],
-        freeIds,
-      );
-      notify((messageLanguage) =>
-        uiText(messageLanguage, "Reset to the official structure"),
+        uiText(
+          messageLanguage,
+          nodeWordingKind(node) === "programme"
+            ? "Programme reset to its official contents"
+            : "Module reset to its official contents",
+        ),
       );
     });
   return {
@@ -365,16 +704,10 @@ export function useStructureEditor({
     selectRuleModule,
     deselectRuleModule,
     courseHome,
-    moduleHome,
+    hasNodeEdits,
+    resetPulls,
     resetNode,
-    resetAll,
     pendingModuleId,
     error: error ?? actionError,
   };
-}
-
-function nodeLabel(node: ResolvedNode, language: DisplayLanguage): string {
-  return node.node.module
-    ? moduleName(node.node.module, language)
-    : (node.node.title ?? uiText(language, "Choice"));
 }

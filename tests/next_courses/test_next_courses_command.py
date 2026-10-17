@@ -52,7 +52,7 @@ def _report() -> NextCoursesReport:
             NextCourseResult(
                 course=_summary("next"),
                 required_coverage=1.0,
-                recommended_coverage=0.0,
+                recommended_coverage=None,
                 depends_on_inferred=False,
             ),
         ),

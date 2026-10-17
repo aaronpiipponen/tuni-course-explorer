@@ -1,13 +1,18 @@
-/** Independent-project notice pinned to the bottom of the application shell. */
+/** Independent-project notice and repository link pinned to the bottom of the application shell. */
 import { useWording } from "../shared/useWording";
 
-export function AppFooter() {
+export function AppFooter({ repositoryUrl }: { repositoryUrl: string }) {
   const { t } = useWording();
   return (
     <footer className="app-footer">
-      {t(
-        "This is an independent project that is not affiliated with Tampere University.",
-      )}
+      <span className="app-footer-notice">
+        {t(
+          "This is an independent project that is not affiliated with Tampere University.",
+        )}
+      </span>{" "}
+      <a href={repositoryUrl} target="_blank" rel="noopener noreferrer">
+        {t("Source code on GitHub.")}
+      </a>
     </footer>
   );
 }

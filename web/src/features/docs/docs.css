@@ -214,10 +214,14 @@
   margin-left: auto;
 }
 .docs-shell .docs-button {
-  display: inline-block;
+  display: inline-flex;
+  box-sizing: border-box;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
   border: 1px solid var(--docs-line2);
   border-radius: 8px;
-  padding: 7px 14px;
+  padding: 0 14px;
   color: var(--docs-head);
   font:
     13.5px Inter,
@@ -227,6 +231,10 @@
     "Segoe UI",
     Roboto,
     sans-serif;
+}
+.docs-shell .docs-github svg {
+  width: 16px;
+  height: 16px;
 }
 .docs-shell .docs-button:hover {
   background: var(--docs-panel);

@@ -1,11 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 636" role="img"
      aria-labelledby="t d" font-family="system-ui, sans-serif">
-  <title id="t">Browser state and the request path</title>
-  <desc id="d">A user action is written into browser storage first, and browser storage publishes the current
-  profile, which is also read back at the start of the app. The current profile supplies the feature request
-  inputs, a typed API client sends them to the read-only web server as a read request, and the server report
-  becomes the transient feature result that the open tab shows. The dashed boxes are the reports, which are
-  never persisted, and the accent arrow marks the read request.</desc>
+  <title id="t">Browser state, the open tab and the request path</title>
+  <desc id="d">A tab action is written into the browser tab's session storage, which holds the open tab, and a
+  course or settings action is written into browser storage, which holds every saved profile. Browser storage
+  publishes the current profile, which is also read back at the start of the app. The current profile supplies
+  the feature request inputs, a typed API client sends them to the read-only web server as a read request, and
+  the server report becomes the transient feature result that the open tab shows. The dashed boxes are the
+  reports, which are never persisted, and the accent arrow marks the read request.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
             markerWidth="8" markerHeight="8" orient="auto-start-reverse">
@@ -18,9 +19,13 @@
   </defs>
   <rect width="960" height="636" rx="12" fill="#232434"/>
 
-  <rect x="40" y="60" width="250" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
-  <text x="165" y="86" text-anchor="middle" font-size="16" fill="#ececf2">User actions</text>
-  <text x="165" y="108" text-anchor="middle" font-size="14" fill="#a3a4b8">tab and courses</text>
+  <rect x="40" y="60" width="230" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="155" y="86" text-anchor="middle" font-size="16" fill="#ececf2">Course and settings</text>
+  <text x="155" y="108" text-anchor="middle" font-size="14" fill="#a3a4b8">changed by an action</text>
+
+  <rect x="40" y="156" width="230" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="155" y="182" text-anchor="middle" font-size="16" fill="#ececf2">Tab changes</text>
+  <text x="155" y="204" text-anchor="middle" font-size="14" fill="#a3a4b8">the open tab</text>
 
   <rect x="410" y="60" width="250" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
   <text x="535" y="86" text-anchor="middle" font-size="16" fill="#ececf2">Browser storage</text>
@@ -30,27 +35,35 @@
   <text x="535" y="206" text-anchor="middle" font-size="16" fill="#ececf2">Current profile</text>
   <text x="535" y="228" text-anchor="middle" font-size="14" fill="#a3a4b8">the published state</text>
 
-  <rect x="740" y="180" width="190" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
-  <text x="835" y="206" text-anchor="middle" font-size="16" fill="#ececf2">Request inputs</text>
-  <text x="835" y="228" text-anchor="middle" font-size="14" fill="#a3a4b8">courses and options</text>
+  <rect x="410" y="300" width="250" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="535" y="326" text-anchor="middle" font-size="16" fill="#ececf2">Tab session storage</text>
+  <text x="535" y="348" text-anchor="middle" font-size="14" fill="#a3a4b8">the open tab</text>
 
-  <rect x="740" y="300" width="190" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
-  <text x="835" y="326" text-anchor="middle" font-size="16" fill="#ececf2">API client</text>
-  <text x="835" y="348" text-anchor="middle" font-size="14" fill="#a3a4b8">typed read client</text>
+  <rect x="740" y="180" width="196" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="838" y="206" text-anchor="middle" font-size="16" fill="#ececf2">Request inputs</text>
+  <text x="838" y="228" text-anchor="middle" font-size="14" fill="#a3a4b8">courses and options</text>
 
-  <rect x="740" y="420" width="190" height="64" rx="8" fill="#2e3045"
+  <rect x="740" y="300" width="196" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="838" y="326" text-anchor="middle" font-size="16" fill="#ececf2">API client</text>
+  <text x="838" y="348" text-anchor="middle" font-size="14" fill="#a3a4b8">typed read client</text>
+
+  <rect x="740" y="420" width="196" height="64" rx="8" fill="#2e3045"
         stroke="#4a4c6b" stroke-width="1.5" stroke-dasharray="5 4"/>
-  <text x="835" y="446" text-anchor="middle" font-size="16" fill="#ececf2">Server report</text>
-  <text x="835" y="468" text-anchor="middle" font-size="14" fill="#a3a4b8">read-only server</text>
+  <text x="838" y="446" text-anchor="middle" font-size="16" fill="#ececf2">Server report</text>
+  <text x="838" y="468" text-anchor="middle" font-size="14" fill="#a3a4b8">read-only server</text>
 
-  <rect x="740" y="540" width="190" height="64" rx="8" fill="#2e3045"
+  <rect x="740" y="540" width="196" height="64" rx="8" fill="#2e3045"
         stroke="#4a4c6b" stroke-width="1.5" stroke-dasharray="5 4"/>
-  <text x="835" y="566" text-anchor="middle" font-size="16" fill="#ececf2">Feature result</text>
-  <text x="835" y="588" text-anchor="middle" font-size="14" fill="#a3a4b8">shown, not saved</text>
+  <text x="838" y="566" text-anchor="middle" font-size="16" fill="#ececf2">Feature result</text>
+  <text x="838" y="588" text-anchor="middle" font-size="14" fill="#a3a4b8">shown, not saved</text>
 
-  <line x1="290" y1="92" x2="410" y2="92" stroke="#a3a4b8" stroke-width="1.5"
+  <line x1="270" y1="92" x2="410" y2="92" stroke="#a3a4b8" stroke-width="1.5"
         marker-end="url(#arrow)"/>
-  <text x="350" y="80" text-anchor="middle" font-size="14" fill="#a3a4b8">write first</text>
+  <text x="340" y="80" text-anchor="middle" font-size="14" fill="#a3a4b8">written first</text>
+
+  <polyline points="270,188 340,188 340,332 410,332" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="327" y="250" text-anchor="end" font-size="14" fill="#a3a4b8">written first</text>
 
   <line x1="535" y1="124" x2="535" y2="180" stroke="#a3a4b8" stroke-width="1.5"
         marker-end="url(#arrow)"/>
@@ -59,17 +72,21 @@
   <line x1="660" y1="212" x2="740" y2="212" stroke="#a3a4b8" stroke-width="1.5"
         marker-end="url(#arrow)"/>
 
-  <line x1="835" y1="244" x2="835" y2="300" stroke="#a3a4b8" stroke-width="1.5"
+  <line x1="838" y1="244" x2="838" y2="300" stroke="#a3a4b8" stroke-width="1.5"
         marker-end="url(#arrow)"/>
-  <text x="825" y="278" text-anchor="end" font-size="14" fill="#a3a4b8">typed request</text>
+  <text x="830" y="278" text-anchor="end" font-size="14" fill="#a3a4b8">typed request</text>
 
-  <line x1="835" y1="364" x2="835" y2="420" stroke="#a98ae0" stroke-width="1.5"
+  <line x1="838" y1="364" x2="838" y2="420" stroke="#a98ae0" stroke-width="1.5"
         marker-end="url(#arrow-accent)"/>
-  <text x="825" y="398" text-anchor="end" font-size="14" fill="#a3a4b8">read</text>
+  <text x="830" y="398" text-anchor="end" font-size="14" fill="#a3a4b8">read</text>
 
-  <line x1="835" y1="484" x2="835" y2="540" stroke="#a3a4b8" stroke-width="1.5"
+  <line x1="838" y1="484" x2="838" y2="540" stroke="#a3a4b8" stroke-width="1.5"
         marker-end="url(#arrow)"/>
-  <text x="825" y="518" text-anchor="end" font-size="14" fill="#a3a4b8">report</text>
+  <text x="830" y="518" text-anchor="end" font-size="14" fill="#a3a4b8">report</text>
+
+  <polyline points="660,332 700,332 700,572 740,572" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="690" y="400" text-anchor="end" font-size="14" fill="#a3a4b8">shown by the open tab</text>
 
   <rect x="40" y="484" width="211" height="76" rx="8" fill="none" stroke="#4a4c6b" stroke-width="1.5"/>
   <rect x="56" y="497" width="24" height="14" rx="2" fill="#2e3045"

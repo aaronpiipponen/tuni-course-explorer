@@ -35,15 +35,12 @@ export function CourseMenu({
   const { language, t } = useWording();
   const [replaceOpen, setReplaceOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const freeChoice = useFreeChoiceAdd(() => triggerRef.current?.focus());
+  const freeChoice = useFreeChoiceAdd();
   const onInteractionChangeRef = useRef(onInteractionChange);
   onInteractionChangeRef.current = onInteractionChange;
   useEffect(
-    () =>
-      onInteractionChangeRef.current?.(
-        open || replaceOpen || freeChoice.promptOpen,
-      ),
-    [open, replaceOpen, freeChoice.promptOpen],
+    () => onInteractionChangeRef.current?.(open || replaceOpen),
+    [open, replaceOpen],
   );
   const addComparison = () =>
     runAction(() => {
@@ -130,7 +127,6 @@ export function CourseMenu({
         }}
         returnFocus={() => triggerRef.current?.focus()}
       />
-      {freeChoice.prompt}
     </>
   );
 }

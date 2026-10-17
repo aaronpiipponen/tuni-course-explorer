@@ -148,7 +148,6 @@ export function RoutePanel({
             </div>
           </Disclosure>
         )}
-        {freeChoice.prompt}
         {actionError && <ErrorNotice error={actionError} language={language} />}
       </div>
     </Disclosure>

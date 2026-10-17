@@ -47,7 +47,7 @@ A candidate is never returned in these cases:
 
 ## Coverage and the inferred dependence mark
 
-Each result carries two prerequisite coverage values, one over its required prerequisites and one over its recommended ones. A value is the share of the course slots of the option the basis covers best within its category, so a partly covered option reads as the covered part of it. Each value is a fraction from 0 to 1, a category that carries no prerequisite of its kind reads 0.0, and the app shows the pair as the **Required** and **Recommended** meters.
+Each result carries two prerequisite coverage values, one over its required prerequisites and one over its recommended ones. A value is the share of the course slots of the option the basis covers best within its category, so a partly covered option reads as the covered part of it. Each value is a fraction from 0 to 1, a category whose slot set is empty carries no value at all rather than 0.0, and under **At least one** the app shows each value it receives as the **Required** or the **Recommended** meter.
 
 - A direct course is one slot, and the basis covers it when it satisfies the course.
 - A course that a substitution replaces is one slot for that course, and the basis covers it only when the whole substitution is met.
@@ -55,7 +55,7 @@ Each result carries two prerequisite coverage values, one over its required prer
 - A free-choice requirement and a credit obligation supply no slot.
 - A course that several branches of one requirement name is one slot, so a repeated requirement does not raise a coverage value.
 
-The two categories are measured apart, so the recommended coverage of a course that carries no recommended prerequisite is 0.0, and the required coverage of a course that carries no required prerequisite is 0.0.
+The two categories are measured apart, so a course that carries no recommended prerequisite reports no recommended coverage, and a course that carries no required prerequisite reports no required coverage. A category that carries course prerequisites but covers none of them reports the real 0.0, and the app draws that meter under **At least one**. Under **All** the app draws no coverage meter, whatever values the result carries.
 
 The inferred dependence mark distinguishes an official result from one that rests on inference. With the inference toggle off, no result carries the mark. With it on, a result carries the mark when it is eligible with the published inferred prerequisites and equivalence groups in force and the same candidate is ineligible when it is compiled from official prerequisites alone. A course whose official prerequisite the basis satisfies only through an inferred equivalence group carries the mark, and a course that is already eligible from its official prerequisites never does.
 

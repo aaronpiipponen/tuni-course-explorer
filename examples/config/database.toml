@@ -1,7 +1,7 @@
 # PostgreSQL connection components for the example deployment, validated by
 # course_explorer.config.DatabaseSettings. The example serves its bundled fictional dataset.
-POSTGRES_DB = "course_explorer_public"
-POSTGRES_USER = "course_explorer_public"
+POSTGRES_DB = "course_explorer"
+POSTGRES_USER = "course_explorer"
 POSTGRES_HOST = "127.0.0.1"
 POSTGRES_PORT = 5433
 SELECTED_DATASET_ENABLED = false

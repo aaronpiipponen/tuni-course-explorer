@@ -117,7 +117,7 @@ The credits, the preference between routes of equal cost, and the treatment of e
 2. Select **Expand** in the route panel.
 3. Select **Add all missing courses to structure**. Every course of the route that is not in your selection is added to it, and each added course appears in the Structure of studies tab, under [**Unplaced studies**](/docs/guides/structure-of-studies.md#unplaced-studies) when no module places it.
 
-When no structure root is chosen, the app asks for a degree programme or module first and adds the courses once one is chosen.
+The action adds the courses whether or not the programme list of the structure of studies holds a programme.
 
 ## Clear the route
 

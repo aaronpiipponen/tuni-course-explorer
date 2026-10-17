@@ -36,7 +36,12 @@ def run_search_command(
     fuzzy_min_score: float | None = None,
     include_inactive: bool = True,
 ) -> UnifiedSearchReport:
-    """Compose one unified search over both match methods, the shared repositories, and provider."""
+    """Compose one unified search over the match services, the shared repositories, and provider.
+
+    The embedding provider receives a query-local projection of the embedding settings that carries
+    the search policy for the one query embedding request. Every other consumer receives the loaded
+    embedding settings, so the vector identity and the hubs come from those settings.
+    """
     if not query.strip():
         raise ValueError("search query must be nonblank")
     if display_language not in get_args(DisplayLanguage):
@@ -50,37 +55,29 @@ def run_search_command(
         raise ValueError(str(exc)) from exc
     embedding_settings = load_embedding_settings()
     search_settings = load_search_settings()
+    query_embedding_settings = embedding_settings.model_copy(
+        update={
+            "embedding_request_timeout_seconds": (
+                search_settings.search_embedding_request_timeout_seconds
+            ),
+            "embedding_max_attempts": search_settings.search_embedding_max_attempts,
+        }
+    )
     with _database_context(load_database_settings()) as factory:
         curriculum = CurriculumRepository(factory)
         repository = SemanticSearchRepository(factory)
         course_lookup = CourseLookupService(curriculum, search_settings)
-        with EmbeddingProvider(embedding_settings) as provider:
+        with EmbeddingProvider(query_embedding_settings) as provider:
             semantic_search = CourseSearchService(
                 curriculum, repository, provider, embedding_settings, search_settings
             )
             unified_search = UnifiedCourseSearchService(
                 curriculum, semantic_search, course_lookup, search_settings
             )
-            results = unified_search.search(
+            return unified_search.search(
                 query,
                 display_language=display_language,
                 semantic_min_score=semantic_min_score,
                 fuzzy_min_score=fuzzy_min_score,
                 include_inactive=include_inactive,
             )
-    semantic_threshold = (
-        search_settings.semantic_search_min_score
-        if semantic_min_score is None
-        else semantic_min_score
-    )
-    fuzzy_threshold = (
-        search_settings.fuzzy_search_min_score if fuzzy_min_score is None else fuzzy_min_score
-    )
-    return UnifiedSearchReport(
-        display_language=display_language,
-        semantic_min_score=semantic_threshold,
-        fuzzy_min_score=fuzzy_threshold,
-        include_inactive=include_inactive,
-        tier_priority=search_settings.search_tier_priority,
-        results=results,
-    )

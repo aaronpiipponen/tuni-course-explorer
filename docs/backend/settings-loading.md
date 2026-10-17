@@ -17,7 +17,7 @@ Every class in the table below lives in `src/course_explorer/config.py` and subc
 | `LocalLifecycleSettings` | `config/curriculum.toml` and `config/search.toml` for state roots, `config/worker.toml` for timing | Local stage state roots and bounded startup, polling, and stop policy |
 | `EmbeddingRuntimeSettings` | `config/search.toml` | Loopback embedding runtime, generation chunking, and pinned artifact identity |
 | `EmbeddingSettings` | `config/search.toml` | The runtime contract plus both required hub vectors |
-| `SearchSettings` | `config/search.toml` | Search tier order, comparison thresholds, recommendation policy, and the route compact-node limit |
+| `SearchSettings` | `config/search.toml` | Search tier order, the request policy of one search query embedding, comparison thresholds, recommendation policy, and the route compact-node limit |
 | `TranslationSettings` | `config/translation.toml` | Loopback translation runtime, model identity, and generation limits |
 | `TranslationControllerSettings` | `config/translation.toml` for its own root and attempts, `config/worker.toml` for the connection base | Translation controller state root and health attempts |
 | `InferenceSettings` | `config/inference.toml` | Loopback generation runtime, the two local fit keys, and closed policy literals |
@@ -32,6 +32,8 @@ Every class in the table below lives in `src/course_explorer/config.py` and subc
 | `WorkerGpuRebootSettings` | `config/worker.toml` | The shared checkpoint-reboot interval |
 
 A code-owned default exists only where a field declares one. `EmbeddingRuntimeSettings` and `EmbeddingSettings` are two projections of one source, so the Compose environment file can be generated and a generation run can load the runtime contract before a dataset's hub artifacts exist. A similarity read through `EmbeddingSettings` fails when a hub artifact is missing.
+
+The search command projects the query embedding request policy onto the embedding settings it loaded. `SEARCH_EMBEDDING_REQUEST_TIMEOUT_SECONDS` and `SEARCH_EMBEDDING_MAX_ATTEMPTS` of `SearchSettings` replace the loaded timeout and attempt count through `model_copy`, and that projection is the only settings the one `EmbeddingProvider` of the request receives. Every other similarity consumer reads the loaded embedding settings, which own the vector identity and both hubs. `SearchSettings` validates both values before the copy, and the copy itself runs no further validation.
 
 ## The shared base and its file sources
 

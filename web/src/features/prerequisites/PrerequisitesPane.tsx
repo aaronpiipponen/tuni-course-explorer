@@ -99,7 +99,7 @@ export function PrerequisitesPane() {
         {
           term: t("Find minimum route"),
           text: t(
-            "Click to calculate one temporary cheapest route through your completed or selected courses. It is not saved anywhere, changing the selected course, the basis, the scope or your course sets clears it back to the normal graph, and clicking again clears it yourself.",
+            "Click to calculate one temporary cheapest route through your completed or selected courses. It is not saved anywhere, changing the selected course, the basis, the scope or your course sets clears it back to the normal graph, and clicking it again clears it.",
           ),
         },
       ],

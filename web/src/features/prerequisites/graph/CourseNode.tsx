@@ -18,7 +18,7 @@ export type GraphNodeData = ModelNode & {
   interactionDisabled: boolean;
 };
 export function CourseNode({ data }: NodeProps & { data: GraphNodeData }) {
-  const { store } = useProfileSelector((state) => state.activeTab);
+  const { store } = useProfileSelector((state) => state.prerequisites);
   const { runAction, error } = useAction();
   const { language, t } = useWording();
   const [open, setOpen] = useState(false);

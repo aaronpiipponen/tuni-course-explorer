@@ -1,8 +1,7 @@
 /** Five-tab animated cyclic carousel with keyboard navigation and inert offscreen panes. */
 import { useEffect, useState } from "react";
 import { AnimatePresence } from "framer-motion";
-import { useProfileSelector } from "../state/useProfileSelector";
-import { setActiveTab } from "./actions";
+import { setActiveTab, useActiveTab } from "./sessionTab";
 import { TABS } from "./tabs";
 import { SearchPane } from "../features/search/SearchPane";
 import { SearchSessionProvider } from "../features/search/SearchSession";
@@ -24,9 +23,7 @@ const PANES = [
 ];
 
 export function TabCarousel() {
-  const { store, value: activeTab } = useProfileSelector(
-    (state) => state.activeTab,
-  );
+  const activeTab = useActiveTab();
   const { runAction, error } = useAction();
   const { language, t } = useWording();
   const active = TABS.findIndex((tab) => tab.id === activeTab);
@@ -45,9 +42,7 @@ export function TabCarousel() {
     setPresentation({ tab: activeTab, direction: shortest < 0 ? -1 : 1 });
   }
   const select = (index: number) =>
-    runAction(() =>
-      setActiveTab(store, TABS[(index + TABS.length) % TABS.length].id),
-    );
+    runAction(() => setActiveTab(TABS[(index + TABS.length) % TABS.length].id));
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
       if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;

@@ -1,6 +1,6 @@
 # Browser state
 
-The browser state is one local-storage envelope of profiles, held by a single store that writes before it publishes.
+The browser state is one local-storage envelope of profiles, held by a single store that re-reads it before every change and writes before it publishes.
 
 ## The envelope and its types
 
@@ -9,43 +9,87 @@ The browser state is one local-storage envelope of profiles, held by a single st
 - `CourseId` is a canonical course identity as a string, and it is the only course key the envelope uses.
 - `TabId` is `search`, `compare`, `prerequisites`, `discover`, or `structure`.
 - `DisplayLanguage` is `fi` or `en`.
-- `ProfileState` holds `language`, `activeTab`, `selectedCourseIds`, `completedCourseIds`, and one slice per feature: `search`, `compare`, `prerequisites`, `discover`, and `structure`.
+- `ProfileState` holds `language`, `selectedCourseIds`, `completedCourseIds`, `pendingSisuImport`, and one slice per feature: `search`, `compare`, `prerequisites`, `discover`, and `structure`.
 - `Profile` is `{ name, state }`.
-- `BrowserState` is `{ schemaVersion: 1, currentProfileId, profiles }`.
+- `BrowserState` is `{ schemaVersion: 2, currentProfileId, profiles }`.
+- `BrowserProfileFile` is `{ type: "tuni-course-explorer/profile/2", profile }`, `BrowserStateFile` is `{ type: "tuni-course-explorer/state/2", data }`, and `BrowserFile` joins the two. `BrowserImport` joins an imported profile file, a state import whose `state` is the validated envelope, and a `SisuCaptureFile`.
+- The console script downloads a raw capture of `{ type: "tuni-course-explorer/sisu/1", markup, modules, courses }`: the plan tree markup, each shown module version identity resolved to the Kori group ids of that module, and each shown course code resolved to its Kori search hits.
+- `parseSisuCapture` in `web/src/features/structure/sisu.ts` reads that raw capture and returns `SisuCaptureFile`, `{ type: "tuni-course-explorer/sisu/1", programmes }`, the parsed hierarchy that carries no plan markup. `pendingSisuImport` holds only that parsed `SisuPlan` hierarchy.
 
-`web/src/state/defaults.ts` holds the two constructors. `initialProfileState()` returns English, the `search` tab, empty course sets, and the initial slice of each feature. `initialBrowserState()` returns `schemaVersion: 1`, the current profile `default`, and one profile named `My plan`.
+`web/src/state/defaults.ts` holds the two constructors. `initialProfileState()` returns English, empty course sets, and the initial slice of each feature. `initialBrowserState()` returns `schemaVersion: 2`, the current profile `default`, and one profile named `My plan`.
 
-Each feature owns its slice type and its constructor in `web/src/features/<feature>/state.ts`. `StructureState` in `web/src/features/structure/state.ts` adds `rootGroupId` and `placedCourseIds` to `choices`, `coursePlacements`, and `modulePlacements`, and `UNPLACED_KEY` names the place that holds courses with no module.
+Each feature owns its slice type and its constructor in `web/src/features/<feature>/state.ts`. `StructureState` in `web/src/features/structure/state.ts` adds `programmeGroupIds` and `placedCourseIds` to `choices`, `coursePlacements`, and `modulePlacements`, and `UNPLACED_KEY` names the place that holds courses with no programme.
 
 ## One store and one write path
 
-`BrowserStore` in `web/src/state/store.ts` holds the storage object, the snapshot, and a listener set. `createBrowserStore(storage)` reads the envelope and returns the store, and `BROWSER_STORAGE_KEY` (`tuni-course-explorer`) is the single key it reads and writes.
+`BrowserStore` in `web/src/state/store.ts` holds the storage object, the snapshot, and a listener set. `createBrowserStore(storage)` reads the envelope and returns the store, and `BROWSER_STORAGE_KEY` (`tuni-course-explorer`) is the single key it reads and writes. An absent key at that point resolves to `resetBrowserStore(storage)`, which writes the first-visit envelope through the same reset writer the recovery screen uses.
 
 - `getSnapshot` and `subscribe` feed `useSyncExternalStore`. `useCurrentProfile`, `useCurrentProfileId`, and `useProfileSelector` in `web/src/state/` are the React bindings, and `StoreContext` in `web/src/state/context.ts` carries the one store instance.
-- `updateCurrent(update)` calls the update with the current profile state and returns without a write when the update returns the same reference. Otherwise it builds the next envelope and commits it.
-- `#commit` writes the envelope to storage first and only then assigns the snapshot and notifies the listeners. A write that throws therefore reaches neither the snapshot nor a listener.
-- `switchProfile`, `saveAsProfile`, `deleteProfile`, and `renameProfile` commit through the same method.
+- The private `#commit(update)` reads and validates the stored envelope, calls `update` with that value, and writes the envelope the callback returned. A mutation therefore reads the stored envelope once and applies its change and its target, duplicate-name, and last-profile checks to that value.
+- A callback that returns its argument unchanged writes nothing. When the validated envelope differs from the snapshot, that no-op case adopts the refreshed envelope and notifies once.
+- The private `#write(next)` writes the envelope to storage, assigns the snapshot, and then notifies the listeners. A write that throws therefore reaches neither the snapshot nor a listener.
+- `refreshFromStorage()` reads and validates the stored envelope, adopts it when its content differs from the snapshot, and returns the adopted snapshot. An equal value keeps the snapshot reference, and a removed envelope adopts the absent-key initial state through `initialBrowserState()` without a write.
+- `updateCurrent(update)` calls the update with the current profile state and returns without a change when the update returns the same reference. Otherwise it builds the next envelope and commits it.
+- `switchProfile`, `saveAsProfile`, `deleteProfile`, and `renameProfile` commit through the same method and keep their synchronous signatures.
 
-Every feature action reaches the store through `updateCurrent`: `web/src/app/actions.ts` for the tab, the language, and the prerequisite root, `web/src/state/course-actions.ts` for the shared course sets, and `web/src/features/<feature>/actions.ts` for the slice a feature owns. `setActiveTab` and `openPrerequisites` in `web/src/app/actions.ts` write the shared state, so a course opened from a card sets the tab and the prerequisite root in one update.
+`web/src/main.tsx` keeps one module-local active store and registers one `storage` handler for the lifetime of the page. The handler acts on the envelope key and on a cleared storage area only. With a live store it calls `refreshFromStorage`, and while the recovery screen is mounted it mounts the ordinary store again, so another tab's valid write restores the page.
 
-## Reading, validating and reporting failures
+Every feature action reaches the store through `updateCurrent`: `web/src/app/actions.ts` for the language and the prerequisite root, `web/src/state/course-actions.ts` for the shared course sets, and `web/src/features/<feature>/actions.ts` for the slice a feature owns. The open tab is separate: `web/src/app/sessionTab.ts` owns it in the browser tab's session storage under the key `tuni-course-explorer-active-tab`, `useActiveTab` binds it with `useSyncExternalStore`, and `setActiveTab(tab)` writes it before it notifies. `openPrerequisites(store, courseId)` writes the profile's prerequisite root first and then moves the browser tab, so another browser tab stays where it is.
 
-`readBrowserState` runs once at startup. With no stored value it writes `initialBrowserState()` and uses it. Otherwise it parses the value and requires a non-array object, `schemaVersion === 1`, a string `currentProfileId`, a non-array `profiles` object, a string `name` and a state object on every profile, and a current profile that exists in `profiles`.
+## Reading and validation
 
-`mergeProfileState` starts from `initialProfileState()`, overlays the saved fields, and for each of the five slices requires a non-array object and merges it over that slice's initial value. The prerequisites slice goes through `mergePrerequisitesState`, which projects the saved value onto the fields of `initialPrerequisitesState()`, so a stored write of that slice holds those fields only.
+`web/src/state/validation.ts` is the one validation boundary for the stored envelope and for imported files, and it returns the current shape only. `validateBrowserState(value)` requires a non-array object, a literal `schemaVersion: 2`, a nonempty string `currentProfileId`, a non-array `profiles` record with nonempty string identities, at least one profile, an own entry for the current profile, a nonblank trimmed name on every profile, and names that no two profiles share. An unsupported schema version raises `Unsupported saved browser state schema`, and a missing current profile raises `Saved browser state has no current profile`. The profiles record is built through `Object.fromEntries`, so a stored key is data and never a prototype assignment.
+
+`validateProfileState(value)` fills an absent field from its constructor and checks every supplied one. `language` is `fi` or `en`. The selected and completed identities are arrays of nonempty strings, each without repeats, with the completed set inside the selected set. Each of the five slices is projected onto its current fields:
+
+| Slice | Checked fields |
+|---|---|
+| `search` | A string `query` and a boolean `activeOnly` |
+| `compare` | Exactly two nullable nonempty-string `slots` without a repeated course, a string `pickerQuery` and a boolean `pickerActiveOnly` |
+| `prerequisites` | A nullable `rootCourseId`, a string `courseQuery`, the booleans `includeRecommended`, `includeInferred` and `activeOnly`, a `basis` of `completed` or `selected`, and the string arrays `excludedCourseIds`, `completedNodeKeys` and `excludedNodeKeys` |
+| `discover` | A `list` of `next` or `recommended`, a `mode` of `all` or `at_least_one`, a boolean `activeOnly`, a boolean `basisExpanded` and a `basis` of `completed` or `selected` |
+| `structure` | Unique string `programmeGroupIds`, `choices` as a record of string arrays, `coursePlacements` and `modulePlacements` as records of nullable string targets, and unique string `placedCourseIds` |
+
+`pendingSisuImport` is `null` or one validated capture hierarchy. `validateProfileState` sends a supplied value through `validateSisuPlan` in `web/src/features/structure/sisu.ts`, which checks the same recursion, throws `Invalid Sisu plan file`, and rejects two non-null top-level programme identities that agree. An absent field and a stored `null` both read as `null`, which is the value a profile holds once the structure places its pending capture.
+
+A supplied structure object without `programmeGroupIds` is rejected, because that list is the structure's own top-level identity. A supplied field that fails its check rejects the whole value, an absent slice falls back to its constructor, and an unknown field is dropped. The identity checks are string checks alone: an identity is never resolved against the server or required to be in the catalogue. The structure checks cover types and do not read a rule tree, so a placement that names no visited node stays stored.
+
+`validateProfile(value)` is the one profile check. It requires a string `name` that is neither blank nor padded with whitespace, then validates `state` through `validateProfileState`. A name with surrounding whitespace is rejected rather than trimmed, so validation never renames a stored or imported profile. `validateBrowserState` calls it for every profile of the envelope.
+
+`readBrowserState` reads `BROWSER_STORAGE_KEY` and hands the parsed value to `validateBrowserState`. An absent key returns `initialBrowserState()` without a write. A stored value that is not valid JSON raises the fixed `Saved browser state is invalid` error, and every other read or validation failure propagates, so invalid stored bytes stay in place.
+
+`parseBrowserImport(text)` in `web/src/state/store.ts` is the file-input boundary. It requires an object with an exact string `type`, sends the `profile` of a `tuni-course-explorer/profile/2` file through `validateProfile`, parses the `data` string of a `tuni-course-explorer/state/2` file through `validateBrowserState`, and sends a `tuni-course-explorer/sisu/1` file through `parseSisuCapture`, which is the one validation and parse boundary of a downloaded capture. A state file carries the exact stored envelope text, which keeps healthy export and broken-data recovery in one format, and a profile file carries one name and one state without a source profile identity. Malformed JSON, a missing or non-string `type`, an absent `data` string, and unparsable nested JSON raise `Invalid import file`. Another string `type` raises `Unsupported file type`, and an invalid payload raises the message of the validator that rejected it.
 
 Every validation failure throws an `Error` whose message `errorPresentation` in `web/src/shared/errorPresentation.ts` maps to a wording key. `KNOWN_MESSAGES` holds the app-authored messages, an `ApiError` with status 422 reads as `Invalid request`, any other status reads as `Request failed ({status})`, and an unknown message reads as `Operation failed` with the raw text as detail.
 
-`web/src/main.tsx` creates the one store inside a `try`. A read failure renders `ErrorNotice` with no language, which shows the English and the Finnish summary with one diagnostic detail, and the stored bytes are not reset. `useAction` in `web/src/shared/useAction.ts` wraps a UI action: it clears the error when the action succeeds and exposes the thrown error otherwise, and its optional `clearAfterMs` clears the message after that long. `ProfileButton` uses five seconds for the profile menu.
+`web/src/main.tsx` creates the one store inside a `try` and mounts it. A read failure mounts `StorageRecovery` instead, and the stored bytes stay in place. `useAction` in `web/src/shared/useAction.ts` wraps a UI action: it clears the error when the action succeeds and exposes the thrown error otherwise, and its optional `clearAfterMs` clears the message after that long. `ProfileButton` passes `PROFILE_NOTICE_MS` for both of its actions.
 
-## Profile operations
+## Saved-data recovery
+
+`web/src/features/profiles/StorageRecovery.tsx` renders the startup failure as `ErrorNotice` in English, and its own controls state their text in English as well. No valid profile language exists on this screen, so no profile language is available to read.
+
+- **Export saved data** calls `exportSavedBrowserData(window.localStorage)`, which reads `BROWSER_STORAGE_KEY` once and wraps the string unchanged in a state file. The stored text is never parsed, validated or displayed, so unreadable data leaves the browser exactly as it is. A missing key raises `There is no saved data to export`.
+- **Reset saved data** opens a dialog titled **Reset saved data** that states that every profile of this browser is deleted and the browser starts with a profile named My plan. Cancel, Escape, and a click outside the dialog write nothing. The confirmation calls `resetBrowserStore(window.localStorage)`, which writes `initialBrowserState()` and returns a live store, and the bootstrap mounts it without a page reload. A failure leaves the recovery screen and its data in place and shows the failure on the screen itself.
+
+The download helper is `downloadBrowserFile(file)` in `web/src/features/profiles/files.ts`. It derives the name from the typed file: a profile file downloads as `course-explorer-profile-<profile name>.json`, where every character a path segment cannot hold and every character from U+0000 to U+001F becomes `_`, and a state file downloads as `course-explorer-saved-data.json`. It serializes the wrapper with `JSON.stringify(file, null, 2)`, builds a JSON `Blob`, clicks a temporary anchor over an object URL, and releases both. A profile name never becomes a path.
+
+## Profile, file and state operations
 
 - `switchProfile(id)` requires a profile that the envelope holds and returns without a write when the identity is already current.
 - `saveAsProfile(name)` trims the name, rejects an empty name and a name that another profile holds, builds an identity from `crypto.getRandomValues`, copies the current state with `structuredClone`, and makes the copy current.
 - `deleteProfile(id)` requires a profile that the envelope holds and refuses to delete the only profile. Deleting the current profile selects the first profile in insertion order.
 - `renameProfile(id, name)` trims the name, rejects an empty name and a name that another profile holds, returns without a write when the name equals the stored one, and changes the name only.
+- `exportProfile(id)` refreshes the envelope, requires that profile, and returns a `BrowserProfileFile` holding an independent copy. Exporting a profile does not make it current.
+- `exportState()` delegates to `exportSavedBrowserData`, so a whole-state file holds the stored bytes.
+- `importProfile(profile)` takes the profile of a parsed import file, builds a fresh identity, and makes it current. An empty name and a name that another profile holds are refused without a write, and the name and copy rule is shared with Save as. `ProfileTransfer` calls this method once, after the confirmation that names the imported profile.
+- `restoreState(state)` writes the envelope of a parsed whole-state file and replaces the saved data as a whole. It neither merges nor keeps a backup, and `ProfileTransfer` asks for its confirmation before it calls this method and reloads the page.
+- `resetSavedData()` writes `initialBrowserState()` through the same writer. The first-visit bootstrap and the confirmed recovery reset are its two callers.
 
-`ProfilePanel` in `web/src/features/profiles/ProfilePanel.tsx` owns the list, the copy form, the rename dialog, and the delete dialog, and it hides the delete control while the profile list holds one profile. `ProfileButton` owns the profiles menu and the store calls.
+`ProfilePanel` in `web/src/features/profiles/ProfilePanel.tsx` owns the list, the copy form, the transfer controls, the rename dialog, and the delete dialog, and it hides the delete control while the profile list holds one profile. `ProfileTransfer` in the same folder owns the drop area and file picker, the parse dispatch, the bottom row with its help drawer and script copy, the export disclosure, and one confirmation per kind: a profile import, a state replacement, or a Sisu import with a **Profile name** field that stays unavailable while its trimmed value is empty. All three kinds wait in one pending import until that confirmation, which reads the store at confirmation time. A profile import and a Sisu import create the profile through `importProfile`, and the Sisu import prepares it with `prepareSisuProfile` in `web/src/features/structure/sisu.ts`. A cancelled, dismissed or failed confirmation writes nothing.
+
+`ProfileTransfer` copies the script through one path that works on a plain HTTP origin: the click selects `SISU_SNIPPET` in a temporary textarea and calls `document.execCommand("copy")`, then removes the element, restores the focus and the earlier selection, and reports `Sisu import script copied` or `Could not copy Sisu import script`. A successful copy clears any earlier notice timer, restarts the green copy notice lifetime, and drops the timer on unmount. `ProfileButton` owns the profiles menu, the store calls, and the store it passes to the panel.
+
+`ProfileNotice` in `web/src/features/profiles/ProfileNotice.tsx` is the one presentation wrapper for the profile menu's transient notices: it animates the height and opacity of the content it holds, keeps that content through the exit, and draws it at once under reduced motion. It exports `PROFILE_NOTICE_MS`, 5000 milliseconds, which `ProfileButton` passes to both of its `useAction` calls and `ProfileTransfer` uses to clear the copy notice. `ProfilePanel` wraps its save and rename error branches in it, and `ProfileTransfer` wraps the copy success, whose green box reuses the alert box with the course-status tone.
 
 ## Selected and completed courses
 
@@ -62,7 +106,7 @@ Every validation failure throws an `Error` whose message `errorPresentation` in 
 | `compare` | `slots` (two nullable canonical identities), `pickerQuery`, `pickerActiveOnly` |
 | `prerequisites` | `rootCourseId`, `courseQuery`, `includeRecommended`, `includeInferred`, `activeOnly`, `basis`, `excludedCourseIds`, `completedNodeKeys`, `excludedNodeKeys` |
 | `discover` | `list`, `mode`, `activeOnly`, `basis`, `basisExpanded` |
-| `structure` | `rootGroupId`, `choices`, `coursePlacements`, `modulePlacements`, `placedCourseIds` |
+| `structure` | `programmeGroupIds`, `choices`, `coursePlacements`, `modulePlacements`, `placedCourseIds` |
 
 `UI_TEXT` in `web/src/shared/wording.ts` holds one `{ en, fi }` entry per app-authored string, keyed by the English literal, and `UiTextKey` is the key union. `uiText(language, key, values)` selects the entry, substitutes the named `{placeholder}` values, and throws on an unknown key or on a placeholder that has no supplied value. A context suffix such as `Completed (basis)` or `Completed (course)` splits one English word into the Finnish form the context needs. `searchMethodLabel` maps a `SearchMethod` token to its key, `reasonText` maps a backend reason token to its key and shows an unknown token in raw form, and `diagnosticText` appends the detail under the localized `Original technical detail` label. `useWording()` reads the language from the current profile and returns `t`, so every component renders in the language of the open profile.
 
@@ -83,21 +127,21 @@ The owners of each key:
 | `useComparison` in `web/src/features/compare/useComparison.ts` | `JSON.stringify([a, b])` of the two slots |
 | `useDiscovery` in `web/src/features/discover/useDiscovery.ts` | The chosen list plus the serialized request, and it asks for nothing without a basis |
 | `useCourseSummaries` in `web/src/shared/course/useCourseSummaries.ts` | The identity list, and the loaded courses that the requested identities name are held while the others load |
-| `useStructureReport` in `web/src/features/structure/useStructureReport.ts` | The root identity, and it asks for nothing without a root |
 
-Three structure reads bypass `useLookup`. `useChooseRoot` and the `addModule` operation of `useStructureEditor` call `readStudyStructure` directly, abort the previous operation of their own, capture `store.getSnapshot().currentProfileId` before the request, and compare it with the current profile before they write, so a report that arrives after a profile switch is discarded. `usePlacedContent` in `web/src/features/structure/usePlacedContent.ts` runs its own effect keyed on the serialized course and module identity lists, starts one `AbortController` for the identities it is missing, and aborts it on cleanup, so a change to either list and an unmount cancel the pending read.
+Three structure reads bypass `useLookup`. `useProgrammeActions` and the `addModule` operation of `useStructureEditor` call `readStudyStructure` directly, abort the previous operation of their own, capture `store.getSnapshot().currentProfileId` and the programme list before the request, and refresh the saved envelope after the report arrives. A report that arrives after a profile switch is discarded. A module operation holds its abort controller, its pending identity and its visible error across the move confirmation as well: it refreshes the saved envelope before the question and after the answer, refuses a profile or programme list that moved on, and derives its write from the current profile state inside the store callback, so a structural change another tab saves while the question waits is kept. `usePlacedContent(courseIds, moduleIds, allowUnrepresented = false)` in `web/src/features/structure/usePlacedContent.ts` is the one Structure hydration owner, including the programme reports. It runs its own effect keyed on the serialized course and module identity lists and on the mode, starts one `AbortController` for the identities it is missing, and aborts it on cleanup, so a change to either list, a change of mode and an unmount cancel the pending read. Every report it receives also contributes the official courses it already carries to the same content map, so projection-added default courses need no second read. The pane's pending Sisu read adds `captureModuleIds` of the pending plan to the requested module identities, because a captured module the programme's rule does not name renders from its own report. With `allowUnrepresented` true, which only the pane's pending Sisu read asks for, an identity the catalogue does not answer for is recorded in `unavailableCourseIds` or `unavailableModuleIds` instead of failing the read: a course a successful summary response omits, and a study-structure `ApiError` with status 422, which this route answers for an unknown root, no unique version and no stored rule. Recorded identities count as settled, so the read finishes and a later pass of the same request does not ask again, while a 500, a transport failure, an abort and a malformed response keep their ordinary failure behavior.
 
 `App` renders `<TabCarousel key={currentProfileId} />`, so a profile switch remounts the carousel and its search session and unmounts every pane hook that owns a request. `SearchSessionProvider` in `web/src/features/search/SearchSession.tsx` sits above the panes, so the submitted search and its report survive a move between tabs and are dropped with the remount.
 
 ## Where a change belongs and what covers it
 
-- A field that must survive a reload belongs in `ProfileState` in `web/src/state/types.ts`, its initial value in `initialProfileState()` in `web/src/state/defaults.ts`, its slice type and constructor in `web/src/features/<feature>/state.ts`, and a merge case in `mergeProfileState`.
+- A field that must survive a reload belongs in `ProfileState` in `web/src/state/types.ts`, its initial value in `initialProfileState()` in `web/src/state/defaults.ts`, its slice type and constructor in `web/src/features/<feature>/state.ts`, and a check in `validateProfileState` in `web/src/state/validation.ts`.
 - A change to a shared course set belongs in `web/src/state/course-actions.ts`. A feature-owned change belongs in that feature's `actions.ts`, reaches the store through `updateCurrent`, and returns the same state reference when nothing changes.
+- An exported file kind belongs in the `BrowserFile` union in `web/src/state/types.ts`, an imported kind belongs in `BrowserImport`, and each imported kind takes one case in `parseBrowserImport`.
 - An app-authored string belongs in `UI_TEXT`. A message that the error boundary should read in the profile language belongs in both `UI_TEXT` and `KNOWN_MESSAGES`.
 
 | Test file | Covers |
 |---|---|
-| `web/src/state/profiles.test.ts` | Profile isolation across a reload, the projected prerequisites slice, `Save as` with an independent copy and a refused duplicate name, deleting the current profile selecting the first of those left, rename changing the name only, and the stored value left as it is after a refused operation |
+| `web/src/state/profiles.test.ts` | Profile isolation across a reload, the projected prerequisites slice, `Save as` with an independent copy and a refused duplicate name, deleting the current profile selecting the first of those left, rename changing the name only, the stored value left as it is after a refused operation, a stale tab applying its change to the stored envelope, an exported profile imported as an independent current profile with its duplicate name refused, and a full-state restore from an exported envelope |
 | `web/src/state/course-actions.test.ts` | Completion persisted as a subset of the selection, and an added course persisted once with its completion |
 | `web/src/app/language.test.ts` | The language control switching every shell word and leaving the profile name and the study slices untouched |
 | `web/src/shared/ErrorNotice.test.ts` | One localized summary with the diagnostic text under the localized label |
@@ -106,4 +150,6 @@ Three structure reads bypass `useLookup`. `useChooseRoot` and the `addModule` op
 | `web/src/features/discover/actions.test.ts` | The Discover options persisted without a change to the shared course sets or the exclusion |
 | `web/src/features/structure/model.test.ts` | Choice resolution, single placement, and the projection of the rule kinds |
 | `web/src/features/structure/edits.test.ts` | The scoped reset and the resolved-destination placement of an added module |
-| `web/src/features/structure/actions.test.ts` | The selection migration, the completion that outlives a deselection, and the Unplaced studies reset |
+| `web/src/features/structure/actions.test.ts` | The selection migration, the completion that outlives a deselection, the Unplaced studies reset, a shared course moving into the later holder and staying out of an untouched holder, the scoped programme replace and reset, and deleting a programme |
+| `web/src/features/structure/sisu.test.ts` | A downloaded capture parsed into a reloadable profile with its pending hierarchy and no fetch, the placement of captured choices in their programme scopes with one atomic pending clear, and the named omissions of a partial catalogue with the representable courses kept loose |
+| `web/src/features/structure/useStructureEditor.test.ts` | A structure edit another tab saves while a module confirmation waits, which the confirmed move keeps |

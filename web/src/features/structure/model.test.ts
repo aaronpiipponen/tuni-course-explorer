@@ -126,7 +126,7 @@ describe("structure projection", () => {
         language,
       );
       const empty = resolveStructure(tree, emptyEdits(), NO_CONTENT, language);
-      expect(tree.kind).toBe("programme");
+      expect(tree.kind).toBe("module");
       expect(tree.rule).toBe(uiText(language, "all required"));
       expect(empty.subtree.map((item) => item.group_id)).toEqual(["repeat"]);
       const displayed = displayContents(empty);

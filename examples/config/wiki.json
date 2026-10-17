@@ -50,6 +50,12 @@
             "path": "docs/guides/profiles-and-language.md",
             "nav": "Profiles and language",
             "children": []
+          },
+          {
+            "id": "guide-sisu-import",
+            "path": "docs/guides/sisu-import.md",
+            "nav": "Importing a Sisu plan",
+            "children": []
           }
         ]
       }

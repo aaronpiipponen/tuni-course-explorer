@@ -1,11 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 632" role="img"
      aria-labelledby="t d" font-family="system-ui, sans-serif">
   <title id="t">Structure editing flow</title>
-  <desc id="d">The official structure report and the saved profile edits together produce the displayed
-  structure, which holds one place for each module and course. A user action chooses, moves or resets a
-  module, course or option, which saves the profile edits and updates the shared selection. A selected
-  course that has no place is listed under Unplaced studies, and a completed course left without a place
-  keeps its completion and stays there.</desc>
+  <desc id="d">The ordered official programme reports and the saved profile edits together produce the
+  displayed programmes, which hold one place for each module and course. A user action adds, replaces,
+  chooses, moves or resets a programme, module, course or option, which saves the profile edits and
+  updates the shared selection. A selected course that has no place is listed under Unplaced studies,
+  and a completed course left without a place keeps its completion and stays there.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
             markerWidth="8" markerHeight="8" orient="auto-start-reverse">
@@ -15,7 +15,7 @@
   <rect width="960" height="632" rx="12" fill="#232434"/>
 
   <rect x="110" y="56" width="300" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
-  <text x="260" y="82" text-anchor="middle" font-size="16" fill="#ececf2">Official structure report</text>
+  <text x="260" y="82" text-anchor="middle" font-size="16" fill="#ececf2">Official programme reports</text>
   <text x="260" y="104" text-anchor="middle" font-size="14" fill="#a3a4b8">official rules</text>
 
   <rect x="550" y="56" width="300" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
@@ -23,12 +23,12 @@
   <text x="700" y="104" text-anchor="middle" font-size="14" fill="#a3a4b8">read from the profile</text>
 
   <rect x="330" y="176" width="300" height="64" rx="8" fill="#2e3045" stroke="#a98ae0" stroke-width="1.5"/>
-  <text x="480" y="202" text-anchor="middle" font-size="16" fill="#ececf2">Displayed structure</text>
+  <text x="480" y="202" text-anchor="middle" font-size="16" fill="#ececf2">Displayed programmes</text>
   <text x="480" y="224" text-anchor="middle" font-size="14" fill="#a3a4b8">modules and courses</text>
 
   <rect x="330" y="296" width="300" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
   <text x="480" y="322" text-anchor="middle" font-size="16" fill="#ececf2">User action</text>
-  <text x="480" y="344" text-anchor="middle" font-size="14" fill="#a3a4b8">choose, move, reset</text>
+  <text x="480" y="344" text-anchor="middle" font-size="14" fill="#a3a4b8">add, replace, choose, move, reset</text>
 
   <rect x="110" y="416" width="270" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
   <text x="245" y="442" text-anchor="middle" font-size="16" fill="#ececf2">Stored profile edits</text>

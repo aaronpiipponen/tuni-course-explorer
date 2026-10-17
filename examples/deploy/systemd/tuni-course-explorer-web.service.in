@@ -1,6 +1,6 @@
 # Example web UI service, with its backend bound to loopback.
 [Unit]
-Description=TUNI Course Explorer public example web UI
+Description=TUNI Course Explorer web UI
 
 [Service]
 Type=simple

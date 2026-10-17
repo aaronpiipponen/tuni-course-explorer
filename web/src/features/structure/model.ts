@@ -8,6 +8,7 @@ import type {
 } from "../../api/types";
 import type { StructureChoices, StructureEdits } from "./state";
 import { UNPLACED_KEY } from "./state";
+import { nodeWordingKind } from "./presentation";
 import { reasonText, uiText, type UiTextKey } from "../../shared/wording";
 
 export type StructureChoiceStep = { node: StructureNode; optionKey: string };
@@ -82,21 +83,26 @@ function range(
     return uiText(language, credits ? "any cr" : "any courses");
   if (min !== null && max !== null)
     return min === max
-      ? uiText(language, credits ? "{value} cr" : "{value} courses", {
-          value: min,
-        })
+      ? !credits && min === 1
+        ? uiText(language, "1 course")
+        : uiText(language, credits ? "{value} cr" : "{value} courses", {
+            value: min,
+          })
       : uiText(language, credits ? "{min}–{max} cr" : "{min}–{max} courses", {
           min,
           max,
         });
   if (min === null)
-    return uiText(
-      language,
-      credits ? "up to {value} cr" : "up to {value} courses",
-      {
-        value: max!,
-      },
-    );
+    return !credits && max === 1
+      ? uiText(language, "up to 1 course")
+      : uiText(
+          language,
+          credits ? "up to {value} cr" : "up to {value} courses",
+          {
+            value: max!,
+          },
+        );
+  if (!credits && min === 1) return uiText(language, "min 1 course");
   return uiText(language, credits ? "min {value} cr" : "min {value} courses", {
     value: min,
   });
@@ -152,7 +158,6 @@ function moduleNode(
   language: DisplayLanguage,
   ruleKey = key,
 ): StructureNode {
-  const isProgramme = module.module.module_type === "DegreeProgramme";
   const target =
     module.target_credits_min !== null || module.target_credits_max !== null
       ? range(
@@ -191,7 +196,9 @@ function moduleNode(
   }
   return {
     key,
-    kind: isProgramme ? "programme" : "module",
+    // The official degree type selects display nouns alone. Interaction kind follows forest
+    // position, so every projection is a module and the forest stamps its direct entries.
+    kind: "module",
     transparent: false,
     module: module.module,
     rule: target,
@@ -467,23 +474,27 @@ function project(
         ),
       }))
       .filter((option) => option.entries.length > 0);
-    const allCourse =
-      options.length > 0 &&
-      options.every((option) =>
-        option.entries.every((entry) => entry.kind === "course"),
-      );
-    const allModules =
-      options.length > 0 &&
-      options.every((option) =>
-        option.entries.every(
-          (entry) => entry.kind === "node" && entry.node.kind === "module",
+    // The option noun follows the entries: direct courses, degree programmes, other modules, or
+    // options when the entries differ in kind.
+    const entryKinds = new Set(
+      options.flatMap((option) =>
+        option.entries.map((entry) =>
+          entry.kind === "course"
+            ? "course"
+            : entry.kind === "node" && entry.node.kind === "module"
+              ? nodeWordingKind(entry.node)
+              : "other",
         ),
-      );
-    const titleKey: UiTextKey = allCourse
-      ? "Choose from {count} courses"
-      : allModules
-        ? "Choose from {count} modules"
-        : "Choose from {count} options";
+      ),
+    );
+    const titleKey: UiTextKey =
+      entryKinds.size === 1 && entryKinds.has("course")
+        ? "Choose from {count} courses"
+        : entryKinds.size === 1 && entryKinds.has("programme")
+          ? "Choose from {count} programmes"
+          : entryKinds.size === 1 && entryKinds.has("module")
+            ? "Choose from {count} modules"
+            : "Choose from {count} options";
     const autoSelectSingleWrapper =
       options.length === 1 &&
       options[0].entries.length === 1 &&
@@ -585,11 +596,16 @@ export function buildStructure(
       : key;
   return moduleNode(report.root, key, language, rootRuleKey);
 }
-export function withUnplaced(
-  root: StructureNode,
-  language: DisplayLanguage = "en",
-): StructureNode {
-  const bucket: StructureNode = {
+
+/** Return the browser node-key prefix of one top-level programme's projection. */
+export function programmeKey(groupId: string): string {
+  return `p:${encodeURIComponent(groupId)}`;
+}
+
+const FOREST_KEY = "$structure";
+
+function unplacedNode(language: DisplayLanguage): StructureNode {
+  return {
     key: UNPLACED_KEY,
     kind: "unplaced",
     transparent: false,
@@ -602,23 +618,48 @@ export function withUnplaced(
     single: false,
     autoSelectSingleWrapper: false,
   };
+}
+
+/**
+ * Compose the supplied reports into one transparent forest in their given order, with the
+ * global Unplaced studies bucket last.
+ *
+ * Ordered programme entries are the structure's top level, so a report that another programme
+ * also references as a nested module renders as its own entry as well. Only these direct entries
+ * receive programme kind, from their position alone, whether the report's root is an official
+ * degree programme or a bare module.
+ */
+export function buildProgrammeForest(
+  reports: readonly StudyStructureReport[],
+  language: DisplayLanguage = "en",
+): StructureNode {
+  const entries: StructureEntry[] = reports.map((report) => ({
+    kind: "node",
+    node: {
+      ...buildStructure(
+        report,
+        programmeKey(report.root.module.group_id),
+        language,
+      ),
+      kind: "programme",
+    },
+  }));
+  entries.push({ kind: "node", node: unplacedNode(language) });
   return {
-    key: "$structure",
+    key: FOREST_KEY,
     kind: "group",
     transparent: true,
     module: null,
     rule: "",
     title: null,
-    entries: [
-      { kind: "node", node: root },
-      { kind: "node", node: bucket },
-    ],
+    entries,
     options: [],
     ruleGroups: [],
     single: false,
     autoSelectSingleWrapper: false,
   };
 }
+
 export function resolveStructure(
   root: StructureNode,
   edits: StructureEdits,
@@ -628,6 +669,18 @@ export function resolveStructure(
   const seenCourses = new Set<string>();
   const seenModules = new Set<string>(
     root.module ? [root.module.group_id] : [],
+  );
+  // A forest's direct entries are its ordered programmes, so a nested reference to one of
+  // them must not consume the entry that renders it.
+  const forest = root.transparent && root.key === FOREST_KEY;
+  const programmeIds = new Set<string>(
+    forest
+      ? root.entries.flatMap((entry) =>
+          entry.kind === "node" && entry.node.module
+            ? [entry.node.module.group_id]
+            : [],
+        )
+      : [],
   );
   const visitEntries = (
     entries: readonly StructureEntry[],
@@ -677,7 +730,13 @@ export function resolveStructure(
             )
           )
             removed.push({ kind: "module", module: entry.node.module });
-        } else if (!moduleId || !seenModules.has(moduleId)) {
+        } else if (
+          !moduleId ||
+          (!seenModules.has(moduleId) &&
+            // A programme entry renders at its own position in the list.
+            (!programmeIds.has(moduleId) ||
+              (forest && node.key === FOREST_KEY)))
+        ) {
           if (moduleId) seenModules.add(moduleId);
           const child = visit(entry.node, false);
           children.push(child);

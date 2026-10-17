@@ -67,3 +67,14 @@ button {
   color: #ffd9e1;
   background: #4b2330;
 }
+/* The operating system's reduced-motion preference removes every CSS animation, transition and
+   smooth scroll, so each kind of state is drawn at once while its static styles stand. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

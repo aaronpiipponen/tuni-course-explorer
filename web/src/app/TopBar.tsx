@@ -1,17 +1,14 @@
 /** Persistent application chrome: brand, cyclic-tab entry points, docs and profile language. */
 import { TABS } from "./tabs";
-import { useProfileSelector } from "../state/useProfileSelector";
 import { ProfileButton } from "../features/profiles/ProfileButton";
 import { LanguageSwitch } from "../shared/LanguageSwitch";
-import { setActiveTab } from "./actions";
+import { setActiveTab, useActiveTab } from "./sessionTab";
 import { useAction } from "../shared/useAction";
 import { ErrorNotice } from "../shared/ErrorNotice";
 import { useWording } from "../shared/useWording";
 
 export function TopBar({ openDocs }: { openDocs: () => void }) {
-  const { store, value: activeTab } = useProfileSelector(
-    (state) => state.activeTab,
-  );
+  const activeTab = useActiveTab();
   const { runAction, error } = useAction();
   const { language, t } = useWording();
   return (
@@ -27,7 +24,7 @@ export function TopBar({ openDocs }: { openDocs: () => void }) {
             key={tab.id}
             type="button"
             className={activeTab === tab.id ? "nav-tab active" : "nav-tab"}
-            onClick={() => runAction(() => setActiveTab(store, tab.id))}
+            onClick={() => runAction(() => setActiveTab(tab.id))}
           >
             {t(tab.labelKey)}
           </button>

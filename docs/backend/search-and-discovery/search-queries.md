@@ -15,7 +15,7 @@ The search package turns one query into ordered course summaries through the fou
 
 `UnifiedCourseSearchService` holds a `CurriculumRead`, a `CourseSearchService`, a `CourseLookupService`, and `SearchSettings`. `CourseSearchService` holds the same `CurriculumRead`, a `SemanticSearchRead` repository, an `EmbeddingProvider`, `EmbeddingSettings`, and `SearchSettings`. `CourseLookupService` holds a `CurriculumRead` and `SearchSettings`, and `ModuleLookupService` holds a `CurriculumRead` and the current academic year.
 
-Every result DTO is frozen and closed: `FuzzyCourseResult(course, score)`, `CourseSearchResult(course, score)`, `SemanticCourseScore(group_id, sisu_course_unit_id, representative_source_hash, score)`, and `UnifiedCourseSearchResult(course, match_sources, fuzzy_score, semantic_score)`.
+Every result DTO is frozen and closed: `FuzzyCourseResult(course, score)`, `CourseSearchResult(course, score)`, `SemanticCourseScore(group_id, sisu_course_unit_id, representative_source_hash, score)`, and `UnifiedCourseSearchResult(course, match_sources, fuzzy_score, semantic_score)`. `UnifiedSearchReport` carries the display language, the two effective thresholds, the activity scope, `semantic_available`, the configured tier order, and the merged results.
 
 ## Normalization and ordering
 
@@ -53,6 +53,8 @@ ORDER BY courses.group_id, course_versions.sisu_course_unit_id
 
 When `include_inactive` is false the statement adds `AND courses.is_active IS TRUE`. One row per `(group_id, sisu_course_unit_id, representative_source_hash)` carries the greatest centred cosine of that version's chunks, and every row at or above the threshold is returned.
 
+`SemanticSearchRead` is the protocol of that read, and it declares the `hub` keyword beside the query embedding, the threshold, the configuration hash, and the activity scope. The service call and the concrete repository therefore share one signature, so a read that needs a hub cannot be reached without one.
+
 `CourseSearchService.search_courses` then:
 
 1. Resolves the threshold from `min_score` or `SearchSettings.semantic_search_min_score`.
@@ -67,17 +69,17 @@ The caller-supplied `represented` sequence is what lets one unified query read t
 
 ## The merge
 
-`UnifiedCourseSearchService.search` performs one `list_represented_summaries` read and passes the result to all four methods as `represented`. It then calls `exact_code_search`, `substring_search`, `fuzzy_name_search`, and `search_courses` once each with the same query, display language, `include_inactive`, and the two optional score overrides, and hands the four result tuples to `_merge`.
+`UnifiedCourseSearchService.search` performs one `list_represented_summaries` read and passes the result to all four methods as `represented`. It then calls `exact_code_search`, `substring_search`, and `fuzzy_name_search` once each with the same query, display language, `include_inactive`, and the optional score overrides. It calls `search_courses` with the same inputs inside a `try` block that catches `EmbeddingRequestError` alone: that exception leaves an empty semantic tuple and `semantic_available` false, and every other failure propagates. A returned semantic tuple leaves availability true, whether or not it holds a result.
 
-`_merge` walks the four tuples in that fixed order and registers each entry:
+The call resolves the two effective thresholds from the supplied override or from `SearchSettings`, and returns one `UnifiedSearchReport` with the display language, the effective thresholds, the activity scope, availability, the configured tier order, and the merged results. `_merge` walks the four tuples in that fixed order and registers each entry:
 
 - `summaries.setdefault(group_id, summary)` keeps the first summary registered for a canonical group. Every method carries the same shared `CourseSummary` for a group, so the choice of registration order does not change the merged course.
 - `sources.setdefault(group_id, {})[method] = position` records the method and the entry's index in that method's own result list.
 - `fuzzy_scores[group_id]` and `semantic_scores[group_id]` take the entry's score from its method.
 
-For each merged group, `_merge` builds `tier_position = {method: index}` from `search_tier_priority`, orders the group's sources with `tuple(sorted(group_sources, key=tier_position.__getitem__))`, and takes the first one as the primary source. The sort key is `(tier_position[primary], not summary.is_active, group_sources[primary])`, and the merged list is sorted on that key. The merged entry carries `match_sources` in configured tier order, `fuzzy_score` when the fuzzy method matched, and `semantic_score` when the semantic method matched, in two separate optional fields so the `0-100` and cosine scales stay apart.
+For each merged group, `_merge` builds `tier_position = {method: index}` from `search_tier_priority`, orders the group's sources with `tuple(sorted(group_sources, key=tier_position.__getitem__))`, and takes the first one as the primary source. The sort key is `(tier_position[primary], not summary.is_active, group_sources[primary])`, and the merged list is sorted on that key. The merged entry carries `match_sources` in configured tier order, `fuzzy_score` when the fuzzy method matched, and `semantic_score` when the semantic method matched, in two separate optional fields so the `0-100` and cosine scales stay apart. A failed query embedding request leaves every `semantic_score` null, because no semantic match source exists in that report.
 
-`run_search_command` returns a `UnifiedSearchReport` with `display_language`, the effective `semantic_min_score` and `fuzzy_min_score`, `include_inactive`, `tier_priority`, and the merged `results`.
+`UnifiedCourseSearchService.search` is the one owner of the report, and `run_search_command` returns that same report from inside the provider and database context.
 
 ## Commands and validation
 
@@ -85,7 +87,7 @@ For each merged group, `_merge` builds `tier_position = {method: index}` from `s
 
 The override ranges are read from the model metadata rather than repeated: `_SEMANTIC_SCORE_ADAPTER` and `_FUZZY_SCORE_ADAPTER` are `TypeAdapter`s built from `Annotated[float, *SearchSettings.model_fields[name].metadata]`, so a change to the `Field` bounds in `SearchSettings` changes the overrides the command allows too. `tests/search/test_search_command.py` proves that an invalid input reaches no settings load and no I/O.
 
-After validation, the command loads the embedding and search settings, opens one database context, composes the curriculum repository, the semantic repository, the lookup service, the semantic service inside an `EmbeddingProvider` context manager, and the unified service, and calls `search` once. The engine lifetime of a request therefore holds one provider and one database context.
+After validation, the command loads the embedding and search settings and copies the two search query policy fields onto the embedding settings as one query-local projection: `SEARCH_EMBEDDING_REQUEST_TIMEOUT_SECONDS` and `SEARCH_EMBEDDING_MAX_ATTEMPTS` replace the loaded timeout and attempt count on a `model_copy` of the validated object. It opens one database context, composes the curriculum repository, the semantic repository, the lookup service, the semantic service, and the unified service, and constructs the one `EmbeddingProvider` of the request with that projection, so the query embedding request follows the search policy. The semantic service receives the loaded embedding settings, so the configuration hash and the hub vector the read uses come from those loaded settings. The hash covers the embedding model, the artifact hash, the dimension, the pooling, the normalization, and the runtime revision, so the two projected values do not enter it. The command returns the service's report. The engine lifetime of a request therefore holds one provider and one database context.
 
 `_validate_lookup_input(query, display_language)` refuses a query whose `_normalized` form is empty and a display language outside `("fi", "en")` before the lookup commands load settings. `run_course_lookup_command` and `run_module_lookup_command` each call it, and `run_course_summaries_command` returns an empty report for an empty input without loading anything.
 
@@ -106,10 +108,10 @@ After validation, the command loads the embedding and search settings, opens one
 
 | File | Covers |
 |---|---|
-| `tests/search/test_unified_search.py` | One dispatch per method with identical inputs, the single shared represented read, per-method source tagging with both scores kept apart, the configured tier order over activity and primary-method position, a reordered `SEARCH_TIER_PRIORITY`, and the absence of a cap. |
+| `tests/search/test_unified_search.py` | One dispatch per method with identical inputs, the single shared represented read, per-method source tagging with both scores kept apart, the configured tier order over activity and primary-method position, a reordered `SEARCH_TIER_PRIORITY`, the absence of a cap, the effective thresholds of the report, the partial report of a failed query embedding request with its lexical matches kept, and the propagation of every other failure from the semantic seam. |
 | `tests/search/test_search_service.py` | The shared summary mapping, the configured threshold, the one provider call, current-representative identity filtering, active-first order, the override and active-only forwarding, and the supplied-summary path that reads nothing. |
 | `tests/search/test_course_lookup.py` | The fuzzy cutoff and ordering, hidden-name exclusion, the exact multi-code split, substring name and code containment without a cap, the canonical-first resolver with its order, repeats and failures, and the module lookup with programmes first and ambiguity failing. |
-| `tests/search/test_search_command.py` | The composition of both services in one engine lifetime, the report policy for the configured and overridden thresholds, and the validation that reaches no settings load. |
+| `tests/search/test_search_command.py` | The composition of both services in one engine lifetime, the query-local embedding projection the provider receives while the semantic service is composed with the loaded settings, the command returning the service's own report object, the single short-timeout query embedding request, and the validation that reaches no settings load. |
 | `tests/search/test_lookup_commands.py` | Both lookup commands refusing blank and unsupported input before settings, the empty summary request, both CLI adapters, and the API rejection of a blank query. |
 | `tests/search/test_semantic_search_repository.py` | Opt-in PostgreSQL proofs of the exact best-chunk read, the lifecycle and configuration filters, the inactive scope, the threshold, the scoped vector read, and the comparison command over the same data. |
 
@@ -122,5 +124,6 @@ After validation, the command loads the embedding and search settings, opens one
 - The semantic statement and its filters: `SemanticSearchRepository.search` in `src/course_explorer/search/repository.py`.
 - Name or code normalization and the string methods: `_normalized`, `official_display_name`, and the three methods of `CourseLookupService` in `src/course_explorer/search/lookup.py`.
 - Caller input rules: `run_search_command` in `src/course_explorer/search/commands.py` and `_validate_lookup_input` in `src/course_explorer/search/lookup_commands.py`.
+- The query embedding request policy: the two `SEARCH_EMBEDDING_*` fields of `SearchSettings` in `src/course_explorer/config.py` and the projection `run_search_command` builds from them.
 
 The four methods, the tier order, and the three reads over official identity are described in [Search](/docs/backend/search-and-discovery/search.md).

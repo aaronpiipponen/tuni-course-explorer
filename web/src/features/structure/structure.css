@@ -10,15 +10,6 @@
 .tab-pane:has(.structure-layout.with-drawer) {
   padding-right: 480px;
 }
-.ctl {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 14px;
-}
-.structure-pane .ctl .pill-btn {
-  padding: 8px 16px;
-}
 .structure-tree {
   width: 100%;
 }
@@ -98,6 +89,14 @@
   grid-template-columns: minmax(100px, 13fr) minmax(0, 1fr) auto;
   align-items: baseline;
   gap: 4px 14px;
+}
+.shead-open {
+  display: grid;
+  min-width: 0;
+  grid-column: 1;
+  grid-row: 1;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
   padding: 0;
   border: 0;
   color: #fff;
@@ -116,6 +115,8 @@
 }
 .hair {
   height: 1px;
+  grid-column: 2;
+  grid-row: 1;
   align-self: center;
   background: rgb(255 255 255 / 12%);
 }
@@ -129,6 +130,8 @@
 }
 .scnt {
   min-width: 64px;
+  grid-column: 3;
+  grid-row: 1;
   text-align: right;
 }
 .scnt b {
@@ -137,7 +140,6 @@
 }
 .r2 {
   display: flex;
-  grid-column: 1/-1;
   align-items: center;
   gap: 10px;
   margin-top: 1px;
@@ -171,9 +173,9 @@
   white-space: nowrap;
 }
 .structure-layout.with-drawer .shead-main {
-  grid-template-columns: minmax(100px, 1fr) minmax(0, 0fr) auto auto;
+  grid-template-columns: minmax(100px, 1fr) auto auto;
 }
-.structure-layout.with-drawer .shead-main > .sname {
+.structure-layout.with-drawer .shead-open > .sname {
   overflow-wrap: anywhere;
   text-overflow: clip;
   white-space: normal;
@@ -228,6 +230,48 @@
     12px "JetBrains Mono",
     ui-monospace,
     monospace;
+}
+.add-programme-row {
+  margin-top: 20px;
+}
+.add-programme {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.add-programme[disabled] {
+  opacity: 0.5;
+  cursor: default;
+}
+.programme-menu-trigger {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgb(255 255 255 / 25%);
+  border-radius: 6px;
+  color: #fff;
+  background: transparent;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+.programme-menu-trigger:hover,
+.programme-menu-trigger[data-state="open"] {
+  border-color: #b07be8;
+  background: rgb(78 0 142 / 25%);
+}
+.programme-menu {
+  min-width: 220px;
+}
+.programme-menu [role="menuitem"].danger {
+  color: #d997a8;
 }
 .plist {
   display: flex;
@@ -375,11 +419,21 @@
   border-left: 1px solid #b07be8;
   background: #08080c;
   box-shadow: -30px 0 80px rgb(0 0 0 / 70%);
+  /* A transformed pane becomes the containing block of its fixed children, so a closed drawer
+     would paint its off-canvas edge across the viewport while its pane slides. Visibility follows
+     the transform once the close animation has finished. */
+  visibility: hidden;
   transform: translateX(100%);
-  transition: transform 0.45s cubic-bezier(0.22, 0.8, 0.2, 1);
+  transition:
+    transform 0.45s cubic-bezier(0.22, 0.8, 0.2, 1),
+    visibility 0s linear 0.45s;
 }
 .sdrawer.open {
+  visibility: visible;
   transform: none;
+  transition:
+    transform 0.45s cubic-bezier(0.22, 0.8, 0.2, 1),
+    visibility 0s;
 }
 .dh {
   display: flex;
@@ -716,6 +770,20 @@
     opacity 0.3s,
     filter 0.3s;
 }
+.drawer-section-motion {
+  overflow: hidden;
+}
+.drawer-course-motion {
+  overflow: hidden;
+}
+.sdrawer .plist.vis > .drawer-course-motion:first-child > .prow {
+  border-top-left-radius: 11px;
+  border-top-right-radius: 11px;
+}
+.sdrawer .plist.vis > .drawer-course-motion:last-child > .prow {
+  border-bottom-right-radius: 11px;
+  border-bottom-left-radius: 11px;
+}
 .dlist.dim {
   opacity: 0.2;
   filter: blur(1.5px);
@@ -754,6 +822,49 @@
     monospace;
   animation: toast-in 0.3s;
 }
+/* One Sisu import's transient omissions, above the tree it placed. */
+.sisu-import-notice {
+  overflow: hidden;
+}
+.sisu-import-notice-body {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 12px;
+  background: #0a0a0f;
+}
+.sisu-import-notice h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+.sisu-import-notice ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sisu-import-notice li {
+  display: grid;
+  gap: 2px;
+}
+.sisu-import-item {
+  color: #b07be8;
+  font:
+    12px "JetBrains Mono",
+    ui-monospace,
+    monospace;
+}
+.sisu-import-reason {
+  color: rgb(255 255 255 / 55%);
+  font-size: 12.5px;
+}
+.sisu-import-notice-body .pill-btn {
+  justify-self: start;
+}
 @keyframes toast-in {
   from {
     opacity: 0;
@@ -772,17 +883,27 @@
   background-size: 200% 100%;
   animation: course-lookup-shimmer 1.1s infinite;
 }
+/* The overlay box is the whole pane, so its scrim dims, blurs and blocks the visible tree area
+   with the pane's padding included. Its inline padding leaves the overlay's content box the tree
+   area, which holds the picker's anchor in one place. */
 .structure-root-overlay {
   position: absolute;
   z-index: 25;
-  top: 76px;
-  left: 24px;
-  width: calc(100% - 48px);
-  bottom: 0;
+  inset: 0;
+  padding: 0 24px;
   pointer-events: none;
 }
-.structure-pane.with-drawer .structure-root-overlay {
+/* The picker anchors to the visible tab area, so the tree's scroll position never places it. */
+.structure-root-anchor {
+  position: sticky;
+  z-index: 30;
+  top: 76px;
+  height: 0;
+}
+/* While a structure drawer is open the picker's container narrows and stays centered. */
+body.structure-drawer-open .structure-root-anchor {
   width: min(680px, calc(100% - 48px));
+  margin-inline: auto;
 }
 .structure-root-overlay .plist {
   max-height: 300px;
@@ -815,25 +936,21 @@
   .structure-pane {
     padding: 16px 12px 30px;
   }
+  .structure-root-overlay {
+    padding: 0 12px;
+  }
   .sh {
     gap: 8px;
   }
   .shead-main {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto auto;
     gap: 4px 8px;
   }
   .structure-layout.with-drawer .shead-main {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto auto;
   }
   .hair {
     display: none;
-  }
-  .scnt {
-    grid-column: 2;
-    grid-row: 1;
-  }
-  .srule {
-    grid-column: 1;
   }
   .structure-card,
   .sgrid {

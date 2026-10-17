@@ -49,6 +49,8 @@ The graph and the route are two requests of one command family. Both compile the
 
 A successful request returns status 200 and the command's report as JSON.
 
+A search whose query embedding request fails against the embedding service answers with status 200, the exact-code, substring, and fuzzy matches it found, and `semantic_available` false in the report, as [Search](/docs/backend/search-and-discovery/search.md#when-the-query-embedding-request-fails) describes.
+
 A body that does not match its closed request model is answered with status 422 and the fixed body `{"detail": "Invalid request"}`. The rejected input is not echoed.
 
 A body the model accepts but the command rejects is answered with status 422 and the command's own message. The command rejects a blank query or identity, an unknown identity, an official code held by more than one course, a completed course outside the selected set, and a graph node key whose prefix is unsupported.

@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import type { ResolvedNode } from "./model";
 import { useProfileSelector } from "../../state/useProfileSelector";
 import { Disclosure } from "../../shared/Disclosure";
+import { useReducedMotion } from "../../shared/useReducedMotion";
 import {
   moduleName,
   formatCredits,
@@ -11,6 +12,7 @@ import {
   nodeKindLabel,
 } from "./presentation";
 import { StructureCard } from "./StructureCard";
+import { ProgrammeMenu } from "./ProgrammeMenu";
 import { DOCUMENT } from "../../shared/icons";
 import type { DisplayContents } from "./display";
 import { useWording } from "../../shared/useWording";
@@ -24,6 +26,7 @@ export function StructureNodeRow({
   active,
   onOpen,
   children,
+  programmeActions,
 }: {
   resolved: ResolvedNode;
   courses: DisplayContents["courses"];
@@ -32,10 +35,17 @@ export function StructureNodeRow({
   active: boolean;
   onOpen: (resolved: ResolvedNode) => void;
   children?: React.ReactNode;
+  /** Present on a direct top-level programme row only. */
+  programmeActions?: {
+    onReplace(): void;
+    onReset(): void;
+    onDelete(): void;
+  };
 }) {
   const [open, setOpen] = useState(true);
+  const reducedMotion = useReducedMotion();
   const transition = {
-    duration: 0.45,
+    duration: reducedMotion ? 0 : 0.45,
     ease: [0.22, 0.8, 0.2, 1] as const,
   };
   const language = useProfileSelector((state) => state.language).value;
@@ -65,15 +75,19 @@ export function StructureNodeRow({
     <motion.section
       className={`snode${active ? " active" : ""}`}
       style={{ "--depth": depth } as React.CSSProperties}
-      layout
+      layout={reducedMotion ? false : "position"}
       layoutId={
-        resolved.node.module
-          ? `structure-module-${resolved.node.module.group_id}`
-          : undefined
+        reducedMotion
+          ? undefined
+          : resolved.node.module
+            ? `structure-module-${resolved.node.module.group_id}`
+            : undefined
       }
-      initial={{ opacity: 0, height: 0, scale: 0.97 }}
+      initial={reducedMotion ? false : { opacity: 0, height: 0, scale: 0.97 }}
       animate={{ opacity: 1, height: "auto", scale: 1 }}
-      exit={{ opacity: 0, height: 0, scale: 0.97 }}
+      // The row's own top spacing collapses with its height, so removing the node leaves no
+      // leftover step after the glide.
+      exit={{ opacity: 0, height: 0, marginTop: 0, scale: 0.97 }}
       transition={transition}
     >
       <div className="sh">
@@ -93,28 +107,34 @@ export function StructureNodeRow({
             <path d="M4 6l4 4 4-4" />
           </svg>
         </button>
-        <button
-          className="shead-main"
-          type="button"
-          onClick={() => onOpen(resolved)}
-        >
-          <span className="sname">{title}</span>
-          <i className="hair" />
+        <div className="shead-main">
+          <button
+            className="shead-open"
+            type="button"
+            onClick={() => onOpen(resolved)}
+          >
+            <span className="sname">{title}</span>
+            <span className="r2">
+              {DOCUMENT}
+              {code && <span className="scode">{code}</span>}
+              <span className="skind">
+                {nodeKindLabel(resolved.node, language)}
+              </span>
+              {resolved.added && <span className="tag r">{t("added")}</span>}
+            </span>
+          </button>
+          {programmeActions ? (
+            <ProgrammeMenu name={title} {...programmeActions} />
+          ) : (
+            <i className="hair" />
+          )}
           <span className="scnt">
             <b>{formatCredits(selectedCredits)}</b> |{" "}
             {uiText(language, "{value} cr", {
               value: formatCredits(completedCredits),
             })}
           </span>
-          <span className="r2">
-            {DOCUMENT}
-            {code && <span className="scode">{code}</span>}
-            <span className="skind">
-              {nodeKindLabel(resolved.node, language)}
-            </span>
-            {resolved.added && <span className="tag r">{t("added")}</span>}
-          </span>
-        </button>
+        </div>
       </div>
       <Disclosure open={open} className="sbody">
         <div className="sin">
@@ -124,9 +144,17 @@ export function StructureNodeRow({
                 <motion.div
                   className="structure-course-motion"
                   key={course.group_id}
-                  layout
-                  layoutId={`structure-course-${course.group_id}`}
-                  initial={{ opacity: 0, height: 0, scale: 0.97 }}
+                  layout={!reducedMotion}
+                  layoutId={
+                    reducedMotion
+                      ? undefined
+                      : `structure-course-${course.group_id}`
+                  }
+                  initial={
+                    reducedMotion
+                      ? false
+                      : { opacity: 0, height: 0, scale: 0.97 }
+                  }
                   animate={{ opacity: 1, height: "auto", scale: 1 }}
                   exit={{ opacity: 0, height: 0, scale: 0.97 }}
                   transition={transition}
@@ -134,7 +162,7 @@ export function StructureNodeRow({
                   <StructureCard
                     course={course}
                     completed={completed.has(course.group_id)}
-                    added={added}
+                    added={resolved.node.kind === "unplaced" ? false : added}
                   />
                 </motion.div>
               ))}

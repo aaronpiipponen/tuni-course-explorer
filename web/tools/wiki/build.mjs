@@ -265,6 +265,7 @@ export async function buildWiki({ repoRoot }) {
   const order = config.sections.flatMap(({ page }) => flattenIds(page));
   return {
     registry: {
+      repositoryUrl,
       pages: registryPages,
       sections,
       order,

@@ -22,6 +22,7 @@ describe("shell language", () => {
 
   beforeEach(() => {
     localStorage.clear();
+    sessionStorage.clear();
     container = document.createElement("div");
     document.body.appendChild(container);
     store = createBrowserStore(localStorage);
@@ -47,11 +48,13 @@ describe("shell language", () => {
           StoreContext.Provider,
           { value: store },
           createElement(TopBar, { openDocs: () => {} }),
-          createElement(AppFooter),
+          createElement(AppFooter, {
+            repositoryUrl: "https://github.com/owner/repo",
+          }),
         ),
       ),
     );
-    const footer = container.querySelector(".app-footer");
+    const footer = container.querySelector(".app-footer-notice");
     const tab = container.querySelector(".nav-tab");
     const control =
       container.querySelector<HTMLButtonElement>(".language-switch");

@@ -45,7 +45,7 @@ test("publishes only config-listed documents in navigation order", async (t) => 
     files: {
       "docs/guide/home.md": "# Home\n\nWelcome.",
       "docs/guide/page.md": "# Page\n\nListed text.",
-      "docs/guide/unlisted.md": "# Unlisted\n\nPrivate selection.",
+      "docs/guide/unlisted.md": "# Unlisted\n\nUnlisted text.",
     },
   });
   const { registry } = await buildWiki({ repoRoot: root });
@@ -54,7 +54,7 @@ test("publishes only config-listed documents in navigation order", async (t) => 
   assert.equal(registry.pages.page.nav, "Guide");
   assert.equal(registry.pages.home.summary, "Welcome.");
   assert.equal(registry.pages.page.text.includes("Listed text."), true);
-  assert.equal(registry.pages.page.text.includes("Private selection"), false);
+  assert.equal(registry.pages.page.text.includes("Unlisted text"), false);
 
   const missing = config();
   missing.sections[0].page.path = "docs/guide/absent.md";

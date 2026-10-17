@@ -38,8 +38,12 @@ Each result is one course and shows its official code, its name, its credits, an
 | State | What the tab shows |
 |---|---|
 | A search is under way | Placeholder rows where the results appear |
+| Semantic search is unavailable | **Semantic search is unavailable. Showing matches by code and name only.** The code and name matches the search found are listed. |
 | No course matched | **No courses match this search.** |
+| No course matched while semantic search is unavailable | The notice about semantic search, then **No courses match this search.** |
 | The search failed | A notice with a short summary and the supplied detail under **Original technical detail** |
+
+A topic match needs the embedding service. When that service does not answer, the tab shows the notice and lists the matches it found by code, by code fragment, and by name, with the usual count, groups, and course cards. The notice belongs to the report of that search alone, so running the search again, changing the app language or the **Active only** option replaces it, and a search that reaches the service shows no notice. An unavailable topic match is not a failed search, so the tab shows the results rather than an error.
 
 Before the first search the tab holds the search field with **Active only** and the magnifier, and the **?** button.
 

@@ -156,11 +156,13 @@ describe("structure edits", () => {
     };
     let store = createBrowserStore(localStorage);
     const initial = resolveStructure(root, emptyEdits(), content);
-    applyStructure(store, {
-      rootGroupId: "root",
-      ...emptyEdits(),
-      placedCourseIds: initial.subtree.map((item) => item.group_id),
-    });
+    applyStructure(store, () => ({
+      next: {
+        programmeGroupIds: ["root"],
+        ...emptyEdits(),
+        placedCourseIds: initial.subtree.map((item) => item.group_id),
+      },
+    }));
     store = createBrowserStore(localStorage);
     const first = placeModuleWithCourses(
       root,
@@ -168,15 +170,17 @@ describe("structure edits", () => {
       content,
       "module-a",
       "r/2",
-      ["course-a"],
     );
-    expect(first.movedCourseCount).toBe(1);
+    // The course follows its module, so nothing needs a move confirmation.
+    expect(first.moves).toEqual([]);
     let resolved = resolveStructure(root, first.edits, content);
-    applyStructure(store, {
-      rootGroupId: "root",
-      ...first.edits,
-      placedCourseIds: resolved.subtree.map((item) => item.group_id),
-    });
+    applyStructure(store, () => ({
+      next: {
+        programmeGroupIds: ["root"],
+        ...first.edits,
+        placedCourseIds: resolved.subtree.map((item) => item.group_id),
+      },
+    }));
     store = createBrowserStore(localStorage);
     expect(
       store.getSnapshot().profiles.default.state.selectedCourseIds,
@@ -194,15 +198,16 @@ describe("structure edits", () => {
       content,
       "module-a",
       owner.node.key,
-      ["course-a"],
     );
-    expect(second.movedCourseCount).toBe(1);
+    expect(second.moves).toEqual([]);
     resolved = resolveStructure(root, second.edits, content);
-    applyStructure(store, {
-      rootGroupId: "root",
-      ...second.edits,
-      placedCourseIds: resolved.subtree.map((item) => item.group_id),
-    });
+    applyStructure(store, () => ({
+      next: {
+        programmeGroupIds: ["root"],
+        ...second.edits,
+        placedCourseIds: resolved.subtree.map((item) => item.group_id),
+      },
+    }));
     store = createBrowserStore(localStorage);
     expect(
       store.getSnapshot().profiles.default.state.selectedCourseIds,

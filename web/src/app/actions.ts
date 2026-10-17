@@ -1,10 +1,7 @@
-/** Shared shell navigation actions mutate only the current profile. */
+/** Shared shell actions over the session tab and the current profile's language and graph root. */
 import type { BrowserStore } from "../state/store";
-import type { CourseId, DisplayLanguage, TabId } from "../state/types";
-
-export function setActiveTab(store: BrowserStore, tab: TabId): void {
-  store.updateCurrent((state) => ({ ...state, activeTab: tab }));
-}
+import type { CourseId, DisplayLanguage } from "../state/types";
+import { setActiveTab } from "./sessionTab";
 
 export function setLanguage(
   store: BrowserStore,
@@ -19,7 +16,7 @@ export function openPrerequisites(
 ): void {
   store.updateCurrent((state) => ({
     ...state,
-    activeTab: "prerequisites",
     prerequisites: { ...state.prerequisites, rootCourseId: courseId },
   }));
+  setActiveTab("prerequisites");
 }

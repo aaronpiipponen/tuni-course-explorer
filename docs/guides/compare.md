@@ -21,7 +21,7 @@ The picker carries its own **Active only** option and a **Close** button, and it
 
 ## When both slots are full
 
-Adding a course from a course menu while both slots are full opens the dialog **Replace which course?**, which lists the two courses that hold the slots with a **Replace** button on each, beside a **Cancel** button. The course behind the button you select leaves the comparison, and the course you chose takes its slot.
+Adding a course from a course menu while both slots are full opens the dialog **Replace which course?**, which lists the two courses that hold the slots with a **Replace** button on each, above a **Cancel** button at the left of the dialog. The course behind the button you select leaves the comparison, and the course you chose takes its slot.
 
 ![The Replace which course? dialog, naming the course to add and listing the two courses in the slots, each with a Replace button, above Cancel.](/docs/screenshots/compare-replace-dialog.png)
 

@@ -32,6 +32,21 @@
   max-height: 300px;
   overflow-y: auto;
 }
+.dialog-panel .move-list {
+  max-height: 220px;
+  margin: 8px 0 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+.dialog-panel .move-list li {
+  padding: 3px 0;
+  color: rgb(255 255 255 / 75%);
+  font:
+    11.5px "JetBrains Mono",
+    ui-monospace,
+    monospace;
+}
 .dialog-panel[data-state="open"] {
   animation: dialog-content-in 240ms cubic-bezier(0.22, 0.8, 0.2, 1) both;
 }
@@ -122,11 +137,20 @@
   justify-content: flex-end;
   margin-top: 20px;
 }
+/* The cancel control holds the left edge, and the remaining actions stay together at the right. */
+.dialog-foot > :first-child {
+  margin-right: auto;
+}
 .dialog-foot-wrap {
   flex-wrap: wrap;
 }
-.dialog-foot-wrap > :first-child {
-  margin-right: auto;
+/* The module confirmation keeps its three short actions on one row. */
+.module-remove-foot {
+  flex-wrap: nowrap;
+  gap: 6px;
+}
+.module-remove-foot > button {
+  padding: 8px 10px;
 }
 .dialog-cancel {
   margin-top: 0;
@@ -167,6 +191,11 @@
 }
 .dialog-confirm:hover {
   background: #7a2fc4;
+}
+.dialog-cancel:disabled,
+.dialog-confirm:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 @keyframes dialog-overlay-in {
   from {

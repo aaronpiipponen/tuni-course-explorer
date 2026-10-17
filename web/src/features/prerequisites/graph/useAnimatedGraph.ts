@@ -3,9 +3,11 @@
  * positions. An edge only fades out and back in at its final routed geometry when its drawn path
  * actually changes. An edge whose path is identical holds its place, so a drawing-neutral refresh
  * moves nothing and cold-mounts no edge. Edge polylines are drawn only at their final geometry, so a
- * layout change shows no slanted partial route.
+ * layout change shows no slanted partial route. Under the reduced-motion preference each target
+ * frame is published as it is, so no glide or fade runs.
  */
 import { useEffect, useRef, useState } from "react";
+import { useReducedMotion } from "../../../shared/useReducedMotion";
 import type { ModelEdge, ModelNode } from "./model";
 import type { LaidOutGraph } from "./useGraphLayout";
 
@@ -105,6 +107,7 @@ export function useAnimatedGraph(
   const [frame, setFrame] = useState<AnimatedGraphFrame | null>(null);
   const current = useRef<AnimatedGraphFrame | null>(null);
   const raf = useRef<number | null>(null);
+  const reducedMotion = useReducedMotion();
   useEffect(() => {
     if (!target) {
       if (raf.current !== null) cancelAnimationFrame(raf.current);
@@ -117,12 +120,13 @@ export function useAnimatedGraph(
       nextEdges = edgeFrame(target);
     const previous = current.current;
     if (
+      reducedMotion ||
       !previous ||
       previous.rootId !== target.model.rootId ||
       sameGeometry(previous, nextNodes, nextEdges)
     ) {
-      // Publish the exact frame with no transition: the first graph, a changed root, or identical
-      // geometry.
+      // Publish the exact frame with no transition: the first graph, a changed root, identical
+      // geometry, or the reduced-motion preference.
       if (raf.current !== null) cancelAnimationFrame(raf.current);
       raf.current = null;
       const initial = {
@@ -221,6 +225,6 @@ export function useAnimatedGraph(
     return () => {
       if (raf.current !== null) cancelAnimationFrame(raf.current);
     };
-  }, [target?.model, target?.layout]);
+  }, [target?.model, target?.layout, reducedMotion]);
   return frame;
 }

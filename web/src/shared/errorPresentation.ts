@@ -38,8 +38,13 @@ const KNOWN_MESSAGES: Record<string, UiTextKey> = {
     "Saved browser profile slice structure is invalid",
   "A module cannot be added inside itself":
     "A module cannot be added inside itself",
-  "Structure root changed while adding a module":
-    "Structure root changed while adding a module",
+  "Structure programmes changed while adding a module":
+    "Structure programmes changed while adding a module",
+  "Structure moves changed while confirming a module":
+    "Structure moves changed while confirming a module",
+  "Structure target is unavailable": "Structure target is unavailable",
+  "Programme is unavailable": "Programme is unavailable",
+  "Programme is already added": "Programme is already added",
   "Unsupported structure rule type": "Unsupported structure rule type",
   "Structure rule entry is missing its source origin":
     "Structure rule entry is missing its source origin",
@@ -48,6 +53,13 @@ const KNOWN_MESSAGES: Record<string, UiTextKey> = {
   "Placed module is missing from the resolved structure":
     "Placed module is missing from the resolved structure",
   "Requested course summary is missing": "Requested course summary is missing",
+  "Invalid import file": "Invalid import file",
+  "Unsupported file type": "Unsupported file type",
+  "Choose one file": "Choose one file",
+  "There is no saved data to export": "There is no saved data to export",
+  "Invalid Sisu plan file": "Invalid Sisu plan file",
+  "Sisu choice is ambiguous": "Sisu choice is ambiguous",
+  "Could not copy Sisu import script": "Could not copy Sisu import script",
 };
 
 export function errorPresentation(

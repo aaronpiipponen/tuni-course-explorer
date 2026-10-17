@@ -2,7 +2,11 @@
 
 TUNI Course Explorer is a course-search and study-path service for Tampere University curriculum data. It combines an offline Python pipeline over PostgreSQL and pgvector with a read-only FastAPI backend and a React browser application.
 
-The browser application searches courses by code, name and meaning, compares courses, draws official prerequisite structures and separately marked inferred ones, computes a minimum-new-credit route, lists what can be studied next, and keeps one browser-local study plan across every tab. The example setup in this repository runs on an invented dataset, not on university data.
+The browser application searches courses by code, name and meaning, compares courses, draws official prerequisite structures and separately marked inferred ones, computes a minimum-new-credit route, lists what can be studied next, and keeps one browser-local study plan across every tab.
+
+The app is available at [course-explorer.duckdns.org](https://course-explorer.duckdns.org/). Its [wiki](https://course-explorer.duckdns.org/docs) holds the guides to each tab and the documentation of how the system behaves. Installation, self-hosting and the code-level documentation are read in [`docs/`](/docs/) in this repository.
+
+The example setup in this repository runs on an invented dataset, not on university data.
 
 ![The five tabs of the application above a list of course search results](/docs/screenshots/app-shell.png)
 
@@ -32,19 +36,19 @@ The graph shows the layered prerequisite structure of a course as AND and OR gro
 
 ### Discover
 
-Discover has two lists. **Next courses** shows the courses that can be studied next from a basis of completed or selected courses, in an **All** mode or an **At least one** mode, with how much of the required and recommended prerequisites each course covers. **Recommended** lists courses similar to the basis.
+Discover has two lists. **Next courses** shows the courses that can be studied next from a basis of completed or selected courses, in an **All** mode or an **At least one** mode, with a coverage meter for each category that holds course prerequisites. **All** lists fully covered courses without a coverage meter. **Recommended** lists courses similar to the basis.
 
-![Discover tab with a basis of two completed courses and one next course with its required and recommended coverage](/docs/screenshots/discover-next-courses.png)
+![Discover tab in the At least one mode, with a basis of three completed courses and two next-course rows that each carry a Required meter](/docs/screenshots/discover-next-courses.png)
 
 ### Structure of studies
 
-This tab shows the official structure of a programme or module with credit totals per node. Courses can be marked complete, courses outside the structure appear under unplaced studies, and the structure can be edited in the browser to match a personal plan.
+This tab shows an ordered list of programmes, each with the official structure of a degree programme or module and credit totals per node. **Add programme** ends the list, every programme row carries a menu that replaces, resets or deletes it, courses can be marked complete, and courses no programme holds appear under **Unplaced studies**. The structure can be edited in the browser to match a personal plan.
 
-![Structure of studies tab with a programme, its module, completed courses and an unplaced completed course](/docs/screenshots/structure-of-studies.png)
+![Structure of studies tab with two programmes, their completed courses, the Add programme row and the Unplaced studies row](/docs/screenshots/structure-of-studies.png)
 
 ### Profiles and language
 
-The profile menu in the top bar is named after the active profile (**My plan** by default). It lists the saved profiles and creates new ones. A profile stores the selected and completed courses, exclusions and graph marks, structure edits and tab options. The FI/EN switch sets the interface wording and the language of official course and module names.
+The profile menu in the top bar is named after the active profile (**My plan** by default). It lists the saved profiles and creates new ones. A profile stores the selected and completed courses, exclusions and graph marks, the ordered programmes with their edits, and the tab options. The open tab belongs to the browser tab instead, so switching a profile never moves it. The FI/EN switch sets the interface wording and the language of official course and module names.
 
 ![Profile menu listing the default profile with its selected and completed counts, next to the FI and EN language switch](/docs/screenshots/profile-language.png)
 
@@ -130,15 +134,17 @@ npm --prefix web run format:check
 
 ## Architecture
 
-- [`src/course_explorer/`](src/course_explorer/): domain, ingestion, search, inference and persistence services.
-- [`src/course_explorer_web/`](src/course_explorer_web/): the read-only FastAPI application that serves the browser application and its endpoints.
-- [`web/`](web/): the React, TypeScript and Vite browser application.
+- [`src/course_explorer/`](/src/course_explorer/): domain, ingestion, search, inference and persistence services.
+- [`src/course_explorer_admin/`](/src/course_explorer_admin/): the administration command, with the operator menu, the four preparation stages and their lifecycle.
+- [`src/course_explorer_web/`](/src/course_explorer_web/): the read-only FastAPI application that serves the browser application and its endpoints.
+- [`scripts/`](/scripts/): thin command-line adapters over the read commands.
+- [`web/`](/web/): the React, TypeScript and Vite browser application.
 
 Python services own behavior, PostgreSQL with pgvector stores normalized state and vectors, and Alembic owns schema changes. The browser application is a read-only client of the API. The offline pipeline that prepares the data runs outside the request path.
 
 ## License
 
-This project is licensed under the MIT License. See [`LICENSE`](LICENSE).
+This project is licensed under the MIT License. See [`LICENSE`](/LICENSE).
 
 ## Independent project
 

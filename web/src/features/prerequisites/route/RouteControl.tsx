@@ -40,11 +40,9 @@ export function RouteControl({
           )}
           <small>
             {t(
-              busy
-                ? "cheapest route to the selected course"
-                : active
-                  ? "click to clear"
-                  : "cheapest way to the selected course",
+              active && !busy
+                ? "click to clear"
+                : "cheapest route to the selected course",
             )}
           </small>
         </span>

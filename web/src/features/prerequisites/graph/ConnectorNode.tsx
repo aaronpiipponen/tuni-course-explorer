@@ -8,7 +8,7 @@ import { ErrorNotice } from "../../../shared/ErrorNotice";
 import { useWording } from "../../../shared/useWording";
 
 export function ConnectorNode({ data }: NodeProps & { data: GraphNodeData }) {
-  const { store } = useProfileSelector((state) => state.activeTab);
+  const { store } = useProfileSelector((state) => state.prerequisites);
   const { runAction, error } = useAction();
   const { language, t } = useWording();
   const state = data.state;

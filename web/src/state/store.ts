@@ -1,8 +1,18 @@
-/** One localStorage-backed live-profile envelope with atomic publish-after-write updates. */
-import { initialBrowserState, initialProfileState } from "./defaults";
-import type { PrerequisitesState } from "../features/prerequisites/state";
-import { initialPrerequisitesState } from "../features/prerequisites/state";
-import type { BrowserState, ProfileState } from "./types";
+/**
+ * One localStorage-backed live-profile envelope whose mutations re-read the stored value,
+ * apply their change to it and write before publishing.
+ */
+import { initialBrowserState } from "./defaults";
+import type {
+  BrowserImport,
+  BrowserProfileFile,
+  BrowserState,
+  BrowserStateFile,
+  Profile,
+  ProfileState,
+} from "./types";
+import { validateBrowserState, validateProfile } from "./validation";
+import { parseSisuCapture } from "../features/structure/sisu";
 
 export const BROWSER_STORAGE_KEY = "tuni-course-explorer";
 
@@ -24,171 +34,230 @@ export class BrowserStore {
   };
 
   updateCurrent(update: (state: ProfileState) => ProfileState): void {
-    const currentId = this.#snapshot.currentProfileId;
-    const current = this.#snapshot.profiles[currentId];
-    if (!current) throw new Error("Current browser profile is unavailable");
-    const updated = update(current.state);
-    if (updated === current.state) return;
-    const next: BrowserState = {
-      ...this.#snapshot,
-      profiles: {
-        ...this.#snapshot.profiles,
-        [currentId]: { ...current, state: updated },
-      },
-    };
-    this.#commit(next);
+    this.#commit((latest) => {
+      const current = latest.profiles[latest.currentProfileId];
+      if (!current) throw new Error("Current browser profile is unavailable");
+      const updated = update(current.state);
+      if (updated === current.state) return latest;
+      return {
+        ...latest,
+        profiles: {
+          ...latest.profiles,
+          [latest.currentProfileId]: { ...current, state: updated },
+        },
+      };
+    });
   }
 
   switchProfile(id: string): void {
-    if (!this.#snapshot.profiles[id])
-      throw new Error("Browser profile is unavailable");
-    if (id === this.#snapshot.currentProfileId) return;
-    this.#commit({ ...this.#snapshot, currentProfileId: id });
+    this.#commit((latest) => {
+      if (!latest.profiles[id])
+        throw new Error("Browser profile is unavailable");
+      if (id === latest.currentProfileId) return latest;
+      return { ...latest, currentProfileId: id };
+    });
   }
 
   saveAsProfile(name: string): void {
-    const trimmed = name.trim();
-    if (!trimmed) throw new Error("Profile name cannot be empty");
-    const currentId = this.#snapshot.currentProfileId;
-    const current = this.#snapshot.profiles[currentId];
-    if (!current) throw new Error("Current browser profile is unavailable");
-    if (Object.values(this.#snapshot.profiles).some((p) => p.name === trimmed))
-      throw new Error("A profile with that name already exists");
-    const id = `profile-${crypto.getRandomValues(new Uint32Array(4)).join("-")}`;
-    const profiles = {
-      ...this.#snapshot.profiles,
-      [id]: { name: trimmed, state: structuredClone(current.state) },
-    };
-    this.#commit({ ...this.#snapshot, currentProfileId: id, profiles });
+    this.#commit((latest) => {
+      const current = latest.profiles[latest.currentProfileId];
+      if (!current) throw new Error("Current browser profile is unavailable");
+      return this.#withNewProfile(latest, name, current.state);
+    });
   }
 
   deleteProfile(id: string): void {
-    if (!this.#snapshot.profiles[id])
-      throw new Error("Browser profile is unavailable");
-    const profiles = { ...this.#snapshot.profiles };
-    delete profiles[id];
-    const [first] = Object.keys(profiles);
-    if (first === undefined)
-      throw new Error("The last browser profile cannot be deleted");
-    this.#commit({
-      ...this.#snapshot,
-      currentProfileId:
-        id === this.#snapshot.currentProfileId
-          ? first
-          : this.#snapshot.currentProfileId,
-      profiles,
+    this.#commit((latest) => {
+      if (!latest.profiles[id])
+        throw new Error("Browser profile is unavailable");
+      const profiles = { ...latest.profiles };
+      delete profiles[id];
+      const [first] = Object.keys(profiles);
+      if (first === undefined)
+        throw new Error("The last browser profile cannot be deleted");
+      return {
+        ...latest,
+        currentProfileId:
+          id === latest.currentProfileId ? first : latest.currentProfileId,
+        profiles,
+      };
     });
   }
 
   renameProfile(id: string, name: string): void {
-    const current = this.#snapshot.profiles[id];
-    if (!current) throw new Error("Browser profile is unavailable");
-    const trimmed = name.trim();
-    if (!trimmed) throw new Error("Profile name cannot be empty");
-    if (current.name === trimmed) return;
-    if (
-      Object.entries(this.#snapshot.profiles).some(
-        ([otherId, profile]) => otherId !== id && profile.name === trimmed,
+    this.#commit((latest) => {
+      const profile = latest.profiles[id];
+      if (!profile) throw new Error("Browser profile is unavailable");
+      const trimmed = name.trim();
+      if (!trimmed) throw new Error("Profile name cannot be empty");
+      if (profile.name === trimmed) return latest;
+      if (
+        Object.entries(latest.profiles).some(
+          ([otherId, other]) => otherId !== id && other.name === trimmed,
+        )
       )
-    )
-      throw new Error("A profile with that name already exists");
-    this.#commit({
-      ...this.#snapshot,
-      profiles: {
-        ...this.#snapshot.profiles,
-        [id]: { ...current, name: trimmed },
-      },
+        throw new Error("A profile with that name already exists");
+      return {
+        ...latest,
+        profiles: { ...latest.profiles, [id]: { ...profile, name: trimmed } },
+      };
     });
   }
 
-  #commit(next: BrowserState): void {
+  /**
+   * Adopt the stored envelope as the live snapshot. Reading another tab's write and an
+   * absent key both land here, and an equal value keeps the current snapshot references.
+   */
+  refreshFromStorage(): BrowserState {
+    const latest = readBrowserState(this.#storage);
+    if (JSON.stringify(latest) !== JSON.stringify(this.#snapshot)) {
+      this.#snapshot = latest;
+      this.#listeners.forEach((listener) => listener());
+    }
+    return this.#snapshot;
+  }
+
+  /** Return a profile file for one stored profile, read from the stored envelope. */
+  exportProfile(id: string): BrowserProfileFile {
+    const snapshot = this.refreshFromStorage();
+    const profile = snapshot.profiles[id];
+    if (!profile) throw new Error("Browser profile is unavailable");
+    return {
+      type: "tuni-course-explorer/profile/2",
+      profile: structuredClone(profile),
+    };
+  }
+
+  /** Return a whole-state file that holds the stored envelope text as it is. */
+  exportState(): BrowserStateFile {
+    return exportSavedBrowserData(this.#storage);
+  }
+
+  /** Add an imported profile as a new current profile. A duplicate or blank name is refused. */
+  importProfile(profile: Profile): void {
+    this.#commit((latest) =>
+      this.#withNewProfile(latest, profile.name, profile.state),
+    );
+  }
+
+  /** Replace every stored profile with one imported envelope and publish it. */
+  restoreState(state: BrowserState): void {
+    this.#write(state);
+  }
+
+  /** Replace every stored profile with the initial envelope and publish it. */
+  resetSavedData(): void {
+    this.#write(initialBrowserState());
+  }
+
+  #withNewProfile(
+    latest: BrowserState,
+    name: string,
+    state: ProfileState,
+  ): BrowserState {
+    const trimmed = name.trim();
+    if (!trimmed) throw new Error("Profile name cannot be empty");
+    if (
+      Object.values(latest.profiles).some((profile) => profile.name === trimmed)
+    )
+      throw new Error("A profile with that name already exists");
+    const id = `profile-${crypto.getRandomValues(new Uint32Array(4)).join("-")}`;
+    return {
+      ...latest,
+      currentProfileId: id,
+      profiles: {
+        ...latest.profiles,
+        [id]: { name: trimmed, state: structuredClone(state) },
+      },
+    };
+  }
+
+  #commit(update: (latest: BrowserState) => BrowserState): void {
+    const latest = readBrowserState(this.#storage);
+    const next = update(latest);
+    if (next === latest) {
+      this.#adopt(latest);
+      return;
+    }
+    this.#write(next);
+  }
+
+  #write(next: BrowserState): void {
     this.#storage.setItem(BROWSER_STORAGE_KEY, JSON.stringify(next));
     this.#snapshot = next;
     this.#listeners.forEach((listener) => listener());
   }
-}
 
-function mergePrerequisitesState(
-  saved: Record<string, unknown>,
-): PrerequisitesState {
-  // Project the prerequisite shape: saved values fill the known fields, and a storage write
-  // writes only those fields.
-  const merged: Record<string, unknown> = {};
-  for (const [field, fallback] of Object.entries(initialPrerequisitesState()))
-    merged[field] = field in saved ? saved[field] : fallback;
-  return merged as PrerequisitesState;
-}
-
-function mergeProfileState(value: unknown): ProfileState {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    throw new Error("Saved browser profile state is invalid");
+  #adopt(latest: BrowserState): void {
+    if (JSON.stringify(latest) === JSON.stringify(this.#snapshot)) return;
+    this.#snapshot = latest;
+    this.#listeners.forEach((listener) => listener());
   }
-  const saved = value as Record<string, unknown>;
-  const defaults = initialProfileState();
-  const merged = { ...defaults, ...saved };
-  for (const key of [
-    "search",
-    "compare",
-    "prerequisites",
-    "discover",
-    "structure",
-  ] as const) {
-    const slice = saved[key];
-    if (slice !== undefined) {
-      if (!slice || typeof slice !== "object" || Array.isArray(slice)) {
-        throw new Error(`Saved browser profile slice ${key} is invalid`);
-      }
-      (merged as Record<string, unknown>)[key] =
-        key === "prerequisites"
-          ? mergePrerequisitesState(slice as Record<string, unknown>)
-          : { ...defaults[key], ...slice };
-    }
-  }
-  return merged as ProfileState;
 }
 
 function readBrowserState(storage: Storage): BrowserState {
   const raw = storage.getItem(BROWSER_STORAGE_KEY);
-  if (raw === null) {
-    const initial = initialBrowserState();
-    storage.setItem(BROWSER_STORAGE_KEY, JSON.stringify(initial));
-    return initial;
-  }
-  const value: unknown = JSON.parse(raw);
-  if (!value || typeof value !== "object" || Array.isArray(value))
+  if (raw === null) return initialBrowserState();
+  let value: unknown;
+  try {
+    value = JSON.parse(raw);
+  } catch {
     throw new Error("Saved browser state is invalid");
-  const saved = value as Record<string, unknown>;
-  if (saved.schemaVersion !== 1)
-    throw new Error("Unsupported saved browser state schema");
-  if (
-    typeof saved.currentProfileId !== "string" ||
-    !saved.profiles ||
-    typeof saved.profiles !== "object" ||
-    Array.isArray(saved.profiles)
-  ) {
-    throw new Error("Saved browser state has no current profile");
   }
-  const profiles: BrowserState["profiles"] = {};
-  for (const [id, profile] of Object.entries(saved.profiles)) {
-    if (!profile || typeof profile !== "object" || Array.isArray(profile))
-      throw new Error("Saved browser profile is invalid");
-    const stored = profile as Record<string, unknown>;
-    if (typeof stored.name !== "string" || !stored.state)
-      throw new Error("Saved browser profile is invalid");
-    profiles[id] = {
-      name: stored.name,
-      state: mergeProfileState(stored.state),
-    };
-  }
-  if (!profiles[saved.currentProfileId])
-    throw new Error("Saved browser state has no current profile");
-  return {
-    schemaVersion: 1,
-    currentProfileId: saved.currentProfileId,
-    profiles,
-  };
+  return validateBrowserState(value);
+}
+
+/** Build the first-visit envelope through the explicit reset writer. */
+export function resetBrowserStore(storage: Storage): BrowserStore {
+  const store = new BrowserStore(storage, initialBrowserState());
+  store.resetSavedData();
+  return store;
 }
 
 export function createBrowserStore(storage: Storage): BrowserStore {
+  if (storage.getItem(BROWSER_STORAGE_KEY) === null)
+    return resetBrowserStore(storage);
   return new BrowserStore(storage, readBrowserState(storage));
+}
+
+/** Wrap the stored envelope text unchanged, so unreadable data can leave the browser. */
+export function exportSavedBrowserData(storage: Storage): BrowserStateFile {
+  const data = storage.getItem(BROWSER_STORAGE_KEY);
+  if (data === null) throw new Error("There is no saved data to export");
+  return { type: "tuni-course-explorer/state/2", data };
+}
+
+/** Dispatch one imported file on its `type` field, validate its payload and parse a Sisu capture. */
+export function parseBrowserImport(text: string): BrowserImport {
+  let value: unknown;
+  try {
+    value = JSON.parse(text);
+  } catch {
+    throw new Error("Invalid import file");
+  }
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    throw new Error("Invalid import file");
+  const file = value as Record<string, unknown>;
+  if (file.type === "tuni-course-explorer/profile/2")
+    return {
+      type: "tuni-course-explorer/profile/2",
+      profile: validateProfile(file.profile),
+    };
+  if (file.type === "tuni-course-explorer/state/2") {
+    if (typeof file.data !== "string") throw new Error("Invalid import file");
+    let data: unknown;
+    try {
+      data = JSON.parse(file.data);
+    } catch {
+      throw new Error("Invalid import file");
+    }
+    return {
+      type: "tuni-course-explorer/state/2",
+      state: validateBrowserState(data),
+    };
+  }
+  if (file.type === "tuni-course-explorer/sisu/1")
+    return parseSisuCapture(value);
+  if (typeof file.type === "string") throw new Error("Unsupported file type");
+  throw new Error("Invalid import file");
 }

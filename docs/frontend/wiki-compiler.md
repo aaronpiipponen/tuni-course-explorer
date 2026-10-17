@@ -15,7 +15,7 @@ The configuration is validated before any page is read:
 - A page nested deeper than `maxNavDepth` (3) fails the build.
 - `popular` must be an array of known page identities with no duplicates.
 
-`addPage` records each page with its `parent` identity, its section and its child items, then the pages are read in navigation order. The home page and each section's page are recorded with a null parent, and every other page is nested under its parent's `children`. The result carries the registry and the asset map: the registry holds `pages`, `sections` (title, description and the section's page identity), `order` (each section's page followed by its descendants, section by section, with the home page left out) and `popular`.
+`addPage` records each page with its `parent` identity, its section and its child items, then the pages are read in navigation order. The home page and each section's page are recorded with a null parent, and every other page is nested under its parent's `children`. The result carries the registry and the asset map: the registry holds `repositoryUrl` (the validated address without a trailing slash or `.git`), `pages`, `sections` (title, description and the section's page identity), `order` (each section's page followed by its descendants, section by section, with the home page left out) and `popular`.
 
 ## Source selection and containment
 

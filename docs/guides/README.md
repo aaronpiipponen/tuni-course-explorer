@@ -4,7 +4,7 @@ TUNI Course Explorer is a read-only web app for exploring a university course ca
 
 ## What the app is for
 
-The app shows one university course catalogue as the university publishes it. Five tabs read that catalogue in different ways: **Search** finds a course by code, name, or topic, **Compare** measures two courses against each other, **Prerequisites** draws what a course expects before it is taken, **Discover** suggests courses that follow from a chosen basis, and **Structure of studies** follows the official structure of a degree programme. Information that analysis produced, such as a verdict on two courses or a prerequisite found in teaching text, is labeled apart from the [official data](/docs/README.md#official-and-inferred-information).
+The app shows one university course catalogue as the university publishes it. Five tabs read that catalogue in different ways: **Search** finds a course by code, name, or topic, **Compare** measures two courses against each other, **Prerequisites** draws what a course expects before it is taken, **Discover** suggests courses that follow from a chosen basis, and **Structure of studies** follows the official structure of each of its ordered programmes. Information that analysis produced, such as a verdict on two courses or a prerequisite found in teaching text, is labeled apart from the [official data](/docs/README.md#official-and-inferred-information).
 
 ## A first session
 
@@ -18,7 +18,7 @@ The app shows one university course catalogue as the university publishes it. Fi
 
 5. **Look at what comes next.** Open the **Discover** tab to see the courses that your completed or selected courses reach, and the courses whose teaching text resembles them. [Discovering courses](/docs/guides/discover.md) explains the two lists and the basis they share.
 
-6. **Start a structure of studies.** Open the **Structure of studies** tab and select **Choose root** to set a degree programme or module at the top. [Planning a structure of studies](/docs/guides/structure-of-studies.md) covers the official structure and your own places in it.
+6. **Start a structure of studies.** Open the **Structure of studies** tab and select **Add programme** to append a degree programme or module to the end of the ordered programme list, before **Unplaced studies**. [Planning a structure of studies](/docs/guides/structure-of-studies.md) covers the official structure and your own places in it.
 
 ## Shared course state
 
@@ -26,17 +26,17 @@ The selection and the completion belong to the profile and are read by all five 
 
 ![The course menu open on a search result, listing Add to comparison, Open prerequisite graph, Add to Unplaced studies, Mark completed, and Open in Sisu](/docs/screenshots/course-actions-menu.png)
 
-Every course card opens that same menu: **Add to comparison**, **Open prerequisite graph**, **Add to Unplaced studies**, **Mark completed**, and **Open in Sisu**. Marking a course completed also selects it, and clearing the completion leaves the course selected. Marking a course completed records the completion in the profile and changes nothing in the catalogue, so the completion serves the app's own calculations. **Open in Sisu** is the one action that leaves the app, and it opens the official page of the course. **Add to Unplaced studies** selects a course and places it under [**Unplaced studies**](/docs/guides/structure-of-studies.md#unplaced-studies) in the structure of studies, and while no structure root is set it first asks for a degree programme or module to start that structure.
+Every course card opens that same menu: **Add to comparison**, **Open prerequisite graph**, **Add to Unplaced studies**, **Mark completed**, and **Open in Sisu**. Marking a course completed also selects it, and clearing the completion leaves the course selected. Marking a course completed records the completion in the profile and changes nothing in the catalogue, so the completion serves the app's own calculations. **Open in Sisu** is the one action that leaves the app, and it opens the official page of the course. **Add to Unplaced studies** selects a course and places it under [**Unplaced studies**](/docs/guides/structure-of-studies.md#unplaced-studies) in the structure of studies, whether or not the programme list holds a programme.
 
 ## The top bar and the tab controls
 
 ![The five tab buttons, Docs, the profile control, and the FI and EN language control in the top bar, above the Search tab's query field and result list](/docs/screenshots/app-shell.png)
 
-The top bar holds a button for each of the five tabs, **Docs**, the profile control, and the language control. **Docs** opens the documentation wiki inside the app, where a search field and **Back to the app** sit in its header. The profile control switches between the named profiles and shows how many courses each one has selected and completed, and the language control switches the interface between FI and EN. [Profiles and language](/docs/guides/profiles-and-language.md) covers both controls.
+The top bar holds a button for each of the five tabs, **Docs**, the profile control, and the language control. **Docs** opens the documentation wiki inside the app, where a search field, **GitHub** and **Back to the app** sit in its header. **GitHub** opens the project's source code repository in a new browser tab. The profile control switches between the named profiles and shows how many courses each one has selected and completed, and the language control switches the interface between FI and EN. [Profiles and language](/docs/guides/profiles-and-language.md) covers both controls.
 
 An arrow at each side of the tab area moves one tab back or forward, and the left and right arrow keys do the same. The five tabs form a ring, so the last tab leads back to the first, and a move takes the shorter way round. An arrow key is ignored while the focus sits in a text field and while a menu or a dialog is open.
 
-The footer at the bottom of the window states **This is an independent project that is not affiliated with Tampere University.**
+The footer at the bottom of the window states **This is an independent project that is not affiliated with Tampere University.** and links **Source code on GitHub.** to the project's source code repository, which opens in a new browser tab.
 
 ## Where to go next
 
@@ -45,6 +45,7 @@ The footer at the bottom of the window states **This is an independent project t
 - [Exploring prerequisites](/docs/guides/prerequisites.md) for the prerequisite graph, its toggles, and the minimum route.
 - [Discovering courses](/docs/guides/discover.md) for next courses, recommended courses, and the basis.
 - [Planning a structure of studies](/docs/guides/structure-of-studies.md) for the official structure, its modules, and your own placements.
+- [Sisu import script](/docs/guides/sisu-import.md) for capturing your own plan in Sisu and importing it as a profile.
 - [Profiles and language](/docs/guides/profiles-and-language.md) for named profiles and the interface language.
 
 The [documentation home](/docs/README.md) introduces the five tabs and the shared course state, and the [Glossary](/docs/reference/glossary.md) defines every term the documentation uses.

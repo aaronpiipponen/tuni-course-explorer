@@ -33,6 +33,23 @@ export function DiscoverControls({
       ),
     },
   ];
+  const marksHelp = [
+    {
+      term: t("inferred"),
+      text: t("Listed only because of inferred prerequisites."),
+      tag: true,
+    },
+    {
+      term: t("selected"),
+      text: t("In the profile's selection, not completed."),
+      tag: true,
+    },
+    {
+      term: t("completed"),
+      text: t("Marked completed and also selected."),
+      tag: true,
+    },
+  ];
   return (
     <>
       <div
@@ -88,6 +105,28 @@ export function DiscoverControls({
                   ? [modeHelp, ...sharedHelp]
                   : sharedHelp,
             },
+            {
+              heading: t("percentages"),
+              items:
+                options.list === "next"
+                  ? [
+                      {
+                        term: t("Required / Recommended"),
+                        text: t(
+                          "Required and Recommended show how many of the courses in the best-matching prerequisite option of each category your basis covers. A category with no course prerequisites has no meter. All lists only courses whose prerequisite requirements your basis satisfies and has no meters. Official and inferred prerequisites both count. The inferred mark shows a course listed only because of inferred prerequisites.",
+                        ),
+                      },
+                    ]
+                  : [
+                      {
+                        term: t("Similarity"),
+                        text: t(
+                          "Similarity shows how close the course's teaching text is to your whole basis. It is a similarity score, not prerequisite coverage or official equivalence.",
+                        ),
+                      },
+                    ],
+            },
+            { heading: t("marks"), items: marksHelp },
           ]}
         />
       </div>
