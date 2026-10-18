@@ -59,7 +59,7 @@ export function RoutePanel({
             "The exact search was too large and the approximation gave up. No route or total is available.",
           )
         : view?.state === "no_solution"
-          ? t("Every route is blocked by excluded or unavailable courses:")
+          ? t("No route meets every requirement. Blocked requirements:")
           : view?.state === "unresolved"
             ? t("Some requirements cannot be resolved:")
             : view?.state === "shortfall"
@@ -111,6 +111,34 @@ export function RoutePanel({
             <p className="route-note">{t("Nothing new")}</p>
           )}
         {!route.calculating && note && <p className="route-note">{note}</p>}
+        {!route.calculating &&
+          view !== null &&
+          ["no_solution", "unresolved", "approximation_failed"].includes(
+            view.state,
+          ) &&
+          view.problems.length > 0 && (
+            <ul className="route-problems">
+              {view.problems.map((problem) => (
+                <li
+                  key={problem.identity}
+                  data-occurrence-id={problem.occurrenceId}
+                >
+                  <b>{problem.title ?? problem.actionKey}</b>
+                  <span>{problem.reason}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        {!route.calculating && view?.state === "shortfall" && (
+          <ul className="route-problems">
+            {view.shortfalls.map((shortfall, index) => (
+              <li key={`${shortfall.title}-${index}`}>
+                <b>{shortfall.title}</b>
+                <span>{shortfall.text}</span>
+              </li>
+            ))}
+          </ul>
+        )}
         {view !== null && (
           <Disclosure
             open={!route.calculating && route.expanded && canExpand}

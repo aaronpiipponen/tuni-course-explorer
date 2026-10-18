@@ -47,11 +47,13 @@ A module whose contents cannot be expanded into courses becomes one node with no
 
 One canonical course is one drawing node. Every occurrence of that course shares the node, and only the graph root is marked as the root. A group left with exactly one drawn child collapses to that child, and nested groups with the same operator fold together.
 
-Compaction changes the drawing only. The compiled expression and the calculation that reads it are the same with or without the collapse, so the drawing can hold fewer nodes than the expression without changing any answer. A module boundary, a numeric constraint, an expanded course, and an excluded or manually marked node never collapse.
+An unmarked logical AND or OR group reached under the same canonical course as an identical group is drawn once. The connections that reach that group and leave it carry every occurrence and condition chain of the groups they stand for, so the drawing shows one such group while the compiled expression holds every occurrence.
+
+Compaction changes the drawing only. The compiled expression and the calculation that reads it are the same with or without the collapse, so the drawing can hold fewer nodes than the expression without changing any answer. A module boundary, a numeric constraint, an expanded course, and an excluded or manually marked node each keep their own drawn node and never collapse.
 
 ## Basis, completed courses, exclusions and activity
 
-The calculation basis is the set of courses that already counts as covered, either the completed courses or every selected course. The app shows it as **Route basis**. A course in the basis satisfies its requirement at no cost, and a completed course is always selected.
+The calculation basis is the set of courses that already counts as covered, either the completed courses or every selected course. The app shows it as **Route basis**. A route uses one basis, with the same effect either way: a course in the basis satisfies its requirement at no cost and its own prerequisites are not expanded below it. A completed course is always selected, so it is in either basis.
 
 A course marked **Excluded** is drawn with a mark, together with its own prerequisites. Exclusion is a calculation rule: an excluded course never counts as covered and no route passes through it, while its descendants are usable through another route. Excluding the graph root blocks the whole request, and the graph draws the root and its requirements.
 

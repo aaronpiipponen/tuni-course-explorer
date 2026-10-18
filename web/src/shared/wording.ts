@@ -528,9 +528,9 @@ export const UI_TEXT = {
       en: "The exact search was too large and the approximation gave up. No route or total is available.",
       fi: "Tarkka haku oli liian suuri, eikä likimääräinen haku onnistunut. Reittiä tai kokonaismäärää ei ole saatavilla.",
     },
-  "Every route is blocked by excluded or unavailable courses:": {
-    en: "Every route is blocked by excluded or unavailable courses:",
-    fi: "Jokainen reitti on estetty poissuljettujen tai puuttuvien kurssien takia:",
+  "No route meets every requirement. Blocked requirements:": {
+    en: "No route meets every requirement. Blocked requirements:",
+    fi: "Mikään reitti ei täytä kaikkia vaatimuksia. Estetyt vaatimukset:",
   },
   "Some requirements cannot be resolved:": {
     en: "Some requirements cannot be resolved:",

@@ -8,14 +8,19 @@ import { ErrorNotice } from "../../../shared/ErrorNotice";
 import { useWording } from "../../../shared/useWording";
 
 export function ModuleNode({ data }: NodeProps & { data: GraphNodeData }) {
-  const { store } = useProfileSelector((state) => state.prerequisites);
+  const { store, value: manuallyCompleted } = useProfileSelector((state) =>
+    state.prerequisites.completedNodeKeys.includes(data.actionKey),
+  );
+  const { value: excluded } = useProfileSelector((state) =>
+    state.prerequisites.excludedNodeKeys.includes(data.actionKey),
+  );
   const { runAction, error } = useAction();
   const { language, t } = useWording();
   const state = data.state;
   return (
     <div
       inert={data.interactionDisabled}
-      className={`graph-module${state?.completed_by_courses ? " done" : ""}${state?.is_excluded ? " excl" : ""}`}
+      className={`graph-module${manuallyCompleted || state?.completed_by_courses ? " done" : ""}${excluded ? " excl" : ""}`}
     >
       <Handle type="target" position={Position.Top} />
       <button
@@ -30,34 +35,30 @@ export function ModuleNode({ data }: NodeProps & { data: GraphNodeData }) {
         <span className="graph-module-facts">
           <span>{data.subtitle} ▾</span>
         </span>
-        {state?.completed_by_courses && !state.manually_completed && (
+        {state?.completed_by_courses && !manuallyCompleted && (
           <i className="tile-tag">{t("fulfilled")}</i>
         )}
       </button>
       <div className="tile-actions nodrag nopan nowheel">
         <button
           type="button"
-          className={state?.manually_completed ? "is-done" : ""}
-          aria-pressed={state?.manually_completed ?? false}
+          className={manuallyCompleted ? "is-done" : ""}
+          aria-pressed={manuallyCompleted}
           onClick={() =>
             runAction(() => toggleNodeCompleted(store, data.actionKey))
           }
         >
-          {t(
-            state?.manually_completed
-              ? "Completed (course)"
-              : "Complete (course)",
-          )}
+          {t(manuallyCompleted ? "Completed (course)" : "Complete (course)")}
         </button>
         <button
           type="button"
-          className={state?.is_excluded ? "is-excl" : ""}
-          aria-pressed={state?.is_excluded ?? false}
+          className={excluded ? "is-excl" : ""}
+          aria-pressed={excluded}
           onClick={() =>
             runAction(() => toggleNodeExcluded(store, data.actionKey))
           }
         >
-          {t(state?.is_excluded ? "Excluded" : "Exclude")}
+          {t(excluded ? "Excluded" : "Exclude")}
         </button>
       </div>
       {error && <ErrorNotice error={error} language={language} />}

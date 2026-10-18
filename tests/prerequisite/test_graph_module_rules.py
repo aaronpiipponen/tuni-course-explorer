@@ -261,13 +261,9 @@ def test_compiler_expands_all_seven_module_rule_kinds_without_module_nodes() -> 
 
     # Ignored free choice and all-mandatory bounds add no witness. Known numeric requirements are
     # met, so shared satisfaction and PATH are exact zero.
-    satisfied = evaluate_prerequisite_satisfaction(
-        compilation.tree, ["c1", "c2", "shared"], completed_group_ids=["c1", "c2", "shared"]
-    )
+    satisfied = evaluate_prerequisite_satisfaction(compilation.tree, ["c1", "c2", "shared"])
     assert satisfied.requirements_state is PrerequisiteSatisfactionState.SATISFIED
-    exact = calculate_minimum_new_credits(
-        compilation.tree, ["c1", "c2", "shared"], completed_group_ids=["c1", "c2", "shared"]
-    )
+    exact = calculate_minimum_new_credits(compilation.tree, ["c1", "c2", "shared"])
     assert exact.state is PrerequisitePathState.EXACT
     assert exact.total_new_credits == Decimal("0")
 
@@ -689,6 +685,6 @@ def test_module_rule_malformed_shapes_become_explicit_unresolved_nodes() -> None
     ).compile("empty-option-root")
     assert empty_option.tree.requirements is None
     assert [part.kind.value for part in empty_option.tree.ignored_parts] == ["empty_option"]
-    empty_path = calculate_minimum_new_credits(empty_option.tree, [], completed_group_ids=[])
+    empty_path = calculate_minimum_new_credits(empty_option.tree, [])
     assert empty_path.state is PrerequisitePathState.EXACT
     assert empty_path.total_new_credits == Decimal("0")

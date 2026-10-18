@@ -39,9 +39,7 @@ def test_active_only_path_excludes_inactive_non_basis_candidates_and_uses_eligib
         (course_summary("inactive-leaf", credits_min="4", is_active=False),),
         active_only=True,
     )
-    required_result = calculate_minimum_new_credits(
-        required_inactive.tree, [], completed_group_ids=[]
-    )
+    required_result = calculate_minimum_new_credits(required_inactive.tree, [])
     assert required_result.state is PrerequisitePathState.NO_SOLUTION
     assert required_result.new_courses == ()
     assert required_result.total_new_credits is None
@@ -56,7 +54,7 @@ def test_active_only_path_excludes_inactive_non_basis_candidates_and_uses_eligib
         ),
         active_only=True,
     )
-    alternative_result = calculate_minimum_new_credits(alternative.tree, [], completed_group_ids=[])
+    alternative_result = calculate_minimum_new_credits(alternative.tree, [])
     assert alternative_result.state is PrerequisitePathState.EXACT
     assert selected_group_ids(alternative_result) == ("active-alt",)
     assert alternative_result.total_new_credits == Decimal("3")
@@ -68,15 +66,13 @@ def test_active_only_path_excludes_inactive_non_basis_candidates_and_uses_eligib
         (course_summary("inactive-leaf", credits_min="4", is_active=False),),
         active_only=True,
     )
-    retained_result = calculate_minimum_new_credits(
-        retained_basis.tree, ["inactive-leaf"], completed_group_ids=["inactive-leaf"]
-    )
+    retained_result = calculate_minimum_new_credits(retained_basis.tree, ["inactive-leaf"])
     assert retained_result.state is PrerequisitePathState.EXACT
     assert selected_group_ids(retained_result) == ()
     assert retained_result.total_new_credits == Decimal("0")
 
     # A retained inactive course outside the basis neither satisfies nor is proposed.
-    retained_only = calculate_minimum_new_credits(retained_basis.tree, [], completed_group_ids=[])
+    retained_only = calculate_minimum_new_credits(retained_basis.tree, [])
     assert retained_only.state is PrerequisitePathState.NO_SOLUTION
     assert selected_group_ids(retained_only) == ()
 
@@ -86,7 +82,7 @@ def test_active_only_path_excludes_inactive_non_basis_candidates_and_uses_eligib
         official_and("inactive-leaf"),
         (course_summary("inactive-leaf", credits_min="4", is_active=False),),
     )
-    all_courses_result = calculate_minimum_new_credits(all_courses.tree, [], completed_group_ids=[])
+    all_courses_result = calculate_minimum_new_credits(all_courses.tree, [])
     assert all_courses_result.state is PrerequisitePathState.EXACT
     assert selected_group_ids(all_courses_result) == ("inactive-leaf",)
     assert all_courses_result.total_new_credits == Decimal("4")
@@ -102,7 +98,7 @@ def test_exclusion_selects_other_or_else_no_solution() -> None:
         (course_summary("excluded", credits_min="1"), course_summary("alt", credits_min="3")),
         excluded_group_ids=("excluded",),
     )
-    alternative_result = calculate_minimum_new_credits(alternative.tree, [], completed_group_ids=[])
+    alternative_result = calculate_minimum_new_credits(alternative.tree, [])
     assert alternative_result.state is PrerequisitePathState.EXACT
     assert selected_group_ids(alternative_result) == ("alt",)
     assert alternative_result.total_new_credits == Decimal("3")
@@ -115,7 +111,7 @@ def test_exclusion_selects_other_or_else_no_solution() -> None:
         (course_summary("excluded", credits_min="1"),),
         excluded_group_ids=("excluded",),
     )
-    only_result = calculate_minimum_new_credits(only.tree, [], completed_group_ids=[])
+    only_result = calculate_minimum_new_credits(only.tree, [])
     assert only_result.state is PrerequisitePathState.NO_SOLUTION
     assert only_result.new_courses == ()
     assert only_result.total_new_credits is None
@@ -154,7 +150,7 @@ def test_excluded_substitution_option_requires_every_member() -> None:
         ),
         excluded_group_ids=("s1",),
     )
-    result = calculate_minimum_new_credits(compilation.tree, [], completed_group_ids=[])
+    result = calculate_minimum_new_credits(compilation.tree, [])
     assert result.state is PrerequisitePathState.EXACT
     assert selected_group_ids(result) == ("a",)
     assert result.total_new_credits == Decimal("6")
@@ -183,7 +179,7 @@ def test_excluded_course_does_not_poison_descendant_on_another_route() -> None:
         ),
         excluded_group_ids=("x",),
     )
-    result = calculate_minimum_new_credits(compilation.tree, [], completed_group_ids=[])
+    result = calculate_minimum_new_credits(compilation.tree, [])
     assert result.state is PrerequisitePathState.EXACT
     assert selected_group_ids(result) == ("shared", "y")
     assert result.total_new_credits == Decimal("7")

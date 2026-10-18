@@ -81,7 +81,7 @@ def test_minimum_path_uses_global_union_and_new_credits_not_local_course_count()
             course_summary("d", credits_min="10"),
         ),
     )
-    result = calculate_minimum_new_credits(compilation.tree, [], completed_group_ids=[])
+    result = calculate_minimum_new_credits(compilation.tree, [])
     assert result.state is PrerequisitePathState.EXACT
     assert selected_group_ids(result) == ("a", "b", "c")
     assert result.total_new_credits == Decimal("3")
@@ -102,9 +102,7 @@ def test_minimum_path_uses_global_union_and_new_credits_not_local_course_count()
             course_summary("c", credits_min="5"),
         ),
     )
-    overlap_result = calculate_minimum_new_credits(
-        overlap_compilation.tree, [], completed_group_ids=[]
-    )
+    overlap_result = calculate_minimum_new_credits(overlap_compilation.tree, [])
     assert selected_group_ids(overlap_result) == ("a",)
     assert overlap_result.total_new_credits == Decimal("2")
 
@@ -115,15 +113,11 @@ def test_minimum_path_uses_global_union_and_new_credits_not_local_course_count()
         repeated,
         (course_summary("a", credits_min="2"), course_summary("b", credits_min="4")),
     )
-    repeated_result = calculate_minimum_new_credits(
-        repeated_compilation.tree, ["a"], completed_group_ids=["a"]
-    )
+    repeated_result = calculate_minimum_new_credits(repeated_compilation.tree, ["a"])
     assert selected_group_ids(repeated_result) == ("b",)
     assert repeated_result.total_new_credits == Decimal("4")
 
-    incomplete_result = calculate_minimum_new_credits(
-        repeated_compilation.tree, [], completed_group_ids=[]
-    )
+    incomplete_result = calculate_minimum_new_credits(repeated_compilation.tree, [])
     assert selected_group_ids(incomplete_result) == ("a", "b")
     assert incomplete_result.total_new_credits == Decimal("6")
     a_entry = next(entry for entry in incomplete_result.new_courses if entry.course.group_id == "a")
@@ -180,9 +174,7 @@ def test_minimum_path_expands_new_courses_and_directional_substitutions() -> Non
     )
 
     # The globally cheapest route is option one, and it must include the substitute's own prereq E1.
-    option_one_result = calculate_minimum_new_credits(
-        substitution_compilation.tree, [], completed_group_ids=[]
-    )
+    option_one_result = calculate_minimum_new_credits(substitution_compilation.tree, [])
     assert selected_group_ids(option_one_result) == ("a1", "a2", "e1")
     assert option_one_result.total_new_credits == Decimal("3")
     # The substituted head and its own prerequisite keep their exact occurrence identities.
@@ -196,31 +188,23 @@ def test_minimum_path_expands_new_courses_and_directional_substitutions() -> Non
     assert e1_entry.occurrence_ids == ("r.1.0.1",)
 
     # One member is not enough: the option is AND, so the remaining member is charged.
-    partial = calculate_minimum_new_credits(
-        substitution_compilation.tree, ["a1"], completed_group_ids=["a1"]
-    )
+    partial = calculate_minimum_new_credits(substitution_compilation.tree, ["a1"])
     assert selected_group_ids(partial) == ("a2",)
     assert partial.total_new_credits == Decimal("1")
 
     # Completing the other member makes the completed substitute's own prerequisite required again.
-    other_member = calculate_minimum_new_credits(
-        substitution_compilation.tree, ["a2"], completed_group_ids=["a2"]
-    )
+    other_member = calculate_minimum_new_credits(substitution_compilation.tree, ["a2"])
     assert selected_group_ids(other_member) == ("a1", "e1")
     assert other_member.total_new_credits == Decimal("2")
 
     # A whole option satisfies: no residual course, and no reverse/chained substitute is invented.
-    satisfied_option = calculate_minimum_new_credits(
-        substitution_compilation.tree, ["a1", "a2"], completed_group_ids=["a1", "a2"]
-    )
+    satisfied_option = calculate_minimum_new_credits(substitution_compilation.tree, ["a1", "a2"])
     assert satisfied_option.state is PrerequisitePathState.EXACT
     assert satisfied_option.total_new_credits == Decimal("0")
     assert selected_group_ids(satisfied_option) == ()
 
     # Completing only a substitute member's prerequisite never substitutes for the required course.
-    prerequisite_only = calculate_minimum_new_credits(
-        substitution_compilation.tree, ["e1"], completed_group_ids=["e1"]
-    )
+    prerequisite_only = calculate_minimum_new_credits(substitution_compilation.tree, ["e1"])
     assert selected_group_ids(prerequisite_only) == ("a1", "a2")
 
 
@@ -239,16 +223,14 @@ def test_logical_composed_and_charges_every_incomplete_child() -> None:
         (course_summary("a", credits_min="3"), course_summary("b", credits_min="4")),
     )
 
-    result = calculate_minimum_new_credits(compilation.tree, ["a"], completed_group_ids=["a"])
+    result = calculate_minimum_new_credits(compilation.tree, ["a"])
     assert result.satisfaction.requirements_state is PrerequisiteSatisfactionState.UNSATISFIED
     assert result.state is PrerequisitePathState.EXACT
     assert selected_group_ids(result) == ("b",)
     assert result.total_new_credits == Decimal("4")
 
     # Completing both children yields the ordinary zero-cost exact result.
-    completed = calculate_minimum_new_credits(
-        compilation.tree, ["a", "b"], completed_group_ids=["a", "b"]
-    )
+    completed = calculate_minimum_new_credits(compilation.tree, ["a", "b"])
     assert completed.state is PrerequisitePathState.EXACT
     assert selected_group_ids(completed) == ()
     assert completed.total_new_credits == Decimal("0")
@@ -274,7 +256,7 @@ def test_minimum_path_solves_cardinality_credit_and_course_count_on_witnesses() 
             course_summary("c", credits_min="5"),
         ),
     )
-    chosen = calculate_minimum_new_credits(cardinality_compilation.tree, [], completed_group_ids=[])
+    chosen = calculate_minimum_new_credits(cardinality_compilation.tree, [])
     assert selected_group_ids(chosen) == ("a",)
     assert chosen.total_new_credits == Decimal("1")
 
@@ -292,9 +274,7 @@ def test_minimum_path_solves_cardinality_credit_and_course_count_on_witnesses() 
         overlap,
         (course_summary("a", credits_min="1"), course_summary("b", credits_min="4")),
     )
-    overlap_result = calculate_minimum_new_credits(
-        overlap_compilation.tree, [], completed_group_ids=[]
-    )
+    overlap_result = calculate_minimum_new_credits(overlap_compilation.tree, [])
     assert selected_group_ids(overlap_result) == ("a",)
     assert overlap_result.total_new_credits == Decimal("1")
 
@@ -308,9 +288,7 @@ def test_minimum_path_solves_cardinality_credit_and_course_count_on_witnesses() 
         children=(official_course("a"),),
     )
     neutral_compilation = make_compilation(root, neutral, (course_summary("a"),))
-    neutral_result = calculate_minimum_new_credits(
-        neutral_compilation.tree, [], completed_group_ids=[]
-    )
+    neutral_result = calculate_minimum_new_credits(neutral_compilation.tree, [])
     assert neutral_result.state is PrerequisitePathState.EXACT
     assert neutral_result.total_new_credits == Decimal("0")
     assert selected_group_ids(neutral_result) == ()
@@ -332,9 +310,7 @@ def test_minimum_path_solves_cardinality_credit_and_course_count_on_witnesses() 
             course_summary("e", credits_min="100", credits_max="999"),
         ),
     )
-    credit_result = calculate_minimum_new_credits(
-        credit_compilation.tree, [], completed_group_ids=[]
-    )
+    credit_result = calculate_minimum_new_credits(credit_compilation.tree, [])
     assert credit_result.state is PrerequisitePathState.EXACT
     assert selected_group_ids(credit_result) == ("a", "e")
     assert credit_result.total_new_credits == Decimal("101")
@@ -353,7 +329,7 @@ def test_minimum_path_solves_cardinality_credit_and_course_count_on_witnesses() 
         count,
         (course_summary("a", credits_min="3"), course_summary("b", credits_min="2")),
     )
-    count_result = calculate_minimum_new_credits(count_compilation.tree, [], completed_group_ids=[])
+    count_result = calculate_minimum_new_credits(count_compilation.tree, [])
     assert selected_group_ids(count_result) == ("b",)
     assert count_result.total_new_credits == Decimal("2")
 
@@ -375,9 +351,7 @@ def test_minimum_path_reports_unresolved_cycles_and_no_solution() -> None:
         ),
         (),
     )
-    unrestricted_result = calculate_minimum_new_credits(
-        zero_opaque.tree, [], completed_group_ids=[]
-    )
+    unrestricted_result = calculate_minimum_new_credits(zero_opaque.tree, [])
     assert unrestricted_result.state is PrerequisitePathState.EXACT
     assert unrestricted_result.total_new_credits == Decimal("0")
     assert selected_group_ids(unrestricted_result) == ()
@@ -400,13 +374,13 @@ def test_minimum_path_reports_unresolved_cycles_and_no_solution() -> None:
         ),
     )
     mixed_compilation = make_compilation(root, mixed, (course_summary("a", credits_min="5"),))
-    mixed_result = calculate_minimum_new_credits(mixed_compilation.tree, [], completed_group_ids=[])
+    mixed_result = calculate_minimum_new_credits(mixed_compilation.tree, [])
     assert mixed_result.state is PrerequisitePathState.UNRESOLVED
     assert mixed_result.total_new_credits is None
     assert selected_group_ids(mixed_result) == ()
 
     # A known satisfying alternative wins, including a zero-cost completion.
-    known = calculate_minimum_new_credits(mixed_compilation.tree, ["a"], completed_group_ids=["a"])
+    known = calculate_minimum_new_credits(mixed_compilation.tree, ["a"])
     assert known.state is PrerequisitePathState.EXACT
     assert known.total_new_credits == Decimal("0")
     assert known.blockers == ()
@@ -426,28 +400,15 @@ def test_minimum_path_reports_unresolved_cycles_and_no_solution() -> None:
         (course_summary("a", credits_min="2"),),
         issues=(cycle_issue,),
     )
-    cycle_result = calculate_minimum_new_credits(cycle_compilation.tree, [], completed_group_ids=[])
+    cycle_result = calculate_minimum_new_credits(cycle_compilation.tree, [])
     assert cycle_result.state is PrerequisitePathState.UNRESOLVED
     assert cycle_result.total_new_credits is None
     assert selected_group_ids(cycle_result) == ()
     assert cycle_result.blockers[0].kind is PrerequisitePathBlockerKind.COURSE_CYCLE
     assert cycle_result.blockers[0].course_group_path == ("root", "a", "root")
-    cycle_satisfied = calculate_minimum_new_credits(
-        cycle_compilation.tree, ["a"], completed_group_ids=["a"]
-    )
+    cycle_satisfied = calculate_minimum_new_credits(cycle_compilation.tree, ["a"])
     assert cycle_satisfied.state is PrerequisitePathState.EXACT
     assert cycle_satisfied.total_new_credits == Decimal("0")
-
-    # A selected-only basis does not resolve the real cycle: the closing occurrence is unresolved
-    # unless the containing branch is completed history.
-    cycle_selected_only = calculate_minimum_new_credits(
-        cycle_compilation.tree, ["a"], completed_group_ids=[]
-    )
-    assert cycle_selected_only.state is PrerequisitePathState.UNRESOLVED
-    assert any(
-        blocker.kind is PrerequisitePathBlockerKind.COURSE_CYCLE
-        for blocker in cycle_selected_only.blockers
-    )
 
     # An impossible numeric bound is a represented no-solution result, not an unresolved one.
     impossible = CreditRequirement(
@@ -461,9 +422,7 @@ def test_minimum_path_reports_unresolved_cycles_and_no_solution() -> None:
     impossible_compilation = make_compilation(
         root, impossible, (course_summary("a", credits_min="5"),)
     )
-    impossible_result = calculate_minimum_new_credits(
-        impossible_compilation.tree, [], completed_group_ids=[]
-    )
+    impossible_result = calculate_minimum_new_credits(impossible_compilation.tree, [])
     assert impossible_result.state is PrerequisitePathState.NO_SOLUTION
     assert impossible_result.total_new_credits is None
     assert selected_group_ids(impossible_result) == ()
@@ -495,7 +454,7 @@ def test_minimum_path_handles_large_nested_choice_rules_exactly() -> None:
         tuple(course_summary(group_id, credits_min="1") for group_id in choice_ids),
     )
 
-    result = calculate_minimum_new_credits(compilation.tree, [], completed_group_ids=[])
+    result = calculate_minimum_new_credits(compilation.tree, [])
 
     assert result.state is PrerequisitePathState.EXACT
     assert selected_group_ids(result) == ("choice-00", "choice-01", "choice-02")
@@ -542,9 +501,7 @@ def test_repeated_unexpandable_module_work_is_charged_once() -> None:
         prerequisite_module_member(0, "module-blank"),
         prerequisite_module_member(1, "module-blank"),
     )
-    result = calculate_minimum_new_credits(
-        _compile_opaque_root(root, (blank,)).tree, [], completed_group_ids=[]
-    )
+    result = calculate_minimum_new_credits(_compile_opaque_root(root, (blank,)).tree, [])
     assert result.state is PrerequisitePathState.EXACT
     assert result.new_courses == ()
     assert len(result.new_opaque_work) == 1
@@ -565,9 +522,7 @@ def test_repeated_bounded_work_keeps_intrinsic_identity_and_occurrences() -> Non
         prerequisite_module_member(0, "module-bounded"),
         prerequisite_module_member(1, "module-bounded"),
     )
-    result = calculate_minimum_new_credits(
-        _compile_opaque_root(root, (module,)).tree, [], completed_group_ids=[]
-    )
+    result = calculate_minimum_new_credits(_compile_opaque_root(root, (module,)).tree, [])
     assert len(result.new_opaque_work) == 1
     assert result.new_opaque_work[0].credits_min == Decimal("10")
     assert result.new_opaque_work[0].occurrence_ids == ("r.0.0", "r.1.0")
@@ -594,9 +549,7 @@ def test_distinct_opaque_siblings_are_charged_separately() -> None:
     )
     module = _opaque_module("module-siblings", rule)
     root = _opaque_course_root("sibling-root", prerequisite_module_member(0, "module-siblings"))
-    result = calculate_minimum_new_credits(
-        _compile_opaque_root(root, (module,)).tree, [], completed_group_ids=[]
-    )
+    result = calculate_minimum_new_credits(_compile_opaque_root(root, (module,)).tree, [])
     assert len(result.new_opaque_work) == 2
     assert result.total_new_credits == Decimal("20")
 
@@ -611,7 +564,6 @@ def test_resolved_members_cost_courses_not_module_target() -> None:
     result = calculate_minimum_new_credits(
         _compile_opaque_root(root, (module,), (catalogue_course("member"),)).tree,
         [],
-        completed_group_ids=[],
     )
     assert result.state is PrerequisitePathState.EXACT
     assert selected_group_ids(result) == ("member",)
@@ -629,9 +581,7 @@ def test_unknown_course_count_never_fabricates_courses() -> None:
         ),
     )
     root = _opaque_course_root("unknown-root", prerequisite_module_member(0, "module-unknown"))
-    result = calculate_minimum_new_credits(
-        _compile_opaque_root(root, (module,)).tree, [], completed_group_ids=[]
-    )
+    result = calculate_minimum_new_credits(_compile_opaque_root(root, (module,)).tree, [])
     assert result.state is PrerequisitePathState.UNRESOLVED
     assert result.new_courses == ()
     assert result.total_new_credits is None
@@ -661,7 +611,7 @@ def test_completed_unknown_extent_fails_positive_credit_bound() -> None:
         (catalogue_course("member"),),
         completed_node_keys=("module:module-inner",),
     ).tree
-    result = calculate_minimum_new_credits(tree, [], completed_group_ids=[])
+    result = calculate_minimum_new_credits(tree, [])
     assert result.state is PrerequisitePathState.UNRESOLVED
     assert result.new_courses == ()
     assert any(
@@ -693,7 +643,7 @@ def test_zero_bound_unknown_extent_wrappers_preserve_unpaid_sibling(wrapper: str
         (catalogue_course("member"), catalogue_course("unpaid")),
         completed_node_keys=("module:module-inner",),
     ).tree
-    result = calculate_minimum_new_credits(tree, [], completed_group_ids=[])
+    result = calculate_minimum_new_credits(tree, [])
     assert result.state is PrerequisitePathState.EXACT
     assert result.total_new_credits == Decimal("5")
     assert selected_group_ids(result) == ("unpaid",)
@@ -701,7 +651,7 @@ def test_zero_bound_unknown_extent_wrappers_preserve_unpaid_sibling(wrapper: str
         problem.reason == UnresolvedPrerequisiteReason.UNKNOWN_CREDIT_EXTENT.value
         for problem in result.problems
     )
-    greedy = calculate_minimum_new_credits(tree, [], completed_group_ids=[], max_compact_nodes=1)
+    greedy = calculate_minimum_new_credits(tree, [], max_compact_nodes=1)
     assert greedy.state is PrerequisitePathState.APPROXIMATE
     assert selected_group_ids(greedy) == ("unpaid",)
 
@@ -729,7 +679,7 @@ def test_bounded_unknown_extent_with_unpaid_sibling_is_unresolved() -> None:
         (catalogue_course("member"), catalogue_course("unpaid")),
         completed_node_keys=("module:module-inner",),
     ).tree
-    result = calculate_minimum_new_credits(tree, [], completed_group_ids=[])
+    result = calculate_minimum_new_credits(tree, [])
     assert result.state is PrerequisitePathState.UNRESOLVED
     assert any(
         problem.reason == UnresolvedPrerequisiteReason.UNKNOWN_CREDIT_EXTENT.value
@@ -786,7 +736,7 @@ def test_known_completed_extent_satisfies_credit_bound_without_member_courses(
         (catalogue_course("member"), catalogue_course("unpaid")),
         completed_node_keys=(completed_key,),
     ).tree
-    result = calculate_minimum_new_credits(tree, [], completed_group_ids=[])
+    result = calculate_minimum_new_credits(tree, [])
     assert result.state is PrerequisitePathState.EXACT
     assert result.total_new_credits == Decimal("5")
     assert selected_group_ids(result) == ("unpaid",)
@@ -794,7 +744,7 @@ def test_known_completed_extent_satisfies_credit_bound_without_member_courses(
         problem.reason == UnresolvedPrerequisiteReason.UNKNOWN_CREDIT_EXTENT.value
         for problem in result.problems
     )
-    greedy = calculate_minimum_new_credits(tree, [], completed_group_ids=[], max_compact_nodes=1)
+    greedy = calculate_minimum_new_credits(tree, [], max_compact_nodes=1)
     assert greedy.state is PrerequisitePathState.APPROXIMATE
     assert greedy.total_new_credits == Decimal("5")
     assert selected_group_ids(greedy) == ("unpaid",)
@@ -828,7 +778,6 @@ def test_known_alternative_survives_unknown_count_option() -> None:
     result = calculate_minimum_new_credits(
         _compile_opaque_root(root, (unknown,), (catalogue_course("known-alt"),)).tree,
         ["known-alt"],
-        completed_group_ids=["known-alt"],
     )
     assert result.state is PrerequisitePathState.EXACT
     assert result.total_new_credits == Decimal("0")
@@ -882,7 +831,6 @@ def test_duplicate_recommended_occurrence_route_matches_a_fixture_without_the_du
         .compile("duplicated-root", include_recommended=True)
         .tree,
         [],
-        completed_group_ids=[],
     )
     without_duplicate_result = calculate_minimum_new_credits(
         PrerequisiteGraphCompiler(
@@ -893,7 +841,6 @@ def test_duplicate_recommended_occurrence_route_matches_a_fixture_without_the_du
         .compile("plain-root", include_recommended=True)
         .tree,
         [],
-        completed_group_ids=[],
     )
     assert duplicated_result.state is PrerequisitePathState.EXACT
     assert duplicated_result.state is without_duplicate_result.state

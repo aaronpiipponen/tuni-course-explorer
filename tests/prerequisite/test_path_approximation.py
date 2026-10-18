@@ -34,10 +34,8 @@ from tests.prerequisite._path_support import (
 def test_path_below_size_limit_preserves_complete_exact_bytes() -> None:
     root = course_summary("root")
     small = make_compilation(root, official_course("small"), (course_summary("small"),))
-    ordinary = calculate_minimum_new_credits(small.tree, [], completed_group_ids=[])
-    capped_ordinary = calculate_minimum_new_credits(
-        small.tree, [], completed_group_ids=[], max_compact_nodes=20000
-    )
+    ordinary = calculate_minimum_new_credits(small.tree, [])
+    capped_ordinary = calculate_minimum_new_credits(small.tree, [], max_compact_nodes=20000)
     assert ordinary.model_dump_json() == capped_ordinary.model_dump_json()
 
 
@@ -99,7 +97,7 @@ def test_scalar_greedy_route_deduplicates_shared_prerequisites_and_opaque_work(
             *(course_summary(f"bait-{head}", credits_min="0.5") for head in heads),
         ),
     ).tree
-    result = calculate_minimum_new_credits(tree, [], completed_group_ids=[], max_compact_nodes=1)
+    result = calculate_minimum_new_credits(tree, [], max_compact_nodes=1)
     assert result.state is PrerequisitePathState.APPROXIMATE
     assert selected_group_ids(result) == tuple(sorted((*heads[:20], "shared")))
     assert result.total_new_credits == Decimal("28")
@@ -161,7 +159,7 @@ def test_path_approximation_extends_greedy_prefixes_for_numeric_bounds(
         root, requirements, tuple(course_summary(choice, credits_min="1") for choice in choices)
     ).tree
     # A small budget forces another heuristic pass while allowing its three-course witness.
-    result = calculate_minimum_new_credits(tree, [], completed_group_ids=[], max_compact_nodes=1)
+    result = calculate_minimum_new_credits(tree, [], max_compact_nodes=1)
     assert result.state is PrerequisitePathState.APPROXIMATE
     assert selected_group_ids(result) == choices[:3]
     assert result.total_new_credits == Decimal("3")
@@ -214,9 +212,7 @@ def test_path_approximation_failure_reports_search_too_large_without_a_route(lim
         tuple(course_summary(f"wide-{index:02d}", credits_min="1") for index in range(40))
         + (course_summary("cheap", credits_min="1"), course_summary("dear", credits_min="3")),
     ).tree
-    result = calculate_minimum_new_credits(
-        tree, [], completed_group_ids=[], max_compact_nodes=limit
-    )
+    result = calculate_minimum_new_credits(tree, [], max_compact_nodes=limit)
     assert result.state is PrerequisitePathState.APPROXIMATION_FAILED
     assert result.total_new_credits is None
     assert result.new_courses == ()
@@ -228,11 +224,8 @@ def test_path_approximation_failure_reports_search_too_large_without_a_route(lim
     ]
 
 
-@pytest.mark.parametrize("completed", [False, True])
-def test_scalar_greedy_expanded_head_preserves_selected_vs_completed_history(
-    completed: bool,
-) -> None:
-    """A selected head keeps descendants. Completing it skips its expanded descendants."""
+def test_scalar_greedy_expanded_head_stops_at_the_basis() -> None:
+    """A basis head supplies its witness without charging its descendants."""
     root = course_summary("root")
     requirements = AndRequirement(
         type="and",
@@ -247,18 +240,12 @@ def test_scalar_greedy_expanded_head_preserves_selected_vs_completed_history(
     )
     tree = compilation.tree.model_copy(update={"completed_node_keys": (), "excluded_node_keys": ()})
     basis = ("head",)
-    history = ("head",) if completed else ()
-    result = calculate_minimum_new_credits(
-        tree, basis, completed_group_ids=history, max_compact_nodes=1
-    )
+    result = calculate_minimum_new_credits(tree, basis, max_compact_nodes=1)
     assert result.state is PrerequisitePathState.APPROXIMATE
-    assert selected_group_ids(result) == (("sibling",) if completed else ("history", "sibling"))
-    assert result.total_new_credits == Decimal("5" if completed else "10")
+    assert selected_group_ids(result) == ("sibling",)
+    assert result.total_new_credits == Decimal("5")
     sibling = next(item for item in result.new_courses if item.course.group_id == "sibling")
     assert sibling.occurrence_ids == ("r.1",)
-    if not completed:
-        descendant = next(item for item in result.new_courses if item.course.group_id == "history")
-        assert descendant.occurrence_ids == ("r.0.1",)
 
 
 @pytest.mark.parametrize("denial", ["excluded_course", "excluded_module", "inactive_course"])
@@ -294,7 +281,7 @@ def test_scalar_greedy_route_rejects_unavailable_alternatives(denial: str) -> No
             "excluded_node_keys": ("module:module-cheap",) if denial == "excluded_module" else (),
         }
     )
-    result = calculate_minimum_new_credits(tree, (), completed_group_ids=(), max_compact_nodes=1)
+    result = calculate_minimum_new_credits(tree, (), max_compact_nodes=1)
     assert result.state is PrerequisitePathState.APPROXIMATE
     assert selected_group_ids(result) == ("dear",)
     assert result.total_new_credits == Decimal("4")

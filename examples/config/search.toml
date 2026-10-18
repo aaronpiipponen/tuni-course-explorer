@@ -29,6 +29,8 @@ EMBEDDING_HUB_VECTOR = { path = "config/derived/embedding-hub.json" }
 EMBEDDING_OUTCOMES_HUB_VECTOR = { path = "config/derived/embedding-outcomes-hub.json" }
 SEMANTIC_SEARCH_MIN_SCORE = 0.30
 FUZZY_SEARCH_MIN_SCORE = 80
+# Token coverage multiplier, greater than zero and at most one. Lower values favor whole-title matches.
+FUZZY_TOKEN_MATCH_WEIGHT = 0.95
 # Policy for the one embedding request a search query makes. The timeout of that request is in
 # seconds and is greater than 0, and its attempt count includes the first attempt and is at least 1.
 # Raising either value lets a foreground search wait longer for a slow embedding service. For that

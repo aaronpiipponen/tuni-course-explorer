@@ -6,7 +6,7 @@ The search package turns one query into ordered course summaries through the fou
 
 | Module | Symbols |
 |---|---|
-| `src/course_explorer/search/lookup.py` | `CourseLookupService`, `ModuleLookupService`, `DisplayLanguage`, `FuzzyCourseResult`, `official_display_name`, `name_code_key`, `_normalized`, `_substring_matches`, `_alphabetical_key` |
+| `src/course_explorer/search/lookup.py` | `CourseLookupService`, `ModuleLookupService`, `DisplayLanguage`, `FuzzyCourseResult`, `official_display_name`, `name_code_key`, `_normalized`, `_substring_matches`, `_fuzzy_name_scores`, `_alphabetical_key` |
 | `src/course_explorer/search/service.py` | `CourseSearchService`, `SemanticCourseScore`, `CourseSearchResult`, `SemanticSearchRead` |
 | `src/course_explorer/search/unified.py` | `UnifiedCourseSearchService`, `UnifiedCourseSearchResult`, `UnifiedSearchReport` |
 | `src/course_explorer/search/repository.py` | `SemanticSearchRepository` |
@@ -25,7 +25,17 @@ Every result DTO is frozen and closed: `FuzzyCourseResult(course, score)`, `Cour
 
 `exact_code_search` splits the query with `re.split(r"[,\s]+", query.strip())`, normalizes every token into a set, and matches a represented course whose `_normalized(code)` is in that set, so a repeated or unmatched token changes nothing. `substring_search` matches `_substring_matches(normalized_query, display_name, code)`, which tests code containment first and then displayed-name containment.
 
-`fuzzy_name_search` skips a course with no displayed name, scores `fuzz.WRatio(normalized_query, _normalized(display_name), processor=None, score_cutoff=threshold)`, keeps `score >= threshold`, and sorts by `(not is_active, -score, _normalized(display_name), _normalized(code), group_id)`. The cutoff is `SearchSettings.fuzzy_search_min_score` unless the caller supplies `min_score`. `WRatio` returns a `0-100` score, so `FuzzyCourseResult.score` never mixes with the semantic scale.
+`fuzzy_name_search` skips a course with no displayed name, collects the normalized displayed names of the rest, calls `_fuzzy_name_scores` once for the whole sequence, keeps `score >= threshold`, and sorts by `(not is_active, -score, _normalized(display_name), _normalized(code), group_id)`. The cutoff is `SearchSettings.fuzzy_search_min_score` unless the caller supplies `min_score`, and the token weight is `SearchSettings.fuzzy_token_match_weight`.
+
+`_fuzzy_name_scores(query, names, *, threshold, token_weight)` returns one `0-100` score per name in one call, reads no database, and holds no state beyond that call:
+
+1. One `process.extract(query, names, scorer=fuzz.WRatio, processor=None, score_cutoff=threshold, limit=None)` call scores every name against the whole query and fills the entries at or above the cutoff of a zero-initialized list.
+2. `re.findall(r"\w+", query)` gives the query tokens. With no token, or with `threshold > 100 * token_weight`, only the whole-name scores are returned, because token coverage can then never reach the cutoff.
+3. Each name is split into tokens by the same expression, and the distinct tokens of all names form one request-local vocabulary.
+4. `token_cutoff = max(0.0, len(query_tokens) * threshold / token_weight - 100 * (len(query_tokens) - 1))`. Below that bound even a perfect match for every other query token cannot reach the cutoff, so `process.extract(token, vocabulary, scorer=fuzz.ratio, processor=None, score_cutoff=token_cutoff, limit=None)` maps each distinct query token to the vocabulary tokens that reach that bound.
+5. A name whose whole-name score is above `100 * token_weight`, or that has no token, is scored by its whole-name score. Every other name is scored by `max(whole_name_score, token_weight * total / len(query_tokens))`, where `total` sums, over every query token, that token's best `fuzz.ratio` against the name's tokens. The loop stops when `total` plus the best possible score for the remaining tokens falls below `required = len(query_tokens) * max(threshold, whole_name_score) / token_weight`, so a name that cannot reach the cutoff is scored by its whole-name score.
+
+`WRatio` and `fuzz.ratio` both return a `0-100` score, so `FuzzyCourseResult.score` never mixes with the semantic scale. Token coverage reaches `100 * token_weight` at most, so a whole-name match at 100 outranks every token-only score while the weight is below 1.
 
 `CourseSearchService.search_courses` sorts by `(not course.is_active, -score, course.group_id)`.
 
@@ -110,7 +120,7 @@ After validation, the command loads the embedding and search settings and copies
 |---|---|
 | `tests/search/test_unified_search.py` | One dispatch per method with identical inputs, the single shared represented read, per-method source tagging with both scores kept apart, the configured tier order over activity and primary-method position, a reordered `SEARCH_TIER_PRIORITY`, the absence of a cap, the effective thresholds of the report, the partial report of a failed query embedding request with its lexical matches kept, and the propagation of every other failure from the semantic seam. |
 | `tests/search/test_search_service.py` | The shared summary mapping, the configured threshold, the one provider call, current-representative identity filtering, active-first order, the override and active-only forwarding, and the supplied-summary path that reads nothing. |
-| `tests/search/test_course_lookup.py` | The fuzzy cutoff and ordering, hidden-name exclusion, the exact multi-code split, substring name and code containment without a cap, the canonical-first resolver with its order, repeats and failures, and the module lookup with programmes first and ambiguity failing. |
+| `tests/search/test_course_lookup.py` | The fuzzy cutoff, the token-coverage score of a misspelled query, the whole-name score above a token-only score, the fuzzy ordering, hidden-name exclusion, the exact multi-code split, substring name and code containment without a cap, the canonical-first resolver with its order, repeats and failures, and the module lookup with programmes first and ambiguity failing. |
 | `tests/search/test_search_command.py` | The composition of both services in one engine lifetime, the query-local embedding projection the provider receives while the semantic service is composed with the loaded settings, the command returning the service's own report object, the single short-timeout query embedding request, and the validation that reaches no settings load. |
 | `tests/search/test_lookup_commands.py` | Both lookup commands refusing blank and unsupported input before settings, the empty summary request, both CLI adapters, and the API rejection of a blank query. |
 | `tests/search/test_semantic_search_repository.py` | Opt-in PostgreSQL proofs of the exact best-chunk read, the lifecycle and configuration filters, the inactive scope, the threshold, the scoped vector read, and the comparison command over the same data. |

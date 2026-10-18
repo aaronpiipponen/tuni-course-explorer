@@ -46,7 +46,7 @@ def test_active_module_shortfall_is_activity_only_and_preserves_strict_failures(
         module_and("active-a", "inactive-b"),
         (active_child, inactive_child),
     )
-    all_courses_result = calculate_minimum_new_credits(all_courses.tree, [], completed_group_ids=[])
+    all_courses_result = calculate_minimum_new_credits(all_courses.tree, [])
     assert all_courses_result.state is PrerequisitePathState.EXACT
     assert selected_group_ids(all_courses_result) == ("active-a", "inactive-b")
     assert all_courses_result.total_new_credits == Decimal("12")
@@ -59,7 +59,7 @@ def test_active_module_shortfall_is_activity_only_and_preserves_strict_failures(
         (inactive_child,),
         active_only=True,
     )
-    ordinary_result = calculate_minimum_new_credits(ordinary.tree, [], completed_group_ids=[])
+    ordinary_result = calculate_minimum_new_credits(ordinary.tree, [])
     assert ordinary_result.state is PrerequisitePathState.NO_SOLUTION
     assert ordinary_result.shortfalls == ()
 
@@ -70,7 +70,7 @@ def test_active_module_shortfall_is_activity_only_and_preserves_strict_failures(
         (active_child,),
         active_only=True,
     )
-    impossible_result = calculate_minimum_new_credits(impossible.tree, [], completed_group_ids=[])
+    impossible_result = calculate_minimum_new_credits(impossible.tree, [])
     assert impossible_result.state is PrerequisitePathState.NO_SOLUTION
     assert impossible_result.shortfalls == ()
 
@@ -91,7 +91,7 @@ def test_active_module_shortfall_is_activity_only_and_preserves_strict_failures(
         ),
         active_only=True,
     )
-    too_high_result = calculate_minimum_new_credits(too_high.tree, [], completed_group_ids=[])
+    too_high_result = calculate_minimum_new_credits(too_high.tree, [])
     assert too_high_result.state is PrerequisitePathState.NO_SOLUTION
     assert too_high_result.shortfalls == ()
 
@@ -115,9 +115,7 @@ def test_active_module_shortfall_is_activity_only_and_preserves_strict_failures(
         (active_child,),
         active_only=True,
     )
-    module_with_unresolved_result = calculate_minimum_new_credits(
-        module_with_unresolved.tree, [], completed_group_ids=[]
-    )
+    module_with_unresolved_result = calculate_minimum_new_credits(module_with_unresolved.tree, [])
     assert module_with_unresolved_result.state is PrerequisitePathState.UNRESOLVED
     assert module_with_unresolved_result.shortfalls == ()
 
@@ -136,7 +134,7 @@ def test_active_module_shortfall_is_activity_only_and_preserves_strict_failures(
         active_only=True,
         issues=(cycle_issue,),
     )
-    cyclic_result = calculate_minimum_new_credits(cyclic.tree, [], completed_group_ids=[])
+    cyclic_result = calculate_minimum_new_credits(cyclic.tree, [])
     assert cyclic_result.state is PrerequisitePathState.UNRESOLVED
     assert cyclic_result.shortfalls == ()
 
@@ -160,9 +158,7 @@ def test_active_module_shortfall_is_activity_only_and_preserves_strict_failures(
         ),
         active_only=True,
     )
-    nested_ordinary_result = calculate_minimum_new_credits(
-        nested_ordinary.tree, [], completed_group_ids=[]
-    )
+    nested_ordinary_result = calculate_minimum_new_credits(nested_ordinary.tree, [])
     assert nested_ordinary_result.state is PrerequisitePathState.NO_SOLUTION
     assert nested_ordinary_result.shortfalls == ()
 
@@ -185,9 +181,7 @@ def test_active_module_shortfall_is_activity_only_and_preserves_strict_failures(
         ),
         active_only=True,
     )
-    numeric_result = calculate_minimum_new_credits(
-        numeric_compilation.tree, [], completed_group_ids=[]
-    )
+    numeric_result = calculate_minimum_new_credits(numeric_compilation.tree, [])
     assert numeric_result.state is PrerequisitePathState.NO_SOLUTION
     assert numeric_result.shortfalls == ()
 
@@ -212,9 +206,7 @@ def test_active_module_shortfall_is_activity_only_and_preserves_strict_failures(
         (course_summary("inactive-b", credits_min="4", is_active=False),),
         active_only=True,
     )
-    outer_credit_result = calculate_minimum_new_credits(
-        outer_credit.tree, [], completed_group_ids=[]
-    )
+    outer_credit_result = calculate_minimum_new_credits(outer_credit.tree, [])
     assert outer_credit_result.state is PrerequisitePathState.NO_SOLUTION
     assert outer_credit_result.shortfalls == ()
 
@@ -233,7 +225,7 @@ def test_active_module_shortfall_is_activity_only_and_preserves_strict_failures(
         (active_child, inactive_child),
         active_only=True,
     )
-    exact_wins_result = calculate_minimum_new_credits(exact_wins.tree, [], completed_group_ids=[])
+    exact_wins_result = calculate_minimum_new_credits(exact_wins.tree, [])
     assert exact_wins_result.state is PrerequisitePathState.EXACT
     assert selected_group_ids(exact_wins_result) == ("active-a",)
     assert exact_wins_result.shortfalls == ()
@@ -246,7 +238,7 @@ def test_active_module_shortfall_is_activity_only_and_preserves_strict_failures(
         active_only=True,
         excluded_group_ids=("module-unit",),
     )
-    excluded_result = calculate_minimum_new_credits(excluded.tree, [], completed_group_ids=[])
+    excluded_result = calculate_minimum_new_credits(excluded.tree, [])
     assert excluded_result.state is PrerequisitePathState.NO_SOLUTION
     assert excluded_result.shortfalls == ()
     assert excluded_result.blocked_excluded_group_ids == ("module-unit",)

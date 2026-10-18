@@ -43,7 +43,7 @@ The command's source set starts as the chosen basis. With `include_inferred` set
 
 A supplied `DirectPrerequisiteReadContext` carries the raw course, module, inferred-set, and equivalence-group caches, so the inference-enabled pass and the official-only pass over the same request read each input once. Summaries, issues, coverage, and module boundaries are fresh per target and never cross the context boundary.
 
-`PrerequisiteSatisfactionSession(tree, basis_group_ids, *, completed_group_ids)` in `src/course_explorer/prerequisite/satisfaction.py` evaluates one compiled tree against one basis and memoizes subtree results within the session. `evaluate` returns `PrerequisiteSatisfactionState`: `SATISFIED`, `UNSATISFIED`, or `UNRESOLVED`. Discovery builds one session per candidate with the chosen basis passed as both the basis and the completed history, so the coverage fold and the **All** root check share the memoized results.
+`PrerequisiteSatisfactionSession(tree, basis_group_ids)` in `src/course_explorer/prerequisite/satisfaction.py` evaluates one compiled tree against one basis and memoizes subtree results within the session. `evaluate` returns `PrerequisiteSatisfactionState`: `SATISFIED`, `UNSATISFIED`, or `UNRESOLVED`. Discovery builds one session per candidate over the chosen basis, so the coverage fold and the **All** root check share the memoized results.
 
 `is_course_activity_eligible(tree, group_id, exception_group_ids, *, for_calculation=False)` in `src/course_explorer/prerequisite/graph.py` is the shared activity predicate. Discovery calls it for the candidate itself with an empty exception collection, so under active-only scope an inactive candidate is denied, while the retained basis identities satisfy requirement leaves.
 

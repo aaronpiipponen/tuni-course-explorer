@@ -1894,6 +1894,9 @@ class SearchSettings(ConfiguredSettings):
         le=100,
         allow_inf_nan=False,
     )
+    fuzzy_token_match_weight: float = Field(
+        validation_alias="FUZZY_TOKEN_MATCH_WEIGHT", gt=0, le=1, allow_inf_nan=False
+    )
     search_embedding_request_timeout_seconds: float = Field(
         validation_alias="SEARCH_EMBEDDING_REQUEST_TIMEOUT_SECONDS",
         gt=0,

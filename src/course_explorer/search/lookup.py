@@ -15,7 +15,7 @@ no result cap.
 `DisplayLanguage` is caller-owned because the shared summary retains both official
 localized names. A requested official name is used first and the other official name is only a
 fallback. A hidden second localized name is never matched when a requested name exists. The fuzzy
-cutoff is config-owned and the score is on RapidFuzz's 0-100 `WRatio` scale, which must not be
+cutoff and token weight are config-owned. Whole-title WRatio and query-token coverage use a 0-100 scale, which must not be
 blended with the semantic search score scale.
 """
 
@@ -27,7 +27,7 @@ from collections.abc import Collection, Sequence
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
-from rapidfuzz import fuzz
+from rapidfuzz import fuzz, process
 
 from course_explorer.config import SearchSettings
 from course_explorer.curriculum import (
@@ -95,6 +95,53 @@ def _substring_matches(normalized_query: str, display_name: str | None, code: st
     return display_name is not None and normalized_query in _normalized(display_name)
 
 
+def _fuzzy_name_scores(
+    query: str, names: Sequence[str], *, threshold: float, token_weight: float
+) -> list[float]:
+    """Score normalized titles by WRatio and weighted mean query-token coverage."""
+    scores = [0.0] * len(names)
+    for _, score, index in process.extract(
+        query, names, scorer=fuzz.WRatio, processor=None, score_cutoff=threshold, limit=None
+    ):
+        scores[index] = score
+    query_tokens = re.findall(r"\w+", query)
+    if not query_tokens or threshold > 100 * token_weight:
+        return scores
+    title_tokens = [tuple(re.findall(r"\w+", name)) for name in names]
+    vocabulary = tuple({token for tokens in title_tokens for token in tokens})
+    # Below this bound, even perfect matches for every other query token cannot reach the cutoff.
+    token_cutoff = max(
+        0.0, len(query_tokens) * threshold / token_weight - 100 * (len(query_tokens) - 1)
+    )
+    token_scores = {
+        token: {
+            word: score
+            for word, score, _ in process.extract(
+                token,
+                vocabulary,
+                scorer=fuzz.ratio,
+                processor=None,
+                score_cutoff=token_cutoff,
+                limit=None,
+            )
+        }
+        for token in dict.fromkeys(query_tokens)
+    }
+    for index, tokens in enumerate(title_tokens):
+        if scores[index] > 100 * token_weight or not tokens:
+            continue
+        required = len(query_tokens) * max(threshold, scores[index]) / token_weight
+        total = 0.0
+        for position, token in enumerate(query_tokens):
+            matches = token_scores[token]
+            total += max(matches.get(word, 0.0) for word in tokens)
+            if total + 100 * (len(query_tokens) - position - 1) < required:
+                break
+        else:
+            scores[index] = max(scores[index], token_weight * total / len(query_tokens))
+    return scores
+
+
 class CourseLookupService:
     """Fuzzy, exact multi-code, and substring lookup over the official course read seam."""
 
@@ -129,20 +176,24 @@ class CourseLookupService:
         threshold = self._search_settings.fuzzy_search_min_score if min_score is None else min_score
         normalized_query = _normalized(query)
 
-        scored: list[tuple[CourseSummary, str, float]] = []
+        named: list[tuple[CourseSummary, str]] = []
         for record in self._represented_summaries(include_inactive, represented):
             course = record.summary
             display_name = official_display_name(course, display_language)
             if display_name is None:
                 continue
-            score = fuzz.WRatio(
-                normalized_query,
-                _normalized(display_name),
-                processor=None,
-                score_cutoff=threshold,
-            )
-            if score >= threshold:
-                scored.append((course, display_name, score))
+            named.append((course, display_name))
+        scores = _fuzzy_name_scores(
+            normalized_query,
+            [_normalized(name) for _, name in named],
+            threshold=threshold,
+            token_weight=self._search_settings.fuzzy_token_match_weight,
+        )
+        scored = [
+            (course, name, score)
+            for (course, name), score in zip(named, scores, strict=True)
+            if score >= threshold
+        ]
 
         scored.sort(
             key=lambda item: (

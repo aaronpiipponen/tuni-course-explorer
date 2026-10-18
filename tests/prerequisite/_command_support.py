@@ -98,7 +98,7 @@ def _shortfall_tree() -> PrerequisiteCalculationTree:
 
 def shortfall_report_for() -> MinimumCreditPathEvaluation:
     """Build one real active-only module-shortfall route result from the real path service."""
-    return calculate_minimum_new_credits(_shortfall_tree(), [], completed_group_ids=[])
+    return calculate_minimum_new_credits(_shortfall_tree(), [])
 
 
 def _excluded_tree() -> PrerequisiteCalculationTree:
@@ -121,7 +121,7 @@ def _excluded_tree() -> PrerequisiteCalculationTree:
 
 def excluded_report_for() -> MinimumCreditPathEvaluation:
     """Build one real no-solution route result whose excluded node blocks the only route."""
-    return calculate_minimum_new_credits(_excluded_tree(), [], completed_group_ids=[])
+    return calculate_minimum_new_credits(_excluded_tree(), [])
 
 
 def excluded_graph_report_for() -> command_module.PrerequisiteGraphReport:

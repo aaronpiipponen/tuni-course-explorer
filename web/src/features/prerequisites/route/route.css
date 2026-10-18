@@ -220,6 +220,24 @@
   background: transparent;
   font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
+.route-problems {
+  margin: 8px 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.route-problems li + li {
+  margin-top: 10px;
+}
+.route-problems b,
+.route-problems span {
+  display: block;
+}
+.route-problems span {
+  margin-top: 3px;
+  color: rgb(255 255 255 / 65%);
+}
 .route-list {
   display: flex;
   flex-direction: column;

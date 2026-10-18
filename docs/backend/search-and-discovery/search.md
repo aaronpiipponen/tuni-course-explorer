@@ -17,7 +17,7 @@ The semantic method needs a vector for the query, and it embeds the query throug
 Each method has its own matching rule, its own cutoff where it has one, and its own order.
 
 > [!IMPORTANT]
-> The fuzzy cutoff and the semantic threshold decide how many courses those two methods return. Every course a method matches at or above its cutoff is returned, and no method applies a result-count limit. Lowering either cutoff widens the result.
+> The fuzzy cutoff, the token-coverage weight, and the semantic threshold decide how many courses the fuzzy and semantic methods return. Every course a method matches at or above its cutoff is returned, and no method applies a result-count limit. Lowering the cutoff widens the result, and raising the token-coverage weight lets a course that matches the query token by token score higher.
 
 ### Exact code
 
@@ -29,7 +29,11 @@ A course matches when the query is contained in its official code or in the name
 
 ### Fuzzy search
 
-Fuzzy search scores the displayed official name of each course against the query from 0 to 100 and keeps every course at or above the cutoff, so a name with a typo or a different word order can match as well. A course with no displayed official name takes no part in the scoring. `FUZZY_SEARCH_MIN_SCORE` in `config/search.toml` sets the cutoff, and the example sets 80.
+Fuzzy search scores the displayed official name of each course against the query from 0 to 100 and keeps every course at or above the cutoff, so a name with a typo or a different word order can match as well. A course with no displayed official name takes no part in the scoring.
+
+The score is the greater of two 0 to 100 values. The first is the similarity of the whole query to the whole name. The second is the coverage of the query tokens: each query token is compared with the tokens of the name, and the coverage is the configured weight times the mean of each query token's best similarity to a name token. A query that holds no token is scored by whole-name similarity alone, and a cutoff above the weight times 100 leaves only whole-name similarity able to qualify a course.
+
+`FUZZY_SEARCH_MIN_SCORE` in `config/search.toml` sets the cutoff, and the example sets 80. `FUZZY_TOKEN_MATCH_WEIGHT` sets the weight of token coverage, greater than 0 and at most 1, and the example sets 0.95. A lower weight favors whole-name similarity. Token coverage reaches the weight times 100 at most, so with the example weight a whole-name match that scores 100 outranks every token-only score.
 
 ### Semantic
 
@@ -37,7 +41,7 @@ The semantic method embeds the query and measures that vector against the stored
 
 ## Running one search
 
-The two keys in `config/search.toml` set the fuzzy cutoff and the semantic threshold that every request uses. A request may carry its own fuzzy cutoff from 0 to 100 or its own semantic threshold from -1 to 1, and that value replaces the configured one for that request, so one caller can read a narrower or a wider result than the configured default.
+`config/search.toml` sets the fuzzy cutoff, the fuzzy token-coverage weight, and the semantic threshold that every request uses. A request may carry its own fuzzy cutoff from 0 to 100 or its own semantic threshold from -1 to 1, and that value replaces the configured one for that request, so one caller can read a narrower or a wider result than the configured default. The token-coverage weight has no request override.
 
 ```bash
 uv run python scripts/search.py "data structures" --display-language en --active-only
@@ -100,6 +104,7 @@ The Compare, Prerequisites, Discover, and Structure of studies tabs hold courses
 | `SEARCH_TIER_PRIORITY` | The order of the four search methods that sorts merged results. The example sets `exact_code`, `substring`, `fuzzy_name`, and `semantic` in that order. |
 | `SEMANTIC_SEARCH_MIN_SCORE` | The smallest semantic score that returns a course, from -1 to 1. The example sets 0.30. |
 | `FUZZY_SEARCH_MIN_SCORE` | The smallest name-similarity score that returns a course, from 0 to 100. The example sets 80. |
+| `FUZZY_TOKEN_MATCH_WEIGHT` | The weight of query-token coverage in the fuzzy score, greater than 0 and at most 1. The example sets 0.95. |
 | `SEARCH_EMBEDDING_REQUEST_TIMEOUT_SECONDS` | The timeout of the one query embedding request a search makes, in seconds and greater than 0. The example sets 5. |
 | `SEARCH_EMBEDDING_MAX_ATTEMPTS` | The attempt count of that query embedding request, the first included, at least 1. The example sets 1. |
 

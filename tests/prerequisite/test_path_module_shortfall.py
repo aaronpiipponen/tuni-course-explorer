@@ -59,7 +59,7 @@ def test_active_module_shortfall_returns_maximum_for_all_rule_families() -> None
         (course_summary("inactive-unit", credits_min="4", is_active=False),),
         active_only=True,
     )
-    bare_result = calculate_minimum_new_credits(bare.tree, [], completed_group_ids=[])
+    bare_result = calculate_minimum_new_credits(bare.tree, [])
     assert bare_result.state is PrerequisitePathState.SHORTFALL
     assert bare_result.satisfaction.requirements_state is PrerequisiteSatisfactionState.UNSATISFIED
     assert bare_result.satisfaction.active_only is True
@@ -89,9 +89,7 @@ def test_active_module_shortfall_returns_maximum_for_all_rule_families() -> None
         ),
         active_only=True,
     )
-    all_mandatory_result = calculate_minimum_new_credits(
-        all_mandatory.tree, [], completed_group_ids=[]
-    )
+    all_mandatory_result = calculate_minimum_new_credits(all_mandatory.tree, [])
     assert all_mandatory_result.state is PrerequisitePathState.SHORTFALL
     assert selected_group_ids(all_mandatory_result) == ("active-a",)
     assert all_mandatory_result.total_new_credits == Decimal("3")
@@ -129,7 +127,7 @@ def test_active_module_shortfall_returns_maximum_for_all_rule_families() -> None
         ),
         active_only=True,
     )
-    mixed_result = calculate_minimum_new_credits(mixed.tree, [], completed_group_ids=[])
+    mixed_result = calculate_minimum_new_credits(mixed.tree, [])
     assert mixed_result.state is PrerequisitePathState.SHORTFALL
     assert selected_group_ids(mixed_result) == ("active-nested",)
     assert mixed_result.total_new_credits == Decimal("4")
@@ -174,7 +172,7 @@ def test_active_module_shortfall_returns_maximum_for_all_rule_families() -> None
         ),
         active_only=True,
     )
-    nested_only_result = calculate_minimum_new_credits(nested_only.tree, [], completed_group_ids=[])
+    nested_only_result = calculate_minimum_new_credits(nested_only.tree, [])
     assert nested_only_result.state is PrerequisitePathState.SHORTFALL
     assert selected_group_ids(nested_only_result) == ("active-nested", "active-ok")
     assert nested_only_result.total_new_credits == Decimal("6")
@@ -194,7 +192,7 @@ def test_active_module_shortfall_returns_maximum_for_all_rule_families() -> None
         ),
         active_only=True,
     )
-    cardinality_result = calculate_minimum_new_credits(cardinality.tree, [], completed_group_ids=[])
+    cardinality_result = calculate_minimum_new_credits(cardinality.tree, [])
     assert cardinality_result.state is PrerequisitePathState.SHORTFALL
     assert selected_group_ids(cardinality_result) == ("active-a",)
     assert cardinality_result.total_new_credits == Decimal("5")
@@ -229,7 +227,7 @@ def test_active_module_shortfall_returns_maximum_for_all_rule_families() -> None
         ),
         active_only=True,
     )
-    credits_result = calculate_minimum_new_credits(credits.tree, [], completed_group_ids=[])
+    credits_result = calculate_minimum_new_credits(credits.tree, [])
     assert credits_result.state is PrerequisitePathState.SHORTFALL
     # The witness total is the head's 4 credits. The charged closure includes the deep tail.
     assert selected_group_ids(credits_result) == ("active-head", "deep-tail")
@@ -260,9 +258,7 @@ def test_active_module_shortfall_returns_maximum_for_all_rule_families() -> None
         ),
         active_only=True,
     )
-    mixed_credit_result = calculate_minimum_new_credits(
-        mixed_credit.tree, [], completed_group_ids=[]
-    )
+    mixed_credit_result = calculate_minimum_new_credits(mixed_credit.tree, [])
     assert mixed_credit_result.state is PrerequisitePathState.SHORTFALL
     assert selected_group_ids(mixed_credit_result) == ("credit-low",)
     assert mixed_credit_result.total_new_credits == Decimal("3")
@@ -304,9 +300,7 @@ def test_active_module_shortfall_returns_maximum_for_all_rule_families() -> None
         ),
         active_only=True,
     )
-    course_count_result = calculate_minimum_new_credits(
-        course_count.tree, [], completed_group_ids=[]
-    )
+    course_count_result = calculate_minimum_new_credits(course_count.tree, [])
     assert course_count_result.state is PrerequisitePathState.SHORTFALL
     assert selected_group_ids(course_count_result) == ("active-a", "active-b")
     assert course_count_result.total_new_credits == Decimal("5")
@@ -368,7 +362,7 @@ def test_zero_minimum_module_bound_preserves_child_activity_shortfall(node_type)
         RecordingEquivalenceGroupRead(),
     ).compile("root", active_only=True, retained_group_ids=("inactive",))
 
-    result = calculate_minimum_new_credits(compilation.tree, [], completed_group_ids=[])
+    result = calculate_minimum_new_credits(compilation.tree, [])
 
     assert result.state is PrerequisitePathState.SHORTFALL
     assert result.satisfaction.requirements_state is PrerequisiteSatisfactionState.UNSATISFIED

@@ -227,9 +227,7 @@ def _candidate_outcome(
         return None
     if compilation.required is None and compilation.recommended is None:
         return None
-    session = PrerequisiteSatisfactionSession(
-        tree, basis_group_ids, completed_group_ids=basis_group_ids
-    )
+    session = PrerequisiteSatisfactionSession(tree, basis_group_ids)
     evaluator = _CoverageEvaluator(session=session)
     required_slots = (
         evaluator.evaluate(compilation.required, "required")

@@ -63,9 +63,7 @@ def test_minimum_path_preserves_coverage_and_deterministic_ties() -> None:
         include_inferred=True,
         coverage=coverage,
     )
-    inferred_result = calculate_minimum_new_credits(
-        inferred_compilation.tree, [], completed_group_ids=[]
-    )
+    inferred_result = calculate_minimum_new_credits(inferred_compilation.tree, [])
     assert inferred_result.state is PrerequisitePathState.EXACT
     assert inferred_result.inferred_coverage == inferred_compilation.tree.inferred_coverage
     assert selected_group_ids(inferred_result) == ("z",)
@@ -81,9 +79,9 @@ def test_minimum_path_preserves_coverage_and_deterministic_ties() -> None:
             course_summary("b", credits_min="5"),
         ),
     )
-    tie_result = calculate_minimum_new_credits(tie.tree, [], completed_group_ids=[])
+    tie_result = calculate_minimum_new_credits(tie.tree, [])
     assert selected_group_ids(tie_result) == ("b",)
-    assert tie_result == calculate_minimum_new_credits(tie.tree, [], completed_group_ids=[])
+    assert tie_result == calculate_minimum_new_credits(tie.tree, [])
 
     # With equal activity the canonical-ID order decides the same-credit tie.
     stable = make_compilation(
@@ -91,7 +89,7 @@ def test_minimum_path_preserves_coverage_and_deterministic_ties() -> None:
         official_or("a", "b"),
         (course_summary("a", credits_min="5"), course_summary("b", credits_min="5")),
     )
-    stable_result = calculate_minimum_new_credits(stable.tree, [], completed_group_ids=[])
+    stable_result = calculate_minimum_new_credits(stable.tree, [])
     assert selected_group_ids(stable_result) == ("a",)
 
     # Equal-cost real courses beat opaque obligations: new opaque IDs are compared first.
@@ -112,7 +110,7 @@ def test_minimum_path_preserves_coverage_and_deterministic_ties() -> None:
         ),
         (course_summary("a", credits_min="5"),),
     )
-    mixed_result = calculate_minimum_new_credits(mixed.tree, [], completed_group_ids=[])
+    mixed_result = calculate_minimum_new_credits(mixed.tree, [])
     assert selected_group_ids(mixed_result) == ("a",)
     assert mixed_result.new_opaque_work == ()
 
@@ -168,7 +166,7 @@ def test_minimum_path_preserves_coverage_and_deterministic_ties() -> None:
             ),
         }
     )
-    witness_tie_result = calculate_minimum_new_credits(witness_tie_tree, [], completed_group_ids=[])
+    witness_tie_result = calculate_minimum_new_credits(witness_tie_tree, [])
     assert witness_tie_result.state is PrerequisitePathState.EXACT
     assert witness_tie_result.total_new_credits == Decimal("5")
     assert witness_tie_result.new_opaque_work[0].occurrence_ids == ("r.0",)
@@ -176,8 +174,8 @@ def test_minimum_path_preserves_coverage_and_deterministic_ties() -> None:
     assert "r.1.1" not in witness_tie_result.selected_occurrence_ids
 
 
-def test_selected_basis_head_keeps_prerequisite_closure_while_completed_head_skips_it() -> None:
-    """A selected-but-incomplete expanded head costs its closure. A completed head is free."""
+def test_basis_head_satisfies_its_expanded_prerequisites_at_zero_cost() -> None:
+    """A basis head satisfies its requirement without charging its descendants."""
     root = course_summary("root")
     plain = make_compilation(
         root,
@@ -186,32 +184,24 @@ def test_selected_basis_head_keeps_prerequisite_closure_while_completed_head_ski
     )
 
     # Empty basis charges the head and its descendant.
-    empty = calculate_minimum_new_credits(plain.tree, [], completed_group_ids=[])
+    empty = calculate_minimum_new_credits(plain.tree, [])
     assert empty.state is PrerequisitePathState.EXACT
     assert selected_group_ids(empty) == ("a", "e")
     assert empty.total_new_credits == Decimal("5")
     assert empty.selected_occurrence_ids == ("r", "r.0", "r.1")
 
-    # Selected-only basis: the head itself is free but its descendant closure is charged.
-    selected = calculate_minimum_new_credits(plain.tree, ["a"], completed_group_ids=[])
-    assert selected.satisfaction.requirements_state is PrerequisiteSatisfactionState.UNSATISFIED
-    assert selected.state is PrerequisitePathState.EXACT
-    assert selected.satisfaction.completed_group_ids == ()
-    assert selected_group_ids(selected) == ("e",)
-    assert selected.selected_occurrence_ids == ("r", "r.0", "r.1")
-    assert selected.total_new_credits == Decimal("3")
+    covered = calculate_minimum_new_credits(plain.tree, ["a"])
+    assert covered.state is PrerequisitePathState.EXACT
+    assert covered.satisfaction.requirements_state is PrerequisiteSatisfactionState.SATISFIED
+    assert selected_group_ids(covered) == ()
+    assert covered.total_new_credits == Decimal("0")
+    assert calculate_minimum_new_credits(plain.tree, ["root"]).total_new_credits == Decimal("0")
+    excluded = plain.tree.model_copy(update={"excluded_group_ids": ("root",)})
+    assert (
+        calculate_minimum_new_credits(excluded, ["root"]).state is PrerequisitePathState.NO_SOLUTION
+    )
 
-    # Completed head alone costs zero and skips its historical descendant.
-    completed = calculate_minimum_new_credits(plain.tree, ["a"], completed_group_ids=["a"])
-    assert completed.state is PrerequisitePathState.EXACT
-    assert completed.satisfaction.requirements_state is PrerequisiteSatisfactionState.SATISFIED
-    assert completed.satisfaction.completed_group_ids == ("a",)
-    assert selected_group_ids(completed) == ()
-    assert completed.selected_occurrence_ids == ()
-    assert completed.total_new_credits == Decimal("0")
-
-    # Two expanded heads share one descendant: the closure is globally deduplicated when one
-    # head is completed and the other is selected-but-incomplete.
+    # The uncovered head charges a shared descendant even when another head is covered.
     shared_tree = make_compilation(
         root,
         AndRequirement(
@@ -229,14 +219,11 @@ def test_selected_basis_head_keeps_prerequisite_closure_while_completed_head_ski
             course_summary("shared", credits_min="4"),
         ),
     )
-    mixed = calculate_minimum_new_credits(shared_tree.tree, ["a", "b"], completed_group_ids=["a"])
+    mixed = calculate_minimum_new_credits(shared_tree.tree, ["a"])
     assert mixed.state is PrerequisitePathState.EXACT
-    # B is selected but incomplete, so the official root is unsatisfied while the path is exact.
     assert mixed.satisfaction.requirements_state is PrerequisiteSatisfactionState.UNSATISFIED
-    # Completed A skips its own closure. Selected-but-incomplete B is free for itself and charges the
-    # shared descendant exactly once.
-    assert selected_group_ids(mixed) == ("shared",)
-    assert mixed.total_new_credits == Decimal("4")
+    assert selected_group_ids(mixed) == ("b", "shared")
+    assert mixed.total_new_credits == Decimal("7")
     assert mixed.selected_occurrence_ids == ("r", "r.0", "r.0.0", "r.1", "r.1.0", "r.1.1")
 
 
@@ -274,7 +261,7 @@ def test_minimum_path_zero_credit_ties_ignore_tree_variable_order(
         ),
     )
 
-    result = calculate_minimum_new_credits(compilation.tree, [], completed_group_ids=[])
+    result = calculate_minimum_new_credits(compilation.tree, [])
 
     assert result.state is PrerequisitePathState.EXACT
     assert result.total_new_credits == Decimal("3")
@@ -296,9 +283,7 @@ def test_minimum_path_zero_credit_ties_ignore_tree_variable_order(
         requirements.model_copy(update={"children": tuple(reversed(requirements.children))}),
         compilation.tree.courses,
     )
-    reversed_result = calculate_minimum_new_credits(
-        reversed_source.tree, [], completed_group_ids=[]
-    )
+    reversed_result = calculate_minimum_new_credits(reversed_source.tree, [])
     assert selected_group_ids(reversed_result) == expected
 
 
@@ -341,7 +326,7 @@ def test_minimum_path_reconstructs_only_feasible_projected_evidence() -> None:
         ),
     )
 
-    result = calculate_minimum_new_credits(compilation.tree, [], completed_group_ids=[])
+    result = calculate_minimum_new_credits(compilation.tree, [])
 
     assert result.state is PrerequisitePathState.EXACT
     assert selected_group_ids(result) == ("head", "shared")
@@ -386,7 +371,7 @@ def test_route_activity_tie_counts_only_distinct_new_courses(max_compact_nodes) 
     def solve(requirements, courses) -> MinimumCreditPathEvaluation:
         compilation = make_compilation(root, requirements, courses)
         return calculate_minimum_new_credits(
-            compilation.tree, (), completed_group_ids=[], max_compact_nodes=max_compact_nodes
+            compilation.tree, (), max_compact_nodes=max_compact_nodes
         )
 
     # Credits stay primary: a cheaper inactive candidate beats a dearer active one.
@@ -443,7 +428,6 @@ def test_route_activity_tie_counts_only_distinct_new_courses(max_compact_nodes) 
     basis_covered = calculate_minimum_new_credits(
         basis_compilation.tree,
         ("inactive-covered",),
-        completed_group_ids=[],
         max_compact_nodes=max_compact_nodes,
     )
     assert basis_covered.state is PrerequisitePathState.EXACT

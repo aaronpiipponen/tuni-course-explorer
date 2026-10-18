@@ -222,9 +222,7 @@ def test_compiler_composes_global_equivalence_as_flat_non_transitive_alternative
     )
 
     # Real satisfaction: a basis containing an offered equivalent satisfies A's requirement.
-    satisfied_by_b = evaluate_prerequisite_satisfaction(
-        enabled.tree, ["b"], completed_group_ids=["b"]
-    )
+    satisfied_by_b = evaluate_prerequisite_satisfaction(enabled.tree, ["b"])
     assert satisfied_by_b.requirements_state is PrerequisiteSatisfactionState.SATISFIED
 
 
@@ -305,14 +303,14 @@ def test_compiler_equivalence_alternatives_carry_their_ordinary_path_cost() -> N
     assert "a-prereq" in expression_course_leaf_group_ids(original)
 
     # The globally cheapest route is the equivalent branch, paying B plus B's own prerequisite.
-    result = calculate_minimum_new_credits(compilation.tree, [], completed_group_ids=[])
+    result = calculate_minimum_new_credits(compilation.tree, [])
     assert result.state is PrerequisitePathState.EXACT
     assert [entry.course.group_id for entry in result.new_courses] == ["b", "b-prereq"]
     assert result.total_new_credits == Decimal("3")
 
     # A basis containing the equivalent satisfies the occurrence at zero cost, exactly like any
     # completed prerequisite course, without charging B's own historical prerequisite twice.
-    partial = calculate_minimum_new_credits(compilation.tree, ["b"], completed_group_ids=["b"])
+    partial = calculate_minimum_new_credits(compilation.tree, ["b"])
     assert partial.state is PrerequisitePathState.EXACT
     assert partial.new_courses == ()
     assert partial.total_new_credits == Decimal("0")
@@ -320,7 +318,7 @@ def test_compiler_equivalence_alternatives_carry_their_ordinary_path_cost() -> N
     # Excluding the cheap equivalent member forces the dear head route through its own
     # prerequisite rather than charging the excluded course.
     excluded = compiler.compile("root", include_inferred=True, excluded_group_ids=("b",))
-    excluded_result = calculate_minimum_new_credits(excluded.tree, [], completed_group_ids=[])
+    excluded_result = calculate_minimum_new_credits(excluded.tree, [])
     assert excluded_result.state is PrerequisitePathState.EXACT
     assert [entry.course.group_id for entry in excluded_result.new_courses] == ["a", "a-prereq"]
     assert excluded_result.total_new_credits == Decimal("20")

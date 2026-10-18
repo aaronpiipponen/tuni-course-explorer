@@ -701,7 +701,7 @@ def test_projection_draws_every_represented_node_including_a_childless_diagnosti
     }
     assert [node.node_id for node in inactive_graph.connector_nodes] == ["connector:r"]
     # The calculation denies the inactive leaves outside the basis and reports their locations.
-    inactive_path = calculate_minimum_new_credits(inactive_leaves, [], completed_group_ids=[])
+    inactive_path = calculate_minimum_new_credits(inactive_leaves, [])
     assert inactive_path.state is PrerequisitePathState.NO_SOLUTION
     assert {problem.occurrence_id for problem in inactive_path.problems} >= {"r.0", "r.1"}
 
@@ -908,7 +908,7 @@ def test_active_projection_compacts_source_alternatives_with_shared_course_chain
             )
 
     # The drawing changes only presentation, so the real route charges the required courses.
-    path = calculate_minimum_new_credits(tree, [], completed_group_ids=[])
+    path = calculate_minimum_new_credits(tree, [])
     assert path.state is PrerequisitePathState.EXACT
     assert [entry.course.group_id for entry in path.new_courses] == ["100", "110", "db100"]
     assert path.total_new_credits == Decimal("15")
@@ -1029,12 +1029,20 @@ def test_mandatory_position_rule_governs_duplicate_cardinality_open_and_cycle_po
                 0,
                 PrerequisiteRequirementKind.COMPULSORY,
                 prerequisite_course_member(0, "shared-base"),
+                prerequisite_course_member(1, "shared-other"),
             ),
         ),
     )
     repeat_compilation = PrerequisiteGraphCompiler(
         FakeCurriculumRead(
-            (repeat_root, via_alpha, via_beta, shared, catalogue_course("shared-base"))
+            (
+                repeat_root,
+                via_alpha,
+                via_beta,
+                shared,
+                catalogue_course("shared-base"),
+                catalogue_course("shared-other"),
+            )
         ),
         RecordingInferredSetRead(),
         RecordingEquivalenceGroupRead(),
@@ -1047,6 +1055,38 @@ def test_mandatory_position_rule_governs_duplicate_cardinality_open_and_cycle_po
         if is_expanded_course_branch(expression)
     ]
     assert repeat_expanded_heads == ["via-alpha", "shared", "via-beta", "shared"]
+    shared_edges = [
+        edge for edge in repeat_compilation.graph.edges if edge.source_node_id == "course:shared"
+    ]
+    assert len(shared_edges) == 1
+    assert sum(len(member.occurrence_ids) for member in shared_edges[0].relationships) == 2
+    shared_gate = shared_edges[0].target_node_id
+    children = [
+        edge for edge in repeat_compilation.graph.edges if edge.source_node_id == shared_gate
+    ]
+    assert {edge.target_node_id for edge in children} == {
+        "course:shared-base",
+        "course:shared-other",
+    }
+    assert all(
+        sum(len(member.occurrence_ids) for member in edge.relationships) == 2 for edge in children
+    )
+    before = repeat_compilation.tree.model_dump()
+    route = calculate_minimum_new_credits(repeat_compilation.tree, [])
+    assert route.total_new_credits == Decimal("25")
+    assert project_prerequisite_graph(repeat_compilation.tree) == repeat_compilation.graph
+    assert repeat_compilation.tree.model_dump() == before
+    first_gate = next(
+        occurrence
+        for occurrence in repeat_compilation.tree.node_occurrences
+        if occurrence.occurrence_id in shared_edges[0].relationships[0].occurrence_ids
+    )
+    marked_tree = repeat_compilation.tree.model_copy(
+        update={"excluded_node_keys": (first_gate.action_key,)}
+    )
+    marked_graph = project_prerequisite_graph(marked_tree)
+    assert len([edge for edge in marked_graph.edges if edge.source_node_id == "course:shared"]) == 2
+    assert calculate_minimum_new_credits(marked_tree, []).state is PrerequisitePathState.NO_SOLUTION
 
     # A single-child wrapper at a mandatory position passes the mandatory flag to its child, so a
     # course expanded inside the wrapper is a mandatory head and its repeated non-mandatory
@@ -1576,9 +1616,9 @@ def test_module_cards_hide_member_closure_without_relabeling_independent_occurre
         }
     )
     assert stripped.tree.requirements == compilation.tree.requirements
-    assert calculate_minimum_new_credits(
-        stripped.tree, [], completed_group_ids=[]
-    ) == calculate_minimum_new_credits(compilation.tree, [], completed_group_ids=[])
+    assert calculate_minimum_new_credits(stripped.tree, []) == calculate_minimum_new_credits(
+        compilation.tree, []
+    )
 
 
 def test_module_cards_follow_activity_retention_and_unretained_member_reports_no_solution() -> None:
@@ -1700,9 +1740,7 @@ def test_module_cards_follow_activity_retention_and_unretained_member_reports_no
         if node.kind is PrerequisiteGraphConnectorKind.INTERNAL_REQUIREMENT
     )
     assert retained_internal.member_group_ids == ("inactive-member",)
-    retained_path = calculate_minimum_new_credits(
-        retained.tree, ["inactive-member"], completed_group_ids=["inactive-member"]
-    )
+    retained_path = calculate_minimum_new_credits(retained.tree, ["inactive-member"])
     assert retained_path.state is PrerequisitePathState.EXACT
 
     # An excluded member is a visible card but is denied by the calculation.
@@ -1711,7 +1749,7 @@ def test_module_cards_follow_activity_retention_and_unretained_member_reports_no
         "active-member",
         "inactive-member",
     ]
-    excluded_path = calculate_minimum_new_credits(excluded.tree, [], completed_group_ids=[])
+    excluded_path = calculate_minimum_new_credits(excluded.tree, [])
     assert excluded_path.state is PrerequisitePathState.NO_SOLUTION
     assert excluded_path.blocked_excluded_group_ids == ("inactive-member",)
 
@@ -1719,14 +1757,12 @@ def test_module_cards_follow_activity_retention_and_unretained_member_reports_no
     # drops the unretained inactive member, so the module rule cannot meet its bound and the route is
     # impossible.
     assert (
-        calculate_minimum_new_credits(active_only.tree, [], completed_group_ids=[]).state
+        calculate_minimum_new_credits(active_only.tree, []).state
         is PrerequisitePathState.NO_SOLUTION
     )
     for compilation in (all_courses, active_only, retained, excluded):
-        assert calculate_minimum_new_credits(
-            compilation.tree, [], completed_group_ids=[]
-        ) == calculate_minimum_new_credits(
-            without_metadata(compilation).tree, [], completed_group_ids=[]
+        assert calculate_minimum_new_credits(compilation.tree, []) == calculate_minimum_new_credits(
+            without_metadata(compilation).tree, []
         )
 
 
@@ -1789,7 +1825,7 @@ def test_graph_node_marks_are_stable_scoped_and_history_distinct() -> None:
     }
     assert excluded_states["module:module-mark"].is_excluded is True
     assert excluded_states["course:member"].is_excluded is False
-    excluded_path = calculate_minimum_new_credits(excluded.tree, [], completed_group_ids=[])
+    excluded_path = calculate_minimum_new_credits(excluded.tree, [])
     assert excluded_path.state is PrerequisitePathState.NO_SOLUTION
     assert excluded_path.blocked_excluded_node_keys == ("module:module-mark",)
     assert any(
@@ -1801,7 +1837,7 @@ def test_graph_node_marks_are_stable_scoped_and_history_distinct() -> None:
 
     # Manually completing the module fulfils it at zero new cost without completing its members.
     manual = compiler.compile("root", completed_node_keys=("module:module-mark",))
-    manual_path = calculate_minimum_new_credits(manual.tree, [], completed_group_ids=[])
+    manual_path = calculate_minimum_new_credits(manual.tree, [])
     assert manual_path.state is PrerequisitePathState.EXACT
     assert manual_path.total_new_credits == Decimal("0")
     assert manual_path.new_courses == ()
@@ -1829,9 +1865,9 @@ def test_graph_node_marks_are_stable_scoped_and_history_distinct() -> None:
     assert display_state.manually_completed is True
     assert display_state.completed_by_courses is False
     assert display_state.satisfied_by_basis is False
-    assert calculate_minimum_new_credits(
-        marked_disclosure.tree, [], completed_group_ids=[]
-    ).total_new_credits == Decimal("0")
+    assert calculate_minimum_new_credits(marked_disclosure.tree, []).total_new_credits == Decimal(
+        "0"
+    )
 
     # An ignored disclosure cannot satisfy or block its unpaid containing module, even when both
     # display marks are present without a manual mark on that module.
@@ -1851,7 +1887,7 @@ def test_graph_node_marks_are_stable_scoped_and_history_distinct() -> None:
     assert ignored_only_state.is_excluded is True
     assert ignored_only_state.satisfied_by_basis is False
     assert ignored_only_state.completed_by_courses is False
-    ignored_only_path = calculate_minimum_new_credits(ignored_only.tree, [], completed_group_ids=[])
+    ignored_only_path = calculate_minimum_new_credits(ignored_only.tree, [])
     assert ignored_only_path.state is PrerequisitePathState.EXACT
     assert ignored_only_path.total_new_credits == Decimal("5")
 
@@ -1911,9 +1947,7 @@ def test_graph_node_marks_are_stable_scoped_and_history_distinct() -> None:
         completed_node_keys=(free_disclosure.action_key,),
         excluded_node_keys=(free_disclosure.action_key,),
     )
-    assert calculate_minimum_new_credits(
-        free_marked.tree, [], completed_group_ids=[]
-    ).total_new_credits == Decimal("5")
+    assert calculate_minimum_new_credits(free_marked.tree, []).total_new_credits == Decimal("5")
 
     # Two disclosure records sharing one stable action key aggregate their distinct IDs once, with
     # calculation occurrences left untouched.
@@ -2146,7 +2180,7 @@ def test_external_module_dependencies_preserve_conditional_route_evidence() -> N
     assert {"B", "D", "outside", "X"} <= standalone
     assert "C" not in standalone
 
-    path = calculate_minimum_new_credits(compilation.tree, [], completed_group_ids=[])
+    path = calculate_minimum_new_credits(compilation.tree, [])
     assert path.state is PrerequisitePathState.EXACT
     selected = tuple(entry.course.group_id for entry in path.new_courses)
     assert selected == ("A", "B", "C", "D", "outside")

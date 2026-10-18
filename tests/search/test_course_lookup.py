@@ -75,6 +75,37 @@ def test_fuzzy_name_search_uses_config_or_override_and_orders_active_by_score() 
     ]
     assert curriculum.calls[-1] is True
 
+    typo_lookup, _ = service(
+        (
+            course("full-title", version("source-full", name_en="Machine Learning")),
+            course(
+                "long-title",
+                version("source-long", name_en="Time Series Analysis using Machine Learning"),
+            ),
+            course(
+                "inactive-title",
+                version("source-inactive", name_en="Machine Learning"),
+                is_active=False,
+            ),
+        )
+    )
+    typo = typo_lookup.fuzzy_name_search("machien learnign", display_language="en")
+    assert {result.course.group_id for result in typo} == {
+        "full-title",
+        "long-title",
+        "inactive-title",
+    }
+    assert typo[-1].course.group_id == "inactive-title"
+    assert next(result.score for result in typo if result.course.group_id == "long-title") > 80
+    exact = typo_lookup.fuzzy_name_search("machine learning", display_language="en")
+    assert [result.course.group_id for result in exact] == [
+        "full-title",
+        "long-title",
+        "inactive-title",
+    ]
+    assert exact[0].score == 100
+    assert exact[1].score == 95
+
 
 def test_fuzzy_name_search_uses_only_resolved_displayed_official_name() -> None:
     """Requested official name wins, the other is fallback only, and hidden names never match."""

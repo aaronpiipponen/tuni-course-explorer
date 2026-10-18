@@ -3,8 +3,7 @@
 This module owns the one fixed-basis satisfaction contract minimum-credit pathing shares. It
 consumes a `PrerequisiteCalculationTree` exactly as produced by `graph.py`. The calculation tree is
 the sole evaluation authority. Caller-owned canonical `group_id` values form the chosen zero-cost
-calculation basis and its completed-history subset. A completed expanded course skips its expanded
-descendants while a selected-but-incomplete basis course includes its closure. A canonical course named
+calculation basis. A basis course satisfies its expanded head without traversing descendants. A canonical course named
 by the tree's exclusion set is never a witness, even when it is in the basis or completed: exclusion
 is a calculation rule carried by the tree. Graph-only marks (manual completion and node exclusion of
 non-course nodes) are consulted through the one shared node guard.
@@ -29,7 +28,7 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from enum import StrEnum
 
-from pydantic import field_validator, model_validator
+from pydantic import field_validator
 
 from course_explorer.prerequisite._families import _Families
 from course_explorer.prerequisite._helpers import (
@@ -78,20 +77,13 @@ class PrerequisiteSatisfactionState(StrEnum):
 
 
 class PrerequisiteSatisfactionEvaluation(_PrerequisiteModel):
-    """One immutable evaluation of a compiled tree against the chosen calculation basis.
-
-    `basis_group_ids` is the chosen zero-cost basis and `completed_group_ids` is the caller's
-    completed history, a required subset of that basis. The two are distinct: a completed expanded
-    course skips its expanded descendants, while a selected-but-incomplete basis course satisfies
-    its own node and its prerequisite closure.
-    """
+    """One immutable evaluation of a compiled tree against the chosen calculation basis."""
 
     root_group_id: str
     include_recommended: bool
     include_inferred: bool
     active_only: bool
     basis_group_ids: tuple[str, ...]
-    completed_group_ids: tuple[str, ...]
     requirements_state: PrerequisiteSatisfactionState
 
     @field_validator("root_group_id")
@@ -100,21 +92,11 @@ class PrerequisiteSatisfactionEvaluation(_PrerequisiteModel):
         """Require a nonblank canonical root identity."""
         return _nonblank(value, "root_group_id")
 
-    @field_validator("basis_group_ids", "completed_group_ids")
+    @field_validator("basis_group_ids")
     @classmethod
     def require_sorted_unique_state(cls, value: tuple[str, ...]) -> tuple[str, ...]:
         """Require distinct caller-state IDs in sorted order."""
         return _unique_ids(value, "satisfaction group IDs", sorted_required=True)
-
-    @model_validator(mode="after")
-    def require_completed_in_basis(self) -> PrerequisiteSatisfactionEvaluation:
-        """Require completed history inside the chosen basis."""
-        offenders = sorted(set(self.completed_group_ids) - set(self.basis_group_ids))
-        if offenders:
-            raise ValueError(
-                f"completed courses must be in the calculation basis: {', '.join(offenders)}"
-            )
-        return self
 
 
 class _WitnessFamilies(_Families[tuple[str, str]]):
@@ -219,7 +201,6 @@ class _SatisfactionEvaluator(ExpressionEvaluator[_CandidateEvaluation]):
 
     tree: PrerequisiteCalculationTree
     basis_group_ids: frozenset[str]
-    completed_group_ids: frozenset[str]
     families: _WitnessFamilies
     apply_graph_marks: bool = True
     completed_node_keys: frozenset[str] = frozenset()
@@ -273,19 +254,15 @@ class _SatisfactionEvaluator(ExpressionEvaluator[_CandidateEvaluation]):
     def expanded_course(
         self, expression: AndRequirement, occurrence_id: str
     ) -> _CandidateEvaluation:
-        """Evaluate one expanded active course: head plus its prerequisite closure.
+        """Evaluate an expanded branch as its head and, only for a cycle-closing head, its closure.
 
-        A completed head satisfies the requirement by itself and its historical descendants stay
-        skipped. A selected-but-incomplete basis head is the one direct witness while its exact
-        prerequisite closure is evaluated for truth, matching PATH's head-only witness
-        projection so both public folds measure only the real head.
+        A head in the fixed basis satisfies the branch and its descendants are skipped. A head
+        outside the basis cannot satisfy it. Only a cycle-closing head folds its descendant
+        closure, whose unresolved alternative it carries, and the descendants add no witness.
         """
         head, descendants = expression.children
         head_evaluation = self.evaluate(head, f"{occurrence_id}.0")
-        if (
-            head.course_group_id in self.completed_group_ids
-            and head.course_group_id not in self.tree.excluded_group_ids
-        ):
+        if head.course_group_id in self.basis_group_ids:
             return head_evaluation
         if not head_evaluation.is_known and not head_evaluation.has_unresolved_alternative:
             return head_evaluation
@@ -304,8 +281,7 @@ class _SatisfactionEvaluator(ExpressionEvaluator[_CandidateEvaluation]):
     def course(self, expression: CourseRequirement, occurrence_id: str) -> _CandidateEvaluation:
         """Evaluate one course leaf. Only an eligible basis course is a witness.
 
-        A cycle-closing occurrence resolves only through completed history, never selected basis: a
-        selected-only cycle is an unknown route, while a completed course resolves it.
+        A basis course resolves a cycle-closing occurrence.
         """
         group_id = expression.course_group_id
         if not is_course_activity_eligible(
@@ -314,19 +290,14 @@ class _SatisfactionEvaluator(ExpressionEvaluator[_CandidateEvaluation]):
             return _CandidateEvaluation(
                 family=_WitnessFamilies.ZERO, has_unresolved_alternative=False
             )
-        if occurrence_id in self.cycle_occurrence_ids:
-            if group_id in self.completed_group_ids:
-                return _CandidateEvaluation(
-                    family=self.families.course(group_id), has_unresolved_alternative=False
-                )
-            return _CandidateEvaluation(
-                family=_WitnessFamilies.ZERO, has_unresolved_alternative=True
-            )
         if group_id in self.basis_group_ids:
             return _CandidateEvaluation(
                 family=self.families.course(group_id), has_unresolved_alternative=False
             )
-        return _CandidateEvaluation(family=_WitnessFamilies.ZERO, has_unresolved_alternative=False)
+        return _CandidateEvaluation(
+            family=_WitnessFamilies.ZERO,
+            has_unresolved_alternative=occurrence_id in self.cycle_occurrence_ids,
+        )
 
     def module_block(
         self, expression: ModuleBlockRequirement, occurrence_id: str
@@ -450,13 +421,13 @@ class _SatisfactionEvaluator(ExpressionEvaluator[_CandidateEvaluation]):
 
 
 class PrerequisiteSatisfactionSession:
-    """One request-local satisfaction context over a fixed tree, basis and completed history.
+    """One request-local satisfaction context over a fixed tree and basis.
 
     The constructor owns the shared setup the full-report and standalone-expression entry points
     reuse: it normalizes the caller state once, indexes the tree's node occurrences and cycle
     locations once, builds the one witness-family owner and one memoizing evaluator. Every expression
     evaluated through the session shares those transient results. A session never crosses a tree,
-    basis, completed-history, policy or request boundary.
+    basis, policy or request boundary.
     """
 
     def __init__(
@@ -464,15 +435,11 @@ class PrerequisiteSatisfactionSession:
         tree: PrerequisiteCalculationTree,
         basis_group_ids: Collection[str],
         *,
-        completed_group_ids: Collection[str],
         apply_graph_marks: bool = True,
     ) -> None:
         self.tree = tree
         self.apply_graph_marks = apply_graph_marks
         self.basis_group_ids = _normalize_state_ids(basis_group_ids, label="basis group_id")
-        self.completed_group_ids = _normalize_state_ids(
-            completed_group_ids, label="completed group_id"
-        )
         self._occurrence_by_expression_id: dict[int, str] = {}
         if tree.requirements is not None:
             for occurrence_id, expression in _iter_expression_occurrences(tree.requirements):
@@ -485,7 +452,6 @@ class PrerequisiteSatisfactionSession:
         self._evaluator = _SatisfactionEvaluator(
             tree=tree,
             basis_group_ids=self.basis_group_ids,
-            completed_group_ids=self.completed_group_ids,
             families=_WitnessFamilies(
                 _credits_min_by_group_id(tree), _opaque_credits_by_work_key(tree)
             ),
@@ -538,24 +504,12 @@ def _credits_min_by_group_id(tree: PrerequisiteCalculationTree) -> dict[str, Dec
 def evaluate_prerequisite_satisfaction(
     tree: PrerequisiteCalculationTree,
     basis_group_ids: Collection[str],
-    *,
-    completed_group_ids: Collection[str],
 ) -> PrerequisiteSatisfactionEvaluation:
-    """Evaluate one compiled tree against the chosen calculation basis and completed history.
-
-    The supplied tree is not mutated and no repository or config is consulted. `basis_group_ids`
-    is the chosen zero-cost basis. `completed_group_ids` is the caller's completed history and must
-    be a subset of it. The two are distinct: a completed expanded course skips its historical
-    closure, while a selected-but-incomplete basis course satisfies its own node but keeps its
-    prerequisites. IDs outside this tree are retained in the returned caller state but ignored in
-    its candidates.
-    """
-    session = PrerequisiteSatisfactionSession(
-        tree, basis_group_ids, completed_group_ids=completed_group_ids
-    )
+    """Evaluate a compiled tree against one basis of covered canonical courses."""
+    session = PrerequisiteSatisfactionSession(tree, basis_group_ids)
     if tree.root.group_id in tree.excluded_group_ids:
         requirements_state = PrerequisiteSatisfactionState.UNSATISFIED
-    elif tree.root.group_id in session.completed_group_ids:
+    elif tree.root.group_id in session.basis_group_ids:
         requirements_state = PrerequisiteSatisfactionState.SATISFIED
     else:
         requirements_state = session.evaluate(tree.requirements, occurrence_id="r")
@@ -565,7 +519,6 @@ def evaluate_prerequisite_satisfaction(
         include_inferred=tree.include_inferred,
         active_only=tree.active_only,
         basis_group_ids=tuple(sorted(session.basis_group_ids)),
-        completed_group_ids=tuple(sorted(session.completed_group_ids)),
         requirements_state=requirements_state,
     )
 
@@ -574,19 +527,13 @@ def evaluate_prerequisite_expression(
     tree: PrerequisiteCalculationTree,
     expression: PrerequisiteExpression | None,
     basis_group_ids: Collection[str],
-    *,
-    completed_group_ids: Collection[str],
 ) -> PrerequisiteSatisfactionState:
     """Evaluate one selected subtree through the same satisfaction fold as the full report.
 
     Discovery consumes this to decide a single category root or one course-alternative slot. The
-    caller passes the same chosen basis as its completed history because a direct discovery
-    expression contains no course-ancestor closure. This marks no stored or browser sibling
-    completed. A `None` expression is satisfied, exactly like the public rootless-tree result.
+    basis satisfies course heads without changing browser completion. A `None` expression is satisfied.
     """
-    session = PrerequisiteSatisfactionSession(
-        tree, basis_group_ids, completed_group_ids=completed_group_ids
-    )
+    session = PrerequisiteSatisfactionSession(tree, basis_group_ids)
     return session.evaluate(expression)
 
 
@@ -629,12 +576,8 @@ def evaluate_prerequisite_node_states(
             "excluded_group_ids": (),
         }
     )
-    completed_session = PrerequisiteSatisfactionSession(
-        shallow, completed, completed_group_ids=completed, apply_graph_marks=False
-    )
-    basis_session = PrerequisiteSatisfactionSession(
-        shallow, basis, completed_group_ids=completed, apply_graph_marks=False
-    )
+    completed_session = PrerequisiteSatisfactionSession(shallow, completed, apply_graph_marks=False)
+    basis_session = PrerequisiteSatisfactionSession(shallow, basis, apply_graph_marks=False)
     states: list[PrerequisiteGraphNodeState] = []
     for action_key in sorted(occurrence_by_action_key):
         occurrence_ids = tuple(sorted(occurrence_by_action_key[action_key]))

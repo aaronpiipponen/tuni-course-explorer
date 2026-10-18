@@ -289,7 +289,7 @@ def test_compiler_composes_current_inferred_expressions_and_reports_coverage() -
     assert "absent" not in coverage_targets
     assert absent_compilation.tree.issues == ()
     assert absent_read.reads.count("absent") == 1
-    path = calculate_minimum_new_credits(absent_compilation.tree, [], completed_group_ids=[])
+    path = calculate_minimum_new_credits(absent_compilation.tree, [])
     assert path.state is PrerequisitePathState.EXACT
     assert {entry.course.group_id for entry in path.new_courses} in (
         {"a", "absent"},
@@ -395,15 +395,11 @@ def test_compiler_pools_complete_official_and_inferred_options_by_category() -> 
     )
 
     # The pool is one alternative per category, not a conjunction of every source option.
-    satisfied = evaluate_prerequisite_satisfaction(
-        compilation.tree, ["a", "b", "r"], completed_group_ids=["a", "b", "r"]
-    )
+    satisfied = evaluate_prerequisite_satisfaction(compilation.tree, ["a", "b", "r"])
     assert satisfied.requirements_state is PrerequisiteSatisfactionState.SATISFIED
-    missing_recommended = evaluate_prerequisite_satisfaction(
-        compilation.tree, ["a", "b"], completed_group_ids=["a", "b"]
-    )
+    missing_recommended = evaluate_prerequisite_satisfaction(compilation.tree, ["a", "b"])
     assert missing_recommended.requirements_state is PrerequisiteSatisfactionState.UNSATISFIED
-    path = calculate_minimum_new_credits(compilation.tree, [], completed_group_ids=[])
+    path = calculate_minimum_new_credits(compilation.tree, [])
     assert path.state is PrerequisitePathState.EXACT
     assert [entry.course.group_id for entry in path.new_courses] == ["a", "b", "r"]
     assert path.total_new_credits == Decimal("15")
@@ -505,9 +501,7 @@ def test_compiler_inferred_option_bypasses_official_module_rule() -> None:
     assert isinstance(unresolved_branch, ModuleBlockRequirement)
     assert isinstance(unresolved_branch.child, UnresolvedRequirement)
     assert unresolved_branch.child.reason is UnresolvedPrerequisiteReason.MALFORMED_RULE
-    numeric_satisfied = evaluate_prerequisite_satisfaction(
-        official.tree, ["a", "b"], completed_group_ids=["a", "b"]
-    )
+    numeric_satisfied = evaluate_prerequisite_satisfaction(official.tree, ["a", "b"])
     assert numeric_satisfied.requirements_state is PrerequisiteSatisfactionState.SATISFIED
 
     # With inference the complete inferred option joins the same required OR pool, so it bypasses
@@ -528,9 +522,9 @@ def test_compiler_inferred_option_bypasses_official_module_rule() -> None:
     # Completed C alone satisfies the category even though the official route is unknown, but
     # minimum-new-credit with a positive-cost C is unresolved because that unknown route could
     # be cheaper. No fabricated exact answer is returned.
-    satisfied = evaluate_prerequisite_satisfaction(enabled.tree, ["c"], completed_group_ids=["c"])
+    satisfied = evaluate_prerequisite_satisfaction(enabled.tree, ["c"])
     assert satisfied.requirements_state is PrerequisiteSatisfactionState.SATISFIED
-    unresolved = calculate_minimum_new_credits(enabled.tree, [], completed_group_ids=[])
+    unresolved = calculate_minimum_new_credits(enabled.tree, [])
     assert unresolved.state is PrerequisitePathState.UNRESOLVED
     assert unresolved.new_courses == ()
     assert any(

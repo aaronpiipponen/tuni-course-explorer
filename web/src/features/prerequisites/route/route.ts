@@ -64,9 +64,11 @@ function courseLabel(
   id: string,
   language: DisplayLanguage,
 ): string | null {
-  const course = graph.compilation.graph.course_nodes.find(
-    (node) => node.course.group_id === id,
-  )?.course;
+  const course =
+    graph.compilation.graph.course_nodes.find(
+      (node) => node.course.group_id === id,
+    )?.course ??
+    graph.compilation.tree.courses.find((item) => item.group_id === id);
   if (!course) return null;
   return uiText(language, "{code} {name}", {
     code: course.code,

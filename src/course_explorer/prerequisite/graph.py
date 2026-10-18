@@ -4413,6 +4413,73 @@ def project_prerequisite_graph(
             ),
         )
 
+    connections = build_connections()
+    outgoing: dict[str, list[PrerequisiteGraphEdge]] = {}
+    for edge in connections:
+        outgoing.setdefault(edge.source_node_id, []).append(edge)
+    logical_nodes = {
+        node.node_id: node
+        for node in connector_nodes.values()
+        if node.kind in (PrerequisiteGraphConnectorKind.AND, PrerequisiteGraphConnectorKind.OR)
+        and node.action_key not in marked_action_keys
+    }
+    signatures: dict[str, str] = {}
+
+    def logical_signature(node_id: str) -> str:
+        """Identify a logical drawing subtree with source boundaries kept distinct."""
+        node = logical_nodes.get(node_id)
+        if node is None:
+            return node_id
+        if node_id not in signatures:
+            children = sorted(
+                (
+                    logical_signature(edge.target_node_id),
+                    tuple(
+                        relationship.model_dump_json(
+                            exclude={"occurrence_ids", "condition_occurrence_ids"}
+                        )
+                        for relationship in edge.relationships
+                    ),
+                )
+                for edge in outgoing.get(node_id, ())
+            )
+            signatures[node_id] = _stable_digest(
+                json.dumps(
+                    [node.model_dump_json(exclude={"node_id", "action_key"}), children],
+                    separators=(",", ":"),
+                )
+            )
+        return signatures[node_id]
+
+    representatives: dict[tuple[str, str], str] = {}
+    aliases: dict[str, str] = {}
+    for course_id in sorted(standalone_group_ids):
+        owner = f"course:{course_id}"
+        pending = [edge.target_node_id for edge in outgoing.get(owner, ())]
+        visited: set[str] = set()
+        while pending:
+            node_id = pending.pop()
+            if node_id not in logical_nodes or node_id in visited:
+                continue
+            visited.add(node_id)
+            key = (owner, logical_signature(node_id))
+            aliases[node_id] = representatives.setdefault(key, node_id)
+            pending.extend(edge.target_node_id for edge in outgoing.get(node_id, ()))
+    # Endpoint sharing preserves each relationship member's own terminals, gates and evidence.
+    connection_members.clear()
+    relationship_by_member.clear()
+    for edge in connections:
+        for relationship in edge.relationships:
+            register_relationship(
+                aliases.get(edge.source_node_id, edge.source_node_id),
+                aliases.get(edge.target_node_id, edge.target_node_id),
+                relationship,
+            )
+    connector_nodes = {
+        occurrence_id: node
+        for occurrence_id, node in connector_nodes.items()
+        if aliases.get(node.node_id, node.node_id) == node.node_id
+    }
     edges = tuple(sorted(build_connections(), key=_edge_sort_key))
     return PrerequisiteDrawingGraph(
         course_nodes=tuple(

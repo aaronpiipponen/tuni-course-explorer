@@ -82,7 +82,7 @@ The refusal affects the drawing only. **Find minimum route** is available on the
 
 ## Find the minimum route
 
-The minimum route is the set of courses that meets the requirements with the fewest new credits. Courses in your basis cost nothing, a course that several branches need is counted once, and a completed course also skips its own prerequisites.
+The minimum route is the set of courses that meets the requirements with the fewest new credits. Courses in your basis cost nothing and skip their own prerequisites. A course that several branches need is counted once.
 
 1. Set the graph options the way the calculation should read them. The route uses the same graph root, toggles, marks and basis as the drawing.
 2. Select **Find minimum route**. The button reads **Calculating…** while the request runs.
@@ -98,14 +98,14 @@ The panel at the top right of the drawing reports the result. Its header gives t
 |---|---|
 | **Exact minimum route** | The route with the fewest new credits that the rules allow, its credits, and the tag **exact**. |
 | **Approximate route** | A route from a quicker search, because the exact search was too large. The panel gives its credits, the tag **approximate**, and the note **Not guaranteed to be the minimum.** |
-| **No route found** | No route and no total, with the tag **timeout**, which the graph root box also shows. The note states that the exact search was too large and that the second search gave up. |
-| **Route unresolved** | No route and no total, with the tag **unresolved**, because a requirement cannot be resolved to courses and a cheaper route may exist. |
-| **No route exists** | No route and no total, with the tag **no solution**. The note states that every route is blocked by excluded or unavailable courses. |
-| **Shortfall** | A route that is only as large as the active courses allow, with the tag **shortfall**, because a module rule falls below its own bound while **Active only** is on. |
+| **No route found** | No route and no total, with the tag **timeout**, which the graph root box also shows. The note states that the exact search was too large and that the second search gave up, and it names the root failure. |
+| **Route unresolved** | No route and no total, with the tag **unresolved**, because a requirement cannot be resolved to courses and a cheaper route may exist. Each unresolved requirement is named below the note with its reason. |
+| **No route exists** | No route and no total, with the tag **no solution**. The note states that no route meets every requirement, and each blocked requirement is named below it with its reason. |
+| **Shortfall** | A route that is only as large as the active courses allow, with the tag **shortfall**, because a module rule falls below its own bound while **Active only** is on. Each module rule that falls short is named with its achieved and required count or credits. |
 
 An exact route that adds nothing shows the note **Nothing new**.
 
-Select **Expand** to list the courses of the route, with the ones your basis already covers marked **done**, and any credit amount that the official data does not break into courses on its own line. Select **Collapse** to hide the list again. For an outcome with no route, the panel explains the outcome instead of listing courses.
+Select **Expand** to list the courses of the route, with the ones your basis already covers marked **done**, and any credit amount that the official data does not break into courses on its own line. Select **Collapse** to hide the list again. For an outcome with no route, the panel names each blocked or unresolved requirement and its reason instead of listing courses, and those entries are visible while the course list is collapsed.
 
 ![The route panel beside the drawing, with the header reading 5 cr new and 10 cr full route, the exact tag, Collapse, two course rows of which the covered one is marked done, and the Add all missing courses to structure button at the end of the list.](/docs/screenshots/minimum-route-expanded.png)
 

@@ -13,23 +13,35 @@ export type GraphNodeData = ModelNode & {
   onMembers: (id: string) => void;
   onCourseExclude: (id: string) => void;
   onNodeOpen: (id: string, open: boolean) => void;
-  selectedOnly: boolean;
   timeout: boolean;
   interactionDisabled: boolean;
 };
 export function CourseNode({ data }: NodeProps & { data: GraphNodeData }) {
-  const { store } = useProfileSelector((state) => state.prerequisites);
+  const course = data.course!;
+  const { store, value: completed } = useProfileSelector((state) =>
+    state.completedCourseIds.includes(course.group_id),
+  );
+  const { value: excluded } = useProfileSelector(
+    (state) =>
+      state.prerequisites.excludedCourseIds.includes(course.group_id) ||
+      state.prerequisites.excludedNodeKeys.includes(data.actionKey),
+  );
+  const { value: selectedOnly } = useProfileSelector(
+    (state) =>
+      state.prerequisites.basis === "selected" &&
+      state.selectedCourseIds.includes(course.group_id) &&
+      !state.completedCourseIds.includes(course.group_id),
+  );
   const { runAction, error } = useAction();
   const { language, t } = useWording();
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (data.interactionDisabled) setOpen(false);
   }, [data.interactionDisabled]);
-  const course = data.course!;
   return (
     <div
       inert={data.interactionDisabled}
-      className={`graph-course${data.root ? " root" : ""}${data.inferred ? " inferred" : ""}${data.active ? "" : " inactive"}${data.state?.completed_by_courses ? " done" : ""}${data.state?.is_excluded ? " excl" : ""}${data.selectedOnly ? " sel" : ""}`}
+      className={`graph-course${data.root ? " root" : ""}${data.inferred ? " inferred" : ""}${data.active ? "" : " inactive"}${completed ? " done" : ""}${excluded ? " excl" : ""}${selectedOnly ? " sel" : ""}`}
     >
       <Handle type="target" position={Position.Top} />
       <CourseTile
@@ -53,30 +65,24 @@ export function CourseNode({ data }: NodeProps & { data: GraphNodeData }) {
           <>
             <button
               type="button"
-              className={data.state?.completed_by_courses ? "is-done" : ""}
-              aria-pressed={data.state?.completed_by_courses ?? false}
+              className={completed ? "is-done" : ""}
+              aria-pressed={completed}
               aria-label={t(
-                data.state?.completed_by_courses
-                  ? "Mark not completed"
-                  : "Mark completed",
+                completed ? "Mark not completed" : "Mark completed",
               )}
               onClick={() =>
                 runAction(() => toggleCompleted(store, course.group_id))
               }
             >
-              {t(
-                data.state?.completed_by_courses
-                  ? "Completed (course)"
-                  : "Complete (course)",
-              )}
+              {t(completed ? "Completed (course)" : "Complete (course)")}
             </button>
             <button
               type="button"
-              className={data.state?.is_excluded ? "is-excl" : ""}
-              aria-pressed={data.state?.is_excluded ?? false}
+              className={excluded ? "is-excl" : ""}
+              aria-pressed={excluded}
               onClick={() => data.onCourseExclude(course.group_id)}
             >
-              {t(data.state?.is_excluded ? "Excluded" : "Exclude")}
+              {t(excluded ? "Excluded" : "Exclude")}
             </button>
           </>
         }

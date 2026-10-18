@@ -61,9 +61,6 @@ function GraphCanvas({
   const { store } = useProfileSelector(
     (state) => state.prerequisites.excludedCourseIds,
   );
-  const { value: basis } = useProfileSelector(
-    (state) => state.prerequisites.basis,
-  );
   const targetModel = useMemo(
     () => buildGraphModel(report, language),
     [report, language],
@@ -113,13 +110,6 @@ function GraphCanvas({
               measured: { width: position.w, height: position.h },
               data: {
                 ...item,
-                selectedOnly:
-                  basis === "selected" &&
-                  item.kind === "course" &&
-                  Boolean(
-                    item.state?.satisfied_by_basis &&
-                    !item.state.completed_by_courses,
-                  ),
                 timeout:
                   view?.state === "approximation_failed" && Boolean(item.root),
                 onMembers: setPanelId,
@@ -152,7 +142,6 @@ function GraphCanvas({
       panelId,
       menuId,
       store,
-      basis,
       routing,
       lit,
       view,

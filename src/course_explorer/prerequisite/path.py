@@ -15,9 +15,7 @@ An approximate route is explicitly marked and is subject to the source's full pr
 numeric rules. A bounded heuristic miss is `approximation_failed` with a size-triggered
 `search_too_large` problem, never a claim of impossibility.
 
-The caller supplies the chosen zero-cost basis and its completed-history subset separately, so a
-completed expanded course costs zero without its historical descendants while a selected-but-
-incomplete basis course carries its full prerequisite closure.
+The chosen basis satisfies a course at zero new cost without traversing its expanded descendants.
 
 The solver folds an exact compact candidate frontier bottom-up. A candidate carries the canonical
 witness courses that satisfy the current requirement (what enclosing credit/count constraints
@@ -1266,8 +1264,8 @@ def _credit_shortfall(
 class _PathEvaluator(ExpressionEvaluator[_PathEvaluation]):
     """One exact bottom-up path fold over a compiled tree and the chosen calculation basis.
 
-    `basis_group_ids` is the sole zero-cost basis, `completed_group_ids` the sole completed-history
-    input, and `activity_exception_group_ids` the sole activity-exception input.
+    `basis_group_ids` is the sole zero-cost basis and `activity_exception_group_ids` the
+    activity-exception input.
     `allow_module_shortfall` is set for exactly one activity-scoped primary pass and cleared for the
     same-node all-course diagnostic, so no second solver or activity policy exists. `families` is the
     one invocation-local tagged-identity DAG every node folds through. The optional
@@ -1279,7 +1277,6 @@ class _PathEvaluator(ExpressionEvaluator[_PathEvaluation]):
 
     tree: PrerequisiteCalculationTree
     basis_group_ids: frozenset[str]
-    completed_group_ids: frozenset[str]
     activity_exception_group_ids: frozenset[str]
     allow_module_shortfall: bool
     families: _PathFamilies
@@ -1446,15 +1443,10 @@ class _PathEvaluator(ExpressionEvaluator[_PathEvaluation]):
         )
 
     def expanded_course(self, expression: AndRequirement, occurrence_id: str) -> _PathEvaluation:
-        """Evaluate one compiler expanded-course branch: head course plus its prerequisite closure.
+        """Evaluate an expanded head and its closure, stopping at a basis-covered head.
 
-        Only a completed head returns the immediate zero-cost result without any descendant: a
-        completed course satisfies its requirement and its historical prerequisites are never
-        charged. Every other eligible head evaluates its descendants, contributes no new course of
-        its own when it is in the chosen basis but `{head}` when it is not, and unions the descendant
-        closure, evidence, and deficits, so a selected-but-incomplete basis head costs its full
-        prerequisite closure. An excluded head is denied before the completed-head shortcut and
-        records itself on the primary collector without traversing its historical descendants.
+        Exclusion is checked before basis satisfaction. A head outside the basis charges its own
+        credits and its prerequisite closure.
         """
         head, descendants = expression.children
         head_group_id = head.course_group_id
@@ -1505,8 +1497,7 @@ class _PathEvaluator(ExpressionEvaluator[_PathEvaluation]):
                 {(): _PathPartition(node_support, families.leaf_trace(node_support, node_label))},
             )
             head_frontier = head_frontier.join(node_frontier)
-        if head_group_id in self.completed_group_ids:
-            # A completed course satisfies its requirement without any historical descendant.
+        if head_group_id in self.basis_group_ids:
             return _PathEvaluation(
                 head_frontier,
                 False,
@@ -1586,9 +1577,7 @@ class _PathEvaluator(ExpressionEvaluator[_PathEvaluation]):
                 referenced_group_id=group_id,
             )
             return _PathEvaluation(_PathFrontier.empty(families), False, ())
-        if occurrence_id in self.cycle_occurrence_ids and group_id not in self.completed_group_ids:
-            # A cycle-closing occurrence resolves only through completed history, never selected
-            # basis: a selected-only cycle is a located unknown route, not a tree-wide rejection.
+        if occurrence_id in self.cycle_occurrence_ids and group_id not in self.basis_group_ids:
             self._record_problem(
                 "unresolved",
                 UnresolvedPrerequisiteReason.COURSE_CYCLE.value,
@@ -2070,7 +2059,6 @@ class _GreedyPathEvaluator(ExpressionEvaluator[_GreedyEvaluation]):
 
     tree: PrerequisiteCalculationTree
     basis_group_ids: frozenset[str]
-    completed_group_ids: frozenset[str]
     credits_min_by_group_id: dict[str, Decimal]
     opaque_credits_by_work_key: dict[str, Decimal]
     occurrence_by_action_key: dict[str, object]
@@ -2215,7 +2203,7 @@ class _GreedyPathEvaluator(ExpressionEvaluator[_GreedyEvaluation]):
             expression=head,
             occurrence_id=f"{occurrence_id}.0",
         )
-        if group_id in self.completed_group_ids:
+        if group_id in self.basis_group_ids:
             return _GreedyEvaluation(replace(head_route, kind="expanded"))
         descendant = self.evaluate(descendants, f"{occurrence_id}.1")
         if descendant.route is None:
@@ -2247,7 +2235,7 @@ class _GreedyPathEvaluator(ExpressionEvaluator[_GreedyEvaluation]):
             if group_id in self.tree.excluded_group_ids:
                 self.blocked_excluded_group_ids.add(group_id)
             return _GreedyEvaluation(None)
-        if occurrence_id in self.cycle_occurrence_ids and group_id not in self.completed_group_ids:
+        if occurrence_id in self.cycle_occurrence_ids and group_id not in self.basis_group_ids:
             blocker = PrerequisitePathBlocker(
                 kind=PrerequisitePathBlockerKind.COURSE_CYCLE,
                 occurrence_id=occurrence_id,
@@ -2570,7 +2558,6 @@ def _solve_greedy_path(
     evaluator = _GreedyPathEvaluator(
         tree=tree,
         basis_group_ids=frozenset(satisfaction.basis_group_ids),
-        completed_group_ids=frozenset(satisfaction.completed_group_ids),
         credits_min_by_group_id=credits,
         opaque_credits_by_work_key=opaque,
         occurrence_by_action_key=occurrence_by_action_key,
@@ -2759,7 +2746,6 @@ def _evaluate_primary_candidates(
     tree: PrerequisiteCalculationTree,
     *,
     basis_group_ids: frozenset[str],
-    completed_group_ids: frozenset[str],
     credits_min_by_group_id: dict[str, Decimal],
     opaque_credits_by_work_key: dict[str, Decimal],
     inactive_group_ids: frozenset[str],
@@ -2777,8 +2763,7 @@ def _evaluate_primary_candidates(
     The primary pass runs once with the basis as its sole activity exception set and module
     reduction allowed. Strict partitions carry no module deficit and use the exact
     semantics. Reduced partitions exist only when every strict route was blocked by activity scope.
-    The completed-history input is threaded through so the primary and all-course diagnostic
-    passes share one history semantics. The fourth item is the sorted canonical IDs of excluded
+    The fourth item is the sorted canonical IDs of excluded
     course heads/leaves this primary pass actually denied. The fifth is the sorted located node
     problems of its local failures. The sixth is the sorted graph-only excluded node action keys it
     denied, regardless of whether another option later wins.
@@ -2794,7 +2779,6 @@ def _evaluate_primary_candidates(
     evaluation = _PathEvaluator(
         tree=tree,
         basis_group_ids=basis_group_ids,
-        completed_group_ids=completed_group_ids,
         activity_exception_group_ids=basis_group_ids,
         allow_module_shortfall=True,
         families=_PathFamilies(
@@ -2848,15 +2832,12 @@ def calculate_minimum_new_credits(
     tree: PrerequisiteCalculationTree,
     basis_group_ids: Collection[str],
     *,
-    completed_group_ids: Collection[str],
     max_compact_nodes: int | None = None,
 ) -> MinimumCreditPathEvaluation:
     """Return the exact or explicitly approximate minimum-new-credit route."""
     if max_compact_nodes is not None and max_compact_nodes <= 0:
         raise ValueError("max_compact_nodes must be positive")
-    satisfaction = evaluate_prerequisite_satisfaction(
-        tree, basis_group_ids, completed_group_ids=completed_group_ids
-    )
+    satisfaction = evaluate_prerequisite_satisfaction(tree, basis_group_ids)
     coverage = tree.inferred_coverage
     if tree.root.group_id in tree.excluded_group_ids:
         root_problem = PrerequisiteNodeProblem(
@@ -2898,8 +2879,7 @@ def _solve_path(
     Otherwise a positive-cost known candidate beside an unresolved alternative is unresolved,
     because unknown source structure could be cheaper. A known zero-credit candidate remains exact
     because costs are nonnegative. The supplied calculation tree is the sole authority: it carries
-    the activity scope, a course in the chosen basis costs zero, and a completed course skips its
-    historical descendants while a selected-but-incomplete basis course keeps its closure. Under
+    the activity scope, and a course in the chosen basis costs zero without its descendants. Under
     active-only scope an otherwise satisfiable official module rule that activity alone pushed below
     its lower bound returns `SHORTFALL` with its exact deficits instead of `NO_SOLUTION`. Every other
     case keeps its strict outcome. Cycle-closing leaves and real unresolved nodes propagate only
@@ -2923,7 +2903,6 @@ def _solve_path(
     ) = _evaluate_primary_candidates(
         tree,
         basis_group_ids=frozenset(satisfaction.basis_group_ids),
-        completed_group_ids=frozenset(satisfaction.completed_group_ids),
         credits_min_by_group_id=credits_min_by_group_id,
         opaque_credits_by_work_key=opaque_credits_by_work_key,
         inactive_group_ids=inactive_group_ids,

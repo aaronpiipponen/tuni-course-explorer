@@ -10,6 +10,8 @@ A route holds the courses a requirement needs and the basis does not cover. Its 
 
 A route request takes the same inputs as the prerequisite graph read: the graph root, the Recommended and Inferred toggles, the activity scope, the selected and completed course sets, the basis, the excluded courses, and the graph-node marks. Both operations resolve those inputs, compile one prerequisite expression from them, and read the same chosen basis. The drawing and the calculation therefore describe the same requirement set and cannot drift apart.
 
+The basis is either the completed courses or every selected course, chosen by **Route basis**. The route uses exactly one of them, and the two choices have the same effect: a course in the basis satisfies its requirement at no new cost, and its own prerequisites are not expanded below it.
+
 The route request returns its own result and no drawing. The graph read and the compiler behind both are described in [Prerequisite graph](/docs/backend/prerequisites/prerequisite-graph.md).
 
 ## Exact by default
@@ -41,7 +43,7 @@ The diagram follows one route request from the compiled expression through the e
 
 ## What the route charges
 
-A course in the basis costs nothing. A completed course also skips its own prerequisites, so completing a course can remove its whole requirement subtree from the route. A selected course that is not completed costs nothing for itself and adds its prerequisite closure to the route.
+A course in the basis costs nothing, and the route does not expand that course's own prerequisites, so a basis course removes its requirement subtree from the route in either basis mode. A course outside the basis costs its own credits and brings its own prerequisites into the route.
 
 A course that several branches of the requirement need is counted once, so the route charges its credits once. The same unexpandable content needed on several branches is charged once as well.
 

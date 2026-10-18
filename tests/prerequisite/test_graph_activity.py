@@ -193,5 +193,5 @@ def test_excluded_nodes_and_descendants_stay_drawn_and_marked() -> None:
     root_nodes = {node.course.group_id: node for node in root_excluded.graph.course_nodes}
     assert root_nodes["root"].is_excluded is True
     assert root_nodes["a"].is_excluded is False
-    blocked = calculate_minimum_new_credits(root_excluded.tree, [], completed_group_ids=[])
+    blocked = calculate_minimum_new_credits(root_excluded.tree, [])
     assert blocked.state is PrerequisitePathState.NO_SOLUTION

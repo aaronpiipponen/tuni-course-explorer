@@ -18,21 +18,21 @@ A refresh of the same root leaves the last successful drawing on screen while th
 
 ## What the server decides and what the browser draws
 
-Every fact in the drawing comes from the report. The report states which course, module and connector nodes exist, which of them are met, marked or excluded, which node is the root, which nodes are drawn as inferred, and every located reason. The report also groups the connections that share their endpoints and their provenance class, so the drawing shows one connection for each reported entry.
+The report supplies the drawing's requirement structure and its located reasons, and the profile supplies the marks the drawing shows. The report states which course, module, connector and ignored nodes exist, which node is the root, which nodes are drawn as inferred, and whether a module node's own courses fulfil it. The report also groups the connections that share their endpoints and their provenance class, so the drawing shows one connection for each reported entry. The browser reads its own course completion and its own node marks from the profile state, so a mark changes with its control.
 
-The browser chooses where the drawing goes. It lays the nodes out to fit the pane, routes the connections between them, and animates a change of arrangement, so the report is the only source of which requirements exist and whether they are met.
+The browser chooses where the drawing goes. It lays the nodes out to fit the pane, routes the connections between them, and animates a change of arrangement, so the report is the only source of which requirements exist and of every located reason.
 
 The route decision is also the server's. The route read returns the courses, the tree occurrences and the outcome, and the pane lights and lists what it returns. Route outcomes and their meaning are stated in [Minimum route](/docs/backend/prerequisites/minimum-route.md).
 
 The diagram follows the one input snapshot through the two reads to the browser.
 
-![One profile input snapshot feeds the graph read and the explicitly started route read on the server. The graph read returns the graph report and the route read returns the route result. The browser lays the report out as the drawing and shows the route in the route panel, and the dashed box marks the browser drawing side, whose node states and routes come from the reports.](/docs/diagrams/graph-view-flow.svg)
+![One profile input snapshot feeds the graph read and the explicitly started route read on the server. The graph read returns the graph report and the route read returns the route result. The browser lays the report out as the drawing and shows the route in the route panel: the dashed browser drawing box takes its requirement structure and located reasons from the graph report and its route from the route result, while its course completion, exclusion and node marks come from the profile.](/docs/diagrams/graph-view-flow.svg)
 
 ## The root and shared nodes
 
 The graph root is the course whose prerequisite graph is open. The pane shows its official code and name, **Change**, and **Recenter**. **Recenter** returns the view to the root, and it is available while the report allows a drawing.
 
-One canonical course is one node. A course that several requirements need is drawn once, with its own requirements drawn once, and only the root carries the root mark. The first drawing of a root is centred on it.
+One canonical course is one node. A course that several requirements need is drawn once, with its own requirements drawn once, and only the root carries the root mark. Two identical logical groups reached under the same course are drawn once as well, and the connections that reach and leave that group carry every occurrence of the groups they stand for. The first drawing of a root is centred on it.
 
 ## Course, module and connector nodes
 
@@ -54,7 +54,7 @@ A [recommended prerequisite](/docs/reference/glossary.md#prerequisites-and-route
 
 ## Marks on the graph
 
-The two controls on a node differ by what the mark belongs to.
+A mark appears with the control that sets it, because the drawing reads the profile's own course and node state. The two controls on a node differ by what the mark belongs to.
 
 - A course node's completion writes the shared course sets, so a course marked [completed](/docs/reference/glossary.md#browser-app) in the graph reads as completed in every other tab.
 - A course node's exclusion is a prerequisite setting of the profile. It belongs to both reads: an [excluded course](/docs/reference/glossary.md#prerequisites-and-routes) never counts as covered and no route passes through it, while the drawing shows the course and its own prerequisites.
@@ -66,7 +66,7 @@ The two controls on a node differ by what the mark belongs to.
 
 The result lives with the pane. A change to the root, the basis, the toggles, the activity scope, the course sets, the marks on the graph, or the pane leaving the view clears it back to the plain drawing, and clicking the control again clears it as well. While the request runs, the panel shows **Calculating…** and the connections dim.
 
-A result lights its own path. The connections the route selects and the nodes on them are lit in order from the root outward, and everything else is dimmed. The panel header reads the new credits beside the full route credits, an exact route whose new credits are zero reads **Nothing new**, and the route is listed row by row under **Expand** and **Collapse**: a course the route adds, the unexpandable content it charges, and a course that the basis already covers marked done. **Add all missing courses to structure** adds the route's new courses to Unplaced studies.
+A result lights its own path. The connections the route selects and the nodes on them are lit in order from the root outward, and everything else is dimmed. The panel header reads the new credits beside the full route credits, an exact route whose new credits are zero reads **Nothing new**, and the route is listed row by row under **Expand** and **Collapse**: a course the route adds, the unexpandable content it charges, and a course that the basis already covers marked done. **Add all missing courses to structure** adds the route's new courses to Unplaced studies. The panel names each blocked or unresolved requirement with its reason above the course list, and an active-only shortfall lists each deficient module rule with its achieved and required count or credits. Those entries are visible while the course list is collapsed.
 
 The outcome decides what the panel says, and the drawing follows the outcome:
 
@@ -74,10 +74,10 @@ The outcome decides what the panel says, and the drawing follows the outcome:
 |---|---|
 | **Exact minimum route** | The route rows, the new and full credits, and the lit path. |
 | **Approximate route** | The same, with a note stating that the route is not guaranteed to be the minimum. |
-| **No route found** | A note stating that the exact search was too large and the approximation gave up, the root marked **timeout**, and no rows. |
-| **No route exists** | A note stating that every route is blocked by excluded or unavailable courses, with the blocked nodes lit and no rows. |
-| **Route unresolved** | A note stating that some requirements cannot be resolved, with those nodes lit and no rows. |
-| **Shortfall** | The route rows, with a note stating that a module rule is only partly met with active courses. |
+| **No route found** | A note stating that the exact search was too large and the approximation gave up, the root failure listed, the root marked **timeout**, and no rows. |
+| **No route exists** | A note stating that no route meets every requirement, one entry for each blocked requirement, and the blocked nodes lit. |
+| **Route unresolved** | A note stating that some requirements cannot be resolved, one entry for each unresolved requirement, with those nodes lit and no rows. |
+| **Shortfall** | The route rows, with a note stating that a module rule is only partly met with active courses, and one entry for each deficient module rule. |
 
 ## A drawing that is too large
 

@@ -151,8 +151,7 @@ def _prepare_prerequisite_command(
 
     Selected, completed and excluded canonical IDs or exact official codes are resolved in the one
     bulk id-or-code lookup. The canonical selected set is the compile-time retention and display set.
-    The chosen basis (completed subset or selected set) becomes the calculation basis together with
-    the canonical completed set, which is the path's completed historical-stop input. When no selected
+    The chosen basis (completed subset or selected set) is the sole calculation basis. When no selected
     codes are supplied the canonical completed set is also the selected set, so the selected basis
     never fails for omitted selected input. Excluded IDs or codes resolve in the same bulk call and
     reach the compiler as canonical exclusions. They are never subtracted from selected/completed or
@@ -309,6 +308,5 @@ def run_minimum_route_command(
     return calculate_minimum_new_credits(
         context.tree,
         context.basis_group_ids,
-        completed_group_ids=context.completed_group_ids,
         max_compact_nodes=load_search_settings().prerequisite_path_max_compact_nodes,
     )

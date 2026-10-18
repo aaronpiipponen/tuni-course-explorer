@@ -83,8 +83,7 @@ def test_two_basis_selection_display_and_basis_rule(
     _inactive_prerequisite_fixture(database, tmp_path)
     monkeypatch.setattr(command_module, "load_search_settings", search_settings)
 
-    # (a) --basis selected with no --selected uses the completed set as selected and basis, and the
-    # same canonical completed set reaches the route as its completed history.
+    # Omitted selected input uses completed courses as the selected basis.
     no_selected = command_module.run_prerequisite_command(
         "CS.A2", completed_codes=["CS.I1"], basis="selected"
     )
@@ -95,7 +94,6 @@ def test_two_basis_selection_display_and_basis_rule(
         "CS.A2", completed_codes=["CS.I1"], basis="selected"
     )
     assert no_selected_route.satisfaction.basis_group_ids == ("course-group-inactive",)
-    assert no_selected_route.satisfaction.completed_group_ids == ("course-group-inactive",)
     assert no_selected_route.total_new_credits == Decimal("0")
     assert no_selected_route.new_courses == ()
 
@@ -107,14 +105,12 @@ def test_two_basis_selection_display_and_basis_rule(
     assert no_completed.basis is command_module.PrerequisiteCalculationBasis.COMPLETED
     no_completed_route = command_module.run_minimum_route_command("CS.A2", selected_codes=["CS.I1"])
     assert no_completed_route.satisfaction.basis_group_ids == ()
-    assert no_completed_route.satisfaction.completed_group_ids == ()
     assert no_completed_route.total_new_credits == Decimal("3")
     assert [entry.course.group_id for entry in no_completed_route.new_courses] == [
         "course-group-inactive"
     ]
 
-    # (c) an explicit selected basis forwards the full selected set while the completed subset is
-    # the completed-history input.
+    # An explicit selected basis covers the full selected set.
     selected_basis = command_module.run_prerequisite_command(
         "CS.A2",
         selected_codes=["course-group-inactive", "TIE.B"],
@@ -133,7 +129,6 @@ def test_two_basis_selection_display_and_basis_rule(
         "course-group-inactive",
         "course-group-tie",
     )
-    assert selected_basis_route.satisfaction.completed_group_ids == ("course-group-inactive",)
     assert selected_basis_route.total_new_credits == Decimal("0")
     assert selected_basis_route.new_courses == ()
 
@@ -208,7 +203,6 @@ def test_drawing_refusal_preserves_calculation_and_truthful_counts(
     assert route.state is PrerequisitePathState.EXACT
     assert route.total_new_credits == Decimal("0")
     assert route.satisfaction.basis_group_ids == ("course-group-inactive",)
-    assert route.satisfaction.completed_group_ids == ("course-group-inactive",)
 
 
 def test_prerequisite_cli_forwards_completed_codes_and_toggles_and_prints_one_report(
@@ -216,9 +210,7 @@ def test_prerequisite_cli_forwards_completed_codes_and_toggles_and_prints_one_re
 ) -> None:
     """The script forwards its arguments and prints exactly the one dispatched operation's JSON."""
     expected = report_for()
-    route_expected = calculate_minimum_new_credits(
-        expected.compilation.tree, (), completed_group_ids=()
-    )
+    route_expected = calculate_minimum_new_credits(expected.compilation.tree, ())
     graph_calls: list[dict] = []
     route_calls: list[dict] = []
     monkeypatch.setattr(
@@ -376,9 +368,7 @@ def test_prerequisite_cli_forwards_completed_codes_and_toggles_and_prints_one_re
         ),
         (course_summary("cheap", credits_min="1"), course_summary("dear", credits_min="3")),
     ).tree
-    failed_path = calculate_minimum_new_credits(
-        greedy_miss, [], completed_group_ids=[], max_compact_nodes=1
-    )
+    failed_path = calculate_minimum_new_credits(greedy_miss, [], max_compact_nodes=1)
     monkeypatch.setattr(
         _CLI_MODULE, "run_minimum_route_command", lambda course_code, **kwargs: failed_path
     )

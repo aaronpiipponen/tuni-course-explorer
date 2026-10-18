@@ -711,7 +711,7 @@ def test_prerequisite_graph_expands_normalized_module_rules(
     # The real normalized module tree is unsatisfied: the surviving 5-credit numeric child exceeds the
     # inactive 3-credit member under all-courses scope, so ignoring the unrestricted positions is
     # a no-solution rather than a fabricated zero-cost satisfaction.
-    evaluation = evaluate_prerequisite_satisfaction(compilation.tree, [], completed_group_ids=[])
+    evaluation = evaluate_prerequisite_satisfaction(compilation.tree, [])
     assert evaluation.requirements_state is PrerequisiteSatisfactionState.UNSATISFIED
 
     # Direct-many associates the same separate category roots on the real module fixture: the
@@ -722,9 +722,7 @@ def test_prerequisite_graph_expands_normalized_module_rules(
     assert direct_entry.required == boundary
     assert direct_entry.recommended is None
     assert (
-        evaluate_prerequisite_expression(
-            direct_entry.tree, direct_entry.required, [], completed_group_ids=[]
-        )
+        evaluate_prerequisite_expression(direct_entry.tree, direct_entry.required, [])
         is PrerequisiteSatisfactionState.UNSATISFIED
     )
     # The inactive 3-credit module member cannot satisfy the stored 5-credit numeric child, so the
@@ -736,14 +734,13 @@ def test_prerequisite_graph_expands_normalized_module_rules(
             direct_entry.tree,
             numeric_child,
             ["course-group-inactive"],
-            completed_group_ids=["course-group-inactive"],
         )
         is PrerequisiteSatisfactionState.UNSATISFIED
     )
 
     # Pathing returns a no-solution for the impossible surviving numeric position and fabricates
     # no course.
-    path_result = calculate_minimum_new_credits(compilation.tree, [], completed_group_ids=[])
+    path_result = calculate_minimum_new_credits(compilation.tree, [])
     assert path_result.state is PrerequisitePathState.NO_SOLUTION
     assert path_result.new_courses == ()
     assert path_result.total_new_credits is None

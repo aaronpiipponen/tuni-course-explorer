@@ -1,5 +1,7 @@
 /** Route projection guarantees from graph-issued occurrences and route-only results. */
 import { describe, expect, it } from "vitest";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import type {
   GraphEdge,
   GraphEdgeRelationship,
@@ -9,6 +11,10 @@ import type {
 import { buildGraphModel } from "../graph/model";
 import { buildRouteSummary, buildRouteView } from "./route";
 import { uiText } from "../../../shared/wording";
+import { StoreContext } from "../../../state/context";
+import { createBrowserStore } from "../../../state/store";
+import { RoutePanel } from "./RoutePanel";
+import type { MinimumRouteSession } from "./useMinimumRoute";
 
 const course = (group_id: string, credits_min: string) => ({
   group_id,
@@ -316,6 +322,32 @@ describe("minimum-route projection", () => {
     expect(noSolutionView.lit.nodes).toEqual(
       new Set(["course:root", "course:unused", "connector:or"]),
     );
+    const renderPanel = (view: ReturnType<typeof buildRouteSummary>) => {
+      const session: MinimumRouteSession = {
+        result: noSolution,
+        calculating: false,
+        error: null,
+        expanded: false,
+        find() {},
+        clear() {},
+        setExpanded() {},
+      };
+      const html = renderToStaticMarkup(
+        createElement(
+          StoreContext.Provider,
+          { value: createBrowserStore(localStorage) },
+          createElement(RoutePanel, { view, route: session }),
+        ),
+      );
+      const element = document.createElement("div");
+      element.innerHTML = html;
+      return element;
+    };
+    const problemList =
+      renderPanel(noSolutionView).querySelector(".route-problems")!;
+    expect(problemList.textContent).toContain("unused");
+    expect(problemList.querySelectorAll("li")).toHaveLength(1);
+    expect(problemList.closest(".route-list-disclosure")).toBeNull();
     const unresolved = path("unresolved", {
       problems: [
         { ...blocked, action_key: "connector:or", state: "unresolved" },
@@ -355,6 +387,9 @@ describe("minimum-route projection", () => {
     expect(shortfallView.shortfalls).toEqual([
       { title: "OR", text: "1 of 2 courses" },
     ]);
+    expect(
+      renderPanel(shortfallView).querySelector(".route-problems")?.textContent,
+    ).toContain("1 of 2 courses");
     const zero = path("exact", {
       total_new_credits: "0",
       selected_occurrence_ids: [],

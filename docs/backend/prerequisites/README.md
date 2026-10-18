@@ -12,6 +12,6 @@ The graph operation projects the compiled tree into the drawing the **Prerequisi
 
 ## The minimum route
 
-The route operation reads the same compiled tree and returns the set of courses that meets the requirements with the fewest new credits, each course counted once. The result is exact by default, and a request whose compact search space exceeds the configured limit restarts once as a bounded approximation that returns an approximate route or a No route found result. [Minimum route](/docs/backend/prerequisites/minimum-route.md) states every route outcome and the tie-break order.
+The route operation reads the same compiled tree and one basis, either the completed courses or every selected course, and returns the set of courses that meets the requirements with the fewest new credits, each course counted once. A basis course costs nothing and its own prerequisites are not expanded. The result is exact by default, and a request whose compact search space exceeds the configured limit restarts once as a bounded approximation that returns an approximate route or a No route found result. [Minimum route](/docs/backend/prerequisites/minimum-route.md) states every route outcome and the tie-break order.
 
 The exact search, its pruning, and the bounded approximation are described in [Minimum route solver](/docs/backend/prerequisites/minimum-route-solver.md).
