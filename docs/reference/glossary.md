@@ -106,6 +106,7 @@ This glossary defines the terms the documentation uses for courses, search, comp
 | Near-duplicate | A candidate recommendation that overlaps a basis course above a configured share. Near-duplicates are left out of recommendations. |
 | Structure of studies | The official structure of each programme in the **Structure of studies** tab, shown as modules, courses, and rules. |
 | Programme | A degree programme or a bare module at the top level of the structure of studies. The app adds one with **Add programme** and orders them in the tab. |
+| Holder | The programme or module that a structure operation acts on: the one an addition or replacement places, a move relocates, and a reset or delete clears. |
 | Unplaced studies | The part of the structure of studies that holds selected courses not placed under any programme or module. |
 
 ## Browser app

@@ -224,7 +224,8 @@ function moduleContainers(root: ResolvedNode): Map<string, string> {
  * its records are returned untouched, so it keeps exactly what it holds now, no missing official
  * course is filled in, no removed content comes back, and no course is pulled out of another holder
  * or listed. Only a holder the tree does not render adopts its scope's official defaults, because
- * the records `resetScope` clears from that scope are dropped before the restoration.
+ * the records `clearScope` drops from that scope are removed before the restoration. A place or a
+ * removal outside the holder is not part of that clearing, so the clearing leaves it as it is.
  *
  * A holder the tree does not render restores its official contents: a module the cleared projection
  * renders nowhere takes its official place again, which brings the courses inside it with it, and a
@@ -270,11 +271,7 @@ export function holderPulls(
         from: (language) => resolvedNodeLabel(at, language),
       });
     }
-  let base = resetScope(
-    afterEdits,
-    officialHomes(afterTree, afterEdits, content),
-    holderNode.key,
-  );
+  let base = clearScope(afterEdits, holderNode.key);
   if (!pull) base = keepCoursePlacements(base, afterEdits, moves);
   const cleared = indexResolved(resolveStructure(afterTree, base, content));
   const modulePlacements: Record<string, string> = {};
@@ -477,28 +474,46 @@ export function clearedScopePlacements(
   return removalPlacements(ids, completedCourseIds);
 }
 
+/**
+ * Return edits without the records one scope owns.
+ *
+ * A choice belongs to the scope when its key sits inside it, and a placement when its target does.
+ * A removal record and a place outside the scope belong to the identity, not to this scope.
+ */
+function clearScope(edits: StructureEdits, scopeKey: string): StructureEdits {
+  const inScope = (key: string) => insideScope(scopeKey, key);
+  const placements = (record: Record<string, string | null>) =>
+    Object.fromEntries(
+      Object.entries(record).filter(
+        ([, target]) => !(typeof target === "string" && inScope(target)),
+      ),
+    );
+  return {
+    choices: Object.fromEntries(
+      Object.entries(edits.choices).filter(([key]) => !inScope(key)),
+    ),
+    coursePlacements: placements(edits.coursePlacements),
+    modulePlacements: placements(edits.modulePlacements),
+  };
+}
+
 export function resetScope(
   edits: StructureEdits,
   homes: Homes,
   scopeKey: string,
 ): StructureEdits {
+  const cleared = clearScope(edits, scopeKey);
   const inScope = (key: string) => insideScope(scopeKey, key);
   return {
-    choices: Object.fromEntries(
-      Object.entries(edits.choices).filter(([key]) => !inScope(key)),
-    ),
+    choices: cleared.choices,
     coursePlacements: Object.fromEntries(
-      Object.entries(edits.coursePlacements).filter(
-        ([id, target]) =>
-          !(typeof target === "string" && inScope(target)) &&
-          !(homes.get(id) ?? []).some(inScope),
+      Object.entries(cleared.coursePlacements).filter(
+        ([id]) => !(homes.get(id) ?? []).some(inScope),
       ),
     ),
     modulePlacements: Object.fromEntries(
-      Object.entries(edits.modulePlacements).filter(
-        ([id, target]) =>
-          !(typeof target === "string" && inScope(target)) &&
-          !(homes.get(id) ?? []).some(inScope),
+      Object.entries(cleared.modulePlacements).filter(
+        ([id]) => !(homes.get(id) ?? []).some(inScope),
       ),
     ),
   };
