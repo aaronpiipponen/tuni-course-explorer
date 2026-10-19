@@ -27,7 +27,7 @@ Either set can serve as the basis, the set of courses that counts as already cov
 
 Official data is the course and module data as the university publishes it in the public curriculum source. An official prerequisite is a prerequisite that the university publishes.
 
-An inferred prerequisite is a prerequisite found by analysis of teaching text. The app shows inferred prerequisites apart from the official ones, behind **Inferred**, and marks each one **inferred**.
+An inferred prerequisite is a prerequisite found by analysis of teaching text. On a site that serves the inference features, the app shows inferred prerequisites apart from the official ones, behind **Inferred**, and marks each one **inferred**.
 
 ## The meanings of coverage
 

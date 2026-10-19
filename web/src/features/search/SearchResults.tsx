@@ -7,6 +7,7 @@ import type {
 } from "../../api/types";
 import { useWording } from "../../shared/useWording";
 import { searchMethodLabel } from "../../shared/wording";
+import { useWebFeatures } from "../../app/useWebFeatures";
 import { SearchTierList, type SearchTierListHandle } from "./SearchTierList";
 
 type Tier = { method: SearchMethod; results: UnifiedCourseSearchResult[] };
@@ -21,6 +22,7 @@ function SearchResultsView({
   scrollElement: HTMLElement | null;
 }) {
   const { language, t } = useWording();
+  const { embeddings_enabled } = useWebFeatures();
   const handles = useRef(new Map<number, SearchTierListHandle>());
   const activeReport = useRef<UnifiedSearchReport | null>(null);
   const animation = useRef(0);
@@ -61,7 +63,7 @@ function SearchResultsView({
       aria-label={t("Search results")}
       aria-busy={loading}
     >
-      {!report.semantic_available && (
+      {embeddings_enabled && !report.semantic_available && (
         <p className="search-semantic-notice" role="status">
           {t(
             "Semantic search is unavailable. Showing matches by code and name only.",

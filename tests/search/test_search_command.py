@@ -228,6 +228,57 @@ def test_search_command_limits_query_embedding_to_one_short_attempt(monkeypatch)
     assert engine.disposed
 
 
+def test_search_without_semantic_preserves_lexical_results(monkeypatch) -> None:
+    """A semantic-free command serves the real lexical methods with no embedding composition."""
+    engine = type(
+        "Engine", (), {"disposed": False, "dispose": lambda self: setattr(self, "disposed", True)}
+    )()
+    settings = search_settings()
+    records = represented_rows(
+        (
+            course(
+                "group-target",
+                version("source-target", code="COMP.CS.100", name_en="Data Structures"),
+            ),
+        )
+    )
+
+    def refuse_reached(name: str):
+        def refuse(*_args, **_kwargs):
+            raise AssertionError(f"{name} must not be reached without semantic search")
+
+        return refuse
+
+    monkeypatch.setattr(command_module, "load_database_settings", lambda: object())
+    monkeypatch.setattr(command_module, "load_search_settings", lambda: settings)
+    monkeypatch.setattr(
+        command_module, "load_embedding_settings", refuse_reached("embedding settings")
+    )
+    monkeypatch.setattr(command_module, "EmbeddingProvider", refuse_reached("embedding provider"))
+    monkeypatch.setattr(
+        command_module, "SemanticSearchRepository", refuse_reached("semantic repository")
+    )
+    monkeypatch.setattr(session_module, "create_database_engine", lambda value: engine)
+    monkeypatch.setattr(session_module, "create_session_factory", lambda value: object())
+    monkeypatch.setattr(
+        command_module,
+        "CurriculumRepository",
+        lambda value: FakeCurriculum((), summaries_by_activity={None: records}),
+    )
+
+    report = command_module.run_search_command(
+        "COMP.CS.100", display_language="fi", include_semantic=False
+    )
+
+    assert [result.course.group_id for result in report.results] == ["group-target"]
+    assert report.results[0].match_sources == ("exact_code", "substring")
+    assert report.results[0].fuzzy_score is None
+    assert report.results[0].semantic_score is None
+    assert report.semantic_available is False
+    assert report.tier_priority == ("exact_code", "substring", "fuzzy_name")
+    assert engine.disposed
+
+
 def test_search_cli_forwards_options_and_prints_one_report(monkeypatch, capsys) -> None:
     """CLI delegates once to the unified command, requires locale, and prints one unified report."""
     expected = command_module.UnifiedSearchReport(

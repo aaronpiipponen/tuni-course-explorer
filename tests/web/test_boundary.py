@@ -27,6 +27,7 @@ def test_web_surface_is_read_only() -> None:
             "/api/recommendations",
             "/api/study-structure",
             "/api/course-summaries",
+            "/api/features",
         )
     } | {("/", frozenset({"GET"})), ("/docs", frozenset({"GET"}))}
     assert any(route.path == "/assets" for route in app.routes)
@@ -35,7 +36,7 @@ def test_web_surface_is_read_only() -> None:
             sys.executable,
             "-c",
             "import sys; import course_explorer_web.app; forbidden = "
-            "('course_explorer_admin', 'course_explorer.translation', "
+            "('course_explorer_admin', 'course_explorer_admin_web', 'course_explorer.translation', "
             "'course_explorer.ingestion.commands', 'course_explorer.embeddings.commands'); "
             "assert not any(name == prefix or name.startswith(prefix + '.') "
             "for name in sys.modules for prefix in forbidden)",

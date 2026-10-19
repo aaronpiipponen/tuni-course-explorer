@@ -106,7 +106,7 @@ Run the action when the fixture or its stored vectors changed and the bundled fi
 | The bundle names a different chunk set than the fixture | `bundled mock embeddings do not match the current fixture chunks` |
 | The bundle was built from a different teaching text | `bundled mock embeddings input identity does not match the current fixture` |
 
-The action needs complete embedding coverage of the configured database: every desired chunk of a represented course must hold a completed compatible vector, and at least one learning-outcomes chunk must exist. Both hub means are computed before the first file is written, so a dataset that is not ready leaves the bundled file and both hub files as they are. The two hub files are published as one write, so both change together or not at all. A database that holds curriculum outside the fixture is refused before any file is touched, with the same message as the loader.
+The action needs complete embedding coverage of the configured database: every desired chunk of a represented course must hold a completed compatible vector, and at least one learning-outcomes chunk must exist. Both hub means are computed and both temporary files are staged before either hub destination changes, so a dataset that is not ready leaves the bundled file and both hub files as they are. The bundled file is written before the hub files are staged, and the staged hub files then replace their destinations in sequence. A failure during that sequence can leave the two hub destinations in different states, with the catalogue hub updated and the outcomes hub holding its earlier content. A database that holds curriculum outside the fixture is refused before any file is touched, with the same message as the loader.
 
 The values in the hub files reach a running site when its process starts. Restart the web server after a hub write, as [the operations overview](/docs/operations/README.md#derived-files-and-the-web-restart) describes. [Embeddings](/docs/backend/text-and-vectors/embeddings.md#the-hubs) describes what the two hubs are.
 
@@ -224,7 +224,7 @@ uv run python scripts/admin.py hubs
 The command computes both embedding hub means from the stored chunk vectors of the selected dataset and writes the two files that the hub keys in `config/search.toml` name. Its report holds `catalogue_path`, `outcomes_path`, `chunk_count`, and `outcomes_chunk_count`. Both means are computed before the first write, so incomplete coverage writes neither file.
 
 > [!IMPORTANT]
-> Restart the web server after the hub write. A serving process reads both hub files when it starts and holds those values while it runs, so the written values reach the site at the next start. A copy under systemd restarts with `systemctl --user restart tuni-course-explorer-web.service`, and a foreground copy is stopped and started again. [Self-hosting](/docs/getting-started/self-hosting.md) gives the unit commands.
+> Restart the web server after the hub write. A serving process of a site that serves embedding features reads both hub files when it starts and holds those values while it runs, so the written values reach the site at the next start. A copy under systemd restarts with `systemctl --user restart tuni-course-explorer-web.service`, and a foreground copy is stopped and started again. [Self-hosting](/docs/getting-started/self-hosting.md) gives the unit commands.
 
 ### Coverage and summaries
 

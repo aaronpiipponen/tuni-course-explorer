@@ -1,14 +1,17 @@
 /** Persistent application chrome: brand, cyclic-tab entry points, docs and profile language. */
-import { TABS } from "./tabs";
+import { visibleTabs, effectiveTab } from "./tabs";
 import { ProfileButton } from "../features/profiles/ProfileButton";
 import { LanguageSwitch } from "../shared/LanguageSwitch";
 import { setActiveTab, useActiveTab } from "./sessionTab";
 import { useAction } from "../shared/useAction";
 import { ErrorNotice } from "../shared/ErrorNotice";
 import { useWording } from "../shared/useWording";
+import { useWebFeatures } from "./useWebFeatures";
 
 export function TopBar({ openDocs }: { openDocs: () => void }) {
-  const activeTab = useActiveTab();
+  const storedTab = useActiveTab();
+  const { embeddings_enabled } = useWebFeatures();
+  const activeTab = effectiveTab(storedTab, embeddings_enabled);
   const { runAction, error } = useAction();
   const { language, t } = useWording();
   return (
@@ -19,7 +22,7 @@ export function TopBar({ openDocs }: { openDocs: () => void }) {
         <span className="brand-text">course-explorer</span>
       </div>
       <nav aria-label={t("Main navigation")}>
-        {TABS.map((tab) => (
+        {visibleTabs(embeddings_enabled).map((tab) => (
           <button
             key={tab.id}
             type="button"

@@ -1,13 +1,15 @@
 # Discovering courses
 
-The Discover tab proposes courses to study next and courses whose teaching text resembles the courses you have.
+The Discover tab proposes courses to study next and, on a site that serves the embedding features, courses whose teaching text resembles the courses you have.
 
 ## The two lists
 
-The tab opens on **Next courses**, the first of the two lists, chosen by the tabs above the results.
+The tab opens on **Next courses**, chosen by the tabs above the results.
 
 - **Next courses** lists courses whose prerequisites your own courses cover.
-- **Recommended** lists courses whose teaching text is close to your courses, ranked by how close they are. A course that overlaps one of your own courses too closely is left out.
+- **Recommended**, on a site that serves the embedding features, lists courses whose teaching text is close to your courses, ranked by how close they are. A course that overlaps one of your own courses too closely is left out.
+
+A site that serves no embedding features serves **Next courses** alone.
 
 The **Next courses** list opens with a header holding its name and the number of results, and the **Recommended** list opens with a header reading "recommended for you" and the same count.
 
@@ -30,16 +32,16 @@ The basis is the same selection and completion as in every other tab, and the ch
 
 The **All** and **At least one** switch belongs to the **Next courses** list, and the **Recommended** list leaves out every course that **Next courses** lists under **All** and every course in your basis.
 
-**Active only** is on by default. While it is on, only active courses are proposed, and turning it off adds inactive courses to both lists. An inactive course that you have selected or completed counts as done either way, so it can cover a prerequisite.
+**Active only** is on by default. While it is on, only active courses are proposed, and turning it off adds inactive courses to the lists the site serves. An inactive course that you have selected or completed counts as done either way, so it can cover a prerequisite.
 
-The **?** button opens a drawer that explains the basis, the mode under **Next courses**, **Active only**, and the percentages of the open list: what **Required** and **Recommended** measure under **Next courses**, and what **Similarity** measures under **Recommended**. The drawer also explains the three marks a row can carry: **inferred** means the course is listed only because of inferred prerequisites, **selected** means the course is in your selection but not completed, and **completed** means you marked it completed. The coverage rule behind next courses is described in [Next courses](/docs/backend/search-and-discovery/next-courses.md).
+The **?** button opens a drawer that explains the basis, the mode under **Next courses**, **Active only**, the percentages of the open list, and the marks a row can carry. The percentages cover what **Required** and **Recommended** measure under **Next courses** and, on a site that serves the embedding features, what **Similarity** measures there. The marks are **inferred**, **selected**, and **completed**. On a site that serves the inference features, **inferred** means the course is listed only because of inferred prerequisites. **selected** means the course is in your selection but not completed, and **completed** means you marked it completed. The coverage rule behind next courses is described in [Next courses](/docs/backend/search-and-discovery/next-courses.md).
 
 ## Read a result row
 
 Every row is a course card with its code, its name, its credits, an **active** or **inactive** label, and a **completed** or **selected** badge when the course is in your own sets.
 
 - A next course row carries a coverage meter for each category that holds course prerequisites. **Required** is the share of the courses of the required prerequisite option your basis covers best, and **Recommended** does the same over its recommended options. Each is shown as a whole percentage, and a category with no course prerequisites shows no meter at all. Under **All** a row carries no coverage meter, because that list shows only courses whose prerequisite requirements your basis satisfies, and a numeric choice requirement can be satisfied by fewer than all of its options. The freed width goes to the course name.
-- A next course that is listed only because of inferred prerequisites carries the **inferred** mark.
+- A next course that is listed only because of inferred prerequisites carries the **inferred** mark, on a site that serves the inference features.
 - A recommended row carries one meter, **Similarity**, with the percentage of how close its teaching text is to your whole basis. Hovering the meter shows the note "Teaching text includes derived translations" when the text compared on either side comes from a translation rather than from official text.
 
 > [!NOTE]
@@ -52,9 +54,15 @@ The similarity ranking and the rule that leaves out courses overlapping your own
 ## Act on a result
 
 1. Select the row. The [course menu](/docs/guides/README.md#shared-course-state) opens.
-2. Pick an action: **Add to comparison**, **Open prerequisite graph**, [**Add to Unplaced studies**](/docs/guides/structure-of-studies.md#unplaced-studies), **Mark completed**, or **Open in Sisu**. A completed course offers **Mark not completed** instead, and a course already in the comparison shows **Already in comparison**.
+2. Pick an action: **Add to comparison** on a site that serves comparison, **Open prerequisite graph**, [**Add to Unplaced studies**](/docs/guides/structure-of-studies.md#unplaced-studies), **Mark completed**, or **Open in Sisu**. A completed course offers **Mark not completed** instead, and a course already in the comparison shows **Already in comparison**.
 
 **Open prerequisite graph** switches to the Prerequisites tab with that course at the top of the drawing, described in [Exploring prerequisites](/docs/guides/prerequisites.md). **Mark completed** selects the course as well.
+
+## When a site serves fewer features
+
+On a site that serves no embedding features the row above the results holds **Next courses** alone, and the drawer explains that list's settings without a similarity percentage. The **Recommended** choice your profile saved is its own value, so a site that serves the list opens on the saved choice, and the course sets are the same either way.
+
+On a site that serves no inference features no row carries the **inferred** mark, and the drawer explains **selected** and **completed** alone. The next courses then come from the official prerequisites alone. Where the site serves the embedding features, **Recommended** is ranked by similarity.
 
 ## Loading and empty states
 

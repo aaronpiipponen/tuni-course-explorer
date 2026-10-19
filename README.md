@@ -1,6 +1,6 @@
 # TUNI Course Explorer
 
-TUNI Course Explorer is a course-search and study-path service for Tampere University curriculum data. It combines an offline Python pipeline over PostgreSQL and pgvector with a read-only FastAPI backend and a React browser application.
+TUNI Course Explorer explores Tampere University curriculum data through a React browser app and a read-only FastAPI backend, with an offline Python pipeline over PostgreSQL and pgvector.
 
 The browser application searches courses by code, name and meaning, compares courses, draws official prerequisite structures and separately marked inferred ones, computes a minimum-new-credit route, lists what can be studied next, and keeps one browser-local study plan across every tab.
 
@@ -12,11 +12,11 @@ The example setup in this repository runs on an invented dataset, not on univers
 
 ## Features
 
-The application has five tabs that share one browser-local study plan.
+The application has five tabs that share one browser-local study plan. A site sets in `config/web.toml` whether it serves the embedding features (the **Compare** tab, the **Recommended** list and semantic search) and the inference features (the **Inferred** toggle and inferred prerequisites), and the app leaves out what the site does not serve.
 
 ### Search
 
-Search matches a query against course codes, course names and the teaching text. Exact code, substring, fuzzy name and semantic matching all run for every query, and the results are merged into one entry per course that lists each way the course matched.
+Search matches a query against course codes, course names and the teaching text. Exact code, substring and fuzzy name matching run for every query, semantic matching runs as well on a site that serves the embedding features, and the results are merged into one entry per course that lists each way the course matched.
 
 ![Search tab with one course that matched by substring, fuzzy and semantic search, each shown as a match source](/docs/screenshots/search-results.png)
 
@@ -50,7 +50,7 @@ This tab shows an ordered list of programmes, each with the official structure o
 
 The profile menu in the top bar is named after the active profile (**My plan** by default). It lists the saved profiles and creates new ones. A profile stores the selected and completed courses, exclusions and graph marks, the ordered programmes with their edits, and the tab options. The open tab belongs to the browser tab instead, so switching a profile never moves it. The FI/EN switch sets the interface wording and the language of official course and module names.
 
-![Profile menu listing the default profile with its selected and completed counts, next to the FI and EN language switch](/docs/screenshots/profile-language.png)
+![The profile menu lists My plan and Alternative plan with their selected and completed counts, next to the FI and EN language switch with EN pressed](/docs/screenshots/profile-menu.png)
 
 ## Data and limits
 
@@ -77,6 +77,7 @@ Runtime configuration and deployment files are provided as examples under `examp
    ```bash
    uv sync --locked
    npm --prefix web ci --no-audit --no-fund
+   npm --prefix admin-web ci --no-audit --no-fund
    ```
 
 2. Create the working folders, then copy the example files to their working paths:
@@ -85,17 +86,18 @@ Runtime configuration and deployment files are provided as examples under `examp
    mkdir -p config/derived deploy
    ```
 
-   - the seven `examples/config/*.toml` files into `config/`
+   - the eight `examples/config/*.toml` files into `config/`
    - `examples/config/wiki.json` into `config/wiki.json`
    - the two `examples/config/derived/*.json` files into `config/derived/`
    - `examples/.env.example` into `.env`
    - `examples/docker-compose.yml` into the repository root
    - `examples/deploy/Caddyfile` and `examples/deploy/systemd/tuni-course-explorer-web.service.in` into `deploy/`
 
-3. Build the browser application. The build reads `config/wiki.json`, so it runs after the copy.
+3. Build the browser application and the administration console. The browser application's build reads `config/wiki.json`, so it runs after the copy.
 
    ```bash
    npm --prefix web run build
+   npm --prefix admin-web run build
    ```
 
 4. Edit `.env`: set a database password and keep the file readable only by you (mode 0600).
@@ -124,12 +126,15 @@ Runtime configuration and deployment files are provided as examples under `examp
 
 The example dataset in `data/mock/` is invented. Its courses, modules, prerequisites and structure rules are not university data, and its embedding vectors are bundled with it, so nothing needs to be generated.
 
-Checks for the browser application:
+Checks for the browser application and the administration console:
 
 ```bash
 npm --prefix web run typecheck
 npm --prefix web run test
 npm --prefix web run format:check
+npm --prefix admin-web run typecheck
+npm --prefix admin-web run test
+npm --prefix admin-web run format:check
 ```
 
 ## Architecture
@@ -137,8 +142,10 @@ npm --prefix web run format:check
 - [`src/course_explorer/`](/src/course_explorer/): domain, ingestion, search, inference and persistence services.
 - [`src/course_explorer_admin/`](/src/course_explorer_admin/): the administration command, with the operator menu, the four preparation stages and their lifecycle.
 - [`src/course_explorer_web/`](/src/course_explorer_web/): the read-only FastAPI application that serves the browser application and its endpoints.
-- [`scripts/`](/scripts/): thin command-line adapters over the read commands.
+- [`src/course_explorer_admin_web/`](/src/course_explorer_admin_web/): the separate signed-in administration backend that runs the fixed administration commands for the console.
+- [`scripts/`](/scripts/): the administration command, the example data loader, thin command-line adapters over the read commands, and the launchers of the web server and the administration backend.
 - [`web/`](/web/): the React, TypeScript and Vite browser application.
+- [`admin-web/`](/admin-web/): the React, TypeScript and Vite administration console.
 
 Python services own behavior, PostgreSQL with pgvector stores normalized state and vectors, and Alembic owns schema changes. The browser application is a read-only client of the API. The offline pipeline that prepares the data runs outside the request path.
 

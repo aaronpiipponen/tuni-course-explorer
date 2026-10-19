@@ -86,7 +86,7 @@ and it raises `ValueError` when `ceiling <= floor`.
 6. It sets `uses_derived_text` by testing every chunk of both sides for `text_origin is TeachingTextOrigin.DERIVED`.
 7. It returns a `CourseComparisonReport` carrying both `CourseSummary` values, the meters, the verdict, and the flag.
 
-`scripts/compare_courses.py` is the `argparse` adapter that prints `report.model_dump_json()`, and `POST /api/comparison` returns the same serialized report.
+`scripts/compare_courses.py` is the `argparse` adapter that prints `report.model_dump_json()`, and `POST /api/comparison` returns the same serialized report. A site whose `WEB_EMBEDDINGS_ENABLED` is false answers that route with status 403 and the detail `Feature disabled` before the command runs.
 
 ## Settings
 

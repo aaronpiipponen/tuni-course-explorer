@@ -1,4 +1,4 @@
-/** Fixed-width previous and next links following the shared registry order. */
+/** Previous and next links following the shared registry order. */
 import { DOCS_PAGES, getDocsNeighbours, type DocsPageId } from "./registry";
 
 export function DocsPageNavigation({ pageId }: { pageId: DocsPageId }) {

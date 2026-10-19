@@ -13,6 +13,7 @@ proposal, or writes official curriculum or final inferred product stores.
 from __future__ import annotations
 
 import json
+from collections.abc import Collection
 from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
@@ -336,6 +337,56 @@ class InferenceEvidenceRepository:
                 raise ValueError(f"unknown inference target work {work_id}")
             work, target_group_id = row
             return _work_record(work, target_group_id=target_group_id)
+
+    def read_works_by_ids(
+        self, work_ids: Collection[UUID]
+    ) -> dict[UUID, InferenceTargetWorkRecord]:
+        """Return the retained work rows of many ids in one read, keyed by id.
+
+        An id with no row is absent from the result, so the caller owns the unknown-id failure.
+        """
+        if not work_ids:
+            return {}
+        with self._factory() as session:
+            rows = session.execute(
+                select(InferenceTargetWork, Course.group_id)
+                .join(Course, Course.id == InferenceTargetWork.target_course_id)
+                .where(InferenceTargetWork.id.in_(work_ids))
+            ).all()
+            return {
+                work.id: _work_record(work, target_group_id=target_group_id)
+                for work, target_group_id in rows
+            }
+
+    def read_completions_for_works(
+        self, work_ids: Collection[UUID]
+    ) -> dict[UUID, InferenceModelAttemptRecord]:
+        """Return the completion rows of many work ids in one read, keyed by work id.
+
+        A work id with no completion is absent from the result.
+        """
+        if not work_ids:
+            return {}
+        with self._factory() as session:
+            rows = session.scalars(
+                select(InferenceModelAttempt).where(
+                    InferenceModelAttempt.target_work_id.in_(work_ids)
+                )
+            ).all()
+            return {row.target_work_id: _completion_record(row) for row in rows}
+
+    def read_runs(self, run_ids: Collection[UUID]) -> dict[UUID, InferencePipelineRunRecord]:
+        """Return the persisted executions of many ids in one read, keyed by id.
+
+        An id with no row is absent from the result.
+        """
+        if not run_ids:
+            return {}
+        with self._factory() as session:
+            rows = session.scalars(
+                select(InferencePipelineRun).where(InferencePipelineRun.id.in_(run_ids))
+            ).all()
+            return {row.id: _run_record(row) for row in rows}
 
     @staticmethod
     def _locked_execution(session: Session, run_id: UUID) -> InferencePipelineRun:

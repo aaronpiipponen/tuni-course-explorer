@@ -13,6 +13,7 @@ import { buildRouteSummary, buildRouteView } from "./route";
 import { uiText } from "../../../shared/wording";
 import { StoreContext } from "../../../state/context";
 import { createBrowserStore } from "../../../state/store";
+import { WebFeaturesContext } from "../../../app/webFeaturesContext";
 import { RoutePanel } from "./RoutePanel";
 import type { MinimumRouteSession } from "./useMinimumRoute";
 
@@ -336,7 +337,11 @@ describe("minimum-route projection", () => {
         createElement(
           StoreContext.Provider,
           { value: createBrowserStore(localStorage) },
-          createElement(RoutePanel, { view, route: session }),
+          createElement(
+            WebFeaturesContext.Provider,
+            { value: { embeddings_enabled: true, inference_enabled: true } },
+            createElement(RoutePanel, { view, route: session }),
+          ),
         ),
       );
       const element = document.createElement("div");

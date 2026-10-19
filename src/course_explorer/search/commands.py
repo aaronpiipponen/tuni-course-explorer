@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import ExitStack
 from typing import Annotated, get_args
 
 from pydantic import TypeAdapter, ValidationError
@@ -35,12 +36,16 @@ def run_search_command(
     semantic_min_score: float | None = None,
     fuzzy_min_score: float | None = None,
     include_inactive: bool = True,
+    include_semantic: bool = True,
 ) -> UnifiedSearchReport:
     """Compose one unified search over the match services, the shared repositories, and provider.
 
     The embedding provider receives a query-local projection of the embedding settings that carries
     the search policy for the one query embedding request. Every other consumer receives the loaded
-    embedding settings, so the vector identity and the hubs come from those settings.
+    embedding settings, so the vector identity and the hubs come from those settings. An
+    ``include_semantic`` of ``False`` serves the three lexical methods alone: the embedding settings,
+    the semantic repository and the provider are never built, and the unified owner receives no
+    semantic service.
     """
     if not query.strip():
         raise ValueError("search query must be nonblank")
@@ -53,24 +58,27 @@ def run_search_command(
             _FUZZY_SCORE_ADAPTER.validate_python(fuzzy_min_score)
     except ValidationError as exc:
         raise ValueError(str(exc)) from exc
-    embedding_settings = load_embedding_settings()
     search_settings = load_search_settings()
-    query_embedding_settings = embedding_settings.model_copy(
-        update={
-            "embedding_request_timeout_seconds": (
-                search_settings.search_embedding_request_timeout_seconds
-            ),
-            "embedding_max_attempts": search_settings.search_embedding_max_attempts,
-        }
-    )
     with _database_context(load_database_settings()) as factory:
         curriculum = CurriculumRepository(factory)
-        repository = SemanticSearchRepository(factory)
         course_lookup = CourseLookupService(curriculum, search_settings)
-        with EmbeddingProvider(query_embedding_settings) as provider:
-            semantic_search = CourseSearchService(
-                curriculum, repository, provider, embedding_settings, search_settings
-            )
+        with ExitStack() as stack:
+            semantic_search: CourseSearchService | None = None
+            if include_semantic:
+                embedding_settings = load_embedding_settings()
+                query_embedding_settings = embedding_settings.model_copy(
+                    update={
+                        "embedding_request_timeout_seconds": (
+                            search_settings.search_embedding_request_timeout_seconds
+                        ),
+                        "embedding_max_attempts": search_settings.search_embedding_max_attempts,
+                    }
+                )
+                repository = SemanticSearchRepository(factory)
+                provider = stack.enter_context(EmbeddingProvider(query_embedding_settings))
+                semantic_search = CourseSearchService(
+                    curriculum, repository, provider, embedding_settings, search_settings
+                )
             unified_search = UnifiedCourseSearchService(
                 curriculum, semantic_search, course_lookup, search_settings
             )

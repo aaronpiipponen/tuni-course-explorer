@@ -123,9 +123,15 @@ When a sample reaches the interval, the worker publishes a paused state with the
 
 A pause or a stop that arrives before the restart issues no restart. The clock record belongs to one session and one worker boot, and a record from another boot reports not due and is not rewritten until a real checkpoint. [Inference scheduling and disposition](/docs/backend/inference/inference-scheduling.md#the-periodic-reboot) states the timing rule for the inference stage.
 
+The stage status carries the last mirrored `reboot_due` value inside the progress member's worker status, and that value is unknown while the progress member carries no worker status. It is the last observation the session recorded rather than a current read of the worker, and a status read never turns it into a worker request.
+
 ## Status and report scope
 
 `uv run python scripts/admin.py <stage> status` reads the durable state and the owned process. It starts no service and reaches no worker, so a remote stage reports the last status its run recorded.
+
+A remote stage's status therefore refreshes from server state alone, while its two worker logs are read on demand. `uv run python scripts/admin.py logs read inference SESSION_ID worker-runner --lines N` and the same command with `worker-runtime` read the worker's own `runner.log` and `runtime.log` over the transport, and `keepalive` reads the shared session directory's `keepalive.log`. [Operator menu](/docs/operations/operator-menu.md#the-fixed-log-reads) lists every source and its refusals.
+
+The server-side logs live beside the session receipt. A local stage's detached worker writes `runner.out` and `runner.err` there, and the keepalive log of a remote session sits in the shared session directory. The inference stage launches its server process with its output sent to the null device, so its two runner streams are reported as unavailable rather than written. A stop removes the two runner streams and the keepalive log with the rest of the session's scratch.
 
 The coverage reports and the summaries read the selected dataset. The progress of a remote stage that has not returned is read from that stage's status instead, and the [Operator menu](/docs/operations/operator-menu.md#coverage-and-summaries) states that scope for every report entry.
 

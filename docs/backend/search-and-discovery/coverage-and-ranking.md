@@ -17,7 +17,7 @@ This page describes the services, reads, evaluators, and ordering keys that prod
 
 The result models are frozen with `extra="forbid"`. `NextCourseMode` holds `ALL = "all"` and `AT_LEAST_ONE = "at_least_one"`. `NextCourseResult` holds `course`, `required_coverage`, `recommended_coverage`, and `depends_on_inferred`. `NextCoursesReport` holds `selected_group_ids`, `completed_group_ids`, `basis`, `mode`, `display_language`, `include_inferred`, `active_only`, and `results`.
 
-`scripts/next_courses.py` is the `argparse` adapter. `--selected` and `--completed` repeat, `--basis` defaults to `completed`, `--mode` defaults to `all`, `--display-language` is required, `--include-inferred` is a flag, and the mutually exclusive `--active-only` and `--all-courses` set `active_only`. It prints `report.model_dump_json()` as one line. `POST /api/next-courses` returns the same serialized report.
+`scripts/next_courses.py` is the `argparse` adapter. `--selected` and `--completed` repeat, `--basis` defaults to `completed`, `--mode` defaults to `all`, `--display-language` is required, `--include-inferred` is a flag, and the mutually exclusive `--active-only` and `--all-courses` set `active_only`. It prints `report.model_dump_json()` as one line. `POST /api/next-courses` applies the site's inference switch to `include_inferred` before it calls the command, so the flag reaches the command true only when the site serves the inference features and the request asks for it, and the route returns the same serialized report.
 
 ## Candidate reads
 
@@ -94,7 +94,7 @@ depends_on_inferred = official-only compilation exists and its outcome is None
 6. It reads the represented summaries of the hit identities, ranks them with `rank_recommendation_candidates`, reads the chunks of the surviving candidates, and ranks them with `recommendations_from_candidates` using `embedding_settings.embedding_hub_vector` and `embedding_settings.embedding_outcomes_hub_vector`.
 7. It returns `RecommendationsReport(similarity_results=...)`.
 
-`SimilarityRecommendation` holds `course`, `relatedness` (0 to 100), `score` (0 to 100), `overlap_with_basis` (0 to 100 or `None`), and `uses_derived_text`. `scripts/recommendations.py` forwards the same arguments as the next-course adapter, and `POST /api/recommendations` returns the same serialized report.
+`SimilarityRecommendation` holds `course`, `relatedness` (0 to 100), `score` (0 to 100), `overlap_with_basis` (0 to 100 or `None`), and `uses_derived_text`. `scripts/recommendations.py` forwards the same arguments as the next-course adapter. `POST /api/recommendations` applies the site's inference switch to `include_inferred`, so the next-course step behind the request reads official prerequisites alone on a site that serves no inference features. A site whose `WEB_EMBEDDINGS_ENABLED` is false answers that route with status 403 and the detail `Feature disabled` before the command runs. A served request returns the same serialized report.
 
 ### The nearest read
 

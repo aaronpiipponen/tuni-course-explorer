@@ -12,6 +12,9 @@ secrets and machine identity.
 Because the tracked TOML and the local ``.env`` are the runtime inputs, ordinary commands need no
 manual sourcing. ``configuration shell`` serves the few one-time shell recipes that
 need portable variables exported. It emits public portable aliases only.
+
+The same owner reads one file's candidate text without touching the file, and holds one transient
+candidate snapshot for a settings validation outside a process start.
 """
 
 from __future__ import annotations
@@ -22,13 +25,17 @@ import os
 import shlex
 import sys
 import tomllib
-from collections.abc import Collection, Mapping, Sequence
+from collections.abc import Callable, Collection, Iterator, Mapping, Sequence
+from contextlib import contextmanager
+from contextvars import ContextVar
 from functools import cache
+from io import StringIO
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 from dotenv import dotenv_values
-from pydantic_settings import EnvSettingsSource
+from dotenv.parser import parse_stream
+from pydantic_settings import BaseSettings, EnvSettingsSource, PydanticBaseSettingsSource
 
 from course_explorer.administration import repository_root
 
@@ -41,6 +48,7 @@ PUBLIC_CONFIG_FILES: tuple[str, ...] = (
     "config/translation.toml",
     "config/inference.toml",
     "config/worker.toml",
+    "config/admin_web.toml",
     "config/web.toml",
 )
 
@@ -91,15 +99,38 @@ def _resolve_hub_reference(root: Path, alias: str, value: object) -> object:
 def _read_merged_public_configuration_cached(root_text: str) -> dict[str, object]:
     """Read and merge every public TOML file beneath one root, rejecting duplicate aliases."""
     root = Path(root_text)
+    documents = {relative: _read_toml_file(root / relative) for relative in PUBLIC_CONFIG_FILES}
+    return _merge_configuration_documents(documents)
+
+
+def _merge_configuration_documents(
+    documents: Mapping[str, Mapping[str, object]],
+) -> dict[str, object]:
+    """Merge parsed configuration documents, rejecting an alias defined in more than one."""
     merged: dict[str, object] = {}
-    for relative in PUBLIC_CONFIG_FILES:
-        for alias, value in _read_toml_file(root / relative).items():
+    for document in documents.values():
+        for alias, value in document.items():
             if alias in merged:
                 raise ValueError(
                     f"public configuration alias is defined in more than one file: {alias}"
                 )
             merged[alias] = value
     return merged
+
+
+def _project_configuration(
+    root: Path, values: Mapping[str, object], aliases: Collection[str] | None
+) -> dict[str, object]:
+    """Return one alias projection of merged values, resolving only the hub references requested."""
+    if aliases is None:
+        selected = dict(values)
+    else:
+        requested = set(aliases)
+        selected = {alias: value for alias, value in values.items() if alias in requested}
+    for alias in _HUB_REFERENCE_ALIASES:
+        if alias in selected:
+            selected[alias] = _resolve_hub_reference(root, alias, selected[alias])
+    return selected
 
 
 def read_public_configuration(
@@ -116,15 +147,72 @@ def read_public_configuration(
     No local value is read or rendered here.
     """
     merged = _read_merged_public_configuration_cached(str(root))
-    if aliases is None:
-        selected = dict(merged)
-    else:
-        requested = set(aliases)
-        selected = {alias: value for alias, value in merged.items() if alias in requested}
-    for alias in _HUB_REFERENCE_ALIASES:
-        if alias in selected:
-            selected[alias] = _resolve_hub_reference(root, alias, selected[alias])
-    return selected
+    return _project_configuration(root, merged, aliases)
+
+
+def read_configuration_documents(
+    root: Path, *, replacements: Mapping[str, str] | None = None
+) -> dict[str, dict[str, object]]:
+    """Read every public TOML file beneath ``root`` as its own parsed document.
+
+    A supplied replacement text parses in place of that file's read, so a candidate edit validates
+    against the same document set the runtime composition merges without writing the file. Every
+    read is fresh, so a caller sees the files as they are at that moment.
+    """
+    replaced = dict(replacements or {})
+    for relative in replaced:
+        if relative not in PUBLIC_CONFIG_FILES:
+            raise ValueError(f"replacement is not a registered configuration file: {relative}")
+    documents: dict[str, dict[str, object]] = {}
+    for relative in PUBLIC_CONFIG_FILES:
+        if relative in replaced:
+            try:
+                documents[relative] = tomllib.loads(replaced[relative])
+            except tomllib.TOMLDecodeError as exc:
+                raise ValueError(
+                    f"public configuration file is not valid TOML: {relative}"
+                ) from exc
+        else:
+            documents[relative] = _read_toml_file(root / relative)
+    return documents
+
+
+def parse_local_configuration(payload: str) -> dict[str, str | None]:
+    """Parse dotenv text into its assignments without interpolating any value.
+
+    A blank or comment line carries no assignment and is skipped. A binding the parser marks as
+    malformed and a key assigned more than once under the runtime's case-insensitive names both
+    raise a content-free ``ValueError`` so a candidate edit refuses an ambiguous file. The mapping
+    key keeps the spelling the file holds. A bare key holds ``None``.
+    """
+    values: dict[str, str | None] = {}
+    assigned: set[str] = set()
+    for binding in parse_stream(StringIO(payload)):
+        if binding.error:
+            raise ValueError("dotenv payload holds a malformed assignment")
+        if binding.key is None:
+            continue
+        normalized = binding.key.lower()
+        if normalized in assigned:
+            raise ValueError("dotenv payload assigns one key more than once")
+        assigned.add(normalized)
+        values[binding.key] = binding.value
+    return values
+
+
+def read_candidate_local_configuration(root: Path) -> dict[str, str | None]:
+    """Read the device-local file beneath ``root`` freshly as a strict candidate local mapping.
+
+    An absent file supplies no value, so any required setting fails through its owning validator.
+    Every read reaches the file and parses it through ``parse_local_configuration`` after decoding
+    it as UTF-8 without newline translation, so a malformed binding and a key assigned more than once
+    both raise a content-free ``ValueError``. Other read, decode and parse errors propagate.
+    """
+    try:
+        payload = (root / ".env").read_bytes()
+    except FileNotFoundError:
+        return {}
+    return parse_local_configuration(payload.decode("utf-8"))
 
 
 def hub_reference_path(root: Path, alias: str) -> Path:
@@ -163,6 +251,70 @@ def clear_configuration_caches() -> None:
     _read_local_configuration_cached.cache_clear()
 
 
+class CandidateConfiguration(NamedTuple):
+    """One transient candidate configuration: its root, its merged public values, its local values."""
+
+    root: Path
+    public: Mapping[str, object]
+    local: Mapping[str, str | None]
+
+
+_CANDIDATE_CONFIGURATION: ContextVar[CandidateConfiguration | None] = ContextVar(
+    "configuration_candidate", default=None
+)
+
+
+def _candidate_configuration() -> CandidateConfiguration | None:
+    """Return the candidate snapshot this execution context holds, or ``None``."""
+    return _CANDIDATE_CONFIGURATION.get()
+
+
+@contextmanager
+def configuration_candidate(
+    root: Path,
+    *,
+    documents: Mapping[str, Mapping[str, object]],
+    local: Mapping[str, str | None],
+) -> Iterator[None]:
+    """Hold one candidate configuration for the settings classes built inside the block.
+
+    The documents merge through the shared duplicate-alias rule, so a candidate that repeats an
+    alias fails here. The snapshot is transient: the token reset in the ``finally`` branch restores
+    the previous state whatever the block raises.
+    """
+    token = _CANDIDATE_CONFIGURATION.set(
+        CandidateConfiguration(
+            root=root, public=_merge_configuration_documents(documents), local=local
+        )
+    )
+    try:
+        yield
+    finally:
+        _CANDIDATE_CONFIGURATION.reset(token)
+
+
+def candidate_settings_sources(
+    settings_cls: type[BaseSettings],
+) -> tuple[PydanticBaseSettingsSource | Callable[[], dict[str, object]], ...] | None:
+    """Return the candidate sources of one settings class, or ``None`` outside a candidate block.
+
+    The candidate local mapping replaces the device-local file read, and the projected candidate
+    public values replace the tracked-file read. No process environment is a source here, so only
+    the caller's constructor inputs can precede the candidate values.
+    """
+    snapshot = _candidate_configuration()
+    if snapshot is None:
+        return None
+    from course_explorer.config import _settings_aliases
+
+    def public_values() -> dict[str, object]:
+        return _project_configuration(
+            snapshot.root, snapshot.public, _settings_aliases(settings_cls)
+        )
+
+    return (LocalConfigurationSource(settings_cls), public_values)
+
+
 def environment_value(value: object) -> str:
     """Serialize one settings value for a process boundary.
 
@@ -182,11 +334,15 @@ class LocalConfigurationSource(EnvSettingsSource):
 
     The inherited ``EnvSettingsSource`` owns alias projection and JSON decoding for complex fields.
     This subclass only replaces the value mapping. Names are lowercased when the inherited source is
-    case-insensitive, matching how the parent resolves an environment file.
+    case-insensitive, matching how the parent resolves an environment file. Inside a candidate
+    configuration block the held local mapping replaces the file read.
     """
 
     def _load_env_vars(self) -> Mapping[str, str | None]:
-        values = read_local_configuration(repository_root())
+        snapshot = _candidate_configuration()
+        values = (
+            snapshot.local if snapshot is not None else read_local_configuration(repository_root())
+        )
         if not self.case_sensitive:
             return {name.lower(): value for name, value in values.items()}
         return values

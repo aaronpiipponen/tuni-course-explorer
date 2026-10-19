@@ -1,10 +1,13 @@
-"""Opt-in disposable-PostgreSQL round trip for the selected-dataset return and rotation owner.
+"""Opt-in disposable-PostgreSQL proofs for the selected-dataset return, rotation and cleanup owners.
 
 One disposable initial database at the repository head is seeded with two canonical courses and one
 completed official embedding chunk (a genuine label-free 1024-dim unit vector). Setup enrolls it.
 One full worker input dump/restore round trip preserves verification and the vector. Three
-successive returns drive real chain rotation. Only exact test-named databases and one exact scratch
-directory are created and removed. Translation output is synthetic.
+successive returns drive real chain rotation. The cleanup proof creates three uniquely named
+disposable databases under synthetic chain receipts, deletes one non-selected dataset through the
+public cleanup delegate, and checks the absence of its database and dump beside the preserved
+selection. Only exact test-named databases and exact scratch directories are created and removed.
+Translation output is synthetic.
 """
 
 from __future__ import annotations
@@ -16,6 +19,7 @@ import shutil
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Literal
 
 import pytest
 from sqlalchemy import Engine, select, text
@@ -36,6 +40,7 @@ from course_explorer.datasets import (
     SelectedDatasetPointer,
     read_dataset_receipt,
     read_dataset_verification,
+    resolve_selected_dataset,
 )
 from course_explorer.db.models import (
     Base,
@@ -56,9 +61,11 @@ from course_explorer.enums import (
 )
 from course_explorer.teaching_text.service import DerivedTranslationInput, teaching_text_sha256
 from course_explorer_admin import commands, mechanics, worker_session
+from course_explorer_admin import datasets as datasets_admin
 from course_explorer_admin.datasets import (
     admin_state_root,
     initialize_selected_dataset,
+    require_droppable_database,
     retain_returned_dataset,
 )
 from course_explorer_admin.remote import (
@@ -79,6 +86,7 @@ from tests.config._support import (
     TRANSLATION_CONTROLLER_KEYS,
     TRANSLATION_KEYS,
 )
+from tests.datasets._support import INITIAL_ID, REVISION, sample_verification
 from tests.inference._scheduling_support import reconcile, seed_courses
 
 pytestmark = [
@@ -440,6 +448,190 @@ def test_full_snapshot_return_and_rotation_preserve_database_state(
                 errors.append(exc)
         if errors:
             raise ExceptionGroup("dataset test cleanup failed", errors)
+
+
+_MANUAL_CLEANUP_TARGETS = ("initial", "returned")
+
+
+@pytest.mark.parametrize("target_kind", _MANUAL_CLEANUP_TARGETS)
+def test_manual_dataset_cleanup_drops_one_retained_database(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, target_kind: str
+) -> None:
+    """One non-selected dataset is dropped through the public cleanup delegate, keeping its history.
+
+    The chain receipts, the pointer and the dumps are synthetic and live under a temporary state root,
+    while the three databases are real, uniquely named and disposable. Every created name is checked
+    before it is created, and only those exact names are dropped again.
+    """
+    repository = repository_root()
+    prefix = f"cleanup_test_{uuid.uuid4().hex[:6]}"
+    initial_database = f"{prefix}_initial"
+    predecessor_id = "b" * 32
+    selected_id = "c" * 32
+    predecessor_database = f"{prefix}_{predecessor_id}"
+    selected_database = f"{prefix}_{selected_id}"
+    created_names = (initial_database, predecessor_database, selected_database)
+    assert all("_test" in name for name in created_names)
+    assert all(len(name.encode("ascii")) <= 63 for name in created_names)
+    for name in created_names:
+        require_droppable_database(name)
+
+    admin_state = f"data/admin-tests/{uuid.uuid4().hex}"
+    monkeypatch.setenv("SELECTED_DATASET_ENABLED", "0")
+    # The initial retained database is deletable because the site serves the protected
+    # disposable database.
+    monkeypatch.setenv("POSTGRES_DB", "course_explorer_test")
+    monkeypatch.setenv("ADMIN_STATE_ROOT", admin_state)
+    monkeypatch.setenv("ADMIN_DATASET_DATABASE_PREFIX", prefix)
+    monkeypatch.setenv("ADMIN_WORKER_DATABASE_PREFIX", f"{prefix}_worker")
+    monkeypatch.setenv("ADMIN_DATABASE_OPERATION_TIMEOUT_SECONDS", "600")
+    # The dataset owner resolves its state tree through this one symbol, so every receipt, pointer and
+    # dump is written under the temporary root while the owner's Compose argv runs in the checkout.
+    monkeypatch.setattr(datasets_admin, "repository_root", lambda: tmp_path)
+
+    class RootRedirectingRunner(mechanics.SubprocessRunner):
+        """Run each Compose argv in the real checkout while dataset paths point at the temporary root."""
+
+        def run(self, argv, *, cwd=None, **options):
+            if cwd == tmp_path:
+                cwd = repository
+            return super().run(argv, cwd=cwd, **options)
+
+    runner = RootRedirectingRunner()
+    settings = load_administrative_dataset_settings()
+    root = admin_state_root(settings)
+    assert root == tmp_path / admin_state
+
+    def _receipt(
+        dataset_id: str,
+        database_name: str,
+        *,
+        kind: Literal["initial", "returned"],
+        predecessor: str | None,
+        dump_sha256: str | None,
+    ) -> DatasetReceipt:
+        return DatasetReceipt(
+            schema_version=1,
+            dataset_id=dataset_id,
+            database_name=database_name,
+            predecessor_id=predecessor,
+            kind=kind,
+            revision=REVISION,
+            dump_sha256=dump_sha256,
+            verification=sample_verification(),
+        )
+
+    chain = (
+        _receipt(
+            selected_id,
+            selected_database,
+            kind="returned",
+            predecessor=predecessor_id,
+            dump_sha256="a" * 64,
+        ),
+        _receipt(
+            predecessor_id,
+            predecessor_database,
+            kind="returned",
+            predecessor=INITIAL_ID,
+            dump_sha256="b" * 64,
+        ),
+        _receipt(INITIAL_ID, initial_database, kind="initial", predecessor=None, dump_sha256=None),
+    )
+    receipt_bytes: dict[Path, bytes] = {}
+    for receipt in chain:
+        directory = root / "datasets" / receipt.dataset_id
+        directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+        atomic_write_private_text(directory / "receipt.json", administrative_json(receipt))
+        receipt_bytes[directory / "receipt.json"] = (directory / "receipt.json").read_bytes()
+    dumps: dict[str, Path] = {}
+    for receipt in chain[:2]:
+        dump = root / "datasets" / receipt.dataset_id / "database.dump"
+        dump.write_bytes(f"dump-{receipt.dataset_id}".encode())
+        dumps[receipt.dataset_id] = dump
+    orphan_dump = root / "datasets" / ("f" * 32) / "database.dump"
+    orphan_dump.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    orphan_dump.write_bytes(b"orphan-capture")
+    atomic_write_private_text(
+        root / "selected-dataset.json",
+        administrative_json(SelectedDatasetPointer(schema_version=1, dataset_id=selected_id)),
+    )
+    pointer_bytes = (root / "selected-dataset.json").read_bytes()
+
+    def _root_files() -> list[str]:
+        return sorted(path.relative_to(root).as_posix() for path in root.rglob("*"))
+
+    try:
+        for name in created_names:
+            _compose_exec(
+                runner, "createdb", "--username", "course_explorer", "--template", "template0", name
+            )
+            assert _database_exists(runner, name)
+
+        # The inventory follows the receipts, reports the chain order and creates nothing.
+        files_before_listing = _root_files()
+        inventory = commands.run_administrative_dataset_list(runner=runner)
+        assert _root_files() == files_before_listing
+        assert [entry.dataset_id for entry in inventory.datasets] == [
+            selected_id,
+            predecessor_id,
+            INITIAL_ID,
+        ]
+        assert [entry.kind for entry in inventory.datasets] == ["returned", "returned", "initial"]
+        assert [entry.selected for entry in inventory.datasets] == [True, False, False]
+        assert [entry.database_name for entry in inventory.datasets] == [
+            selected_database,
+            predecessor_database,
+            initial_database,
+        ]
+        assert [entry.dump_path for entry in inventory.datasets] == [
+            f"{admin_state}/datasets/{selected_id}/database.dump",
+            f"{admin_state}/datasets/{predecessor_id}/database.dump",
+            None,
+        ]
+        assert orphan_dump.read_bytes() == b"orphan-capture"
+
+        target_id = INITIAL_ID if target_kind == "initial" else predecessor_id
+        target_database = initial_database if target_kind == "initial" else predecessor_database
+        report = commands.run_administrative_dataset_delete(target_id, runner=runner)
+        assert report.dataset_id == target_id
+        assert report.database_name == target_database
+        assert not _database_exists(runner, target_database)
+        assert _database_exists(runner, selected_database)
+        if target_kind == "returned":
+            assert not dumps[target_id].exists()
+        assert dumps[selected_id].read_bytes() == f"dump-{selected_id}".encode()
+        assert (root / "selected-dataset.json").read_bytes() == pointer_bytes
+        for path, payload in receipt_bytes.items():
+            assert path.read_bytes() == payload
+        assert resolve_selected_dataset(root).dataset_id == selected_id
+        assert read_dataset_receipt(root, INITIAL_ID).database_name == initial_database
+        assert orphan_dump.read_bytes() == b"orphan-capture"
+
+        # A repeated explicit deletion reports the same target over the already absent resources.
+        assert commands.run_administrative_dataset_delete(target_id, runner=runner) == report
+        assert not _database_exists(runner, target_database)
+        assert dumps[selected_id].read_bytes() == f"dump-{selected_id}".encode()
+
+        # The deleted dataset has a receipt and no database or dump, so the listing omits it. The
+        # other non-selected dataset has its database, so the listing includes it.
+        remaining = commands.run_administrative_dataset_list(runner=runner)
+        other_id = predecessor_id if target_kind == "initial" else INITIAL_ID
+        assert [entry.dataset_id for entry in remaining.datasets] == [selected_id, other_id]
+    finally:
+        errors: list[Exception] = []
+        for name in created_names:
+            try:
+                _drop(runner, name)
+            except Exception as exc:
+                errors.append(exc)
+        if root.exists():
+            try:
+                shutil.rmtree(root)
+            except Exception as exc:
+                errors.append(exc)
+        if errors:
+            raise ExceptionGroup("manual dataset cleanup test cleanup failed", errors)
 
 
 def _sql_projections(engine: Engine) -> dict[str, tuple[int, str]]:

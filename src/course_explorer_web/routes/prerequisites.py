@@ -11,9 +11,12 @@ router = APIRouter()
 
 @router.post("/api/prerequisites")
 def prerequisites(request: PrerequisitesRequest) -> Response:
-    """Forward every supplied graph value with the configured drawing limit. Return the report."""
+    """Forward every supplied graph value under this site's drawing and inference policy."""
+    settings = load_web_settings()
+    values = request.model_dump()
+    values["include_inferred"] = request.include_inferred and settings.inference_enabled
     report = commands.run_prerequisite_command(
-        **request.model_dump(),
-        max_drawing_elements=load_web_settings().prerequisite_graph_max_elements,
+        **values,
+        max_drawing_elements=settings.prerequisite_graph_max_elements,
     )
     return Response(content=report.model_dump_json(), media_type="application/json")

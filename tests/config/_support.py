@@ -13,6 +13,7 @@ from pydantic_settings import BaseSettings
 
 from course_explorer.config import (
     AdministrativeDatasetSettings,
+    AdminWebSettings,
     CaptureSettings,
     DatabaseSettings,
     EmbeddingSettings,
@@ -35,22 +36,25 @@ from course_explorer.config import (
     WorkerSetupSettings,
 )
 from tests.support import (
-    PUBLIC_CONFIG_PATHS,
     REPO_ROOT,
     public_environment,
 )
 
-__all__ = ["PUBLIC_CONFIG_PATHS", "REPO_ROOT"]
+__all__ = ["REPO_ROOT"]
 
 MACHINE_LOCAL_KEYS = {
     "TRANSLATION_CONTROLLER_SSH_TARGET",
     "TRANSLATION_CONTROLLER_WSL_DISTRIBUTION",
     "TRANSLATION_CONTROLLER_WORKER_PROJECT_ROOT",
+    "ADMIN_SITE_WEB_SERVICE_UNIT",
+    "ADMIN_SITE_ADMIN_SERVICE_UNIT",
 }
 MACHINE_TEMPLATE_VALUES = {
     "TRANSLATION_CONTROLLER_SSH_TARGET": "replace-with-ssh-target",
     "TRANSLATION_CONTROLLER_WSL_DISTRIBUTION": "replace-with-wsl-distribution",
     "TRANSLATION_CONTROLLER_WORKER_PROJECT_ROOT": "/home/replace-with-user/tuni-course-explorer",
+    "ADMIN_SITE_WEB_SERVICE_UNIT": "replace-with-web.service",
+    "ADMIN_SITE_ADMIN_SERVICE_UNIT": "replace-with-admin.service",
 }
 LOCAL_TEMPLATE_KEYS = {"POSTGRES_PASSWORD"} | MACHINE_LOCAL_KEYS
 
@@ -94,6 +98,7 @@ WORKER_SETUP_KEYS = _keys(WorkerSetupSettings)
 WORKER_RUNTIME_KEYS = _keys(WorkerRuntimeSettings)
 WORKER_GPU_REBOOT_KEYS = _keys(WorkerGpuRebootSettings)
 WEB_KEYS = _keys(WebSettings)
+ADMIN_WEB_KEYS = _keys(AdminWebSettings)
 TRANSLATION_CONTROLLER_KEYS = {
     **_keys(TranslationControllerSettings),
     **WORKER_GPU_REBOOT_KEYS,
@@ -144,6 +149,7 @@ FIXTURE_VALUES: dict[str, str] = {
     **WORKER_RUNTIME_KEYS,
     **INFERENCE_CONTROLLER_KEYS,
     **WEB_KEYS,
+    **ADMIN_WEB_KEYS,
 }
 PUBLIC_ALIASES = FIXTURE_VALUES.keys() - LOCAL_TEMPLATE_KEYS
 

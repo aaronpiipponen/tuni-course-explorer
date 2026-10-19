@@ -1,5 +1,5 @@
 /** Persistent config-driven wiki navigation with independently collapsible sections that open their own page. */
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   DOCS_PAGES,
   DOCS_SECTIONS,
@@ -53,11 +53,23 @@ function SidebarBranch({
 }
 
 export function DocsSidebar({ pageId }: { pageId: DocsPageId | null }) {
+  const navigation = useRef<HTMLElement>(null);
   const ancestors = new Set(pageId ? getDocsAncestors(pageId) : []);
   const currentSection = pageId ? DOCS_PAGES[pageId].section : null;
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(
     () => new Set(currentSection ? [currentSection] : []),
   );
+  const revealCurrent = useCallback(() => {
+    const nav = navigation.current;
+    const current = nav?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (!nav || !current || current.closest("[inert]")) return;
+    const viewport = nav.getBoundingClientRect();
+    const item = current.getBoundingClientRect();
+    if (item.top < viewport.top) nav.scrollTop += item.top - viewport.top;
+    else if (item.bottom > viewport.bottom)
+      nav.scrollTop += item.bottom - viewport.bottom;
+  }, []);
+  useEffect(revealCurrent, [pageId, expanded, revealCurrent]);
   useEffect(() => {
     if (currentSection)
       setExpanded((previous) =>
@@ -73,7 +85,13 @@ export function DocsSidebar({ pageId }: { pageId: DocsPageId | null }) {
       return next;
     });
   return (
-    <aside className="docs-nav">
+    <aside
+      className="docs-nav"
+      ref={navigation}
+      onTransitionEnd={(event) => {
+        if (event.propertyName === "grid-template-rows") revealCurrent();
+      }}
+    >
       <a
         className={`home${pageId === "home" ? " on" : ""}`}
         href="/docs#home"

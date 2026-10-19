@@ -401,13 +401,24 @@ def prepare_current_publication(
         if activity is None:
             raise ValueError(f"current target {target_group_id} is not a canonical course")
         _validate_current_target(activity, target_group_id)
-    for target_group_id in cohort.eligible_target_group_ids:
-        proposal_id = cohort.accepted_proposal_ids.get(target_group_id)
-        if proposal_id is None:
-            continue
+    # The selected proposals and the stored sets of their targets are read in a fixed number of
+    # queries before the per-target validation.
+    selected_target_group_ids = tuple(
+        target_group_id
+        for target_group_id in cohort.eligible_target_group_ids
+        if target_group_id in cohort.accepted_proposal_ids
+    )
+    completed = owners.proposals.read_completed_many(
+        [
+            cohort.accepted_proposal_ids[target_group_id]
+            for target_group_id in selected_target_group_ids
+        ]
+    )
+    stored_sets = owners.inferred_sets.read_many(selected_target_group_ids)
+    for target_group_id in selected_target_group_ids:
         selected += 1
         activity = activities[target_group_id]
-        proposal, work, attempt, run = owners.proposals.read_completed(proposal_id)
+        proposal, work, attempt, run = completed[cohort.accepted_proposal_ids[target_group_id]]
         if proposal.target_group_id != target_group_id:
             raise ValueError("the selected proposal does not belong to its cohort target")
         if work.request.target_group_id != target_group_id:
@@ -423,7 +434,7 @@ def prepare_current_publication(
         proposals.append(proposal)
         finished_at_by_proposal_id[proposal.proposal_id] = attempt.finished_at
         publication = _build_target_publication(proposal, attempt, activity)
-        stored = owners.inferred_sets.read(target_group_id)
+        stored = stored_sets[target_group_id]
         if (
             stored.state is InferredReadState.CURRENT
             and stored.current_set is not None

@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Response
 from pydantic import BaseModel, ConfigDict
 
+from course_explorer.config import load_web_settings
 from course_explorer.search import commands
 from course_explorer.search.lookup import DisplayLanguage
 
@@ -22,6 +23,9 @@ class SearchRequest(BaseModel):
 
 @router.post("/api/search")
 def search(request: SearchRequest) -> Response:
-    """Return the command's serialized report."""
-    report = commands.run_search_command(**request.model_dump())
+    """Return the command's serialized report, composing semantic matching for this site."""
+    report = commands.run_search_command(
+        **request.model_dump(),
+        include_semantic=load_web_settings().embeddings_enabled,
+    )
     return Response(content=report.model_dump_json(), media_type="application/json")

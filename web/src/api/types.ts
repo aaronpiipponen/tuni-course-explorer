@@ -336,4 +336,10 @@ export type SimilarityRecommendation = {
 export type RecommendationsReport = {
   similarity_results: readonly SimilarityRecommendation[];
 };
+
+/** The site's two served feature switches. */
+export type WebFeatures = {
+  embeddings_enabled: boolean;
+  inference_enabled: boolean;
+};
 export type { DisplayLanguage };

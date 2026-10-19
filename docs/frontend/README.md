@@ -1,10 +1,10 @@
 # Frontend
 
-The frontend is the five-tab browser app, the profile state it holds in the browser, and the documentation view it opens from Docs.
+The frontend is the browser app over the tabs a site serves, the state it holds in the browser, the separate administration console and the documentation view that Docs opens.
 
 ## The app and its tabs
 
-The app is one shell with a top bar, a tab area and a footer. The top bar carries a button for each of the five tabs, the profile control, the language control and **Docs**, and the app runs in Finnish and English. Each tab joins two sources: the reports it reads from the server, which describe the official catalogue, and the state the open profile holds in the browser, which is its language, its course selection and completion, its exclusions, and the choices and places of the structure tab. A list of course cards is a report, while the mark that says a course is completed is browser state.
+The app is one shell with a top bar, a tab area and a footer. The top bar carries a button for each tab the site serves, the profile control, the language control and **Docs**, and the app runs in Finnish and English. The site's two feature switches decide which tabs and controls it serves, and the app reads them once before the shell mounts. Each tab joins two sources: the reports it reads from the server, which describe the official catalogue, and the state the open profile holds in the browser, which is its language, its course selection and completion, its exclusions, and the choices and places of the structure tab. A list of course cards is a report, while the mark that says a course is completed is browser state.
 
 [Browser app](/docs/frontend/browser-app.md) describes the shell, its navigation and scrolling, the shared course state, the language and the labeled analysis, and the search, comparison and discovery reads.
 
@@ -22,9 +22,21 @@ The **Structure of studies** tab reads one official structure report for each of
 
 ## The prerequisite graph
 
-The **Prerequisites** tab opens one course as the graph root and draws its prerequisite expression. Its controls choose the basis, whether recommended prerequisites take part, whether inferred prerequisites take part, and the activity scope. When the tree is too large to draw, the tab states the element count against the configured limit and points at the controls that shrink it. **Find minimum route** is a separate request whose result is held only while its inputs stay the same.
+The **Prerequisites** tab opens one course as the graph root and draws its prerequisite expression. Its controls choose the basis, whether recommended prerequisites take part, whether inferred prerequisites take part, and the activity scope. The **Inferred** control appears on a site that serves inference features, and on a site that serves none the tab draws official prerequisites alone. When the tree is too large to draw, the tab states the element count against the configured limit and points at the controls that shrink it. **Find minimum route** is a separate request whose result is held only while its inputs match.
 
 [Prerequisite graph](/docs/backend/prerequisites/prerequisite-graph.md) and [Minimum route](/docs/backend/prerequisites/minimum-route.md) state what those reads compile and return. [Prerequisite graph view](/docs/frontend/prerequisite-graph-view.md) describes the drawing, the node marks, and the temporary route panel.
+
+## The administration console
+
+The administration console is a separate React application with its own manifest and its own build, served by the administration backend. It opens on a sign-in screen and serves the five tabs **Dashboard**, **Data preparation**, **Inference**, **Logs** and **Settings**. The [Administration console](/docs/operations/admin-console/README.md) how-to describes the tabs and their actions.
+
+Each read and each action of a tab runs one fixed `scripts/admin.py` command, so a tab performs several reads: **Data preparation** reads three stage statuses and three reports, and **Logs** reads its shared inventory, command log, session and runtime logs and usage window. Enabled automatic panels follow the configured poll interval, while target lookup and target decisions, maintenance and the other actions are explicit commands.
+
+A worker log read and the worker preflight run on an explicit request alone. The retained-server inference summary is one read shared by its four report panels. The summary and the two dataset listings read only while the site's dashboard reports the selected dataset enabled, and otherwise they show the pending read, the disabled reason or the dashboard failure. A command that ran and failed shows its own safe failure line.
+
+The administration rebuild runs two fixed commands: the console build and the backend restart. Its confirmation states that it signs every operator out, and the next sign-in reads a fresh session.
+
+[Administration console code](/docs/frontend/admin-console.md) describes the separate build, the module ownership, the typed clients and the session, polling and error flow.
 
 ## The documentation wiki
 

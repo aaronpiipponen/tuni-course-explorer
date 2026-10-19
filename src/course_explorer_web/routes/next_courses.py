@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Response
 from pydantic import BaseModel, ConfigDict
 
+from course_explorer.config import load_web_settings
 from course_explorer.next_courses import commands
 from course_explorer.search.lookup import DisplayLanguage
 
@@ -24,6 +25,9 @@ class NextCoursesRequest(BaseModel):
 
 @router.post("/api/next-courses")
 def next_courses(request: NextCoursesRequest) -> Response:
-    """Return the command's serialized report."""
-    report = commands.run_next_courses_command(**request.model_dump())
+    """Forward every supplied value under this site's inference policy. Return the report."""
+    settings = load_web_settings()
+    values = request.model_dump()
+    values["include_inferred"] = request.include_inferred and settings.inference_enabled
+    report = commands.run_next_courses_command(**values)
     return Response(content=report.model_dump_json(), media_type="application/json")

@@ -4,7 +4,7 @@ The prerequisite graph view draws one course's requirement tree from the server 
 
 ## One input set for both reads
 
-The pane keeps one snapshot of the profile inputs and sends it to both reads: the graph root, the selected courses, the completed courses, the excluded courses, the **Recommended** and **Inferred** toggles, the activity scope, the basis, and the marks placed on graph nodes. The basis is the set of courses that counts as already covered, and the **Route basis** control switches between the completed courses and every selected course. A completed course is always selected, so it is part of either basis.
+The pane keeps one snapshot of the profile inputs and sends it to both reads: the graph root, the selected courses, the completed courses, the excluded courses, the **Recommended** toggle, the **Inferred** toggle on a site that serves inference features, the activity scope, the basis, and the marks placed on graph nodes. The basis is the set of courses that counts as already covered, and the **Route basis** control switches between the completed courses and every selected course. A completed course is always selected, so it is part of either basis.
 
 The two reads are the prerequisite graph read and the minimum route read. Both resolve the same inputs and compile one [prerequisite expression](/docs/reference/glossary.md#prerequisites-and-routes), so the drawing and the route describe the same requirement set and cannot drift apart. [Prerequisite graph](/docs/backend/prerequisites/prerequisite-graph.md) states what the graph read compiles and returns, and [Minimum route](/docs/backend/prerequisites/minimum-route.md) states what the route read returns.
 
@@ -81,7 +81,7 @@ The outcome decides what the panel says, and the drawing follows the outcome:
 
 ## A drawing that is too large
 
-`PREREQUISITE_GRAPH_MAX_ELEMENTS` in `config/web.toml` sets the largest number of drawing elements, counted as every node plus every edge, and the example sets 500. When the report states that the drawing is refused, the pane names the element count of the tree against the limit, suggests the controls that shrink it, and draws no nodes or connections.
+`PREREQUISITE_GRAPH_MAX_ELEMENTS` in `config/web.toml` sets the largest number of drawing elements, counted as every node plus every edge, and the example sets 500. When the report states that the drawing is refused, the pane names the element count of the tree against the limit, suggests the controls that shrink it, and draws no nodes or connections. On a site that serves inference features the suggestion is **Tip: turn off Recommended or Inferred, or turn on Active only, to shrink the graph.** On a site that serves none it is **Tip: turn off Recommended, or turn on Active only, to shrink the graph.**
 
 The refusal concerns the drawing alone. **Find minimum route** and its panel stay in place, and the route read compiles the same expression and returns the same route either way.
 

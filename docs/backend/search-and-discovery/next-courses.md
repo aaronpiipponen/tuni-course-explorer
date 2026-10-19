@@ -75,4 +75,8 @@ In **At least one** the required coverage decides the order in descending value 
 
 The report carries the two canonical course sets, the chosen basis, the mode, the display language, the inference flag, the activity flag, and the ordered results. Each result carries the shared course summary, the two coverage values, and the inferred dependence mark. The list has no configured length limit, so every eligible candidate is returned.
 
+## Availability on a site
+
+Next courses read official prerequisites and the prerequisite inference stores, so a site serves them under either switch. A site whose `WEB_INFERENCE_ENABLED` is false in `config/web.toml` never reads inferred prerequisites for the request, whatever the request asked for: the route forwards the inference toggle combined with the site switch, so the toggle is effectively off, no result carries the inferred dependence mark, and no equivalence group joins the source identities. The command, its inputs, its eligibility rules and the script adapter are the same on both kinds of site.
+
 The service, the candidate reads, the eligibility decision, the coverage fold, and the tests that cover them are described in [Coverage and ranking](/docs/backend/search-and-discovery/coverage-and-ranking.md).

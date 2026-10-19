@@ -155,6 +155,55 @@ def _collect_inferred_sources(
         )
 
 
+def _unavailable_result(target_group_id: str) -> InferredSetReadResult:
+    """Return the read result of a target that has no stored inferred set."""
+    return InferredSetReadResult(
+        target_group_id=target_group_id, state=InferredReadState.UNAVAILABLE
+    )
+
+
+def _stale_result(
+    course: Course, row: InferredPrerequisiteSet, *, target_group_id: str
+) -> InferredSetReadResult | None:
+    """Return the stale-context read result of one stored set, or None for a readable set."""
+    context_matches = (
+        row.activity_as_of_academic_year_start == course.activity_as_of_academic_year_start
+        and row.activity_window_years == course.activity_window_years
+    )
+    if not course.is_active or (
+        row.producer_kind is not InferredProducerKind.INFERENCE and not context_matches
+    ):
+        return InferredSetReadResult(
+            target_group_id=target_group_id,
+            state=InferredReadState.STALE_ACTIVITY_CONTEXT,
+            stored_activity_as_of_academic_year_start=row.activity_as_of_academic_year_start,
+            stored_activity_window_years=row.activity_window_years,
+        )
+    return None
+
+
+def _validated_current_result(
+    row: InferredPrerequisiteSet,
+    current_set: CurrentInferredSet,
+    *,
+    target_group_id: str,
+    canonical_group_ids: Collection[str],
+) -> InferredSetReadResult:
+    """Validate one readable stored set against the canonical courses and return it as current."""
+    _validate_storable_expression(
+        current_set.expression,
+        producer_kind=row.producer_kind,
+        accepted_source_count=row.accepted_source_count,
+        target_group_id=target_group_id,
+        canonical_group_ids=canonical_group_ids,
+    )
+    return InferredSetReadResult(
+        target_group_id=target_group_id,
+        state=InferredReadState.CURRENT,
+        current_set=current_set,
+    )
+
+
 def _row_to_current_set(
     row: InferredPrerequisiteSet, *, target_group_id: str
 ) -> CurrentInferredSet:
@@ -229,38 +278,83 @@ class InferredPrerequisiteRepository(InferredSetRead, InferredSetPublisher):
                 )
             )
             if row is None:
-                return InferredSetReadResult(
-                    target_group_id=target_group_id, state=InferredReadState.UNAVAILABLE
-                )
-            context_matches = (
-                row.activity_as_of_academic_year_start == course.activity_as_of_academic_year_start
-                and row.activity_window_years == course.activity_window_years
-            )
-            if not course.is_active or (
-                row.producer_kind is not InferredProducerKind.INFERENCE and not context_matches
-            ):
-                return InferredSetReadResult(
-                    target_group_id=target_group_id,
-                    state=InferredReadState.STALE_ACTIVITY_CONTEXT,
-                    stored_activity_as_of_academic_year_start=(
-                        row.activity_as_of_academic_year_start
-                    ),
-                    stored_activity_window_years=row.activity_window_years,
-                )
+                return _unavailable_result(target_group_id)
+            stale = _stale_result(course, row, target_group_id=target_group_id)
+            if stale is not None:
+                return stale
             current_set = _row_to_current_set(row, target_group_id=target_group_id)
             canonical_group_ids = _canonical_ids_for_expression(session, current_set.expression)
-            _validate_storable_expression(
-                current_set.expression,
-                producer_kind=row.producer_kind,
-                accepted_source_count=row.accepted_source_count,
+            return _validated_current_result(
+                row,
+                current_set,
                 target_group_id=target_group_id,
                 canonical_group_ids=canonical_group_ids,
             )
-            return InferredSetReadResult(
-                target_group_id=target_group_id,
-                state=InferredReadState.CURRENT,
-                current_set=current_set,
+
+    def read_many(self, target_group_ids: Collection[str]) -> dict[str, InferredSetReadResult]:
+        """Return `read()` for many targets in a fixed number of reads, keyed by target.
+
+        Each result equals what `read()` returns for that target, and a blank or unknown target
+        fails with the same message. The reads are one course read, one set read, and one read of
+        the canonical course identities that the current sets' expressions name.
+        """
+        requested = tuple(dict.fromkeys(target_group_ids))
+        if any(not target_group_id.strip() for target_group_id in requested):
+            raise ValueError("target_group_id must not be blank")
+        if not requested:
+            return {}
+        with self._factory() as session:
+            courses = {
+                course.group_id: course
+                for course in session.scalars(select(Course).where(Course.group_id.in_(requested)))
+            }
+            for target_group_id in requested:
+                if target_group_id not in courses:
+                    raise ValueError(f"unknown canonical target course {target_group_id}")
+            rows = {
+                row.target_course_id: row
+                for row in session.scalars(
+                    select(InferredPrerequisiteSet).where(
+                        InferredPrerequisiteSet.target_course_id.in_(
+                            [course.id for course in courses.values()]
+                        )
+                    )
+                )
+            }
+            results: dict[str, InferredSetReadResult] = {}
+            current: dict[str, tuple[InferredPrerequisiteSet, CurrentInferredSet]] = {}
+            for target_group_id in requested:
+                course = courses[target_group_id]
+                row = rows.get(course.id)
+                if row is None:
+                    results[target_group_id] = _unavailable_result(target_group_id)
+                    continue
+                stale = _stale_result(course, row, target_group_id=target_group_id)
+                if stale is not None:
+                    results[target_group_id] = stale
+                    continue
+                current[target_group_id] = (
+                    row,
+                    _row_to_current_set(row, target_group_id=target_group_id),
+                )
+            leaves = {
+                leaf
+                for _, current_set in current.values()
+                for leaf in expression_course_leaf_group_ids(current_set.expression)
+            }
+            canonical_group_ids = (
+                set(session.scalars(select(Course.group_id).where(Course.group_id.in_(leaves))))
+                if leaves
+                else set()
             )
+            for target_group_id, (row, current_set) in current.items():
+                results[target_group_id] = _validated_current_result(
+                    row,
+                    current_set,
+                    target_group_id=target_group_id,
+                    canonical_group_ids=canonical_group_ids,
+                )
+            return {target_group_id: results[target_group_id] for target_group_id in requested}
 
     def find_candidate_group_ids(self, source_group_ids: Collection[str]) -> tuple[str, ...]:
         """Return active targets whose inferred expression names any requested source course.

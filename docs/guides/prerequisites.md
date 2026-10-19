@@ -37,19 +37,19 @@ The controls above the drawing decide what the drawing shows and what the calcul
 |---|---|
 | **Completed** and **Selected** | Which of your courses count as covered: only the ones you marked completed, or everything you have selected. The two options sit in the switch that reads **Counts as covered** on hover. |
 | **Recommended** | Adds recommended prerequisites to the drawing and to the route calculation. They form their own group, with dashed connections. |
-| **Inferred** | Adds prerequisites found by analysis to the drawing and to the route calculation. |
+| **Inferred** | On a site that serves the inference features, adds prerequisites found by analysis to the drawing and to the route calculation. |
 | **Active only** | Leaves inactive courses out of the drawing and out of the route. Your selected or completed inactive courses and the graph root are shown either way. |
 
-The two toggles work separately. An inferred recommended prerequisite takes part in the drawing only while both **Recommended** and **Inferred** are on. The **?** button opens a drawer that explains each option.
+The two toggles work separately on a site that serves both: an inferred recommended prerequisite takes part in the drawing only while both **Recommended** and **Inferred** are on. The **?** button opens a drawer that explains the options the site serves.
 
 A completed course is always selected, so **Selected** counts every completed course as covered as well. The [Discover tab](/docs/guides/discover.md#set-the-basis) reads the same two options as its basis.
 
 ## Official and inferred prerequisites
 
 > [!IMPORTANT]
-> Official prerequisites are the ones the university publishes. Prerequisites found by analysis are shown apart from them and appear only while **Inferred** is on, and each of those course boxes carries the **inferred** mark.
+> Official prerequisites are the ones the university publishes. Where the site serves the inference features, prerequisites found by analysis are shown apart from them and appear only while **Inferred** is on, and each of those course boxes carries the **inferred** mark.
 
-A course that both an official requirement and an inferred one reach is drawn as an official course and carries no mark. Turning **Inferred** off leaves the official drawing and the official calculation in place.
+A course that both an official requirement and an inferred one reach is drawn as an official course and carries no mark. Turning **Inferred** off leaves the official drawing and the official calculation in place, and a site that serves no inference features draws the official requirements alone, because no inferred prerequisite reaches it.
 
 The drawing and the route read the same requirements, described in [Prerequisite graph](/docs/backend/prerequisites/prerequisite-graph.md).
 
@@ -76,7 +76,7 @@ When the route basis is **Selected**, a course box that counts as covered throug
 
 ## When the drawing is too large
 
-A very large requirement tree is not drawn. The tab reports "This prerequisite tree is too large to draw." together with the number of elements in the tree and the drawing limit, and it suggests turning off **Recommended** or **Inferred**, or turning on **Active only**, to shrink the tree.
+A very large requirement tree is not drawn. The tab reports "This prerequisite tree is too large to draw." together with the number of elements in the tree and the drawing limit, and it suggests turning off **Recommended** or **Inferred**, or turning on **Active only**, to shrink the tree. On a site that serves no inference features the suggestion names **Recommended** and **Active only** alone.
 
 The refusal affects the drawing only. **Find minimum route** is available on the same screen.
 

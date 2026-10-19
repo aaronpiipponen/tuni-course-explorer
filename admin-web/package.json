@@ -1,0 +1,30 @@
+{
+  "name": "tuni-course-explorer-admin-web",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "typecheck": "tsc --noEmit",
+    "build": "vite build",
+    "test": "vitest run",
+    "format:check": "prettier --check ."
+  },
+  "dependencies": {
+    "@radix-ui/react-dialog": "1.2.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "jsdom": "26.1.0",
+    "prettier": "3.9.10",
+    "typescript": "5.9.3",
+    "vite": "8.3.4",
+    "vitest": "4.1.11"
+  }
+}

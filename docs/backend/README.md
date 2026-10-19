@@ -16,4 +16,4 @@ Every backend subject works on one PostgreSQL database with pgvector that holds 
 
 ## The read interface
 
-The web server answers a fixed set of read routes over the prepared data. [Interfaces](/docs/backend/interfaces/README.md) describes them.
+The web server answers a fixed set of dataset read routes over the prepared data and one feature read that reports the site's two feature switches. [Interfaces](/docs/backend/interfaces/README.md) describes them. The administration backend is a separate package with its own process and its own routes, described in [Administration backend](/docs/backend/interfaces/admin-backend.md).

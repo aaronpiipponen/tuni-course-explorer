@@ -167,6 +167,68 @@ class InferenceProposalRepository:
         run = self._evidence.read_run(work.created_by_run_id)
         return proposal, work, completion, run
 
+    def read_completed_many(
+        self, proposal_ids: Collection[UUID]
+    ) -> dict[
+        UUID,
+        tuple[
+            TargetProposal,
+            InferenceTargetWorkRecord,
+            InferenceModelAttemptRecord,
+            InferencePipelineRunRecord,
+        ],
+    ]:
+        """Read many proposals with their work, completion and execution in a fixed number of reads.
+
+        Each entry equals what `read_completed` returns for that id, and an unknown id or a missing
+        completion fails with the same message. The reads are one proposal join and one batch read
+        each of the work rows, the completions and the executions.
+        """
+        if not all(isinstance(proposal_id, UUID) for proposal_id in proposal_ids):
+            raise ValueError("proposal_id must be a UUID")
+        requested = set(proposal_ids)
+        if not requested:
+            return {}
+        with self._factory() as session:
+            rows = session.execute(
+                select(InferenceProposal, Course.group_id, InferenceModelAttempt.target_work_id)
+                .join(Course, Course.id == InferenceProposal.target_course_id)
+                .outerjoin(
+                    InferenceModelAttempt,
+                    InferenceModelAttempt.id == InferenceProposal.source_attempt_id,
+                )
+                .where(InferenceProposal.id.in_(requested))
+            ).all()
+            decoded = {
+                row.id: (self._decode(row, target_group_id=target_group_id), work_id)
+                for row, target_group_id, work_id in rows
+            }
+        for proposal_id in proposal_ids:
+            if proposal_id not in decoded:
+                raise ValueError(f"unknown inference proposal {proposal_id}")
+        work_ids = {work_id for _, work_id in decoded.values() if work_id is not None}
+        works = self._evidence.read_works_by_ids(work_ids)
+        completions = self._evidence.read_completions_for_works(work_ids)
+        runs = self._evidence.read_runs({work.created_by_run_id for work in works.values()})
+        completed = {}
+        for proposal_id, (proposal, work_id) in decoded.items():
+            if work_id is None:
+                raise ValueError("the proposal references no recorded completion")
+            if work_id not in works:
+                raise ValueError(f"unknown inference target work {work_id}")
+            if work_id not in completions:
+                raise ValueError("the proposal references no recorded completion")
+            work = works[work_id]
+            if work.created_by_run_id not in runs:
+                raise ValueError(f"unknown inference pipeline run {work.created_by_run_id}")
+            completed[proposal_id] = (
+                proposal,
+                work,
+                completions[work_id],
+                runs[work.created_by_run_id],
+            )
+        return completed
+
     def read_for_work(self, work_id: UUID) -> TargetProposal | None:
         """Return the one retained proposal composed from a work id, or None when absent."""
         with self._factory() as session:

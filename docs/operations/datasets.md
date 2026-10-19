@@ -85,6 +85,42 @@ Two guards protect other databases. A database name on the fixed protected list 
 > [!WARNING]
 > Rotation retains the selected dataset and its immediate predecessor alone. Every older dataset in the chain loses its database and its dump, so the rows of a dataset outside the retained pair are not recoverable from the chain.
 
+## Manual cleanup
+
+Manual cleanup deletes one target the operator names, and it leaves the automatic rule of the rotation above alone.
+
+```bash
+uv run python scripts/admin.py datasets list
+uv run python scripts/admin.py datasets delete DATASET_ID
+uv run python scripts/admin.py backups list
+uv run python scripts/admin.py backups delete NAME
+```
+
+`datasets list` prints the datasets of the retained chain that hold a database or a dump, in the order the chain walk produces: the selected dataset first, then each predecessor after the dataset that was built from it. One entry carries the dataset id, the kind, the database name, the repository-relative path of the retained dump, and whether the dataset is the selected one.
+
+The selected dataset is always listed. Any other dataset is listed when its server database exists or its retained dump is present. A dataset with neither, as after rotation or a deletion, has a receipt and no entry. The database service answers the existence check for a non-selected dataset without a retained dump, so only that probe needs the service running.
+
+The database name repeats the name the receipt records. A dataset without a retained dump reports no path, which is the ordinary state of the initial dataset. The listing creates no file and follows the receipts for the chain, so a dump directory that no receipt names is outside the report.
+
+`datasets delete DATASET_ID` drops the named dataset's server database and removes that dataset's retained dump. Every retained dataset except the selected one is eligible, the initial dataset included, and the command refuses a target before it changes any resource.
+
+| Refused target | The rule that refuses it |
+|---|---|
+| An id outside the retained chain | The chain the pointer resolves is the authority for what cleanup reaches |
+| The selected dataset, and a receipt naming the selected database | The selected dataset is the copy the server reads |
+| With `SELECTED_DATASET_ENABLED` false, a receipt naming the database the site serves | The site reads that configured database directly, so it is not a deletable retained copy |
+| A returned receipt whose database name is not `ADMIN_DATASET_DATABASE_PREFIX` and its own id joined by an underscore | The derived name is the proof that the receipt describes the server copy |
+| A database name on the fixed protected list | The protected names cover databases that no dataset enrollment produced |
+| A retained dump that is a symlink or not a regular file | The dump path is confined to the dataset directory of that receipt |
+
+The command reads the pointer and the requested receipt again under the dataset action lock, so a listing printed earlier is presentation rather than delete authority. A deletion removes exactly the named database and that dataset's dump, and it leaves the receipt, the pointer, the selected dataset and every database outside the retained chain in place. A repeated command over the same absent pair reports the same result.
+
+`backups list` prints every regular file beneath `data/backups`, nested files included, in lexical relative-path order, with the size and the last modification time of each file. The listing reads file metadata alone, reports no backups for an absent directory, and creates nothing. A symlinked entry, a special file and a symlinked directory refuse the listing.
+
+`backups delete NAME` removes the one file that relative name identifies under `data/backups`, and the name is the one the listing prints. Empty and absolute names, a backslash, a NUL, an empty, dot or dot-dot segment, a parent that is a symlink or not a directory, and a target that is missing, a symlink or not a file are all refused. Nothing else under the directory changes, and rotation reads and removes no backup file.
+
+The automatic rotation and this cleanup share one drop path, so both drop a database through the same Compose command with the same protected-name check and the same operation timeout. The [Operator menu](/docs/operations/operator-menu.md#cleanup-of-datasets-and-backups) holds the two deletions behind a listing and a confirmation that names the exact dataset or backup file.
+
 ## Backups and the chain
 
 Files kept under `data/backups` are outside the dataset chain, and rotation deletes nothing there. The administrative state root must not lie inside that directory.
@@ -108,7 +144,7 @@ uv run python scripts/admin.py coverage inference
 uv run python scripts/admin.py hubs
 ```
 
-The catalogue summary and the coverage reports describe the stored courses, modules, translations, vectors, and inferred prerequisites. `hubs` computes both embedding hub means from the stored chunk vectors and writes the two files that `EMBEDDING_HUB_VECTOR` and `EMBEDDING_OUTCOMES_HUB_VECTOR` in `config/search.toml` name. [Operator menu](/docs/operations/operator-menu.md#coverage-and-summaries) lists the same entries.
+The catalogue summary and the coverage reports describe the stored courses, modules, translations, vectors, and inferred prerequisites. `hubs` computes both embedding hub means from the stored chunk vectors and writes the two files that `EMBEDDING_HUB_VECTOR` and `EMBEDDING_OUTCOMES_HUB_VECTOR` in `config/search.toml` name. [Operator menu](/docs/operations/operator-menu.md#coverage-and-summaries) lists four reports: the catalogue summary, teaching-text coverage, embedding coverage and the inference summary. The `coverage inference` command is machine-only.
 
 ## Dataset, snapshot, and backup
 

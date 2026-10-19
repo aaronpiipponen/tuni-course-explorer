@@ -175,7 +175,7 @@ describe("structure projection", () => {
       expect(choice?.kind).toBe("node");
       if (choice?.kind !== "node") throw new Error("Expected choice node");
       expect(choice.node.title).toBe(
-        uiText(language, "Choose from {count} modules", { count: 2 }),
+        uiText(language, "Modules to choose from: {count}", { count: 2 }),
       );
       expect(choice.node.key).toBe("r/1");
       const picked = nextChoices({}, choice.node, choice.node.options[1].key);

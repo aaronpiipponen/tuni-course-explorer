@@ -52,7 +52,7 @@ export const UI_TEXT = {
   "Completed (basis)": { en: "Completed", fi: "Suoritetut" },
   "Selected (basis)": { en: "Selected", fi: "Valitut" },
   "Completed (course)": { en: "Completed", fi: "Suoritettu" },
-  "Complete (course)": { en: "Complete", fi: "Valmis" },
+  "Complete (course)": { en: "Complete", fi: "Suorita" },
   Excluded: { en: "Excluded", fi: "Suljettu pois" },
   Exclude: { en: "Exclude", fi: "Sulje pois" },
   inferred: { en: "inferred", fi: "päätelty" },
@@ -127,6 +127,15 @@ export const UI_TEXT = {
   "Semantic search is unavailable. Showing matches by code and name only.": {
     en: "Semantic search is unavailable. Showing matches by code and name only.",
     fi: "Semanttinen haku ei ole käytettävissä. Näytetään vain koodi- ja nimihaun tulokset.",
+  },
+
+  "Loading site features": {
+    en: "Loading site features",
+    fi: "Ladataan sivuston ominaisuuksia",
+  },
+  "Web features provider is missing": {
+    en: "Web features provider is missing",
+    fi: "Sivuston ominaisuudet puuttuvat",
   },
 
   "About these options": {
@@ -247,14 +256,14 @@ export const UI_TEXT = {
     en: "Content similarity",
     fi: "Sisällön samankaltaisuus",
   },
-  "content vs content": { en: "content vs content", fi: "sisältö vs sisältö" },
+  "content vs content": { en: "content vs content", fi: "sisältö vs. sisältö" },
   "Learning-outcome similarity": {
     en: "Learning-outcome similarity",
     fi: "Osaamistavoitteiden samankaltaisuus",
   },
   "outcomes vs outcomes": {
     en: "outcomes vs outcomes",
-    fi: "tavoitteet vs tavoitteet",
+    fi: "tavoitteet vs. tavoitteet",
   },
   "Overlap: {a} in {b}": {
     en: "Overlap: {a} in {b}",
@@ -306,7 +315,7 @@ export const UI_TEXT = {
   "All proposes a course only when all of its prerequisites are covered by your courses. At least one proposes a course when any one prerequisite is covered, ranked by how much of it is covered.":
     {
       en: "All proposes a course only when all of its prerequisites are covered by your courses. At least one proposes a course when any one prerequisite is covered, ranked by how much of it is covered.",
-      fi: "Tilassa Kaikki ehdotetaan kurssia vain, kun kaikki sen esitiedot on katettu kursseillasi. Tilassa Vähintään yksi ehdotetaan kurssia, kun yksikin esitieto on katettu, ja kurssit järjestetään sen mukaan, kuinka suuri osa esitiedoista on katettu.",
+      fi: "Kaikki-tilassa ehdotetaan kurssia vain, kun kaikki sen esitiedot on katettu kursseillasi. Vähintään yksi -tilassa ehdotetaan kurssia, kun yksikin esitieto on katettu, ja kurssit järjestetään sen mukaan, kuinka suuri osa esitiedoista on katettu.",
     },
   "Completed / Selected": {
     en: "Completed / Selected",
@@ -387,10 +396,15 @@ export const UI_TEXT = {
     en: "Required / Recommended",
     fi: "Pakolliset / Suositellut",
   },
-  "Required and Recommended show how many of the courses in the best-matching prerequisite option of each category your basis covers. A category with no course prerequisites has no meter. All lists only courses whose prerequisite requirements your basis satisfies and has no meters. Official and inferred prerequisites both count. The inferred mark shows a course listed only because of inferred prerequisites.":
+  "Required and Recommended show how many of the courses in the best-matching prerequisite option of each category your basis covers. A category with no course prerequisites has no meter. The All mode lists only courses whose prerequisite requirements your basis satisfies, and it shows no meters. Official and inferred prerequisites both count. The inferred mark shows a course listed only because of inferred prerequisites.":
     {
-      en: "Required and Recommended show how many of the courses in the best-matching prerequisite option of each category your basis covers. A category with no course prerequisites has no meter. All lists only courses whose prerequisite requirements your basis satisfies and has no meters. Official and inferred prerequisites both count. The inferred mark shows a course listed only because of inferred prerequisites.",
-      fi: "Pakolliset ja Suositellut näyttävät, kuinka suuren osan kunkin luokan parhaiten täyttyvän esitietovaihtoehdon kursseista perustasi kattaa. Jos luokalla ei ole kurssiesitietoja, mittaria ei näytetä. Kaikki-luettelossa on vain kursseja, joiden esitietovaatimukset perustasi täyttää, eikä mittareita näytetä. Sekä viralliset että päätellyt esitiedot lasketaan mukaan. Päätelty-merkintä kertoo, että kurssi on luettelossa vain pääteltyjen esitietojen perusteella.",
+      en: "Required and Recommended show how many of the courses in the best-matching prerequisite option of each category your basis covers. A category with no course prerequisites has no meter. The All mode lists only courses whose prerequisite requirements your basis satisfies, and it shows no meters. Official and inferred prerequisites both count. The inferred mark shows a course listed only because of inferred prerequisites.",
+      fi: "Pakolliset ja Suositellut näyttävät, kuinka suuren osan kunkin luokan parhaiten täyttyvän esitietovaihtoehdon kursseista perustasi kattaa. Jos luokalla ei ole kurssiesitietoja, mittaria ei näytetä. Kaikki-tilassa on vain kursseja, joiden esitietovaatimukset perustasi täyttää, eikä mittareita näytetä. Sekä viralliset että päätellyt esitiedot lasketaan mukaan. Päätelty-merkintä kertoo, että kurssi on luettelossa vain pääteltyjen esitietojen perusteella.",
+    },
+  "Required and Recommended show how many of the courses in the best-matching prerequisite option of each category your basis covers. A category with no course prerequisites has no meter. The All mode lists only courses whose prerequisite requirements your basis satisfies, and it shows no meters. Only official prerequisites count.":
+    {
+      en: "Required and Recommended show how many of the courses in the best-matching prerequisite option of each category your basis covers. A category with no course prerequisites has no meter. The All mode lists only courses whose prerequisite requirements your basis satisfies, and it shows no meters. Only official prerequisites count.",
+      fi: "Pakolliset ja Suositellut näyttävät, kuinka suuren osan kunkin luokan parhaiten täyttyvän esitietovaihtoehdon kursseista perustasi kattaa. Jos luokalla ei ole kurssiesitietoja, mittaria ei näytetä. Kaikki-tilassa on vain kursseja, joiden esitietovaatimukset perustasi täyttää, eikä mittareita näytetä. Vain viralliset esitiedot lasketaan mukaan.",
     },
   marks: { en: "marks", fi: "merkinnät" },
   "Listed only because of inferred prerequisites.": {
@@ -566,6 +580,10 @@ export const UI_TEXT = {
       en: "Tip: turn off Recommended or Inferred, or turn on Active only, to shrink the graph.",
       fi: "Vinkki: pienennä graafia poistamalla Suositellut tai Päätelty käytöstä tai ottamalla Vain aktiiviset käyttöön.",
     },
+  "Tip: turn off Recommended, or turn on Active only, to shrink the graph.": {
+    en: "Tip: turn off Recommended, or turn on Active only, to shrink the graph.",
+    fi: "Vinkki: poista Suositellut käytöstä tai ota Vain aktiiviset käyttöön, niin graafi pienenee.",
+  },
 
   "Add programme": { en: "Add programme", fi: "Lisää ohjelma" },
   "Replace programme": { en: "Replace programme", fi: "Vaihda ohjelma" },
@@ -648,21 +666,21 @@ export const UI_TEXT = {
     en: "{min}–{max} courses",
     fi: "{min}–{max} kurssia",
   },
-  "Choose from {count} courses": {
-    en: "Choose from {count} courses",
-    fi: "Valitse {count} kurssista",
+  "Courses to choose from: {count}": {
+    en: "Courses to choose from: {count}",
+    fi: "Valittavia kursseja: {count}",
   },
-  "Choose from {count} modules": {
-    en: "Choose from {count} modules",
-    fi: "Valitse {count} moduulista",
+  "Modules to choose from: {count}": {
+    en: "Modules to choose from: {count}",
+    fi: "Valittavia moduuleja: {count}",
   },
-  "Choose from {count} programmes": {
-    en: "Choose from {count} programmes",
-    fi: "Valitse {count} ohjelmasta",
+  "Programmes to choose from: {count}": {
+    en: "Programmes to choose from: {count}",
+    fi: "Valittavia ohjelmia: {count}",
   },
-  "Choose from {count} options": {
-    en: "Choose from {count} options",
-    fi: "Valitse {count} vaihtoehdosta",
+  "Options to choose from: {count}": {
+    en: "Options to choose from: {count}",
+    fi: "Valittavia vaihtoehtoja: {count}",
   },
   modules: { en: "modules", fi: "moduulit" },
   "Unplaced studies": {
@@ -1011,7 +1029,7 @@ export const UI_TEXT = {
     en: "Blocked by an excluded course",
     fi: "Estetty poissuljetun kurssin takia",
   },
-  "Inactive course": { en: "Inactive course", fi: "Kurssi ei ole aktiivinen" },
+  "Inactive course": { en: "Inactive course", fi: "Ei-aktiivinen kurssi" },
   "Not enough active courses": {
     en: "Not enough active courses",
     fi: "Ei tarpeeksi aktiivisia kursseja",

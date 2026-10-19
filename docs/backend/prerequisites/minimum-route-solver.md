@@ -76,7 +76,7 @@ Selection has three stages, and the variable rank appears in none of them.
 3. It compiles one tree through `PrerequisiteGraphCompiler.compile_tree(...)` with the two toggles, `active_only`, the retained selected set, the canonical exclusions, and the graph-node marks, disposes the database context, and returns one `_PrerequisiteCommandContext`.
 4. It calls `calculate_minimum_new_credits(context.tree, context.basis_group_ids, max_compact_nodes=load_search_settings().prerequisite_path_max_compact_nodes)`.
 
-`POST /api/minimum-route` in `src/course_explorer_web/routes/minimum_route.py` forwards one `PrerequisitesRequest` from `src/course_explorer_web/routes/prerequisite_inputs.py` and returns `report.model_dump_json()`. `scripts/prerequisites.py --route` prints the same JSON. The graph operation `run_prerequisite_command` shares the same preparation in points 1 to 3 and returns the drawing report instead.
+`POST /api/minimum-route` in `src/course_explorer_web/routes/minimum_route.py` forwards one `PrerequisitesRequest` from `src/course_explorer_web/routes/prerequisite_inputs.py` and returns `report.model_dump_json()`. The adapter masks `include_inferred` with `WEB_INFERENCE_ENABLED` from `config/web.toml`, so a site that serves no inference features compiles and solves an official-only tree. `scripts/prerequisites.py --route` prints the same JSON. The graph operation `run_prerequisite_command` shares the same preparation in points 1 to 3 and returns the drawing report instead.
 
 `SearchSettings.prerequisite_path_max_compact_nodes` in `src/course_explorer/config.py` reads `PREREQUISITE_PATH_MAX_COMPACT_NODES` from `config/search.toml` and requires a value greater than 0.
 

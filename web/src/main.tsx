@@ -1,6 +1,6 @@
 /**
- * Browser bootstrap: one store, one lifetime storage handler and a recovery screen for
- * saved data that cannot be read.
+ * Browser bootstrap: one store, one lifetime storage handler, the site feature bootstrap and a
+ * recovery screen for saved data that cannot be read.
  */
 import { createRoot } from "react-dom/client";
 import { StoreContext } from "./state/context";
@@ -12,6 +12,7 @@ import {
   type BrowserStore,
 } from "./state/store";
 import { App } from "./app/App";
+import { WebFeatures } from "./app/WebFeatures";
 import { StorageRecovery } from "./features/profiles/StorageRecovery";
 import { downloadBrowserFile } from "./features/profiles/files";
 import "./styles/theme.css";
@@ -48,7 +49,9 @@ function asError(caught: unknown): Error {
 function renderStore(store: BrowserStore): void {
   root.render(
     <StoreContext.Provider value={store}>
-      <App />
+      <WebFeatures>
+        <App />
+      </WebFeatures>
     </StoreContext.Provider>,
   );
 }

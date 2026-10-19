@@ -4,13 +4,13 @@ The web package builds a fixed read-only application, hands it a restricted proc
 
 ## Application construction
 
-`create_app(*, frontend_directory: Path | None = None)` in `src/course_explorer_web/app.py` builds the whole surface. It creates `FastAPI(docs_url=None, redoc_url=None, openapi_url=None)`, includes the ten route modules in a fixed tuple, registers the two exception handlers, registers the frontend, and returns the application. The module also binds `app = create_app()`, which is the import string the entry point serves.
+`create_app(*, frontend_directory: Path | None = None)` in `src/course_explorer_web/app.py` builds the whole surface. It creates `FastAPI(docs_url=None, redoc_url=None, openapi_url=None)`, includes the 11 route modules in a fixed tuple, registers the two exception handlers, registers the frontend, adds the usage middleware, and returns the application. The module also binds `app = create_app()`, which is the import string the entry point serves.
 
-Construction reads no settings, opens no database context, and contacts no provider. The routers read settings inside a handler alone, so importing `course_explorer_web.app` reads no configuration and opens no database.
+Construction reads no settings, opens no database context, creates no file, and contacts no provider. The routers read settings inside a handler alone, so importing `course_explorer_web.app` reads no configuration and opens no database.
 
 ## The route modules
 
-Every handler delegates once and returns the command's report. `PrerequisitesRequest` lives in `src/course_explorer_web/routes/prerequisite_inputs.py` and is shared by the two prerequisite routes.
+Every dataset handler delegates once and returns the command's report. `POST /api/features` runs no command, because it projects two settings of `WebSettings`. `PrerequisitesRequest` lives in `src/course_explorer_web/routes/prerequisite_inputs.py` and is shared by the two prerequisite routes.
 
 | Route | Module | Request model | Command | Report |
 |---|---|---|---|---|
@@ -24,8 +24,11 @@ Every handler delegates once and returns the command's report. `PrerequisitesReq
 | `POST /api/recommendations` | `routes/recommendations.py` | `RecommendationsRequest` | `course_explorer.recommendations.commands.run_recommendations_command` | `RecommendationsReport` |
 | `POST /api/study-structure` | `routes/study_structure.py` | `StudyStructureRequest` | `course_explorer.study_structure.commands.run_study_structure_command` | `StudyStructureReport` |
 | `POST /api/course-summaries` | `routes/course_summaries.py` | `CourseSummariesRequest` | `course_explorer.search.lookup_commands.run_course_summaries_command` | `CourseSummariesReport` |
+| `POST /api/features` | `routes/features.py` | `FeaturesRequest` | None | `WebFeaturesReport` |
 
-Nine handlers call their command with `**request.model_dump()`. `POST /api/course-summaries` passes `request.identifiers` positionally. `POST /api/prerequisites` adds `max_drawing_elements=load_web_settings().prerequisite_graph_max_elements`, and `POST /api/minimum-route` passes no drawing limit.
+Five handlers pass their dumped request to the command: `POST /api/search` adds the site's semantic switch as `include_semantic`, and `POST /api/course-lookup`, `POST /api/module-lookup`, `POST /api/comparison` and `POST /api/study-structure` pass the dump as it is. Four handlers build one dumped dictionary and replace its `include_inferred` with the requested value combined with the site's inference switch: `POST /api/prerequisites`, `POST /api/minimum-route`, `POST /api/next-courses` and `POST /api/recommendations`. `POST /api/course-summaries` passes `request.identifiers` positionally. `POST /api/prerequisites` adds `max_drawing_elements=load_web_settings().prerequisite_graph_max_elements` to its dictionary, and `POST /api/minimum-route` passes no drawing limit.
+
+Six handlers apply the site's feature switches to the call they make. `POST /api/search` adds `include_semantic=load_web_settings().embeddings_enabled` to the command call. `POST /api/comparison` and `POST /api/recommendations` raise `HTTPException(status_code=403, detail="Feature disabled")` when embeddings are off, before the command runs. `POST /api/prerequisites`, `POST /api/minimum-route`, `POST /api/next-courses`, and `POST /api/recommendations` replace the dumped `include_inferred` with the requested value combined with the site's inference switch.
 
 Every handler is a synchronous `def`, so FastAPI runs it in a worker thread rather than on the event loop, and each request owns its own engine lifetime inside the command.
 
@@ -44,10 +47,11 @@ Every request model sets `model_config = ConfigDict(extra="forbid")`, so a field
 | `RecommendationsRequest` | Same fields and defaults as `NextCoursesRequest` |
 | `StudyStructureRequest` | `root_group_id: str` |
 | `CourseSummariesRequest` | `identifiers: tuple[str, ...] = ()` |
+| `FeaturesRequest` | No fields, so the empty object is the whole body |
 
 `DisplayLanguage` is `Literal["fi", "en"]` in `src/course_explorer/search/lookup.py`. A `None` score override leaves the command to use the configured threshold. `basis`, `mode`, and the node keys are plain strings here and are validated by the command, so an unsupported value becomes the command's own `ValueError`.
 
-The graph route reads `load_web_settings()` on each request rather than at construction, so the drawing limit comes from the values the serving process started with. A change to `PREREQUISITE_GRAPH_MAX_ELEMENTS` in `config/web.toml` reaches the drawing after the launcher starts the process again.
+The graph route reads `load_web_settings()` on each request rather than at construction, so the drawing limit comes from the values the serving process started with. Every other route that applies a site switch reads the same settings the same way. A change to `PREREQUISITE_GRAPH_MAX_ELEMENTS`, `WEB_EMBEDDINGS_ENABLED` or `WEB_INFERENCE_ENABLED` in `config/web.toml` reaches the server after the launcher starts the process again.
 
 ## Reports and error handlers
 
@@ -59,6 +63,25 @@ Each handler returns `Response(content=report.model_dump_json(), media_type="app
 - `invalid_request` for `fastapi.exceptions.RequestValidationError`. It returns status 422 with the fixed `{"detail": "Invalid request"}` and echoes nothing from the body.
 
 A `ValidationError` raised inside a command, and any other exception, are left to the server's default failure response, which carries status 500 and no report.
+
+## The request usage record
+
+`UsageMiddleware` in `src/course_explorer_web/usage.py` is a pure ASGI middleware that `create_app` registers with `application.add_middleware(UsageMiddleware)`. A non-HTTP scope passes through on its own path. For an HTTP scope it captures the current UTC hour, rounded down by the shared owner `course_explorer.usage.rounded_usage_hour`, and the monotonic start time at entry, wraps `send` so it reads the status of the `http.response.start` message while passing every message through to the client, and appends exactly one record in a `finally` block after the inner application returns or raises.
+
+One append is the only write the serving path makes. It adds one line to the checkout's `data/usage/requests`, which is neither authoritative catalogue data nor user data, and no aggregation or pruning runs inside a request. Each line is one compact JSON object with exactly four fields:
+
+| Field | Meaning |
+|---|---|
+| `hour` | The request-start UTC hour rounded down, as an aware ISO timestamp |
+| `route` | The fixed route label described below |
+| `status` | The status the response started with, or 500 when the request failed before a response started |
+| `duration_seconds` | Elapsed monotonic serving seconds until the inner application returned or raised, including ordinary response sends |
+
+Every HTTP outcome of every address is recorded: a successful feature, shell or asset read, a disabled-feature 403, a validation 422, a method 405, a 404 for an unknown path, and an unhandled failure that produces the server's 500. The record holds no method, identity, payload, exception, request URL, query or header.
+
+The route label comes from the final routing metadata rather than the requested path. A matched route contributes its own fixed path, so a shell read, an API read and a method mismatch each report the registered path. The mounted asset directory reports `/assets` for a served file and a missing one alike. Any other request reports `unmatched`. A requested asset name, an unknown path and a query string are therefore never retained.
+
+The append runs in a worker thread, so a usage report holding the file's lock cannot block the event loop. An append failure propagates, including when it happens after the response was transmitted. The middleware reads no settings and resolves the usage file when a request is handled, so construction and import create no file.
 
 ## Frontend registration
 
@@ -75,19 +98,20 @@ No catch-all route is registered, so an unknown path returns 404 rather than the
 
 `main()` in `src/course_explorer_web/launch.py` restricts what the serving process inherits:
 
-1. It composes five settings families through the automatic file sources: `load_raw_database_settings()`, `NormalizationSettings()`, `EmbeddingSettings()`, `SearchSettings()`, and `WebSettings()`.
-2. It starts the child environment with only the inherited `HOME`, `PATH`, and `LANG`.
-3. It iterates `type(settings).model_fields`, takes each `field.validation_alias` that is a string, unwraps a `SecretStr` with `get_secret_value()`, and writes `environment[alias] = configuration.environment_value(value)`.
-4. It sets `SETTINGS_SOURCE_MARKER` to `ENVIRONMENT_ONLY_SETTINGS_SOURCE`, the value `environment`.
-5. It calls `os.execve(sys.executable, [sys.executable, "-m", "course_explorer_web"], environment)`, so the server process takes the place of the launcher process.
+1. It loads `WebSettings()` and composes the four families every site needs through the automatic file sources: `load_raw_database_settings()`, `NormalizationSettings()`, `SearchSettings()`, and the web settings it loaded.
+2. It adds `EmbeddingSettings()` to that set only when `WEB_EMBEDDINGS_ENABLED` is true, so a site with embedding features off composes no embedding family and needs no hub artifact.
+3. It starts the child environment with only the inherited `HOME`, `PATH`, and `LANG`.
+4. It iterates `type(settings).model_fields`, takes each `field.validation_alias` that is a string, unwraps a `SecretStr` with `get_secret_value()`, and writes `environment[alias] = configuration.environment_value(value)`.
+5. It sets `SETTINGS_SOURCE_MARKER` to `ENVIRONMENT_ONLY_SETTINGS_SOURCE`, the value `environment`.
+6. It calls `os.execve(sys.executable, [sys.executable, "-m", "course_explorer_web"], environment)`, so the server process takes the place of the launcher process.
 
 `configuration.environment_value` renders a boolean as `1` or `0` and a list, tuple, or mapping as compact JSON. The two hub vectors travel as JSON arrays and are decoded by the child's process-environment source.
 
 Three consequences follow from the handoff.
 
 - The child reads no configuration file. `ConfiguredSettings.settings_customise_sources` returns only the constructor and process sources when the marker is set, so `read_public_configuration` and `read_local_configuration` are never called in the serving process.
-- The child environment holds the aliases of those five families, the environment-only marker, and any inherited `HOME`, `PATH`, and `LANG` values. The database, normalization, search, and web values travel, and the embedding family travels in full, because `EmbeddingSettings` extends the embedding runtime settings. The child therefore also receives the generation batch size, the chunk window and overlap, the request timeout and retry values, the pinned artifact identity, and the two hub vectors. The worker connection family, the translation family, the inference family, and the remaining configuration families do not travel, and no unrelated inherited variable is kept.
-- `EmbeddingSettings()` resolves both hub artifacts while the launcher runs, so the launcher reads the hub files and the child receives the vectors inline. Rewriting the hub files therefore takes effect at the next launch, and a serving process uses the vectors it started with.
+- The child environment holds the aliases of those families, the environment-only marker, and any inherited `HOME`, `PATH`, and `LANG` values. The database, normalization, search, and web values always travel. The embedding family travels in full when the site serves embedding features, because `EmbeddingSettings` extends the embedding runtime settings, so that child also receives the generation batch size, the chunk window and overlap, the request timeout and retry values, the pinned artifact identity, and the two hub vectors. A site with embedding features off receives no embedding alias at all. The worker connection family, the translation family, the inference family, and the remaining configuration families do not travel, and no unrelated inherited variable is kept.
+- `EmbeddingSettings()` resolves both hub artifacts while the launcher runs on a site that serves embedding features, so the launcher reads the hub files and the child receives the vectors inline. Rewriting the hub files therefore takes effect at the next launch, and a serving process uses the vectors it started with.
 
 `load_raw_database_settings()` returns the configured connection without resolving the selected-dataset pointer, so the serving process resolves the pointer itself on each settings read.
 
@@ -101,7 +125,7 @@ Three consequences follow from the handoff.
 
 The listener is passed to uvicorn by file descriptor, so the configured workers serve one bound loopback socket. `TCP_NODELAY` is set on the listener because uvicorn's inherited-socket path does not enable it through asyncio. `access_log=False` turns off the uvicorn access log.
 
-`WebSettings` in `src/course_explorer/config.py` reads `WEB_HOST`, `WEB_PORT`, `WEB_WORKERS`, and `PREREQUISITE_GRAPH_MAX_ELEMENTS` from `config/web.toml`. The host must be `127.0.0.1`, the port must be a valid TCP port, and the process count and the drawing limit must be greater than 0. The example sets `127.0.0.1`, 8037, 2, and 500.
+`WebSettings` in `src/course_explorer/config.py` reads `WEB_HOST`, `WEB_PORT`, `WEB_WORKERS`, `PREREQUISITE_GRAPH_MAX_ELEMENTS`, `WEB_EMBEDDINGS_ENABLED`, and `WEB_INFERENCE_ENABLED` from `config/web.toml`. The host must be `127.0.0.1`, the port must be a valid TCP port, and the process count and the drawing limit must be greater than 0. The two switches are required booleans with no code default. The example sets `127.0.0.1`, 8037, 2, 500, `true`, and `true`.
 
 ## Extending the server and its tests
 
@@ -118,6 +142,8 @@ The reverse holds for a behavior change: the search, comparison, prerequisite, d
 |---|---|
 | `tests/web/test_boundary.py` | The exact route set, the POST-only API surface, the two shell GETs, the `/assets` mount, and a subprocess import check that loads none of the administration, translation, ingestion-command, and embedding-command modules. |
 | `tests/web/test_frontend.py` | `/` and `/docs` each returning the built shell document, one built asset served under `/assets`, and the absence of a source-file route and of an unknown-path fallback. |
-| `tests/web/test_launcher.py` | The environment allowlist, the database password and web keys present in the child, the worker target and an unrelated secret absent, the marker value, the child families rebuilding with file reads forbidden, and the entry point binding the configured loopback port with `TCP_NODELAY` set. |
+| `tests/web/test_feature_switches.py` | The 403 refusal of both embedding reads on a site with embeddings off, and one delegate for each switch-affected read, with the site's switch applied to the requested value. |
+| `tests/web/test_usage.py` | One recorded line per request across a feature read, a validation failure, a disabled-feature refusal, an unknown path, a method mismatch, the shell, a served asset, a missing asset and an unhandled failure, with the route label, the hour rounding, the field shape and no sentinel from the request. |
+| `tests/web/test_launcher.py` | The environment allowlist, the database password and web keys present in the child, the worker target and an unrelated secret absent, the marker value, the child families rebuilding with file reads forbidden, the embedding aliases absent on a site with embeddings off, and the entry point binding the configured loopback port with `TCP_NODELAY` set. |
 | `tests/web/test_api.py` | The `course-summaries` route over a real normalized test catalogue, including the order of the input identities, a repeated identity, and the exact report JSON. |
 | `tests/search/test_lookup_commands.py` | The API rejection of a blank lookup query as status 422 with the command's message. |

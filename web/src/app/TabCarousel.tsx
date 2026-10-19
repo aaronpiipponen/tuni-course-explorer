@@ -1,8 +1,9 @@
-/** Five-tab animated cyclic carousel with keyboard navigation and inert offscreen panes. */
-import { useEffect, useState } from "react";
+/** Animated cyclic carousel over the served tabs with keyboard navigation and inert offscreen panes. */
+import { useEffect, useState, type ComponentType } from "react";
 import { AnimatePresence } from "framer-motion";
 import { setActiveTab, useActiveTab } from "./sessionTab";
-import { TABS } from "./tabs";
+import { effectiveTab, visibleTabs } from "./tabs";
+import type { TabId } from "../state/types";
 import { SearchPane } from "../features/search/SearchPane";
 import { SearchSessionProvider } from "../features/search/SearchSession";
 import { ComparePane } from "../features/compare/ComparePane";
@@ -12,37 +13,45 @@ import { StructurePane } from "../features/structure/StructurePane";
 import { useAction } from "../shared/useAction";
 import { ErrorNotice } from "../shared/ErrorNotice";
 import { useWording } from "../shared/useWording";
+import { useWebFeatures } from "./useWebFeatures";
 import { AnimatedTabPane } from "./AnimatedTabPane";
 
-const PANES = [
-  SearchPane,
-  ComparePane,
-  PrerequisitesPane,
-  DiscoverPane,
-  StructurePane,
-];
+const PANES: Record<TabId, ComponentType> = {
+  search: SearchPane,
+  compare: ComparePane,
+  prerequisites: PrerequisitesPane,
+  discover: DiscoverPane,
+  structure: StructurePane,
+};
 
 export function TabCarousel() {
-  const activeTab = useActiveTab();
+  const storedTab = useActiveTab();
+  const { embeddings_enabled } = useWebFeatures();
+  const activeTab = effectiveTab(storedTab, embeddings_enabled);
+  const visible = visibleTabs(embeddings_enabled);
   const { runAction, error } = useAction();
   const { language, t } = useWording();
-  const active = TABS.findIndex((tab) => tab.id === activeTab);
-  const Pane = PANES[active];
+  const active = visible.findIndex((tab) => tab.id === activeTab);
+  const Pane = PANES[activeTab];
   const [presentation, setPresentation] = useState({
     tab: activeTab,
     direction: 1 as -1 | 1,
   });
   if (presentation.tab !== activeTab) {
-    const previous = TABS.findIndex((tab) => tab.id === presentation.tab);
-    const displacement = (active - previous + TABS.length) % TABS.length;
+    const previous = visible.findIndex(
+      (tab) => tab.id === effectiveTab(presentation.tab, embeddings_enabled),
+    );
+    const displacement = (active - previous + visible.length) % visible.length;
     const shortest =
-      displacement > TABS.length / 2
-        ? displacement - TABS.length
+      displacement > visible.length / 2
+        ? displacement - visible.length
         : displacement;
     setPresentation({ tab: activeTab, direction: shortest < 0 ? -1 : 1 });
   }
   const select = (index: number) =>
-    runAction(() => setActiveTab(TABS[(index + TABS.length) % TABS.length].id));
+    runAction(() =>
+      setActiveTab(visible[(index + visible.length) % visible.length].id),
+    );
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
       if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
@@ -59,7 +68,7 @@ export function TabCarousel() {
     };
     window.addEventListener("keydown", keydown);
     return () => window.removeEventListener("keydown", keydown);
-  }, [active]);
+  }, [active, visible]);
   return (
     <SearchSessionProvider>
       <section className="carousel-frame" aria-label={t("Course tools")}>

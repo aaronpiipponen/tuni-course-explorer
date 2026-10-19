@@ -13,6 +13,7 @@ from course_explorer.config import (
     ENVIRONMENT_ONLY_SETTINGS_SOURCE,
     SETTINGS_SOURCE_MARKER,
     DatabaseSettings,
+    EmbeddingSettings,
     SearchSettings,
     WebSettings,
 )
@@ -20,13 +21,20 @@ from course_explorer_web import __main__ as entry_point
 from course_explorer_web import launch
 from tests.support import write_example_config_tree
 
+_EMBEDDING_ALIASES = frozenset(
+    field.validation_alias
+    for field in EmbeddingSettings.model_fields.values()
+    if isinstance(field.validation_alias, str)
+)
 
+
+@pytest.mark.parametrize("embeddings_enabled", (False, True), ids=("off", "on"))
 def test_web_launcher_excludes_operator_credentials(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, embeddings_enabled: bool
 ) -> None:
     """Hand only the required web aliases and the marker to a file-free child process."""
     root = tmp_path / "checkout"
-    write_example_config_tree(root)
+    write_example_config_tree(root, include_derived=embeddings_enabled)
     local = root / ".env"
     local.write_text("POSTGRES_PASSWORD=synthetic-database-password\n", encoding="utf-8")
     local.chmod(0o600)
@@ -50,6 +58,8 @@ def test_web_launcher_excludes_operator_credentials(
             "HOME": "/home/test",
             "PATH": "/usr/bin",
             "LANG": "C.UTF-8",
+            "WEB_EMBEDDINGS_ENABLED": "1" if embeddings_enabled else "0",
+            "WEB_INFERENCE_ENABLED": "1",
             "TRANSLATION_CONTROLLER_SSH_TARGET": "synthetic-worker",
             "SSH_AUTH_SOCK": "/tmp/synthetic-agent.sock",
             "UNRELATED_SECRET": "synthetic-unrelated-secret",
@@ -63,6 +73,8 @@ def test_web_launcher_excludes_operator_credentials(
     assert observed["WEB_HOST"] == "127.0.0.1"
     assert observed["WEB_PORT"] == "8037"
     assert observed["WEB_WORKERS"] == "2"
+    assert observed["WEB_EMBEDDINGS_ENABLED"] == ("1" if embeddings_enabled else "0")
+    assert observed["WEB_INFERENCE_ENABLED"] == "1"
     assert {"HOME", "PATH", "LANG"} <= observed.keys()
     assert observed[SETTINGS_SOURCE_MARKER] == ENVIRONMENT_ONLY_SETTINGS_SOURCE
     assert (
@@ -73,6 +85,12 @@ def test_web_launcher_excludes_operator_credentials(
         }
         & observed.keys()
     )
+    # A site without embedding features hands over no embedding alias at all, so its child can
+    # compose no embedding family and needs no hub artifact.
+    if embeddings_enabled:
+        assert "EMBEDDING_HUB_VECTOR" in observed
+    else:
+        assert not _EMBEDDING_ALIASES & observed.keys()
 
     # The captured child environment reconstructs its families without reopening any local file
     # and can never reach a worker or unrelated secret.
@@ -87,9 +105,13 @@ def test_web_launcher_excludes_operator_credentials(
     )
     assert WebSettings().web_port == 8037
     assert WebSettings().web_workers == 2
+    assert WebSettings().embeddings_enabled is embeddings_enabled
+    assert WebSettings().inference_enabled is True
     # The handoff carries the search policy for one query embedding request as well.
     assert SearchSettings().search_embedding_request_timeout_seconds == 5
     assert SearchSettings().search_embedding_max_attempts == 1
+    if embeddings_enabled:
+        assert len(EmbeddingSettings().embedding_hub_vector) == 1024
 
     # Continue the same handoff through the actual entry point, binding only a temporary test port.
     with socket.socket() as probe:

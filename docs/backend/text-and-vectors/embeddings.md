@@ -71,7 +71,7 @@ uv run python scripts/admin.py hubs
 The example data preparation computes both hubs from the same stored vectors through the same functions. A read that needs a hub fails when the file is absent, when the file is not a list of numbers, or when it does not hold exactly 1024 finite components. [Configuration](/docs/backend/configuration.md) describes how the settings owner resolves a hub reference.
 
 > [!IMPORTANT]
-> A web server reads both hubs when its process starts and keeps those values while it runs. Restart the web server after writing the hubs so it reads the files again.
+> A web server whose site serves embedding features reads both hubs when its process starts and keeps those values while it runs. Restart the web server after writing the hubs so it reads the files again.
 
 ## Embedding coverage
 

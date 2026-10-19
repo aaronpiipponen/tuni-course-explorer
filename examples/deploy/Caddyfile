@@ -1,15 +1,27 @@
-# HTTPS site template. The Caddy environment variable COURSE_EXPLORER_PUBLIC_DOMAIN supplies the domain.
-# The certificate is issued through TLS-ALPN-01 on port 443, so Caddy does not bind port 80.
+# HTTPS course-exploration site and administration site with separate interface binds.
 {
 	admin off
 	auto_https disable_redirects
 }
 
 https://{$COURSE_EXPLORER_PUBLIC_DOMAIN} {
+	bind {$COURSE_EXPLORER_PUBLIC_BIND}
 	tls {
 		issuer acme {
 			disable_http_challenge
 		}
 	}
 	reverse_proxy 127.0.0.1:8037
+}
+
+https://{$COURSE_EXPLORER_ADMIN_DOMAIN} {
+	bind {$COURSE_EXPLORER_ADMIN_BIND}
+	tls {
+		issuer acme {
+			disable_http_challenge
+			disable_tlsalpn_challenge
+			dns duckdns {env.DUCKDNS_API_TOKEN}
+		}
+	}
+	reverse_proxy 127.0.0.1:8039
 }

@@ -67,4 +67,10 @@ Each result states whether derived text took part. The flag is true when any chu
 
 The overlap calibration of the near-duplicate share and of the whole-basis overlap uses `COMPARISON_OVERLAP_FLOOR` and `COMPARISON_OVERLAP_CEILING`, which the comparison meters share, and the example sets 0.20 and 0.90.
 
+## Availability on a site
+
+A recommendation reads stored vectors, so a site serves it while `WEB_EMBEDDINGS_ENABLED` is true in that site's `config/web.toml`. A site with the switch off refuses the recommendation request with status 403 and the detail `Feature disabled` before the command runs, and its browser offers no Recommended list and requests the next courses alone.
+
+The route also applies `WEB_INFERENCE_ENABLED` to the request's inference toggle, so a site that serves the embedding features but not the inference features builds the next-course step from official prerequisites alone. That step decides which courses the recommendation excludes, so the inference switch changes the candidate set. The command, its inputs, its ranking and the script adapter are the same on both kinds of site.
+
 The nearest read, the pool aggregation, the profile computation, and the tests that cover them are described in [Coverage and ranking](/docs/backend/search-and-discovery/coverage-and-ranking.md).

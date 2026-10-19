@@ -19,6 +19,8 @@ A profile holds the language, the [shared course sets](/docs/guides/README.md#sh
 
 A browser with no saved state starts with one profile named My plan. Each profile holds its own copy, so the courses and the settings of one profile do not appear in another.
 
+A site that serves fewer tabs and features hides their controls. The saved **Compare** slots, the saved **Inferred** setting and the saved **Discover** list are values of the profile, so a site that serves the feature again finds them there. The open tab is not one of them: it belongs to the browser tab, so another tab keeps its own and a reload of one tab restores it. Nothing a profile saves states which features a site serves.
+
 The profiles belong to this browser. They are held in the local storage of the browser, so another browser or another device does not have them.
 
 ## The profile control

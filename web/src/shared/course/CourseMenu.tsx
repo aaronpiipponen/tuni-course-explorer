@@ -5,6 +5,7 @@ import type { CourseSummary } from "../../api/types";
 import { addToComparison } from "../../features/compare/actions";
 import { ComparisonReplaceDialog } from "../../features/compare/ComparisonReplaceDialog";
 import { openPrerequisites } from "../../app/actions";
+import { useWebFeatures } from "../../app/useWebFeatures";
 import { toggleCompleted } from "../../state/course-actions";
 import { useFreeChoiceAdd } from "../../features/structure/useFreeChoiceAdd";
 import { useProfileSelector } from "../../state/useProfileSelector";
@@ -25,6 +26,7 @@ export function CourseMenu({
   onOpenChange: (open: boolean) => void;
   onInteractionChange?: (active: boolean) => void;
 }) {
+  const { embeddings_enabled } = useWebFeatures();
   const { store, value: inComparison } = useProfileSelector((state) =>
     state.compare.slots.includes(course.group_id),
   );
@@ -65,16 +67,20 @@ export function CourseMenu({
               if (replaceOpen) event.preventDefault();
             }}
           >
-            <DropdownMenu.Item
-              disabled={inComparison}
-              onSelect={(event) => {
-                event.preventDefault();
-                if (!inComparison) addComparison();
-              }}
-            >
-              {t(inComparison ? "Already in comparison" : "Add to comparison")}
-              <span aria-hidden="true">⇄</span>
-            </DropdownMenu.Item>
+            {embeddings_enabled && (
+              <DropdownMenu.Item
+                disabled={inComparison}
+                onSelect={(event) => {
+                  event.preventDefault();
+                  if (!inComparison) addComparison();
+                }}
+              >
+                {t(
+                  inComparison ? "Already in comparison" : "Add to comparison",
+                )}
+                <span aria-hidden="true">⇄</span>
+              </DropdownMenu.Item>
+            )}
             <DropdownMenu.Item
               onSelect={() => {
                 runAction(() => openPrerequisites(store, course.group_id));
@@ -118,15 +124,17 @@ export function CourseMenu({
         </DropdownMenu.Portal>
       </DropdownMenu.Root>
       {error && <ErrorNotice error={error} language={language} />}
-      <ComparisonReplaceDialog
-        course={course}
-        open={replaceOpen}
-        onClose={() => {
-          setReplaceOpen(false);
-          onOpenChange(false);
-        }}
-        returnFocus={() => triggerRef.current?.focus()}
-      />
+      {embeddings_enabled && (
+        <ComparisonReplaceDialog
+          course={course}
+          open={replaceOpen}
+          onClose={() => {
+            setReplaceOpen(false);
+            onOpenChange(false);
+          }}
+          returnFocus={() => triggerRef.current?.focus()}
+        />
+      )}
     </>
   );
 }

@@ -8,7 +8,7 @@ One preparation resolves the target, the selected courses, the completed courses
 
 ## The graph
 
-The graph operation projects the compiled tree into the drawing the **Prerequisites** tab renders, with one presentation state for each node. The basis, the exclusions, the activity scope, and the inferred toggle decide those states. A script caller passes no drawing limit, and the web route applies the configured one. [Prerequisite graph](/docs/backend/prerequisites/prerequisite-graph.md) describes the drawing and its states.
+The graph operation projects the compiled tree into the drawing the **Prerequisites** tab renders, with one presentation state for each node. The basis, the exclusions, and the activity scope decide those states, and the inferred toggle takes part only on a site that serves the inference features. A script caller passes no drawing limit, and the web route applies the configured one. [Prerequisite graph](/docs/backend/prerequisites/prerequisite-graph.md) describes the drawing and its states.
 
 ## The minimum route
 

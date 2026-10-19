@@ -7,6 +7,7 @@ This page maps the modules that carry one worker session over the transport boun
 | Module | Owns |
 |---|---|
 | `src/course_explorer_admin/transport.py` | The one SSH/WSL command and file transport, its recovery budget, and the transport error classes |
+| `src/course_explorer_admin/logs.py` | The session listing, and the fixed bounded log reads the two worker sources reach through that transport |
 | `src/course_explorer_admin/remote.py` | The worker session, control, and status DTOs, the worker-side prepare/export/cleanup helpers, and the worker dataset CLI |
 | `src/course_explorer_admin/worker_session.py` | The shared worker-side lifecycle shell, its subcommands, and the identity, quiescence, and cleanup guards |
 | `src/course_explorer_admin/remote_stages.py` | The server-side translation and inference adapters over the lifecycle core |
@@ -40,6 +41,16 @@ Every command body runs through one wrapper that installs an exit trap before th
 The connection values name where the transport goes. `TRANSLATION_CONTROLLER_SSH_CONNECT_TIMEOUT_SECONDS` bounds one connect attempt, `TRANSLATION_CONTROLLER_STOP_TIMEOUT_SECONDS` is the recovery and stop bound, and `TRANSLATION_CONTROLLER_HEALTH_INTERVAL_SECONDS` spaces the retries and polls. The target, the environment, and the worker checkout path are environment-file values, so a machine change does not change the tracked files.
 
 Transport protocols at the level the module fixes them: each command is one SSH invocation against the configured worker target, and each command body runs inside the configured environment on the worker. The boot identity read and the restart request use the same target without the command wrapper. The keepalive is one detached local SSH child that holds a remote sleep open for the session, and `terminate_remote_keepalive` stops the exact session-named remote process.
+
+## The fixed worker log read
+
+`course_explorer_admin.logs` owns one bounded read of a fixed session log, and it uses the same transport without the lifecycle helpers. `read_session_log(stage, session_id, source, *, lines, runner)` resolves the lifecycle session receipt of the chosen stage for every source. The `keepalive` source also resolves the recorded canonical worker session, and the `worker-runner` and `worker-runtime` sources derive the worker path server side from `remote_worker_session_directory`, so no caller supplies a path. A worker source runs exactly one `transport.run(("bash", "-c", script), cwd=PurePosixPath(str(connection.worker_project_root)), timeout=connection.stop_timeout_seconds)` with no environment override.
+
+For a worker source, the script is one line, and it is the only worker command of that read. It walks the derived path's ancestors from the root to the log's parent, refusing a symlink before it checks existence and requiring each present ancestor to be a searchable directory, then it refuses a symlink at the log path itself and requires a regular file there, and it prints the last lines with `tail -n COUNT -- PATH`. Every ancestor path is quoted, each ancestor refusal exits 1, an absent ancestor or an absent log exits 3, and a tail failure exits 1.
+
+Only a command-phase exit status of 3 is classified as an absent log, which the read reports as unavailable with no text. A read failure, a timeout, a connection or protocol failure and a decode failure propagate to the caller, and no captured output reaches the failure line.
+
+This read installs nothing, prepares nothing, reads no worker status, starts no keepalive and retries nothing, so it needs no `uv` invocation, no dependency check, no prepared checkout and no recovery episode.
 
 ## The session lifecycle seam
 
@@ -116,5 +127,6 @@ Where to change what:
 | `tests/admin/test_dataset_database.py` | The real dump, restore, and return round trip, the vector and verification preservation, three rotations, and the guarded migration |
 | `tests/admin/test_worker_setup.py` | The fast-forward code update, the read-only resource check, the artifact verification, and the dirty-checkout refusal |
 | `tests/admin/test_checkpoint_reboot.py` | The clock arithmetic and the changed-boot plus healthy-environment requirement |
+| `tests/admin/test_log_reads.py` | Each fixed local source, a redirected session directory chain, the classified absent worker log beside a genuine read failure, the symlink refusals, and the one fixed worker command |
 | `tests/admin/test_runtime.py` | The configured runtime builders, the ownership record, the occupied port, the reused foreign PID, and the record from another boot |
 | `tests/datasets/test_datasets.py` | The pointer resolution, the explicit opt-out, and the failure shapes |

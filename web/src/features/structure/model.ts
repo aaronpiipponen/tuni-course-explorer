@@ -489,12 +489,12 @@ function project(
     );
     const titleKey: UiTextKey =
       entryKinds.size === 1 && entryKinds.has("course")
-        ? "Choose from {count} courses"
+        ? "Courses to choose from: {count}"
         : entryKinds.size === 1 && entryKinds.has("programme")
-          ? "Choose from {count} programmes"
+          ? "Programmes to choose from: {count}"
           : entryKinds.size === 1 && entryKinds.has("module")
-            ? "Choose from {count} modules"
-            : "Choose from {count} options";
+            ? "Modules to choose from: {count}"
+            : "Options to choose from: {count}";
     const autoSelectSingleWrapper =
       options.length === 1 &&
       options[0].entries.length === 1 &&

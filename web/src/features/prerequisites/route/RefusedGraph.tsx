@@ -1,5 +1,6 @@
 /** Drawing-size refusal while preserving the explicit route operation. */
 import type { PrerequisiteGraphReport } from "../../../api/types";
+import { useWebFeatures } from "../../../app/useWebFeatures";
 import { useWording } from "../../../shared/useWording";
 import type { RouteSummary } from "./route";
 import { RouteControl } from "./RouteControl";
@@ -18,6 +19,7 @@ export function RefusedGraph({
   graphLoading: boolean;
 }) {
   const { language, t } = useWording();
+  const { inference_enabled } = useWebFeatures();
   const locale = language === "fi" ? "fi-FI" : "en-US";
   return (
     <div className="graph-stage">
@@ -39,7 +41,9 @@ export function RefusedGraph({
             </p>
             <p className="graph-refusal-tip">
               {t(
-                "Tip: turn off Recommended or Inferred, or turn on Active only, to shrink the graph.",
+                inference_enabled
+                  ? "Tip: turn off Recommended or Inferred, or turn on Active only, to shrink the graph."
+                  : "Tip: turn off Recommended, or turn on Active only, to shrink the graph.",
               )}
             </p>
           </section>

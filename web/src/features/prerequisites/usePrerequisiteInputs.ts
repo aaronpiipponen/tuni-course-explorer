@@ -1,6 +1,7 @@
 /** One live-profile prerequisite input snapshot shared by both request owners. */
 import { useProfileSelector } from "../../state/useProfileSelector";
 import { useActiveTab } from "../../app/sessionTab";
+import { useWebFeatures } from "../../app/useWebFeatures";
 import type { PrerequisitesRequest } from "../../api/types";
 
 export function usePrerequisiteInputs(): {
@@ -8,6 +9,7 @@ export function usePrerequisiteInputs(): {
   key: string;
   active: boolean;
 } {
+  const { inference_enabled } = useWebFeatures();
   const { value: root } = useProfileSelector(
     (state) => state.prerequisites.rootCourseId,
   );
@@ -46,7 +48,7 @@ export function usePrerequisiteInputs(): {
         selected_codes: selected,
         excluded_codes: excludedCourses,
         include_recommended: includeRecommended,
-        include_inferred: includeInferred,
+        include_inferred: includeInferred && inference_enabled,
         active_only: activeOnly,
         basis,
         completed_node_keys: completedNodes,

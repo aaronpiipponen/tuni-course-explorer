@@ -146,13 +146,15 @@ def owned_process_is_alive(record: OwnedProcessRecord) -> bool:
     return True
 
 
-def compose_prefix() -> tuple[str, ...]:
+def compose_prefix(*, non_interactive: bool = False) -> tuple[str, ...]:
     """Return the exact Compose bridge prefix shared by both hosts.
 
     Every local and remote caller generates its own temporary environment-file bridge through
-    ``course_explorer_admin.compose``.
+    ``course_explorer_admin.compose``. With ``non_interactive=True`` the bridge runs ``sudo -n``,
+    which a passwordless host accepts and an interactive prompt cannot be answered from a fixed
+    administrative command. Every forwarded Compose argument follows the trailing ``--``.
     """
-    return (
+    bridge = (
         "uv",
         "run",
         "--no-sync",
@@ -161,8 +163,10 @@ def compose_prefix() -> tuple[str, ...]:
         "python",
         "-m",
         "course_explorer_admin.compose",
-        "--",
     )
+    if non_interactive:
+        return (*bridge, "--non-interactive", "--")
+    return (*bridge, "--")
 
 
 @contextmanager

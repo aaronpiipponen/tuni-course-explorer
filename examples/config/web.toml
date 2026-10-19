@@ -1,6 +1,14 @@
-# Portable loopback bind, process count and browser-drawing policy for read-only HTTP serving.
+# Portable loopback bind, process count, browser-drawing and served-feature policy for read-only
+# HTTP serving.
 WEB_HOST = "127.0.0.1"
 WEB_PORT = 8037
 WEB_WORKERS = 2
 # Maximum report-graph drawing nodes plus edges before the browser refuses layout.
 PREREQUISITE_GRAPH_MAX_ELEMENTS = 500
+# Serve semantic matching, comparison and recommendations, and their browser surfaces.
+WEB_EMBEDDINGS_ENABLED = true
+# Serve inferred prerequisite data and the Inferred controls on every surface.
+WEB_INFERENCE_ENABLED = true
+# Retention in days for the per-request usage records. The usage report keeps records from the
+# current hour back this many days. A requested hour window longer than this retention is refused.
+USAGE_RETENTION_DAYS = 30

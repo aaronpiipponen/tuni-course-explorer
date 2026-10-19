@@ -21,6 +21,7 @@ from course_explorer.config import load_administrative_dataset_settings
 from course_explorer.datasets import (
     DatabaseSnapshot,
     DatasetReceipt,
+    SelectedDatasetPointer,
     read_dataset_receipt,
 )
 from course_explorer_admin import datasets as datasets_admin
@@ -398,6 +399,140 @@ def test_rotation_keeps_the_retained_pair_and_only_deletes_verified_ancestors(
     for label, path in receipt_paths.items():
         assert path.read_bytes() == receipt_bytes[label]
     assert sentinel.read_text() == "keep"
+
+
+def _write_chain_file(root: Path, relative: str, payload: str) -> Path:
+    """Write one owner-only state file inside the isolated administrative root."""
+    path = root / relative
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    atomic_write_private_text(path, payload)
+    return path
+
+
+def _retained_dump(root: Path, dataset_id: str, payload: bytes) -> Path:
+    """Write one retained dataset dump beside its receipt under the administrative root."""
+    path = root / "datasets" / dataset_id / "database.dump"
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    path.write_bytes(payload)
+    return path
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        "selected-dataset",
+        "outside-chain",
+        "selected-database-name",
+        "served-database-with-selection-disabled",
+        "returned-non-derived-name",
+        "protected-initial-database",
+        "symlinked-dump",
+    ],
+)
+def test_dataset_cleanup_refuses_unowned_or_selected_resources(
+    configured: tuple[Path, RestoreStub], tmp_path: Path, case: str
+) -> None:
+    """One refused dataset cleanup per invocation: no drop, no removal, every retained byte kept."""
+    root, _ = configured
+    runner = FakeRunner()
+    settings = load_administrative_dataset_settings()
+    selected_id = "a" * 32
+    predecessor_id = "b" * 32
+    selected_database = settings.database_name(selected_id, worker=False)
+    initial_database = INITIAL_DATABASE
+    predecessor: DatasetReceipt | None = None
+    if case == "selected-database-name":
+        # The initial receipt names the selected database, so its id is not the delete boundary.
+        initial_database = selected_database
+    elif case == "served-database-with-selection-disabled":
+        # The receipt names the raw database, which the site serves while selection is disabled.
+        initial_database = INITIAL_DATABASE
+    elif case == "protected-initial-database":
+        initial_database = "course_explorer_test"
+    elif case == "symlinked-dump":
+        initial_database = "course_initial_archive"
+    elif case == "returned-non-derived-name":
+        predecessor = DatasetReceipt(
+            schema_version=1,
+            dataset_id=predecessor_id,
+            database_name="retained_manual_database",
+            predecessor_id=INITIAL_ID,
+            kind="returned",
+            revision=REVISION,
+            dump_sha256="d" * 64,
+            verification=sample_verification(),
+        )
+    chain = [
+        DatasetReceipt(
+            schema_version=1,
+            dataset_id=selected_id,
+            database_name=selected_database,
+            predecessor_id=INITIAL_ID if predecessor is None else predecessor_id,
+            kind="returned",
+            revision=REVISION,
+            dump_sha256="e" * 64,
+            verification=sample_verification(),
+        ),
+        *([] if predecessor is None else [predecessor]),
+        DatasetReceipt(
+            schema_version=1,
+            dataset_id=INITIAL_ID,
+            database_name=initial_database,
+            predecessor_id=None,
+            kind="initial",
+            revision=REVISION,
+            dump_sha256=None,
+            verification=sample_verification(),
+        ),
+    ]
+    receipt_bytes: dict[Path, bytes] = {}
+    for receipt in chain:
+        path = _write_chain_file(
+            root,
+            f"datasets/{receipt.dataset_id}/receipt.json",
+            administrative_json(receipt),
+        )
+        receipt_bytes[path] = path.read_bytes()
+    if predecessor is not None:
+        receipt_bytes[_retained_dump(root, predecessor_id, b"predecessor-dump")] = (
+            b"predecessor-dump"
+        )
+    selected_dump = _retained_dump(root, selected_id, b"selected-dump")
+    receipt_bytes[selected_dump] = b"selected-dump"
+
+    outside = tmp_path / "outside-dump-target"
+    outside.write_bytes(b"outside-dump-target")
+    if case == "symlinked-dump":
+        symlinked = root / "datasets" / INITIAL_ID / "database.dump"
+        symlinked.symlink_to(outside)
+    unrelated = tmp_path / "unrelated.txt"
+    unrelated.write_text("unrelated")
+    pointer_path = _write_chain_file(
+        root,
+        "selected-dataset.json",
+        administrative_json(SelectedDatasetPointer(schema_version=1, dataset_id=selected_id)),
+    )
+    pointer_bytes = pointer_path.read_bytes()
+    target_id = {
+        "selected-dataset": selected_id,
+        "outside-chain": "c" * 32,
+        "selected-database-name": INITIAL_ID,
+        "served-database-with-selection-disabled": INITIAL_ID,
+        "returned-non-derived-name": predecessor_id,
+        "protected-initial-database": INITIAL_ID,
+        "symlinked-dump": INITIAL_ID,
+    }[case]
+
+    with pytest.raises(ValueError):
+        datasets_admin.delete_retained_dataset(target_id, runner=runner)
+
+    assert not any("dropdb" in call for call in runner.calls)
+    assert pointer_path.read_bytes() == pointer_bytes
+    for path, payload in receipt_bytes.items():
+        assert path.read_bytes() == payload
+    assert outside.read_bytes() == b"outside-dump-target"
+    assert unrelated.read_text() == "unrelated"
+    assert read_dataset_receipt(root, INITIAL_ID).database_name == initial_database
 
 
 def _wait_until(predicate, *, timeout: float = 20.0) -> None:

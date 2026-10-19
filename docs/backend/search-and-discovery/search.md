@@ -1,16 +1,16 @@
 # Search
 
-A search query matches courses through four methods, and the app merges their results into one ordered list per course.
+A search query matches courses through the lexical and semantic methods a site serves, and the app merges their results into one ordered list per course.
 
 ## One query, four methods
 
-[Unified search](/docs/reference/glossary.md#search-and-comparison) runs all four search methods for one query and merges their results into one entry per course, so a course that several methods match appears once with the list of methods that matched it. The four methods are Exact code, Substring, Fuzzy search, and Semantic.
+[Unified search](/docs/reference/glossary.md#search-and-comparison) runs every method a site serves for one query and merges their results into one entry per course, so a course that several methods match appears once with the list of methods that matched it. The methods are Exact code, Substring, Fuzzy search, and Semantic, and a site that serves embedding features runs all four.
 
-One request carries the query, the app language, a minimum score for each scored method, and whether inactive courses take part. The request reads the represented courses once and shares that read between the four methods, so every method describes the same catalogue.
+One request carries the query, the app language, a minimum score for each scored method, and whether inactive courses take part. The request reads the represented courses once and shares that read between the methods, so every method describes the same catalogue.
 
 The semantic method needs a vector for the query, and it embeds the query through the same service that produced the stored vectors. [Embeddings](/docs/backend/text-and-vectors/embeddings.md) describes that service and the vectors it stores.
 
-![One query reaches the four search methods, and the embedding service supplies the query vector that the semantic method measures. The four methods' results are merged into one entry per course and ordered by the configured tier order.](/docs/diagrams/search-pipeline.svg)
+![On a site that serves semantic matching, one query reaches the four search methods, and the embedding service supplies the query vector that the semantic method measures. The four methods' results are merged into one entry per course and ordered by the configured tier order.](/docs/diagrams/search-pipeline.svg)
 
 ## The four search methods
 
@@ -55,13 +55,23 @@ The semantic method needs a query vector, and a search makes one query embedding
 
 A transport failure, a 429 status, and a status from 500 to 599 are retried while attempts remain, up to the attempt count `SEARCH_EMBEDDING_MAX_ATTEMPTS` sets, with a wait that grows between attempts, and every other non-200 status ends the request at once. The query embedding request fails when no attempt succeeds. When it fails, the search returns the exact-code, substring, and fuzzy matches it found. The report then carries `semantic_available` false, no semantic match source, and no semantic score in any result, and it may carry no result at all. A request that reaches the service and returns no course above the threshold reports `semantic_available` true, because the method ran and found nothing. A malformed successful response, a database failure, and an invalid input are not request failures, and each one ends the search with a failure and no report.
 
+## A site without semantic matching
+
+The web read composes the semantic method only when `WEB_EMBEDDINGS_ENABLED` is true in the site's `config/web.toml`, and it passes that decision to the command as its `include_semantic` argument, whose default is `true`. A site with the switch off serves the exact-code, substring, and fuzzy methods alone.
+
+On such a site the command loads no embedding settings, builds no embedding provider, constructs no semantic repository, and reads no stored vector. Its report carries `semantic_available` false and a tier order that omits `semantic`, and every result carries no semantic score. An exact-code query on a site without embedding features therefore returns the same lexical matches it returns on a site with them.
+
+That false availability is not the provider outage of the section above, and the Search tab distinguishes the two: it shows the unavailable notice only on a site that serves semantic matching, and it draws the returned lexical matches, the empty state and the ordinary request errors in both cases.
+
+`scripts/search.py` runs the command with semantic matching, so a bare command uses every method the configuration allows.
+
 ## Scores and match sources
 
 Each merged result carries the methods that matched it and the score of each scored method that matched. A fuzzy score is a percentage from 0 to 100 and a semantic score is a cosine from -1 to 1, and the two live in separate fields.
 
 ## Tier order
 
-Merged results are ordered by [tier order](/docs/reference/glossary.md#search-and-comparison). `SEARCH_TIER_PRIORITY` in `config/search.toml` lists the four methods in their order of precedence, and it must name each of them exactly once. The example sets `exact_code`, `substring`, `fuzzy_name`, and `semantic` in that order.
+Merged results are ordered by [tier order](/docs/reference/glossary.md#search-and-comparison). `SEARCH_TIER_PRIORITY` in `config/search.toml` lists the four methods in their order of precedence, and it must name each of them exactly once. The example sets `exact_code`, `substring`, `fuzzy_name`, and `semantic` in that order. The tier order a report returns omits `semantic` when the search ran without the semantic method, so an effective order names only the methods that ran.
 
 Three rules decide the merged order, applied in turn.
 
@@ -107,5 +117,6 @@ The Compare, Prerequisites, Discover, and Structure of studies tabs hold courses
 | `FUZZY_TOKEN_MATCH_WEIGHT` | The weight of query-token coverage in the fuzzy score, greater than 0 and at most 1. The example sets 0.95. |
 | `SEARCH_EMBEDDING_REQUEST_TIMEOUT_SECONDS` | The timeout of the one query embedding request a search makes, in seconds and greater than 0. The example sets 5. |
 | `SEARCH_EMBEDDING_MAX_ATTEMPTS` | The attempt count of that query embedding request, the first included, at least 1. The example sets 1. |
+| `WEB_EMBEDDINGS_ENABLED` | Whether this site composes semantic matching, its provider and its stored-vector read, in `config/web.toml`. The example sets `true`. |
 
 The services behind the four methods, the read that the semantic method measures against, and the merge are described in [Search queries and merge](/docs/backend/search-and-discovery/search-queries.md).

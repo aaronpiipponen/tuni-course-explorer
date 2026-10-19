@@ -1,10 +1,12 @@
-"""Sole writer of selected-dataset receipts/pointer and owner of server dataset rotation.
+"""Sole writer of selected-dataset receipts/pointer and owner of server dataset deletion.
 
 Initial setup enrolls the configured database through the migration head. A verified return restores
 a returned worker dump into a derived server database and selects it. Rotation retains the selected
 dataset plus its immediate predecessor and drops chain-proven older databases and their confined
-dumps. It is the only module that writes a receipt or pointer and the only one that drops a server
-dataset database. Lock ownership is shared within this package so rotation does not nest the action lock.
+dumps. Explicit cleanup lists the retained chain and drops one named non-selected dataset through
+the same drop mechanics, keeping its receipt. It is the only module that writes a receipt or pointer
+and the only one that drops a server dataset database. Lock ownership is shared within this package
+so rotation does not nest the action lock.
 """
 
 from __future__ import annotations
@@ -13,7 +15,9 @@ import os
 import shutil
 import tempfile
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
+
+from pydantic import BaseModel, ConfigDict, TypeAdapter, ValidationError
 
 from course_explorer.administration import (
     administrative_json,
@@ -30,6 +34,8 @@ from course_explorer.config import (
 from course_explorer.datasets import (
     _INITIAL_DATASET_ID,
     DatabaseSnapshot,
+    DatasetDatabaseName,
+    DatasetId,
     DatasetReceipt,
     DatasetVerification,
     SelectedDatasetPointer,
@@ -39,7 +45,7 @@ from course_explorer.datasets import (
     resolve_selected_dataset,
 )
 from course_explorer_admin import mechanics
-from course_explorer_admin.snapshots import restore_database
+from course_explorer_admin.snapshots import database_exists, restore_database
 
 if TYPE_CHECKING:
     from course_explorer_admin.remote import WorkerDatasetSession
@@ -53,6 +59,39 @@ _PROTECTED_DATABASES = frozenset(
         "course_explorer_translation_worker_proof",
     }
 )
+
+_DATASET_ID_ADAPTER = TypeAdapter(DatasetId)
+
+
+class _CleanupModel(BaseModel):
+    """Frozen, closed DTO base for the explicit dataset cleanup contract."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+
+class DatasetListEntry(_CleanupModel):
+    """One retained dataset of the selected receipt chain, described by receipt and file facts."""
+
+    dataset_id: DatasetId
+    kind: Literal["initial", "returned"]
+    database_name: DatasetDatabaseName
+    dump_path: str | None
+    selected: bool
+
+
+class DatasetListReport(_CleanupModel):
+    """One listing of the retained chain in selected-first order."""
+
+    schema_version: Literal[1] = 1
+    datasets: tuple[DatasetListEntry, ...]
+
+
+class DatasetDeletionReport(_CleanupModel):
+    """One explicit deletion of a single non-selected dataset."""
+
+    schema_version: Literal[1] = 1
+    dataset_id: DatasetId
+    database_name: DatasetDatabaseName
 
 
 def admin_state_root(settings: AdministrativeDatasetSettings, *, base: Path | None = None) -> Path:
@@ -392,36 +431,168 @@ def _walk_chain(root: Path) -> list[DatasetReceipt]:
     return chain
 
 
+def _require_dataset_id(dataset_id: str) -> str:
+    """Validate one supplied dataset id against the shared dataset identity type.
+
+    A pydantic :class:`ValidationError` selects the configuration guidance at the operator surface,
+    so a malformed id is reported as one ``ValueError`` and that surface prints the cleanup guidance
+    for it.
+    """
+    try:
+        return _DATASET_ID_ADAPTER.validate_python(dataset_id)
+    except ValidationError as exc:
+        raise ValueError("dataset id must be 32 lowercase hexadecimal characters") from exc
+
+
+def _require_dataset_database_name(
+    settings: AdministrativeDatasetSettings, receipt: DatasetReceipt
+) -> None:
+    """Refuse a returned receipt whose database name is not its configured derived name.
+
+    An initial receipt carries the name of the configured database, so its own recorded name is
+    authoritative and is never compared with the settings.
+    """
+    if receipt.kind == "returned":
+        if receipt.database_name != settings.database_name(receipt.dataset_id, worker=False):
+            raise ValueError("returned dataset database is not the configured derived name")
+
+
+def _drop_dataset_resources_locked(
+    settings: AdministrativeDatasetSettings,
+    root: Path,
+    receipt: DatasetReceipt,
+    runner: mechanics.ProcessRunner,
+) -> None:
+    """Drop one dataset's server database and remove its confined retained dump.
+
+    The database name is checked against the protected list, and the confined dump is required to be
+    a regular non-symlink file, before the one Compose drop runs. A connected database may refuse the
+    drop and that error propagates. The dump is removed only after the database command succeeded, and
+    the receipt, the pointer, the dataset directory and the session files stay.
+    """
+    require_droppable_database(receipt.database_name)
+    dump_path = _dataset_directory(root, receipt.dataset_id) / "database.dump"
+    if dump_path.is_symlink() or (dump_path.exists() and not dump_path.is_file()):
+        raise ValueError("retained dataset dump must be a regular non-symlink file")
+    raw = load_raw_database_settings()
+    runner.run(
+        (
+            *mechanics.compose_prefix(),
+            "exec",
+            "-T",
+            "db",
+            "dropdb",
+            "--if-exists",
+            "--username",
+            raw.postgres_user,
+            receipt.database_name,
+        ),
+        cwd=repository_root(),
+        timeout=settings.database_operation_timeout_seconds,
+    )
+    dump_path.unlink(missing_ok=True)
+
+
 def _rotate_locked(
     settings: AdministrativeDatasetSettings, root: Path, runner: mechanics.ProcessRunner
 ) -> None:
     chain = _walk_chain(root)
     older = chain[2:]
     for receipt in older:
-        if receipt.kind == "returned":
-            if receipt.database_name != settings.database_name(receipt.dataset_id, worker=False):
-                raise ValueError(
-                    "older returned dataset database is not the configured derived name"
-                )
-    raw = load_raw_database_settings()
+        _require_dataset_database_name(settings, receipt)
     for receipt in older:
-        require_droppable_database(receipt.database_name)
-        runner.run(
-            (
-                *mechanics.compose_prefix(),
-                "exec",
-                "-T",
-                "db",
-                "dropdb",
-                "--if-exists",
-                "--username",
-                raw.postgres_user,
-                receipt.database_name,
-            ),
-            cwd=repository_root(),
-            timeout=settings.database_operation_timeout_seconds,
+        _drop_dataset_resources_locked(settings, root, receipt, runner)
+
+
+def _retained_dump_path(root: Path, receipt: DatasetReceipt) -> str | None:
+    """Return the repository-relative retained dump path of one receipt, or ``None`` when absent."""
+    dump_path = _dataset_directory(root, receipt.dataset_id) / "database.dump"
+    if dump_path.is_symlink() or (dump_path.exists() and not dump_path.is_file()):
+        raise ValueError("retained dataset dump must be a regular non-symlink file")
+    if not dump_path.exists():
+        return None
+    return dump_path.relative_to(repository_root()).as_posix()
+
+
+def list_retained_datasets(*, runner: mechanics.ProcessRunner) -> DatasetListReport:
+    """List the datasets of the receipt chain that hold a database or a dump, selected first.
+
+    The chain is walked from the selected receipt exactly as rotation walks it, so the reported
+    entries are the chain-proven datasets in receipt order. The selected dataset is always listed.
+    Any other dataset is listed when its server database exists or its retained dump file is
+    present, so a dataset that rotation or a deletion reduced to its receipt is omitted.
+    ``database_name`` reports the name the receipt records, and ``dump_path`` reports the
+    repository-relative path of the regular retained dump or ``None`` when that file is absent. The
+    database service is probed for each non-selected dataset without a retained dump, after the
+    datasets action lock is released. The receipt walk takes that lock when an initialized
+    controller already published it, and the read creates no file or directory. A missing pointer
+    reports the setup error.
+    """
+    settings = load_administrative_dataset_settings()
+    root = admin_state_root(settings)
+    with mechanics.exclusive_action_lock(root, controller_name="datasets", create=False):
+        chain = _walk_chain(root)
+        selected_id = chain[0].dataset_id
+        chain_entries = tuple(
+            DatasetListEntry(
+                dataset_id=receipt.dataset_id,
+                kind=receipt.kind,
+                database_name=receipt.database_name,
+                dump_path=_retained_dump_path(root, receipt),
+                selected=receipt.dataset_id == selected_id,
+            )
+            for receipt in chain
         )
-        dump_path = _dataset_directory(root, receipt.dataset_id) / "database.dump"
-        if dump_path.is_symlink() or (dump_path.exists() and not dump_path.is_file()):
-            raise ValueError("older retained dataset dump must be a regular non-symlink file")
-        dump_path.unlink(missing_ok=True)
+    raw = load_raw_database_settings()
+    return DatasetListReport(
+        datasets=tuple(
+            entry
+            for entry in chain_entries
+            if entry.selected
+            or entry.dump_path is not None
+            or database_exists(
+                runner=runner,
+                root=repository_root(),
+                settings=raw,
+                database_name=entry.database_name,
+                timeout=settings.database_operation_timeout_seconds,
+            )
+        )
+    )
+
+
+def delete_retained_dataset(
+    dataset_id: str, *, runner: mechanics.ProcessRunner
+) -> DatasetDeletionReport:
+    """Delete one named non-selected dataset of the retained chain and keep its receipt.
+
+    The input identity is validated before settings or file work. The requested receipt is looked up
+    in the chain the selected pointer resolves, and the selected dataset, a receipt outside that
+    chain, and a receipt naming the selected database are refused before any deletion. A returned
+    receipt's database name must be the configured derived name. With selection disabled, the
+    dataset whose database the site serves is refused as well. The owner then drops the database
+    and removes the confined dump through the same mechanics rotation uses, leaving the receipt,
+    the pointer, the dataset directory and the external backups in place. A repeated deletion of an
+    absent database and dump completes with the same report.
+    """
+    identity = _require_dataset_id(dataset_id)
+    settings = load_administrative_dataset_settings()
+    root = admin_state_root(settings)
+    with mechanics.exclusive_action_lock(root, controller_name="datasets"):
+        chain = _walk_chain(root)
+        selected = chain[0]
+        target = next((receipt for receipt in chain if receipt.dataset_id == identity), None)
+        if target is None:
+            raise ValueError("requested dataset is not in the retained chain")
+        if target.dataset_id == selected.dataset_id:
+            raise ValueError("refuse to delete the selected dataset")
+        if target.database_name == selected.database_name:
+            raise ValueError("refuse to delete the selected database")
+        raw = load_raw_database_settings()
+        if not raw.selected_dataset_enabled and target.database_name == raw.postgres_db:
+            raise ValueError("refuse to delete the database this site serves")
+        _require_dataset_database_name(settings, target)
+        _drop_dataset_resources_locked(settings, root, target, runner)
+        return DatasetDeletionReport(
+            dataset_id=target.dataset_id, database_name=target.database_name
+        )

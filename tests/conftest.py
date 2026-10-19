@@ -10,12 +10,14 @@ from __future__ import annotations
 
 import os
 from collections.abc import Iterator
+from pathlib import Path
 
 import pytest
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import Connection, Engine
 
+from course_explorer import usage
 from course_explorer.config import (
     ENVIRONMENT_ONLY_SETTINGS_SOURCE,
     SETTINGS_SOURCE_MARKER,
@@ -59,6 +61,17 @@ def _file_free_settings_environment(
             monkeypatch.setenv("POSTGRES_PASSWORD", _SYNTHETIC_VALUES["POSTGRES_PASSWORD"])
         monkeypatch.setenv(SETTINGS_SOURCE_MARKER, ENVIRONMENT_ONLY_SETTINGS_SOURCE)
     monkeypatch.setenv("SELECTED_DATASET_ENABLED", "0")
+
+
+@pytest.fixture(autouse=True)
+def _temporary_usage_root(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Point the shared usage owner at the calling test's temporary directory.
+
+    Every ``TestClient`` request appends one usage record through the serving middleware. Binding
+    the owner's root to the temporary directory keeps that write out of the checkout's own usage
+    file, and the real writer is enabled because the middleware resolves the owner when it runs.
+    """
+    monkeypatch.setattr(usage, "repository_root", lambda: tmp_path)
 
 
 def alembic_config(connection: Connection | None = None) -> Config:

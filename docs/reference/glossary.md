@@ -34,6 +34,8 @@ This glossary defines the terms the documentation uses for courses, search, comp
 | Settings family | The group of settings that one settings class loads and validates. |
 | Settings owner | The configuration module that reads the subsystem files and the environment file for every settings family. |
 | Compose environment file | The temporary environment file that the administration command generates for each Docker Compose run and deletes afterwards. |
+| Feature read | The one `POST /api/features` read the browser app makes before its shell mounts. It reports the two feature switches and runs no command. |
+| Feature switch | One of the two settings in `config/web.toml` that decide which features a site serves: `WEB_EMBEDDINGS_ENABLED` for comparison, recommendations and semantic search, and `WEB_INFERENCE_ENABLED` for inferred prerequisites. |
 
 ## Capture and data preparation
 
@@ -53,12 +55,12 @@ This glossary defines the terms the documentation uses for courses, search, comp
 
 | Term | Meaning |
 |---|---|
-| Search method | One of the four ways a query matches a course: **Exact code**, **Substring**, **Fuzzy search**, and **Semantic**. |
+| Search method | One of the four ways a query matches a course: **Exact code**, **Substring**, **Fuzzy search**, and **Semantic**. **Semantic** runs only on a site that serves the embedding features. |
 | Exact code match | A query token that equals a course's official code. |
 | Substring match | A query found inside a course name or official code, ignoring case. |
 | Fuzzy match | A course name close to the query, scored from 0 to 100 and kept above a configured cutoff. |
 | Semantic match | A course whose embedded teaching text is close in meaning to the query, kept above a configured minimum score. |
-| Unified search | The search that runs all four search methods for one query and merges their results into one entry per course. |
+| Unified search | The search that runs every search method the site serves for one query and merges their results into one entry per course. |
 | Match source | A search method that returned a given result. One result can have several match sources. |
 | Tier order | The configured order of the search methods that sorts merged results, with active courses before inactive ones. |
 | Comparison meter | One of the five percentages that compare two courses: **Overall relatedness**, **Content similarity**, **Learning-outcome similarity**, and **Overlap** in each direction. |
@@ -102,7 +104,7 @@ This glossary defines the terms the documentation uses for courses, search, comp
 | Prerequisite mode | The rule for next courses: **All** lists a course when all of its prerequisites are covered, and **At least one** lists it when any one prerequisite is covered. |
 | Prerequisite coverage | The share of a next course's prerequisites that the basis covers, shown separately for required and recommended prerequisites. |
 | Inferred dependence | The mark on a next course that is listed only because of inferred prerequisites. |
-| Recommendations | Courses with teaching text similar to the basis, ranked by similarity and listed in the **Discover** tab as **Recommended for you**. |
+| Recommendations | Courses with teaching text similar to the basis, ranked by similarity and listed in the **Discover** tab as **Recommended for you** on a site that serves the embedding features. |
 | Near-duplicate | A candidate recommendation that overlaps a basis course above a configured share. Near-duplicates are left out of recommendations. |
 | Structure of studies | The official structure of each programme in the **Structure of studies** tab, shown as modules, courses, and rules. |
 | Programme | A degree programme or a bare module at the top level of the structure of studies. The app adds one with **Add programme** and orders them in the tab. |
@@ -113,10 +115,10 @@ This glossary defines the terms the documentation uses for courses, search, comp
 
 | Term | Meaning |
 |---|---|
-| Tab | One of the five views of the app: **Search**, **Compare**, **Prerequisites**, **Discover**, and **Structure of studies**. |
+| Tab | One of the five views of the app: **Search**, **Compare**, **Prerequisites**, **Discover**, and **Structure of studies**. **Compare** appears only on a site that serves the embedding features. |
 | Selected course | A course added to the current profile's selection. |
 | Completed course | A course marked with **Mark completed**. A completed course is always selected. |
-| Course menu | The menu of actions on a course: **Add to comparison**, **Open prerequisite graph**, **Add to Unplaced studies**, **Mark completed**, and **Open in Sisu**. |
+| Course menu | The menu of actions on a course: **Add to comparison** on a site that serves the embedding features, **Open prerequisite graph**, **Add to Unplaced studies**, **Mark completed**, and **Open in Sisu**. |
 | Profile | A named set of the app's state in the browser: language, selected and completed courses, and the state of each tab. |
 | Open tab | The tab a browser tab shows. It belongs to that browser tab's session storage rather than to a profile. |
 | App language | The language of the app's interface and course names in a profile, either Finnish or English. |
@@ -142,11 +144,12 @@ This glossary defines the terms the documentation uses for courses, search, comp
 
 | Term | Meaning |
 |---|---|
+| Administration command | The command `scripts/admin.py`, which runs the operator menu and the machine commands for the stages, datasets, reports and maintenance. |
 | Operator menu | The numbered interactive menu of the administration command, used to set up, run, and report on the stages. |
 | Stage | One of the four kinds of preparation work: ingestion, embedding, translation, and inference. |
 | Local stage | A stage that runs on the machine that runs the administration command: ingestion and embedding. |
 | Remote stage | A stage that runs on the worker: translation and inference. |
-| Lifecycle | The state of a stage: idle, starting, running, paused, stopped, completed, or failed. |
+| Lifecycle | The state of a stage: idle, starting, running, paused, stopped, completed, or failed. A status read reports a starting or running stage with no live process as interrupted. |
 | Worker | The separate machine that runs the remote stages on its own copy of the selected dataset. |
 | Request path | The route from the browser app through the web server to the database and the embedding service. |
 | Preparation path | The route from the administration command through the four stages to the database. |
@@ -160,3 +163,16 @@ This glossary defines the terms the documentation uses for courses, search, comp
 | Catalogue summary | A read-only report of the counts of curriculum periods, courses, active courses, course versions, modules, and module versions in a dataset. |
 | Coverage report | A read-only report on how much of the selected dataset has translations, embeddings, and inferred prerequisites. |
 | Periodic reboot | A restart of the worker after a configured amount of model run time. |
+| Administration surface | The administration console and the administration backend, with their own package, configuration and process beside the web server. |
+| Administration console | The separate signed-in browser application with the tabs **Dashboard**, **Data preparation**, **Inference**, **Logs** and **Settings**, which runs fixed administration commands. |
+| Administration backend | The separate loopback process that signs an operator in, admits each console request and runs the fixed command behind it. |
+| Administration session | One signed-in grant of the administration backend, held in that process's memory until it reaches its configured idle or total lifetime, the operator signs out, the stored credential changes, or the backend restarts. |
+| Anonymous session | An in-memory grant of the administration backend that carries the CSRF token used to sign in and grants no administration access. |
+| Anonymous session creation limit | The server-wide count of fresh anonymous sessions the administration backend admits in a sliding window. Reusing a live session consumes none of the count. |
+| Administration lock | The file `data/admin-web/lock` that three consecutive failed sign-ins create. While it exists, the administration backend refuses every request. |
+| Command log | The administration backend's bounded record of its explicit commands, its failed automatic reads, and its sign-in, failed sign-in and lock events. |
+| Request record | One line the web server appends for one HTTP request: its hour, route, status and duration. |
+| Usage report | The report of the request records in one window of hours, with the request count, the mean duration and one row per route. Each report prunes the records older than the configured retention. |
+| Backup file | One file under `data/backups` that the backup cleanup lists and can delete. |
+| App rebuild | The maintenance command that builds the browser app, recreates the database and embedding containers, restarts the web server and checks its bind. |
+| Administration rebuild | The maintenance action that builds the administration console and then queues a restart of the administration backend, which signs every operator out. |

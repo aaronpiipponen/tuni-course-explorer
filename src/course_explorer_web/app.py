@@ -12,6 +12,7 @@ from course_explorer_web.routes import (
     comparison,
     course_lookup,
     course_summaries,
+    features,
     minimum_route,
     module_lookup,
     next_courses,
@@ -20,10 +21,11 @@ from course_explorer_web.routes import (
     search,
     study_structure,
 )
+from course_explorer_web.usage import UsageMiddleware
 
 
 def create_app(*, frontend_directory: Path | None = None) -> FastAPI:
-    """Create the fixed API surface and translate only caller errors to safe 422 responses."""
+    """Create the fixed API surface, register usage recording and translate caller errors to 422."""
     application = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
     for route in (
         search.router,
@@ -36,6 +38,7 @@ def create_app(*, frontend_directory: Path | None = None) -> FastAPI:
         recommendations.router,
         study_structure.router,
         course_summaries.router,
+        features.router,
     ):
         application.include_router(route)
 
@@ -53,6 +56,7 @@ def create_app(*, frontend_directory: Path | None = None) -> FastAPI:
         application,
         dist_directory=frontend_directory or Path(__file__).resolve().parents[2] / "web" / "dist",
     )
+    application.add_middleware(UsageMiddleware)
     return application
 
 

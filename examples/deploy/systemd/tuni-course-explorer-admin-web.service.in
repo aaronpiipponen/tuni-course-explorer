@@ -1,0 +1,18 @@
+# Administration backend service on its loopback bind.
+[Unit]
+Description=TUNI Course Explorer administration
+
+[Service]
+Type=simple
+WorkingDirectory=@CHECKOUT@
+ExecStart=/usr/bin/bash @CHECKOUT@/scripts/run_admin_web.sh
+Environment=PATH=@UV_BIN@:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=false
+UMask=0077
+StandardOutput=null
+StandardError=journal
+
+[Install]
+WantedBy=default.target

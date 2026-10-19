@@ -2,6 +2,7 @@
 import { useCallback, useState } from "react";
 import { setSearchActiveOnly, setSearchQuery } from "./actions";
 import { useProfileSelector } from "../../state/useProfileSelector";
+import { useWebFeatures } from "../../app/useWebFeatures";
 import { useAction } from "../../shared/useAction";
 import { ErrorNotice } from "../../shared/ErrorNotice";
 import { HelpTip, type HelpSection } from "../../shared/HelpTip";
@@ -20,6 +21,7 @@ export function SearchPane() {
   );
   const { runAction, error } = useAction();
   const { language, t } = useWording();
+  const { embeddings_enabled } = useWebFeatures();
   const search = useSearchSession();
   const [scrollElement, setScrollElement] = useState<HTMLElement | null>(null);
   const paneRef = useCallback(
@@ -27,6 +29,38 @@ export function SearchPane() {
       setScrollElement(element?.closest<HTMLElement>(".tab-pane") ?? null),
     [],
   );
+  const searchModes = [
+    {
+      term: searchMethodLabel("exact_code", language),
+      tag: true,
+      text: t("The text matches a course code, for example COMP.CS.100."),
+    },
+    {
+      term: searchMethodLabel("substring", language),
+      tag: true,
+      text: t(
+        "The text appears inside a course name or code, ignoring upper and lower case. A code fragment such as: COMP.CS",
+      ),
+    },
+    {
+      term: searchMethodLabel("fuzzy_name", language),
+      tag: true,
+      text: t(
+        "A course name that is close to the text, so a small typo still finds it.",
+      ),
+    },
+    ...(embeddings_enabled
+      ? [
+          {
+            term: searchMethodLabel("semantic", language),
+            tag: true,
+            text: t(
+              "Courses whose content is about the topic you describe, even when they share no words with it.",
+            ),
+          },
+        ]
+      : []),
+  ];
   const help: readonly HelpSection[] = [
     {
       heading: t("options"),
@@ -41,34 +75,7 @@ export function SearchPane() {
     },
     {
       heading: t("search modes"),
-      items: [
-        {
-          term: searchMethodLabel("exact_code", language),
-          tag: true,
-          text: t("The text matches a course code, for example COMP.CS.100."),
-        },
-        {
-          term: searchMethodLabel("substring", language),
-          tag: true,
-          text: t(
-            "The text appears inside a course name or code, ignoring upper and lower case. A code fragment such as: COMP.CS",
-          ),
-        },
-        {
-          term: searchMethodLabel("fuzzy_name", language),
-          tag: true,
-          text: t(
-            "A course name that is close to the text, so a small typo still finds it.",
-          ),
-        },
-        {
-          term: searchMethodLabel("semantic", language),
-          tag: true,
-          text: t(
-            "Courses whose content is about the topic you describe, even when they share no words with it.",
-          ),
-        },
-      ],
+      items: searchModes,
     },
   ];
   return (

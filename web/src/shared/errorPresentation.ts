@@ -18,6 +18,7 @@ const KNOWN_MESSAGES: Record<string, UiTextKey> = {
     "The last browser profile cannot be deleted",
   "Browser store provider is missing": "Browser store provider is missing",
   "Search session provider is missing": "Search session provider is missing",
+  "Web features provider is missing": "Web features provider is missing",
   "Saved browser state is invalid": "Saved browser state is invalid",
   "Unsupported saved browser state schema":
     "Unsupported saved browser state schema",

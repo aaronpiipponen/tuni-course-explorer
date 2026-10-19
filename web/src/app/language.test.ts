@@ -7,6 +7,7 @@ import { BrowserStore, createBrowserStore } from "../state/store";
 import { uiText } from "../shared/wording";
 import { TopBar } from "./TopBar";
 import { AppFooter } from "./AppFooter";
+import { WebFeaturesContext } from "./webFeaturesContext";
 
 (
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
@@ -47,10 +48,14 @@ describe("shell language", () => {
         createElement(
           StoreContext.Provider,
           { value: store },
-          createElement(TopBar, { openDocs: () => {} }),
-          createElement(AppFooter, {
-            repositoryUrl: "https://github.com/owner/repo",
-          }),
+          createElement(
+            WebFeaturesContext.Provider,
+            { value: { embeddings_enabled: true, inference_enabled: true } },
+            createElement(TopBar, { openDocs: () => {} }),
+            createElement(AppFooter, {
+              repositoryUrl: "https://github.com/owner/repo",
+            }),
+          ),
         ),
       ),
     );

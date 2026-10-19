@@ -4,6 +4,8 @@ import { TwoOptionSwitch } from "../../shared/TwoOptionSwitch";
 import { ActivitySwitch } from "../../shared/ActivitySwitch";
 import { HelpTip } from "../../shared/HelpTip";
 import { useWording } from "../../shared/useWording";
+import type { UiTextKey } from "../../shared/wording";
+import { useWebFeatures } from "../../app/useWebFeatures";
 
 export function DiscoverControls({
   options,
@@ -13,6 +15,14 @@ export function DiscoverControls({
   onChange: (patch: Partial<DiscoverState>) => void;
 }) {
   const { t } = useWording();
+  const { embeddings_enabled, inference_enabled } = useWebFeatures();
+  const lists: readonly (readonly [DiscoverState["list"], UiTextKey])[] =
+    embeddings_enabled
+      ? [
+          ["next", "Next courses"],
+          ["recommended", "Recommended"],
+        ]
+      : [["next", "Next courses"]];
   const modeHelp = {
     term: t("All / At least one"),
     text: t(
@@ -34,11 +44,15 @@ export function DiscoverControls({
     },
   ];
   const marksHelp = [
-    {
-      term: t("inferred"),
-      text: t("Listed only because of inferred prerequisites."),
-      tag: true,
-    },
+    ...(inference_enabled
+      ? [
+          {
+            term: t("inferred"),
+            text: t("Listed only because of inferred prerequisites."),
+            tag: true,
+          },
+        ]
+      : []),
     {
       term: t("selected"),
       text: t("In the profile's selection, not completed."),
@@ -57,19 +71,18 @@ export function DiscoverControls({
         role="tablist"
         aria-label={t("Discovery list")}
       >
-        {(
-          [
-            ["next", "Next courses"],
-            ["recommended", "Recommended"],
-          ] as const
-        ).map(([value, labelKey]) => (
+        {lists.map(([value, labelKey]) => (
           <button
             key={value}
             type="button"
             role="tab"
             aria-selected={options.list === value}
             className={`discover-tab${options.list === value ? " on" : ""}`}
-            onClick={() => onChange({ list: value })}
+            onClick={() => {
+              if (value !== options.list) {
+                onChange({ list: value });
+              }
+            }}
           >
             {t(labelKey)}
           </button>
@@ -113,7 +126,9 @@ export function DiscoverControls({
                       {
                         term: t("Required / Recommended"),
                         text: t(
-                          "Required and Recommended show how many of the courses in the best-matching prerequisite option of each category your basis covers. A category with no course prerequisites has no meter. All lists only courses whose prerequisite requirements your basis satisfies and has no meters. Official and inferred prerequisites both count. The inferred mark shows a course listed only because of inferred prerequisites.",
+                          inference_enabled
+                            ? "Required and Recommended show how many of the courses in the best-matching prerequisite option of each category your basis covers. A category with no course prerequisites has no meter. The All mode lists only courses whose prerequisite requirements your basis satisfies, and it shows no meters. Official and inferred prerequisites both count. The inferred mark shows a course listed only because of inferred prerequisites."
+                            : "Required and Recommended show how many of the courses in the best-matching prerequisite option of each category your basis covers. A category with no course prerequisites has no meter. The All mode lists only courses whose prerequisite requirements your basis satisfies, and it shows no meters. Only official prerequisites count.",
                         ),
                       },
                     ]

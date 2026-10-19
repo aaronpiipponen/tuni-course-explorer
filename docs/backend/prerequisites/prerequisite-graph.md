@@ -19,6 +19,8 @@ Required prerequisites are drawn by default. The **Recommended** and **Inferred*
 
 The two toggles are independent. An inferred recommended prerequisite takes part only when both toggles are enabled. A disabled category is left out before its own requirements are compiled, so it contributes no node, no course, and no read. The activity scope is a further input of the same read.
 
+A site bounds the inference toggle. When `WEB_INFERENCE_ENABLED` is false in that site's `config/web.toml`, the web read forwards the toggle as off whatever a request asks for, so no inferred prerequisite reaches the drawing. The switch bounds that one read alone: official data is untouched, the toggle the browser saved in the profile is untouched, and the command, the compiler and the script adapter are the same on both kinds of site.
+
 ## Official and inferred pools
 
 Official data is what the university publishes. An inferred prerequisite is found by analysis of teaching text, is stored apart from official data, and is marked **inferred**.

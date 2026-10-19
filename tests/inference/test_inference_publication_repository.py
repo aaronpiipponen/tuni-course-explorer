@@ -30,6 +30,7 @@ from course_explorer.inference.domain import (
     InferenceTargetResultV2,
 )
 from course_explorer.inference.evidence_repository import InferenceEvidenceRepository
+from course_explorer.inference.proposal_repository import InferenceProposalRepository
 from course_explorer.inference.publication import (
     CurrentInferenceCohort,
     prepare_current_publication,
@@ -548,6 +549,57 @@ def test_prepare_retained_cohort_validates_explicit_pointers_and_preserves_mixed
     )
     with pytest.raises(ValueError):
         prepare_current_publication(factory, broken, settings, selection)
+
+
+def test_batch_reads_equal_the_per_id_reads_and_fail_on_unknown_ids(
+    database: tuple[Engine, object],
+) -> None:
+    """The batch proposal and stored-set reads return what the per-id reads return."""
+    _, factory = database
+    settings, selection = settings_pair()
+    for group_id, code in (
+        ("T1", "T1-code"),
+        ("T2", "T2-code"),
+        ("T3", "T3-code"),
+        ("C1", "C1-code"),
+    ):
+        _seed_course(factory, group_id, code)
+    evidence = InferenceEvidenceRepository(factory)
+    work_one, attempt_one, _ = _completed_work(evidence, "T1", candidate_group_ids=("C1",))
+    work_two, attempt_two, _ = _completed_work(evidence, "T2", candidate_group_ids=("C1",))
+    first = _build_proposal(
+        factory,
+        "T1",
+        work_one,
+        attempt_one,
+        expression=lambda reference: _course_requirement(
+            "C1", InferredPrerequisiteCategory.REQUIRED, "0.9", reference=reference
+        ),
+    )
+    second = _build_proposal(factory, "T2", work_two, attempt_two, expression=None)
+    cohort = _cohort({"T1": first.proposal_id, "T2": second.proposal_id})
+    publish_current_cohort(factory, cohort, settings, selection)
+
+    proposals = InferenceProposalRepository(factory)
+    ids = [first.proposal_id, second.proposal_id]
+    assert proposals.read_completed_many(ids) == {
+        proposal_id: proposals.read_completed(proposal_id) for proposal_id in ids
+    }
+    assert proposals.read_completed_many([]) == {}
+    with pytest.raises(ValueError, match="unknown inference proposal"):
+        proposals.read_completed_many([first.proposal_id, UUID(int=999)])
+
+    # T3 has no stored set, so the batch read reports it unavailable like the per-id read.
+    sets = InferredPrerequisiteRepository(factory)
+    targets = ["T1", "T2", "T3"]
+    batch = sets.read_many(targets)
+    assert batch == {target: sets.read(target) for target in targets}
+    assert batch["T3"].state is InferredReadState.UNAVAILABLE
+    assert sets.read_many([]) == {}
+    with pytest.raises(ValueError, match="unknown canonical target course"):
+        sets.read_many(["T1", "T9"])
+    with pytest.raises(ValueError, match="must not be blank"):
+        sets.read_many(["T1", " "])
 
 
 def test_exact_group_minimum_confidence_and_strict_ancestor_warning(

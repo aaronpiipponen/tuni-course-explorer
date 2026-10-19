@@ -43,10 +43,6 @@ from course_explorer.teaching_text.service import (
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 EXAMPLE_ROOT = REPO_ROOT / "examples"
-PUBLIC_CONFIG_PATHS: tuple[Path, ...] = tuple(
-    EXAMPLE_ROOT / relative for relative in configuration.PUBLIC_CONFIG_FILES[:-1]
-)
-WEB_CONFIG_PATH = EXAMPLE_ROOT / configuration.PUBLIC_CONFIG_FILES[-1]
 _TEMPLATE_PATH = EXAMPLE_ROOT / ".env.example"
 
 HASH_A = "a" * 64
@@ -115,9 +111,9 @@ def public_environment() -> dict[str, str]:
 def write_example_config_tree(root: Path, *, include_derived: bool = True) -> Path:
     """Materialize the committed example configuration under one temporary root.
 
-    The seven full-file ``examples/config/*.toml`` sources are copied to ``<root>/config/`` so a
-    test can bind the real owner's canonical layout to the actually committed example assets
-    without touching the checkout's own configuration. The two generated ``derived/`` hub artifacts are copied
+    Every registered subsystem ``examples/config/*.toml`` source is copied to ``<root>/config/`` so a
+    test can bind the real owner's canonical layout to the actually committed example assets without
+    touching the checkout's own configuration. The two generated ``derived/`` hub artifacts are copied
     too unless a caller exercises the hub-less case with ``include_derived=False``.
     """
     config = root / "config"

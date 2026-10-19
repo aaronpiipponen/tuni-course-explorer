@@ -1,6 +1,7 @@
 /** Shared official course fact card and its single interactive trigger/menu composition. */
 import { memo, useState } from "react";
 import type { CourseSummary, SearchMethod } from "../../api/types";
+import { useWebFeatures } from "../../app/useWebFeatures";
 import { useProfileSelector } from "../../state/useProfileSelector";
 import { useWording } from "../useWording";
 import { searchMethodLabel } from "../wording";
@@ -31,6 +32,7 @@ function CourseCardView({
   pick?: CoursePick;
 }) {
   const { language, t } = useWording();
+  const { embeddings_enabled } = useWebFeatures();
   const { value: completed } = useProfileSelector((state) =>
     state.completedCourseIds.includes(course.group_id),
   );
@@ -49,7 +51,7 @@ function CourseCardView({
     t(course.is_active ? "active" : "inactive"),
     t(completed ? "completed" : selected ? "selected" : "not selected"),
   ];
-  if (slot >= 0)
+  if (embeddings_enabled && slot >= 0)
     parts.push(t("comparison slot {slot}", { slot: slot === 0 ? "A" : "B" }));
   const trigger = (
     <button
@@ -59,7 +61,7 @@ function CourseCardView({
       aria-label={pick ? pick.ariaLabel : parts.join("; ")}
     >
       <span className="course-comparison">
-        {slot >= 0 && (
+        {embeddings_enabled && slot >= 0 && (
           <span className="course-badge comparison-badge">
             ⇄ {slot === 0 ? "A" : "B"}
           </span>

@@ -7,9 +7,9 @@ Installation sets up a local copy that serves the example dataset, from the depe
 - A checkout of this repository.
 - Python 3.14.3. `.python-version` pins that interpreter version and `pyproject.toml` requires Python 3.14 or higher.
 - [uv](https://docs.astral.sh/uv/), which installs the interpreter, the Python dependencies, and the commands the steps run.
-- Node.js 20.19 or higher within major version 20, or 22.12 or higher, with npm. `web/package.json` declares those engine ranges.
+- Node.js 20.19 or higher within major version 20, or 22.12 or higher, with npm. `web/package.json` and `admin-web/package.json` declare those engine ranges.
 - Docker with Docker Compose. The Compose wrapper runs `sudo docker compose` with the checkout as the project directory and `docker-compose.yml` at the checkout root as the file, so the account that runs the steps must be allowed to run Docker through sudo.
-- Access to the Python and npm package registries, and to the embedding model file that `EMBEDDING_ARTIFACT_URL` names.
+- Access to the Python and npm package registries, and to the model file at the download address that `EMBEDDING_ARTIFACT_URL` names.
 
 ## The files to copy
 
@@ -17,10 +17,10 @@ The repository tracks the templates a copy is set up from under `examples/`. Git
 
 | Template | Working path | Holds |
 |---|---|---|
-| `examples/config/database.toml`, `curriculum.toml`, `search.toml`, `translation.toml`, `inference.toml`, `worker.toml`, `web.toml` | `config/` | The seven subsystem files, one per subsystem, each holding that subsystem's portable keys |
+| `examples/config/database.toml`, `curriculum.toml`, `search.toml`, `translation.toml`, `inference.toml`, `worker.toml`, `admin_web.toml`, `web.toml` | `config/` | The registered subsystem files, one per subsystem, each holding that subsystem's portable keys |
 | `examples/config/wiki.json` | `config/wiki.json` | The pages the documentation wiki renders, and the repository the compiler links to for a page it does not render |
 | `examples/config/derived/embedding-hub.json`, `embedding-outcomes-hub.json` | `config/derived/` | The two hub vectors that search, comparison, and recommendations subtract before measuring similarity |
-| `examples/.env.example` | `.env` | The machine-local values: the database password and the three worker connection keys |
+| `examples/.env.example` | `.env` | The machine-local values: the database password, the three worker connection keys, and the two systemd user unit identities |
 | `examples/docker-compose.yml` | `docker-compose.yml` | The PostgreSQL database with pgvector and the embedding service |
 | `examples/deploy/Caddyfile` | `deploy/Caddyfile` | The HTTPS site template for a host that serves the copy over a domain |
 | `examples/deploy/systemd/tuni-course-explorer-web.service.in` | `deploy/` | The systemd user unit template for the web server |
@@ -34,9 +34,10 @@ The repository tracks the templates a copy is set up from under `examples/`. Git
    ```bash
    uv sync --locked
    npm --prefix web ci --no-audit --no-fund
+   npm --prefix admin-web ci --no-audit --no-fund
    ```
 
-   `uv sync` writes the virtual environment `.venv` at the checkout root and installs the Python packages recorded in `uv.lock`. `npm ci` installs the browser packages recorded in `web/package-lock.json` into `web/node_modules`. The unit template and `scripts/run_web.sh` run the server through `.venv/bin/python`, so the environment lives at the checkout root.
+   `uv sync` writes the virtual environment `.venv` at the checkout root and installs the Python packages recorded in `uv.lock`. `npm ci` installs the browser packages recorded in `web/package-lock.json` into `web/node_modules`, and the console packages recorded in `admin-web/package-lock.json` into `admin-web/node_modules`. The unit templates, `scripts/run_web.sh` and `scripts/run_admin_web.sh` run their processes through `.venv/bin/python`, so the environment lives at the checkout root.
 
 2. Copy the example files to the working paths listed above.
 
@@ -53,27 +54,30 @@ The repository tracks the templates a copy is set up from under `examples/`. Git
 
    The result is a checkout that holds its own `config/`, `.env`, `docker-compose.yml`, and `deploy/` beside the tracked `examples/`.
 
-3. Build the browser app.
+3. Build the browser apps.
 
    > [!IMPORTANT]
-   > The build compiles the documentation wiki from `config/wiki.json`, so it runs after the copy step. A build without that file fails with `Wiki build: cannot read config/wiki.json (read failed)`.
+   > The site build compiles the documentation wiki from `config/wiki.json`, so it runs after the copy step. A build without that file fails with `Wiki build: cannot read config/wiki.json (read failed)`.
 
    ```bash
    npm --prefix web run build
+   npm --prefix admin-web run build
    ```
 
-   The build writes `web/dist`, the directory the web server serves as the shell document and its assets.
+   The builds write `web/dist`, the directory the web server serves as the shell document and its assets, and `admin-web/dist`, the directory the administration backend serves as the console shell and its assets.
 
-4. Set the local values in `.env`, then restrict the file to its owner.
-
-   Set `POSTGRES_PASSWORD` to a password for the local database. The three worker connection keys name the worker that the remote stages reach, and the steps on this page do not read them.
+4. Restrict `.env` to its owner, then set the local values.
 
    ```bash
    chmod 600 .env
    ```
 
+   Set `POSTGRES_PASSWORD` to a password for the local database. The three worker connection keys name the worker that the remote stages reach, and the steps on this page do not read them.
+
+   `ADMIN_SITE_WEB_SERVICE_UNIT` is read by the server status report and the app rebuild, and `ADMIN_SITE_ADMIN_SERVICE_UNIT` by the administration rebuild and its restart. Each read needs the named unit loaded. The steps on this page run both processes in the foreground and read neither value. [Self-hosting](/docs/getting-started/self-hosting.md#the-site-unit-identities) installs both units and states their identities.
+
    > [!WARNING]
-   > Credentials belong in the ignored `.env`, and file mode 0600 gives the file owner-only access. The subsystem files hold portable settings, and their tracked templates are credential-free.
+   > Credentials belong in the ignored `.env`, and file mode 0600 gives the file owner-only access. The subsystem files hold portable settings, and their tracked templates are credential-free. The database password and the worker connection values reach a process from that file, and a value set under the same name in the process environment takes precedence over the file. A deployment's administration account is separate: the operator stores its argon2id hash over SSH with `uv run python scripts/admin.py password --username USERNAME`, so no plaintext password is written into the environment file or a subsystem file.
 
 5. Place the embedding model file at the configured path.
 
@@ -117,11 +121,43 @@ The repository tracks the templates a copy is set up from under `examples/`. Git
    bash scripts/run_web.sh
    ```
 
-   The script runs the launcher through `.venv/bin/python`, and the launcher passes the five settings families the serving process needs before the server takes over. The server binds the loopback host and port from `config/web.toml` and serves the built browser app. The command runs in the foreground, and the site answers while the process lives.
+   The script runs the launcher through `.venv/bin/python`, and the launcher passes the settings families the serving process needs before the server takes over, with the embedding family added when the site serves embedding features. The server binds the loopback host and port from `config/web.toml` and serves the built browser app. The command runs in the foreground, and the site answers while the process lives.
+
+9. Start the administration backend in a second terminal.
+
+   ```bash
+   bash scripts/run_admin_web.sh
+   ```
+
+   The script runs the administration launcher through `.venv/bin/python`. The backend binds the loopback host and port from `config/admin_web.toml`, serves the built console from `admin-web/dist`, and answers the console shell while the process lives.
+
+   The account the console signs in with is written once from the terminal:
+
+   ```bash
+   uv run python scripts/admin.py password --username USERNAME
+   ```
+
+   The command prompts for the password twice without echoing it, then writes the username and an argon2id hash to `data/admin-web/password` with owner-only access.
+
+   The backend serves the console over plain HTTP on its loopback bind, and admission compares every request against `ADMIN_WEB_ORIGIN`. The `Host` header must carry the host and port of that origin, and a state-changing request, the sign-in included, must carry an `Origin` header equal to the whole origin. `ADMIN_WEB_ORIGIN` must be an HTTPS origin, and the example sets `https://localhost:8039`, so the matching host and port are `localhost:8039`.
+
+   With the example origin, a request whose `Host` header carries `localhost:8039` answers the built console shell:
+
+   ```bash
+   curl -fsS -H 'Host: localhost:8039' http://127.0.0.1:8039/ | head -n 1
+   ```
+
+   The command prints `<!doctype html>`, the first line of the built shell. A request whose `Host` header names `127.0.0.1:8039` answers an empty `403`:
+
+   ```bash
+   curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8039/
+   ```
+
+   The command prints `403`. A browser that loads the shell from `http://localhost:8039` sends `Origin: http://localhost:8039` with its sign-in, and the backend refuses it because that origin differs from the configured HTTPS origin. Signing in needs the HTTPS reverse proxy that [Self-hosting](/docs/getting-started/self-hosting.md) sets up.
 
 ## Check the running copy
 
-Open `http://127.0.0.1:8037`, the address from `WEB_HOST` and `WEB_PORT` in `config/web.toml`. The top bar shows the five tabs **Search**, **Compare**, **Prerequisites**, **Discover**, and **Structure of studies**, with **Docs** beside them. **Docs** opens the documentation wiki inside the app, and a page the configuration does not select opens on GitHub. [Web server](/docs/backend/interfaces/web-server.md) describes the addresses the process serves.
+Open `http://127.0.0.1:8037`, the address from `WEB_HOST` and `WEB_PORT` in `config/web.toml`. The top bar shows the tabs **Search**, **Compare**, **Prerequisites**, **Discover**, and **Structure of studies**, with **Docs** beside them. `WEB_EMBEDDINGS_ENABLED = false` in `config/web.toml` removes the **Compare** tab and the comparison controls. `WEB_INFERENCE_ENABLED = false` hides the **Inferred** controls and marks. The tab bar follows `WEB_EMBEDDINGS_ENABLED` alone. **Docs** opens the documentation wiki inside the app, and a page the configuration does not select opens on GitHub. [Web server](/docs/backend/interfaces/web-server.md) describes the addresses the process serves.
 
 The browser checks that `web/package.json` defines:
 
@@ -132,6 +168,16 @@ npm --prefix web run format:check
 ```
 
 `typecheck` runs the TypeScript compiler without writing output, `test` runs the browser tests and the wiki build tests, and `format:check` runs Prettier in check mode.
+
+The console checks that `admin-web/package.json` defines:
+
+```bash
+npm --prefix admin-web run typecheck
+npm --prefix admin-web run test
+npm --prefix admin-web run format:check
+```
+
+`typecheck` runs the TypeScript compiler without writing output, `test` runs the console tests, and `format:check` runs Prettier in check mode.
 
 The Python tests:
 
@@ -145,7 +191,7 @@ uv run pytest
 
 | Message | Cause | Fix |
 |---|---|---|
-| `public configuration file is not readable: web.toml` | A subsystem file is missing from `config/`. | Copy the seven templates from `examples/config/` into `config/`. |
+| `public configuration file is not readable: web.toml` | A subsystem file is missing from `config/`. | Copy the missing templates from `examples/config/` into `config/`. |
 | `Wiki build: cannot read config/wiki.json (read failed)` | The browser build ran before the copy step. | Copy `examples/config/wiki.json` to `config/wiki.json`, then rebuild the browser app. |
 | `postgres password must not be blank` | `.env` carries no `POSTGRES_PASSWORD` value. | Set a password in `.env`, then run the Compose and migration steps again. |
 | `compose bridge requires -- before the forwarded Compose arguments` | The wrapper was called without the `--` before the Compose arguments. | Put `--` between the module and the Compose arguments, as in the commands above. |

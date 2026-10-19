@@ -571,9 +571,11 @@
 }
 .docs-shell .docs-pn > a {
   display: flex;
-  flex: 0 0 210px;
+  flex: 0 1 210px;
+  min-width: 0;
   flex-direction: column;
   gap: 1px;
+  overflow-wrap: anywhere;
   padding: 9px 14px;
   border: 1px solid var(--docs-line);
   border-radius: 8px;

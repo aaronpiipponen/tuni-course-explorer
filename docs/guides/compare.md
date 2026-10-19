@@ -76,4 +76,8 @@ Beside the verdict the tab states **Course information analysis, not official eq
 
 The two slots belong to the [profile](/docs/guides/profiles-and-language.md), so they hold their courses across a move between tabs and after a reload, and each profile holds its own pair. The picker's filter text and its **Active only** option are kept the same way. The analysis itself is read for the pair in the slots, so it appears when both slots hold a course.
 
+## When a site serves no comparison
+
+Comparison measures stored teaching-text vectors, so it belongs to a site that serves the embedding features. On a site that does not serve them the **Compare** tab is absent from the top bar and from the tab ring, a course menu lists no **Add to comparison**, and a course card carries no slot letter. The slots your profile saved are its own values, so the pair is there on a site that serves the tab again, and a stored **Compare** tab opens **Search** while the site serves no comparison.
+
 How each meter and the verdict are worked out is described in [Comparison](/docs/backend/search-and-discovery/comparison.md).

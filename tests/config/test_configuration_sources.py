@@ -10,20 +10,23 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from pydantic import SecretStr
+from pydantic import SecretStr, ValidationError
 
 from course_explorer import configuration
 from course_explorer.config import (
     SETTINGS_SOURCE_MARKER,
+    AdminWebSettings,
     DatabaseSettings,
     EmbeddingRuntimeSettings,
     EmbeddingSettings,
     LocalLifecycleSettings,
     SearchSettings,
+    UsageSettings,
     WebSettings,
+    load_administrative_site_settings,
     load_worker_gpu_reboot_settings,
 )
-from course_explorer_admin import compose
+from course_explorer_admin import compose, mechanics
 from tests.config._support import FIXTURE_VALUES, MACHINE_TEMPLATE_VALUES
 from tests.support import write_example_config_tree
 
@@ -60,6 +63,23 @@ def test_automatic_configuration_and_override_precedence(
     assert database.postgres_password.get_secret_value() == "synthetic-secret"
     assert database.selected_dataset_enabled is False
     assert WebSettings().web_port == 18026
+    assert WebSettings().embeddings_enabled is True
+    assert WebSettings().inference_enabled is True
+    assert UsageSettings().usage_retention_days == 30
+    # The administration family composes from its own registered subsystem file.
+    assert AdminWebSettings().admin_web_port == 8039
+    assert AdminWebSettings().admin_web_origin == "https://localhost:8039"
+    assert AdminWebSettings().admin_web_session_idle_minutes == 30
+    assert AdminWebSettings().admin_web_session_max_hours == 12
+    assert AdminWebSettings().admin_web_anonymous_session_limit == 10
+    assert AdminWebSettings().admin_web_anonymous_session_window_seconds == 60
+    assert AdminWebSettings().admin_web_command_log_limit == 200
+    assert AdminWebSettings().admin_web_poll_seconds == 60
+    assert AdminWebSettings().admin_web_app_url == "http://localhost:8037/"
+    assert (
+        AdminWebSettings().admin_web_repository_url
+        == "https://github.com/aaronpiipponen/tuni-course-explorer"
+    )
 
     # Both 1024-component hubs resolve from the committed example derived artifacts before model
     # validation.
@@ -75,6 +95,10 @@ def test_automatic_configuration_and_override_precedence(
     assert SearchSettings().search_embedding_max_attempts == 1
     assert load_worker_gpu_reboot_settings().worker_gpu_reboot_interval_minutes == 120
     assert LocalLifecycleSettings().poll_interval_seconds == 0.5
+    # Both site unit identities are machine identity, so they compose from the environment file
+    # beside the worker connection values.
+    assert load_administrative_site_settings().web_service_unit == "replace-with-web.service"
+    assert load_administrative_site_settings().admin_service_unit == "replace-with-admin.service"
 
     # An explicit process override wins over both files.
     monkeypatch.setenv("EMBEDDING_PORT", "18080")
@@ -82,11 +106,51 @@ def test_automatic_configuration_and_override_precedence(
     monkeypatch.setenv("SEARCH_EMBEDDING_REQUEST_TIMEOUT_SECONDS", "7")
     monkeypatch.setenv("SEARCH_EMBEDDING_MAX_ATTEMPTS", "2")
     monkeypatch.setenv("WEB_PORT", "18028")
+    monkeypatch.setenv("WEB_EMBEDDINGS_ENABLED", "0")
+    monkeypatch.setenv("WEB_INFERENCE_ENABLED", "0")
+    monkeypatch.setenv("USAGE_RETENTION_DAYS", "7")
+    monkeypatch.setenv("ADMIN_SITE_WEB_SERVICE_UNIT", "synthetic-site-web.service")
+    monkeypatch.setenv("ADMIN_SITE_ADMIN_SERVICE_UNIT", "synthetic-site-admin.service")
+    monkeypatch.setenv("ADMIN_WEB_PORT", "18027")
+    monkeypatch.setenv("ADMIN_WEB_SESSION_IDLE_MINUTES", "5")
+    monkeypatch.setenv("ADMIN_WEB_POLL_SECONDS", "3")
     assert EmbeddingSettings().embedding_port == 18080
     assert SearchSettings().comparison_overlap_ceiling == 0.5
     assert SearchSettings().search_embedding_request_timeout_seconds == 7
     assert SearchSettings().search_embedding_max_attempts == 2
     assert WebSettings().web_port == 18028
+    assert WebSettings().embeddings_enabled is False
+    assert WebSettings().inference_enabled is False
+    assert UsageSettings().usage_retention_days == 7
+    assert AdminWebSettings().admin_web_port == 18027
+    assert AdminWebSettings().admin_web_session_idle_minutes == 5
+    assert AdminWebSettings().admin_web_poll_seconds == 3
+    assert load_administrative_site_settings().web_service_unit == "synthetic-site-web.service"
+    assert load_administrative_site_settings().admin_service_unit == "synthetic-site-admin.service"
+
+    # A candidate configuration supplies its own WebSettings port in front of both files and in
+    # front of the process override the handoff marker would otherwise admit.
+    web_toml = (root / "config" / "web.toml").read_text(encoding="utf-8")
+    candidate = web_toml.replace("WEB_PORT = 8037", "WEB_PORT = 18099")
+    documents = configuration.read_configuration_documents(
+        root, replacements={"config/web.toml": candidate}
+    )
+    with configuration.configuration_candidate(root, documents=documents, local={}):
+        assert WebSettings().web_port == 18099
+    # Leaving the candidate restores the ordinary source precedence.
+    assert WebSettings().web_port == 18028
+
+    # A candidate value the owning validator rejects fails despite the valid process override.
+    invalid = web_toml.replace("WEB_PORT = 8037", "WEB_PORT = 70000")
+    with pytest.raises(ValidationError):
+        with configuration.configuration_candidate(
+            root,
+            documents=configuration.read_configuration_documents(
+                root, replacements={"config/web.toml": invalid}
+            ),
+            local={},
+        ):
+            WebSettings()
 
 
 def test_runtime_configuration_does_not_require_similarity_hubs(
@@ -122,11 +186,13 @@ def test_runtime_configuration_does_not_require_similarity_hubs(
 def test_public_configuration_rejects_duplicate_alias(tmp_path: Path) -> None:
     """A duplicate top-level alias across two public files fails before any settings succeed."""
     root = tmp_path / "checkout"
-    (root / "config").mkdir(parents=True)
-    (root / "config" / "database.toml").write_text('DUPLICATE_ALIAS = "first"\n', encoding="utf-8")
-    (root / "config" / "curriculum.toml").write_text(
-        'DUPLICATE_ALIAS = "second"\n', encoding="utf-8"
-    )
+    write_example_config_tree(root)
+    for relative, value in (("database.toml", "first"), ("curriculum.toml", "second")):
+        path = root / "config" / relative
+        path.write_text(
+            f'DUPLICATE_ALIAS = "{value}"\n' + path.read_text(encoding="utf-8"),
+            encoding="utf-8",
+        )
     configuration.clear_configuration_caches()
 
     with pytest.raises(ValueError, match="DUPLICATE_ALIAS"):
@@ -179,7 +245,14 @@ def test_compose_bridge_carries_interpolation_aliases_and_cleans_up(
     monkeypatch.setattr(compose.subprocess, "run", fake_run)
 
     assert compose.main(["--", "config", "--quiet"]) == 0
-    assert compose.main(["--non-interactive", "--", "version"]) == 0
+    # The typed Compose prefix carries its own extra arguments after the bridge module, and the
+    # noninteractive choice places `--non-interactive` before its final `--`.
+    non_interactive = list(mechanics.compose_prefix(non_interactive=True))
+    assert non_interactive[-2:] == ["--non-interactive", "--"]
+    assert non_interactive[: len(mechanics.compose_prefix()) - 1] == [
+        *mechanics.compose_prefix()[:-1]
+    ]
+    assert compose.main([*non_interactive[-2:], "version"]) == 0
     # Docker Compose's own process-level project override is forwarded as an explicit argv option,
     # so one ephemeral namespace carries through sudo and the default
     # project name in docker-compose.yml is untouched.

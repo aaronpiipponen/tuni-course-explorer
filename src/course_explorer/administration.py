@@ -78,8 +78,13 @@ def load_private_model[ModelT: BaseModel](path: Path, model_type: type[ModelT]) 
         raise ValueError(f"state file does not match its closed schema: {path.name}") from exc
 
 
-def atomic_write_private_text(path: Path, payload: str) -> None:
-    """Publish one complete UTF-8 file atomically with mode 0600 in its own directory."""
+def atomic_write_private_text(path: Path, payload: str, *, mode: int = 0o600) -> None:
+    """Publish one complete UTF-8 file atomically in its own directory.
+
+    The permission bits default to 0600. A caller publishing a file that
+    carries its own permission contract passes that mode. The parent directory must already exist,
+    and the replacement is a same-directory temporary file that the call removes when it fails.
+    """
     if not isinstance(payload, str) or not payload:
         raise ValueError("payload must be a nonblank string")
     if not path.parent.is_dir():
@@ -92,7 +97,7 @@ def atomic_write_private_text(path: Path, payload: str) -> None:
             temporary.write(payload)
             temporary.flush()
             os.fsync(temporary.fileno())
-        os.chmod(temporary_path, 0o600)
+        os.chmod(temporary_path, mode)
         os.replace(temporary_path, path)
         directory_fd = os.open(path.parent, os.O_RDONLY)
         try:

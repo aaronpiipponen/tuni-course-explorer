@@ -1,75 +1,107 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 712" role="img"
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 632" role="img"
      aria-labelledby="t d" font-family="system-ui, sans-serif">
   <title id="t">System context of TUNI Course Explorer</title>
   <desc id="d">The browser app and the web server form the request path, which reads the PostgreSQL
   database with pgvector and embeds query text through the embedding service. The administration
-  command and the worker form the preparation path, which fills the selected dataset. The ingestion
-  stage reads the public curriculum source, and the worker runs the translation and inference stages
-  on its copy. The accent outline marks the request path.</desc>
+  console and the administration backend form the administration surface, and the backend runs
+  fixed commands through the administration command. The administration command and the worker form
+  the preparation path, which fills the selected dataset. The administration command captures the
+  public curriculum source through its ingestion stage, and the worker runs the translation and
+  inference stages on its copy. The accent outline marks the request path.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
             markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
     </marker>
   </defs>
-  <rect width="960" height="712" rx="12" fill="#232434"/>
+  <rect width="960" height="632" rx="12" fill="#232434"/>
 
-  <rect x="64" y="56" width="320" height="256" rx="12" fill="none"
+  <rect x="24" y="64" width="912" height="128" rx="12" fill="none"
         stroke="#a98ae0" stroke-width="1.5"/>
-  <text x="80" y="88" font-size="16" fill="#a98ae0">Request path</text>
+  <text x="40" y="88" font-size="16" fill="#a98ae0">Request path</text>
 
-  <rect x="96" y="104" width="256" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
-  <text x="224" y="130" text-anchor="middle" font-size="16" fill="#ececf2">Browser app</text>
-  <text x="224" y="152" text-anchor="middle" font-size="14" fill="#a3a4b8">Browser state</text>
+  <rect x="48" y="104" width="256" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="176" y="130" text-anchor="middle" font-size="16" fill="#ececf2">Browser app</text>
+  <text x="176" y="152" text-anchor="middle" font-size="14" fill="#a3a4b8">Browser state</text>
 
-  <rect x="96" y="216" width="256" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
-  <text x="224" y="242" text-anchor="middle" font-size="16" fill="#ececf2">Web server</text>
-  <text x="224" y="264" text-anchor="middle" font-size="14" fill="#a3a4b8">Read-only API and app shell</text>
+  <rect x="352" y="104" width="256" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="130" text-anchor="middle" font-size="16" fill="#ececf2">Web server</text>
+  <text x="480" y="152" text-anchor="middle" font-size="14" fill="#a3a4b8">Read-only API and shell</text>
 
-  <rect x="560" y="104" width="320" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
-  <text x="720" y="130" text-anchor="middle" font-size="16" fill="#ececf2">Embedding service</text>
-  <text x="720" y="152" text-anchor="middle" font-size="14" fill="#a3a4b8">Pinned embedding model</text>
+  <rect x="656" y="104" width="256" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="784" y="130" text-anchor="middle" font-size="16" fill="#ececf2">Embedding service</text>
+  <text x="784" y="152" text-anchor="middle" font-size="14" fill="#a3a4b8">Pinned embedding model</text>
 
-  <rect x="560" y="216" width="320" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
-  <text x="720" y="242" text-anchor="middle" font-size="16" fill="#ececf2">PostgreSQL with pgvector</text>
-  <text x="720" y="264" text-anchor="middle" font-size="14" fill="#a3a4b8">Selected dataset</text>
-
-  <rect x="96" y="344" width="280" height="40" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
-  <text x="236" y="370" text-anchor="middle" font-size="16" fill="#ececf2">Public curriculum source</text>
-
-  <rect x="64" y="416" width="400" height="264" rx="12" fill="none"
+  <rect x="24" y="216" width="592" height="128" rx="12" fill="none"
         stroke="#4a4c6b" stroke-width="1.5"/>
-  <text x="80" y="448" font-size="16" fill="#a3a4b8">Preparation path</text>
+  <text x="40" y="240" font-size="16" fill="#a3a4b8">Administration surface</text>
 
-  <rect x="96" y="472" width="256" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
-  <text x="224" y="498" text-anchor="middle" font-size="16" fill="#ececf2">Administration command</text>
-  <text x="224" y="520" text-anchor="middle" font-size="14" fill="#a3a4b8">Operator menu and stages</text>
+  <rect x="48" y="256" width="256" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="176" y="282" text-anchor="middle" font-size="16" fill="#ececf2">Administration console</text>
+  <text x="176" y="304" text-anchor="middle" font-size="14" fill="#a3a4b8">Signed-in browser app</text>
 
-  <rect x="96" y="584" width="256" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
-  <text x="224" y="610" text-anchor="middle" font-size="16" fill="#ececf2">Worker</text>
-  <text x="224" y="632" text-anchor="middle" font-size="14" fill="#a3a4b8">Translation and inference</text>
+  <rect x="352" y="256" width="256" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="282" text-anchor="middle" font-size="16" fill="#ececf2">Administration backend</text>
+  <text x="480" y="304" text-anchor="middle" font-size="14" fill="#a3a4b8">Commands and sessions</text>
 
-  <line x1="224" y1="168" x2="224" y2="216" stroke="#a3a4b8" stroke-width="1.5"
-        marker-end="url(#arrow)"/>
-  <text x="238" y="196" font-size="14" fill="#a3a4b8">App requests</text>
+  <rect x="656" y="256" width="256" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="784" y="282" text-anchor="middle" font-size="16" fill="#ececf2">Database</text>
+  <text x="784" y="304" text-anchor="middle" font-size="14" fill="#a3a4b8">PostgreSQL with pgvector</text>
 
-  <polyline points="352,264 560,264" fill="none" stroke="#a3a4b8" stroke-width="1.5"
-            marker-end="url(#arrow)"/>
-  <text x="404" y="288" font-size="14" fill="#a3a4b8">Reads the dataset</text>
+  <rect x="24" y="368" width="912" height="232" rx="12" fill="none"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="40" y="392" font-size="16" fill="#a3a4b8">Preparation path</text>
 
-  <polyline points="352,232 500,232 500,136 560,136" fill="none" stroke="#a3a4b8"
+  <rect x="48" y="408" width="256" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="176" y="434" text-anchor="middle" font-size="16" fill="#ececf2">Curriculum source</text>
+  <text x="176" y="456" text-anchor="middle" font-size="14" fill="#a3a4b8">Public course data</text>
+
+  <rect x="352" y="408" width="256" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="434" text-anchor="middle" font-size="16" fill="#ececf2">Administration command</text>
+  <text x="480" y="456" text-anchor="middle" font-size="14" fill="#a3a4b8">Operator menu and stages</text>
+
+  <rect x="48" y="520" width="256" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="176" y="546" text-anchor="middle" font-size="16" fill="#ececf2">Worker</text>
+  <text x="176" y="568" text-anchor="middle" font-size="14" fill="#a3a4b8">Translation and inference</text>
+
+  <line x1="304" y1="136" x2="352" y2="136" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="312" y="96" font-size="14" fill="#a3a4b8">App requests</text>
+
+  <line x1="608" y1="120" x2="656" y2="120" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="616" y="96" font-size="14" fill="#a3a4b8">Embeds query text</text>
+
+  <polyline points="608,152 624,152 624,272 656,272" fill="none" stroke="#a3a4b8"
             stroke-width="1.5" marker-end="url(#arrow)"/>
-  <text x="516" y="200" font-size="14" fill="#a3a4b8">Embeds query text</text>
+  <text x="634" y="232" font-size="14" fill="#a3a4b8">Reads the dataset</text>
 
-  <line x1="280" y1="384" x2="280" y2="472" stroke="#a3a4b8" stroke-width="1.5"
-        marker-end="url(#arrow)"/>
-  <text x="300" y="440" font-size="14" fill="#a3a4b8">Published data</text>
+  <line x1="304" y1="288" x2="352" y2="288" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="312" y="248" font-size="14" fill="#a3a4b8">Requests</text>
 
-  <line x1="224" y1="536" x2="224" y2="584" stroke="#a3a4b8" stroke-width="1.5"
-        marker-start="url(#arrow)" marker-end="url(#arrow)"/>
-  <text x="238" y="565" font-size="14" fill="#a3a4b8">Copy out and back</text>
+  <line x1="480" y1="320" x2="480" y2="408" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="492" y="360" font-size="14" fill="#a3a4b8">Fixed commands</text>
 
-  <polyline points="352,504 928,504 928,248 880,248" fill="none" stroke="#a3a4b8"
+  <polyline points="608,440 644,440 644,304 656,304" fill="none" stroke="#a3a4b8"
             stroke-width="1.5" marker-end="url(#arrow)"/>
-  <text x="912" y="330" text-anchor="end" font-size="14" fill="#a3a4b8">Writes the selected dataset</text>
+  <text x="658" y="340" font-size="14" fill="#a3a4b8">Writes the dataset</text>
+
+  <line x1="304" y1="440" x2="352" y2="440" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="312" y="400" font-size="14" fill="#a3a4b8">Published data</text>
+
+  <polyline points="480,472 480,496 176,496 176,520" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text x="190" y="488" font-size="14" fill="#a3a4b8">Session copy out and back</text>
 </svg>

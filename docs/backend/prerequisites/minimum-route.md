@@ -10,6 +10,8 @@ A route holds the courses a requirement needs and the basis does not cover. Its 
 
 A route request takes the same inputs as the prerequisite graph read: the graph root, the Recommended and Inferred toggles, the activity scope, the selected and completed course sets, the basis, the excluded courses, and the graph-node marks. Both operations resolve those inputs, compile one prerequisite expression from them, and read the same chosen basis. The drawing and the calculation therefore describe the same requirement set and cannot drift apart.
 
+A site bounds the inference toggle, and the bound reaches both operations through the one input the browser sends. When `WEB_INFERENCE_ENABLED` is false in that site's `config/web.toml`, the web read forwards the toggle as off whatever a request asks for, so no inferred prerequisite reaches the calculation. The switch bounds that read alone: official data is untouched, the toggle the browser saved in the profile is untouched, and the route command, its solver and the script adapter are the same on both kinds of site.
+
 The basis is either the completed courses or every selected course, chosen by **Route basis**. The route uses exactly one of them, and the two choices have the same effect: a course in the basis satisfies its requirement at no new cost, and its own prerequisites are not expanded below it.
 
 The route request returns its own result and no drawing. The graph read and the compiler behind both are described in [Prerequisite graph](/docs/backend/prerequisites/prerequisite-graph.md).

@@ -2,15 +2,17 @@
 
 This module owns the one product-facing ``UnifiedCourseSearchService`` plus its result and report
 contracts. It performs exactly one projected represented-course summary read per query, attempts the
-separately callable exact-code, substring, fuzzy-name, and semantic services exactly once for every
-valid query, merges their results to one entry per canonical ``course.group_id``, retains every
-match source, keeps the fuzzy (`0-100`) and semantic (`[-1, 1]`) score scales in distinct fields, and
-orders merged courses by the config-owned ``SearchSettings.search_tier_priority`` then
-active-before-inactive then the primary method's own result position.
+separately callable exact-code, substring and fuzzy-name services exactly once for every valid query,
+attempts the semantic service the same way when one is supplied, merges their results to one entry
+per canonical ``course.group_id``, retains every match source, keeps the fuzzy (`0-100`) and
+semantic (`[-1, 1]`) score scales in distinct fields, and orders merged courses by the config-owned
+``SearchSettings.search_tier_priority`` then active-before-inactive then the primary method's own
+result position.
 
 An embedding request failure against the embedding service is the one failure that leaves a usable
 report: the query then contributes no semantic match and the report states that semantic matching
-was unavailable. Every other failure propagates.
+was unavailable. Every other failure propagates. A site that serves no semantic matching supplies
+``None``, so the query runs the lexical methods alone and the report omits the semantic tier.
 """
 
 from __future__ import annotations
@@ -65,7 +67,7 @@ class UnifiedCourseSearchService:
     def __init__(
         self,
         curriculum: CurriculumRead,
-        semantic_search: CourseSearchService,
+        semantic_search: CourseSearchService | None,
         course_lookup: CourseLookupService,
         search_settings: SearchSettings,
     ) -> None:
@@ -83,12 +85,14 @@ class UnifiedCourseSearchService:
         fuzzy_min_score: float | None = None,
         include_inactive: bool = True,
     ) -> UnifiedSearchReport:
-        """Dispatch all four methods, merge by canonical group, and report the outcome.
+        """Dispatch the configured methods, merge by canonical group, and report the outcome.
 
         The query contributes semantic matches only when its embedding request succeeds, so an
         ``EmbeddingRequestError`` from the semantic service leaves ``semantic_available`` false and
         every other failure propagates. ``semantic_available`` is true for a successful request that
-        matched no course.
+        matched no course. Without a semantic service the query is served by the three lexical
+        methods alone, semantic matching is unavailable, and the effective tier order omits
+        ``semantic``.
         """
         represented: tuple[RepresentedCourseSummary, ...] = (
             self._curriculum.list_represented_summaries(
@@ -114,19 +118,28 @@ class UnifiedCourseSearchService:
             include_inactive=include_inactive,
             represented=represented,
         )
-        try:
-            semantic_matches = self._semantic_search.search_courses(
-                query,
-                min_score=semantic_min_score,
-                include_inactive=include_inactive,
-                represented=represented,
-            )
-        except EmbeddingRequestError:
-            semantic_matches = ()
-            semantic_available = False
-        else:
-            semantic_available = True
+        semantic_matches: tuple[CourseSearchResult, ...] = ()
+        semantic_available = False
+        if self._semantic_search is not None:
+            try:
+                semantic_matches = self._semantic_search.search_courses(
+                    query,
+                    min_score=semantic_min_score,
+                    include_inactive=include_inactive,
+                    represented=represented,
+                )
+            except EmbeddingRequestError:
+                semantic_matches = ()
+                semantic_available = False
+            else:
+                semantic_available = True
 
+        configured_tiers = self._search_settings.search_tier_priority
+        effective_tiers = (
+            configured_tiers
+            if self._semantic_search is not None
+            else tuple(method for method in configured_tiers if method != "semantic")
+        )
         effective_semantic_min_score = (
             self._search_settings.semantic_search_min_score
             if semantic_min_score is None
@@ -143,7 +156,7 @@ class UnifiedCourseSearchService:
             fuzzy_min_score=effective_fuzzy_min_score,
             include_inactive=include_inactive,
             semantic_available=semantic_available,
-            tier_priority=self._search_settings.search_tier_priority,
+            tier_priority=effective_tiers,
             results=self._merge(exact_matches, substring_matches, fuzzy_matches, semantic_matches),
         )
 

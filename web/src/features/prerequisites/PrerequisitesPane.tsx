@@ -10,6 +10,7 @@ import { HelpTip, type HelpSection } from "../../shared/HelpTip";
 import { ErrorNotice } from "../../shared/ErrorNotice";
 import { useAction } from "../../shared/useAction";
 import { useWording } from "../../shared/useWording";
+import { useWebFeatures } from "../../app/useWebFeatures";
 import {
   setIncludeInferred,
   setIncludeRecommended,
@@ -41,6 +42,7 @@ export function PrerequisitesPane() {
     (state) => state.prerequisites.includeInferred,
   );
   const { language, t } = useWording();
+  const { inference_enabled } = useWebFeatures();
   const { courses: roots, error: rootError } = useCourseSummaries(
     rootId ? [rootId] : [],
   );
@@ -85,12 +87,16 @@ export function PrerequisitesPane() {
             "Leaves inactive courses out of the graph and the route. Selected or completed inactive courses and the opened root are shown. Turn it off to include them.",
           ),
         },
-        {
-          term: t("Inferred"),
-          text: t(
-            "Also shows prerequisites found by analysis rather than listed in the official data. They are marked as inferred.",
-          ),
-        },
+        ...(inference_enabled
+          ? [
+              {
+                term: t("Inferred"),
+                text: t(
+                  "Also shows prerequisites found by analysis rather than listed in the official data. They are marked as inferred.",
+                ),
+              },
+            ]
+          : []),
       ],
     },
     {
@@ -140,13 +146,15 @@ export function PrerequisitesPane() {
             runAction(() => setPrerequisitesActiveOnly(activityStore, value))
           }
         />
-        <ToggleChip
-          label={t("Inferred")}
-          on={includeInferred}
-          onChange={(value) =>
-            runAction(() => setIncludeInferred(inferredStore, value))
-          }
-        />
+        {inference_enabled && (
+          <ToggleChip
+            label={t("Inferred")}
+            on={includeInferred}
+            onChange={(value) =>
+              runAction(() => setIncludeInferred(inferredStore, value))
+            }
+          />
+        )}
         <HelpTip sections={help} />
         <div className="root-chip">
           {root && (

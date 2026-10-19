@@ -90,4 +90,8 @@ An explicitly chosen inactive course takes part in a comparison like any other c
 
 The report states whether either side used derived text. A stored chunk is derived when the effective text it holds came from a translation, and the app adds the note **Includes derived text.** to a comparison whose chunks on either side include one. The stored chunk records that origin, which [Data model](/docs/backend/catalogue/data-model.md) describes.
 
+## Availability on a site
+
+A comparison reads stored vectors, so a site serves it while `WEB_EMBEDDINGS_ENABLED` is true in that site's `config/web.toml`. A site with the switch off refuses the comparison request with status 403 before it reads anything, and its browser shows no comparison tab, no comparison entry in a course menu and no comparison slot mark. The command, its inputs, its arithmetic and the script adapter are the same on both kinds of site.
+
 The arithmetic behind every meter, the exact form of each score, the read that supplies the chunks, and the tests that cover them are described in [Comparison arithmetic](/docs/backend/search-and-discovery/comparison-arithmetic.md).

@@ -4,7 +4,7 @@ Graph layout turns the server's prerequisite report into positioned drawing node
 
 ## The three hooks
 
-`usePrerequisiteInputs` in `web/src/features/prerequisites/usePrerequisiteInputs.ts` reads ten profile values through `useProfileSelector` and the open tab from `useActiveTab` in `web/src/app/sessionTab.ts`, and builds one `PrerequisitesRequest`: `target_code`, `completed_codes`, `selected_codes`, `excluded_codes`, `include_recommended`, `include_inferred`, `active_only`, `basis`, `completed_node_keys` and `excluded_node_keys`. It returns the request, its `key` as `JSON.stringify(request)`, and `active` as `activeTab === "prerequisites"`. With no root the request is `null`, so a pane with no root asks for nothing.
+`usePrerequisiteInputs` in `web/src/features/prerequisites/usePrerequisiteInputs.ts` reads ten profile values through `useProfileSelector`, the site's inference switch from `useWebFeatures`, and the open tab from `useActiveTab` in `web/src/app/sessionTab.ts`, and builds one `PrerequisitesRequest`: `target_code`, `completed_codes`, `selected_codes`, `excluded_codes`, `include_recommended`, `include_inferred`, `active_only`, `basis`, `completed_node_keys` and `excluded_node_keys`. It returns the request, its `key` as `JSON.stringify(request)`, and `active` as `activeTab === "prerequisites"`. `include_inferred` is `includeInferred && inference_enabled`, so the request carries inferred prerequisites only when the profile toggle is on and the site serves inference features. With no root the request is `null`, so a pane with no root asks for nothing.
 
 `usePrerequisiteReport` in `web/src/features/prerequisites/usePrerequisiteReport.ts` owns the graph read.
 

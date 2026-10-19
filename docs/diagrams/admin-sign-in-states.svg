@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 392" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Administration session and lock states</title>
+  <desc id="d">An anonymous session becomes a signed-in session on a correct sign-in, and the signed-in
+  session expires after its idle or total lifetime. Failed sign-ins accumulate in the failed-attempt count, and the
+  third consecutive failure creates the administration lock. A correct sign-in resets the count and
+  deleting the lock file ends the refusal.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+    <marker id="arrow-accent" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a98ae0"/>
+    </marker>
+  </defs>
+  <rect width="960" height="392" rx="12" fill="#232434"/>
+
+  <rect x="32" y="88" width="210" height="64" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="137" y="114" text-anchor="middle" font-size="16" fill="#ececf2">Anonymous session</text>
+  <text x="137" y="136" text-anchor="middle" font-size="14" fill="#a3a4b8">No console access</text>
+
+  <rect x="375" y="88" width="210" height="64" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="114" text-anchor="middle" font-size="16" fill="#ececf2">Signed-in session</text>
+  <text x="480" y="136" text-anchor="middle" font-size="14" fill="#a3a4b8">The console tabs</text>
+
+  <rect x="718" y="88" width="210" height="64" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="823" y="114" text-anchor="middle" font-size="16" fill="#ececf2">Expired session</text>
+  <text x="823" y="136" text-anchor="middle" font-size="14" fill="#a3a4b8">Idle or total limit</text>
+
+  <rect x="48" y="264" width="300" height="64" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="198" y="290" text-anchor="middle" font-size="16" fill="#ececf2">Failed attempts 1 or 2</text>
+  <text x="198" y="312" text-anchor="middle" font-size="14" fill="#a3a4b8">Consecutive failures</text>
+
+  <rect x="600" y="264" width="300" height="64" rx="8" fill="#2e3045"
+        stroke="#a98ae0" stroke-width="1.5"/>
+  <text x="750" y="290" text-anchor="middle" font-size="16" fill="#ececf2">Administration lock</text>
+  <text x="750" y="312" text-anchor="middle" font-size="14" fill="#a3a4b8">Every request refused</text>
+
+  <line x1="242" y1="120" x2="375" y2="120" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <text x="266" y="110" font-size="14" fill="#a3a4b8">sign-in</text>
+
+  <line x1="585" y1="120" x2="718" y2="120" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <text x="592" y="110" font-size="14" fill="#a3a4b8">limit reached</text>
+
+  <polyline points="137,152 137,216 198,216 198,264" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="210" y="204" font-size="14" fill="#a3a4b8">failed sign-in</text>
+
+  <line x1="348" y1="296" x2="600" y2="296" stroke="#a98ae0" stroke-width="1.5"
+        marker-end="url(#arrow-accent)"/>
+  <text x="360" y="286" font-size="14" fill="#a3a4b8">third consecutive failure</text>
+
+  <text x="823" y="180" text-anchor="middle" font-size="14" fill="#a3a4b8">Dropped on the next request</text>
+  <text x="48" y="356" font-size="14" fill="#a3a4b8">A correct sign-in resets the count</text>
+  <text x="600" y="356" font-size="14" fill="#a3a4b8">Deleting the file ends the refusal</text>
+</svg>

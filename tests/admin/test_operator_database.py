@@ -20,7 +20,7 @@ from sqlalchemy.orm import sessionmaker
 
 from course_explorer import administration
 from course_explorer.administration import administrative_json, atomic_write_private_text
-from course_explorer.config import load_normalization_settings
+from course_explorer.config import load_inference_settings, load_normalization_settings
 from course_explorer.datasets import (
     DatabaseSchemaMismatchError,
     DatasetReceipt,
@@ -253,6 +253,11 @@ def test_operator_reports_read_selected_disposable_fixture_without_writes(
         assert summary.publication.eligible_targets == 3
         assert summary.publication.selected_targets == 0
         assert summary.publication.accepted_targets == 0
+        # The three policy members are the owning settings' configured values.
+        generation = load_inference_settings()
+        assert summary.routing_policy == generation.inference_routing_policy
+        assert summary.recommendation_policy == generation.inference_recommendation_policy
+        assert summary.finding_filter_policy == generation.inference_finding_filter_policy
 
         assert _count(engine, InferenceCourseProcessing) == markers_before
         assert _count(engine, InferenceModelAttempt) == attempts_before

@@ -3,8 +3,8 @@
 The catalogue hub is the mean of every current chunk vector of the represented courses, and the
 outcomes hub is the same mean over the learning-outcome chunks. Both read only from complete current
 embedding coverage, so a dataset whose desired chunks are not all completed under the configured
-embedding contract fails before any file is written. The two files are written as one publish, so
-both destinations change together or not at all.
+embedding contract fails before any file is written. Both files are staged before either
+destination is replaced, and the two destinations are then replaced one after the other.
 """
 
 from __future__ import annotations
@@ -117,11 +117,12 @@ def write_hub_file(path: Path, hub: Sequence[float]) -> None:
 
 
 def write_hub_files(catalogue_path: Path, outcomes_path: Path, hubs: EmbeddingHubs) -> None:
-    """Publish both hubs so a failure leaves neither destination updated.
+    """Stage both hubs, then replace their destinations one after the other.
 
-    Each hub is written to a temporary file beside its destination, then both temporary files
-    replace their destinations. Every temporary file is removed, so the two destinations hold the
-    written hubs together or keep the content they had when the publish started.
+    Each hub is written to a temporary file beside its destination, so a failure while staging
+    leaves both destinations unchanged. The temporary files then replace their destinations in
+    turn, so a failure during replacement can leave the catalogue hub updated and the outcomes hub
+    not. Every temporary file is removed.
     """
     targets = (catalogue_path, outcomes_path)
     temporary_paths = tuple(path.with_name(f"{path.name}.tmp") for path in targets)

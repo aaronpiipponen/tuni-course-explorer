@@ -1,4 +1,4 @@
-"""Validated database, source, capture, web, normalization, embedding, search, translation, and inference config."""
+"""Validated database, source, capture, web, administration, usage, normalization, embedding, search, translation, and inference config."""
 
 import json
 import math
@@ -7,6 +7,7 @@ import re
 from collections.abc import Callable
 from pathlib import Path
 from typing import Literal, Self
+from urllib.parse import urlsplit
 
 from pydantic import (
     AnyHttpUrl,
@@ -116,10 +117,20 @@ class ConfiguredSettings(BaseSettings):
         dotenv_settings: PydanticBaseSettingsSource,
         file_secret_settings: PydanticBaseSettingsSource,
     ) -> tuple[PydanticBaseSettingsSource | Callable[[], dict[str, object]], ...]:
-        """Compose automatic file-backed sources, or only constructor/process when marked."""
+        """Compose automatic file-backed sources, candidate sources, or only constructor/process.
+
+        A candidate configuration block supplies its own local and public mappings, and those
+        sources replace the file reads so an edited candidate validates on its own values. The
+        process-handoff marker then restricts the sources to the constructor and the process
+        environment. Otherwise both files compose automatically.
+        """
+        from course_explorer import configuration
+
+        candidate = configuration.candidate_settings_sources(settings_cls)
+        if candidate is not None:
+            return (init_settings, *candidate)
         if os.environ.get(SETTINGS_SOURCE_MARKER) == ENVIRONMENT_ONLY_SETTINGS_SOURCE:
             return (init_settings, env_settings)
-        from course_explorer import configuration
 
         def public_values() -> dict[str, object]:
             return _project_public_values(
@@ -139,7 +150,7 @@ class ConfiguredSettings(BaseSettings):
 
 
 class WebSettings(ConfiguredSettings):
-    """Validated loopback bind, process count and browser-drawing settings for HTTP serving."""
+    """Validated loopback bind, process count, drawing and served-feature settings for HTTP serving."""
 
     model_config = SettingsConfigDict(extra="ignore", env_prefix="")
 
@@ -149,6 +160,8 @@ class WebSettings(ConfiguredSettings):
     prerequisite_graph_max_elements: int = Field(
         validation_alias="PREREQUISITE_GRAPH_MAX_ELEMENTS", gt=0
     )
+    embeddings_enabled: bool = Field(validation_alias="WEB_EMBEDDINGS_ENABLED")
+    inference_enabled: bool = Field(validation_alias="WEB_INFERENCE_ENABLED")
 
     @field_validator("web_host")
     @classmethod
@@ -164,8 +177,181 @@ class WebSettings(ConfiguredSettings):
 
 
 def load_web_settings() -> WebSettings:
-    """Read web bind settings through the automatic public/local configuration composition."""
+    """Read web bind, drawing and served-feature settings through the automatic composition."""
     return WebSettings()
+
+
+class UsageSettings(ConfiguredSettings):
+    """The usage report's retention window for the per-request records.
+
+    Retention is report policy: the report owner keeps records from the current hour back this
+    many days and refuses a requested window longer than that. The serving process never reads it.
+    """
+
+    model_config = SettingsConfigDict(extra="ignore", env_prefix="")
+
+    usage_retention_days: int = Field(validation_alias="USAGE_RETENTION_DAYS", gt=0)
+
+
+def load_usage_settings() -> UsageSettings:
+    """Read usage retention through the automatic public/local configuration composition."""
+    return UsageSettings()
+
+
+class AdminWebSettings(ConfiguredSettings):
+    """Validated loopback bind, exact site origin and session and log bounds of the admin backend.
+
+    ``origin`` is the external HTTPS origin the administration backend answers for, not the
+    plain-HTTP socket the backend itself binds. It is compared exactly by scheme, host and port, so
+    a request whose Host or supplied Origin differs is refused. The session lifetimes bound one
+    server-side session, and the command-log limit bounds the entries the one log file retains.
+    The anonymous session limit bounds the fresh anonymous sessions one process creates in the
+    configured window of seconds, across every client of that process.
+    The lock path and the failed-attempt limit are code constants.
+
+    ``poll_seconds`` is the interval the console waits after one completed panel read before the
+    next read of that panel. ``app_url`` is the address the console's App link points at, stated by
+    the site because the administration bind is loopback and the two sites need not share a host.
+    ``repository_url`` is the repository address of the console's GitHub link.
+    """
+
+    model_config = SettingsConfigDict(extra="ignore", env_prefix="")
+
+    admin_web_host: str = Field(validation_alias="ADMIN_WEB_HOST")
+    admin_web_port: int = Field(validation_alias="ADMIN_WEB_PORT")
+    admin_web_origin: str = Field(validation_alias="ADMIN_WEB_ORIGIN")
+    admin_web_session_idle_minutes: int = Field(
+        validation_alias="ADMIN_WEB_SESSION_IDLE_MINUTES", gt=0
+    )
+    admin_web_session_max_hours: int = Field(validation_alias="ADMIN_WEB_SESSION_MAX_HOURS", gt=0)
+    admin_web_anonymous_session_limit: int = Field(
+        validation_alias="ADMIN_WEB_ANONYMOUS_SESSION_LIMIT", gt=0
+    )
+    admin_web_anonymous_session_window_seconds: int = Field(
+        validation_alias="ADMIN_WEB_ANONYMOUS_SESSION_WINDOW_SECONDS", gt=0
+    )
+    admin_web_command_log_limit: int = Field(validation_alias="ADMIN_WEB_COMMAND_LOG_LIMIT", gt=0)
+    admin_web_poll_seconds: int = Field(validation_alias="ADMIN_WEB_POLL_SECONDS", gt=0)
+    admin_web_app_url: str = Field(validation_alias="ADMIN_WEB_APP_URL")
+    admin_web_repository_url: str = Field(validation_alias="ADMIN_WEB_REPOSITORY_URL")
+
+    @field_validator("admin_web_host")
+    @classmethod
+    def require_loopback_host(cls, value: str) -> str:
+        """Require the loopback address the administration backend may bind."""
+        return _require_loopback_host(value, setting_name="ADMIN_WEB_HOST")
+
+    @field_validator("admin_web_port")
+    @classmethod
+    def validate_admin_web_port(cls, value: int) -> int:
+        """Require a valid TCP port."""
+        return _require_tcp_port(value, setting_name="ADMIN_WEB_PORT")
+
+    @field_validator("admin_web_origin")
+    @classmethod
+    def validate_admin_web_origin(cls, value: str) -> str:
+        """Require one exact HTTPS origin without credentials, path, query or fragment.
+
+        The value is kept as it is spelled, so the request comparison reads one exact string. A
+        wildcard, whitespace, another scheme, a port outside the TCP range, an empty host, user
+        information and every URL decoration each fail the read. An invalid port raises the parser's
+        own failure, which ``hide_input_in_errors`` keeps free of the value.
+        """
+        if not value or any(character.isspace() for character in value) or "*" in value:
+            raise ValueError("ADMIN_WEB_ORIGIN must be one exact origin without wildcards")
+        parts = urlsplit(value)
+        try:
+            port = parts.port
+        except ValueError as exc:
+            raise ValueError("ADMIN_WEB_ORIGIN must carry a valid TCP port") from exc
+        if (
+            parts.scheme != "https"
+            or not parts.hostname
+            or parts.username is not None
+            or parts.password is not None
+            or parts.path
+            or parts.query
+            or parts.fragment
+            or value != f"https://{parts.netloc}"
+        ):
+            raise ValueError("ADMIN_WEB_ORIGIN must be one exact HTTPS origin")
+        if port is not None:
+            _require_tcp_port(port, setting_name="ADMIN_WEB_ORIGIN port")
+        return value
+
+    @field_validator("admin_web_app_url")
+    @classmethod
+    def validate_admin_web_app_url(cls, value: str) -> str:
+        """Require one absolute HTTP or HTTPS address without credentials or URL decoration.
+
+        The value is kept as it is spelled, so the console renders the configured address. A
+        wildcard, whitespace, a relative address, another scheme, an empty host, user information,
+        a path other than the root, and any query or fragment marker each fail the read, including
+        an empty marker. An invalid port raises the parser's own failure, which
+        ``hide_input_in_errors`` keeps free of the value.
+        """
+        if (
+            not value
+            or any(character.isspace() for character in value)
+            or "*" in value
+            or "?" in value
+            or "#" in value
+        ):
+            raise ValueError("ADMIN_WEB_APP_URL must be one absolute address without wildcards")
+        parts = urlsplit(value)
+        try:
+            port = parts.port
+        except ValueError as exc:
+            raise ValueError("ADMIN_WEB_APP_URL must carry a valid TCP port") from exc
+        if (
+            parts.scheme not in {"http", "https"}
+            or not parts.hostname
+            or parts.username is not None
+            or parts.password is not None
+            or parts.path not in {"", "/"}
+            or parts.query
+            or parts.fragment
+        ):
+            raise ValueError("ADMIN_WEB_APP_URL must be one absolute HTTP or HTTPS address")
+        if port is not None:
+            _require_tcp_port(port, setting_name="ADMIN_WEB_APP_URL port")
+        return value
+
+    @field_validator("admin_web_repository_url")
+    @classmethod
+    def validate_admin_web_repository_url(cls, value: str) -> str:
+        """Require one absolute HTTPS GitHub owner and repository address.
+
+        The console renders this address on its GitHub link. A wildcard, whitespace, another
+        scheme or host, user information, a query or fragment marker, and any path other than one
+        owner and one repository each fail the read.
+        """
+        if not value or any(character.isspace() for character in value) or "*" in value:
+            raise ValueError("ADMIN_WEB_REPOSITORY_URL must be one absolute repository address")
+        parts = urlsplit(value)
+        segments = [segment for segment in parts.path.split("/") if segment]
+        if (
+            parts.scheme != "https"
+            or parts.netloc != "github.com"
+            or parts.username is not None
+            or parts.password is not None
+            or parts.query
+            or parts.fragment
+            or len(segments) != 2
+        ):
+            raise ValueError(
+                "ADMIN_WEB_REPOSITORY_URL must be one HTTPS GitHub owner/repository address"
+            )
+        return value
+
+
+def load_admin_web_settings() -> AdminWebSettings:
+    """Read administration bind, origin, session, anonymous-grant budget and log bounds.
+
+    The values compose automatically from the tracked administration file and the device environment
+    file.
+    """
+    return AdminWebSettings()
 
 
 class DatabaseSettings(ConfiguredSettings):
@@ -1839,6 +2025,41 @@ def load_administrative_dataset_settings() -> AdministrativeDatasetSettings:
     return AdministrativeDatasetSettings()
 
 
+# The systemd service basename a site's web or administration process runs as. Each name is site
+# identity rather than portable policy, so both come from the device-local ignored ``.env``.
+_ADMIN_SITE_UNIT_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.@-]*\.service$")
+
+
+class AdministrativeSiteSettings(ConfiguredSettings):
+    """Validated identity of the systemd user units that run this site's own processes.
+
+    ``web_service_unit`` names the unit the site's course-exploration web process runs as, and
+    ``admin_service_unit`` names the unit its administration process runs as. Each name belongs to
+    one site, so each device or site sets its own values. Only a plain service basename is
+    accepted: a path, an option, whitespace and a command are refused, so each value is one
+    syntactically valid unit name. Loading composes the tracked public TOML and the device-local
+    ignored ``.env`` automatically. There is no code default.
+    """
+
+    model_config = SettingsConfigDict(extra="ignore", env_prefix="")
+
+    web_service_unit: str = Field(validation_alias="ADMIN_SITE_WEB_SERVICE_UNIT")
+    admin_service_unit: str = Field(validation_alias="ADMIN_SITE_ADMIN_SERVICE_UNIT")
+
+    @field_validator("web_service_unit", "admin_service_unit")
+    @classmethod
+    def validate_service_unit(cls, value: str) -> str:
+        """Require a plain systemd service basename."""
+        if _ADMIN_SITE_UNIT_PATTERN.fullmatch(value) is None:
+            raise ValueError("an ADMIN_SITE service unit must be a plain systemd service basename")
+        return value
+
+
+def load_administrative_site_settings() -> AdministrativeSiteSettings:
+    """Read both site unit identities through the automatic public/local composition."""
+    return AdministrativeSiteSettings()
+
+
 class WorkerSetupSettings(ConfiguredSettings):
     """Validated explicit worker setup/update identity and bound.
 
@@ -1988,3 +2209,37 @@ class SearchSettings(ConfiguredSettings):
 def load_search_settings() -> SearchSettings:
     """Read search settings through the automatic public/local configuration composition."""
     return SearchSettings()
+
+
+# The base settings families whose aliases the configuration editor validates, in composition order.
+# A family is listed here once a key belongs to it, so a base key an operator can read is also a key
+# an operator can save, and a class that owns only a projected subset of another class's aliases is
+# listed on its own. Alias membership comes from each class's own fields. A caller that adds
+# validation families passes them to the configuration editor alongside this base inventory.
+CONFIGURATION_SETTINGS_FAMILIES: tuple[type[ConfiguredSettings], ...] = (
+    WebSettings,
+    UsageSettings,
+    AdminWebSettings,
+    DatabaseSettings,
+    AdministrativeDatasetSettings,
+    AdministrativeSiteSettings,
+    CaptureSettings,
+    KoriSettings,
+    NormalizationSettings,
+    LocalLifecycleSettings,
+    EmbeddingRuntimeSettings,
+    EmbeddingSettings,
+    SearchSettings,
+    TranslationSettings,
+    TranslationControllerSettings,
+    InferenceSettings,
+    InferenceContextSettings,
+    InferenceSelectionSettings,
+    InferenceRerankSettings,
+    InferenceRerankInputSettings,
+    InferenceControllerSettings,
+    WorkerConnectionSettings,
+    WorkerSetupSettings,
+    WorkerRuntimeSettings,
+    WorkerGpuRebootSettings,
+)

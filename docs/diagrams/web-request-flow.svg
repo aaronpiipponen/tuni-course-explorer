@@ -1,7 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 616" role="img"
      aria-labelledby="t d" font-family="system-ui, sans-serif">
   <title id="t">Web request flow</title>
-  <desc id="d">A browser request passes request validation into one fixed feature command, which reads the selected dataset and, for a semantic search only, embeds the query text through the embedding service, and returns one JSON report to the browser.</desc>
+  <desc id="d">A browser request passes the serving middleware and request validation into one fixed
+  dataset command or the feature read. The dataset command reads the selected dataset and returns one
+  JSON report to the browser, and a semantic search sends its query text to the embedding service. The
+  feature read runs no command. The serving middleware appends one request record per request
+  to the usage file.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
             markerWidth="8" markerHeight="8" orient="auto-start-reverse">
@@ -10,54 +14,84 @@
   </defs>
   <rect width="960" height="616" rx="12" fill="#232434"/>
 
-  <rect x="360" y="56" width="240" height="64" rx="8"
+  <rect x="312" y="56" width="224" height="64" rx="8"
         fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
-  <text x="480" y="82" text-anchor="middle" font-size="16" fill="#ececf2">Browser app</text>
-  <text x="480" y="104" text-anchor="middle" font-size="14" fill="#a3a4b8">sends one request</text>
+  <text x="424" y="82" text-anchor="middle" font-size="16" fill="#ececf2">Browser app</text>
+  <text x="424" y="104" text-anchor="middle" font-size="14" fill="#a3a4b8">sends one request</text>
 
-  <rect x="360" y="152" width="240" height="64" rx="8"
+  <rect x="312" y="152" width="224" height="64" rx="8"
         fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
-  <text x="480" y="178" text-anchor="middle" font-size="16" fill="#ececf2">Request validation</text>
-  <text x="480" y="200" text-anchor="middle" font-size="14" fill="#a3a4b8">closed request model</text>
+  <text x="424" y="178" text-anchor="middle" font-size="16" fill="#ececf2">Serving middleware</text>
+  <text x="424" y="200" text-anchor="middle" font-size="14" fill="#a3a4b8">appends one record</text>
 
-  <rect x="360" y="248" width="240" height="64" rx="8"
+  <rect x="312" y="248" width="224" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="424" y="274" text-anchor="middle" font-size="16" fill="#ececf2">Request validation</text>
+  <text x="424" y="296" text-anchor="middle" font-size="14" fill="#a3a4b8">closed request model</text>
+
+  <rect x="312" y="344" width="224" height="64" rx="8"
         fill="#2e3045" stroke="#a98ae0" stroke-width="1.5"/>
-  <text x="480" y="274" text-anchor="middle" font-size="16" fill="#ececf2">Feature command</text>
-  <text x="480" y="296" text-anchor="middle" font-size="14" fill="#a3a4b8">one fixed read command</text>
+  <text x="424" y="370" text-anchor="middle" font-size="16" fill="#ececf2">Dataset command</text>
+  <text x="424" y="392" text-anchor="middle" font-size="14" fill="#a3a4b8">one command per read</text>
 
-  <rect x="360" y="344" width="240" height="64" rx="8"
+  <rect x="312" y="440" width="224" height="64" rx="8"
         fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
-  <text x="480" y="370" text-anchor="middle" font-size="16" fill="#ececf2">Dataset reads</text>
-  <text x="480" y="392" text-anchor="middle" font-size="14" fill="#a3a4b8">the selected dataset</text>
+  <text x="424" y="466" text-anchor="middle" font-size="16" fill="#ececf2">JSON report</text>
+  <text x="424" y="488" text-anchor="middle" font-size="14" fill="#a3a4b8">one report per request</text>
 
-  <rect x="360" y="440" width="240" height="64" rx="8"
+  <rect x="648" y="152" width="240" height="64" rx="8"
         fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
-  <text x="480" y="466" text-anchor="middle" font-size="16" fill="#ececf2">JSON report</text>
-  <text x="480" y="488" text-anchor="middle" font-size="14" fill="#a3a4b8">one report per request</text>
+  <text x="768" y="178" text-anchor="middle" font-size="16" fill="#ececf2">Usage file</text>
+  <text x="768" y="200" text-anchor="middle" font-size="14" fill="#a3a4b8">one per request</text>
 
-  <rect x="704" y="248" width="216" height="64" rx="8"
+  <rect x="648" y="248" width="240" height="64" rx="8"
         fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
-  <text x="812" y="274" text-anchor="middle" font-size="16" fill="#ececf2">Embedding service</text>
-  <text x="812" y="296" text-anchor="middle" font-size="14" fill="#a3a4b8">semantic search only</text>
+  <text x="768" y="274" text-anchor="middle" font-size="16" fill="#ececf2">Feature read</text>
+  <text x="768" y="296" text-anchor="middle" font-size="14" fill="#a3a4b8">POST /api/features</text>
 
-  <line x1="480" y1="120" x2="480" y2="152" stroke="#a3a4b8"
-        stroke-width="1.5" marker-end="url(#arrow)"/>
-  <line x1="480" y1="216" x2="480" y2="248" stroke="#a3a4b8"
-        stroke-width="1.5" marker-end="url(#arrow)"/>
-  <line x1="480" y1="312" x2="480" y2="344" stroke="#a3a4b8"
-        stroke-width="1.5" marker-end="url(#arrow)"/>
-  <line x1="480" y1="408" x2="480" y2="440" stroke="#a3a4b8"
-        stroke-width="1.5" marker-end="url(#arrow)"/>
-  <line x1="600" y1="280" x2="704" y2="280" stroke="#a3a4b8"
-        stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
-  <text x="608" y="268" font-size="14" fill="#a3a4b8">query text</text>
-  <path d="M360 472 H288 V88 H360" fill="none" stroke="#a3a4b8"
-        stroke-width="1.5" marker-end="url(#arrow)"/>
-  <text x="276" y="284" text-anchor="end" font-size="14" fill="#a3a4b8">one JSON report</text>
+  <rect x="648" y="344" width="240" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="768" y="370" text-anchor="middle" font-size="16" fill="#ececf2">Embedding service</text>
+  <text x="768" y="392" text-anchor="middle" font-size="14" fill="#a3a4b8">semantic search only</text>
 
-  <rect x="32" y="536" width="252" height="48" rx="8"
+  <rect x="648" y="440" width="240" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="768" y="466" text-anchor="middle" font-size="16" fill="#ececf2">Selected dataset</text>
+  <text x="768" y="488" text-anchor="middle" font-size="14" fill="#a3a4b8">one dataset</text>
+
+  <line x1="424" y1="120" x2="424" y2="152" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="424" y1="216" x2="424" y2="248" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="424" y1="312" x2="424" y2="344" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="424" y1="408" x2="424" y2="440" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="432" y="428" font-size="14" fill="#a3a4b8">returns</text>
+
+  <line x1="536" y1="184" x2="648" y2="184" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="544" y="176" font-size="14" fill="#a3a4b8">appends</text>
+
+  <line x1="536" y1="280" x2="648" y2="280" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="544" y="272" font-size="14" fill="#a3a4b8">no command</text>
+
+  <polyline points="536,360 592,360 592,376 648,376" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+  <text x="544" y="352" font-size="14" fill="#a3a4b8">query text</text>
+
+  <polyline points="536,392 616,392 616,472 648,472" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="624" y="430" font-size="14" fill="#a3a4b8">reads</text>
+
+  <path d="M312 472 H160 V88 H312" fill="none" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="168" y="320" font-size="14" fill="#a3a4b8">one JSON report</text>
+
+  <rect x="48" y="536" width="268" height="48" rx="8"
         fill="none" stroke="#4a4c6b" stroke-width="1.5"/>
-  <line x1="48" y1="560" x2="88" y2="560" stroke="#a3a4b8"
+  <line x1="64" y1="560" x2="104" y2="560" stroke="#a3a4b8"
         stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
-  <text x="100" y="565" font-size="14" fill="#a3a4b8">Semantic search only</text>
+  <text x="116" y="565" font-size="14" fill="#a3a4b8">Semantic search only</text>
 </svg>

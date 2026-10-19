@@ -8,6 +8,7 @@ license-files = ["LICENSE"]
 requires-python = ">=3.14"
 dependencies = [
     "alembic>=1.19.2",
+    "argon2-cffi>=25.1.0",
     "httpx>=0.28.1",
     "fastapi>=0.115.0,<0.120",
     "pgvector>=0.5.0",
@@ -17,6 +18,7 @@ dependencies = [
     "python-dotenv>=1.2.3",
     "rapidfuzz>=3.14.6",
     "sqlalchemy>=2.0.52",
+    "tomlkit>=0.13.3",
     "uvicorn>=0.54.0",
 ]
 
@@ -25,7 +27,7 @@ requires = ["uv_build>=0.11.3,<0.12.0"]
 build-backend = "uv_build"
 
 [tool.uv.build-backend]
-module-name = ["course_explorer", "course_explorer_admin", "course_explorer_web"]
+module-name = ["course_explorer", "course_explorer_admin", "course_explorer_admin_web", "course_explorer_web"]
 
 [dependency-groups]
 dev = [

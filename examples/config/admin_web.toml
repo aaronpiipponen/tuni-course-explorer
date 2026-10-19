@@ -1,0 +1,26 @@
+# Portable bind, exact site origin, session and anonymous-grant budget, and log bounds of the
+# administration backend.
+# The origin is the external HTTPS address the administration site answers for. The value holds one
+# exact HTTPS origin: a scheme, a host and an optional port. The local value describes a development
+# instance, and a deployment sets its own address.
+ADMIN_WEB_HOST = "127.0.0.1"
+ADMIN_WEB_PORT = 8039
+ADMIN_WEB_ORIGIN = "https://localhost:8039"
+# Idle and total lifetime of one server-side administration session, in minutes and hours.
+ADMIN_WEB_SESSION_IDLE_MINUTES = 30
+ADMIN_WEB_SESSION_MAX_HOURS = 12
+# Fresh anonymous sessions one administration backend process grants in one server-wide sliding
+# window, shared by every client. A positive integer count. A fresh anonymous request beyond it
+# answers 429 until the oldest counted grant leaves the window.
+ADMIN_WEB_ANONYMOUS_SESSION_LIMIT = 10
+# Length of that sliding window in seconds. A positive integer.
+ADMIN_WEB_ANONYMOUS_SESSION_WINDOW_SECONDS = 60
+# Entries the sole administration command log retains, oldest first.
+ADMIN_WEB_COMMAND_LOG_LIMIT = 200
+# Seconds between completed automatic reads of one enabled panel of the signed-in console page.
+ADMIN_WEB_POLL_SECONDS = 60
+# Absolute address the console's App link points at. The example describes a development instance:
+# a deployment sets its own address in its runtime configuration file.
+ADMIN_WEB_APP_URL = "http://localhost:8037/"
+# GitHub repository address the console's GitHub link opens.
+ADMIN_WEB_REPOSITORY_URL = "https://github.com/aaronpiipponen/tuni-course-explorer"

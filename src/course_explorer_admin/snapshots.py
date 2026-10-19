@@ -109,7 +109,7 @@ def dump_database(
     return sha256_file(destination)
 
 
-def _existing_database(
+def database_exists(
     *,
     runner: mechanics.ProcessRunner,
     root: Path,
@@ -117,6 +117,7 @@ def _existing_database(
     database_name: str,
     timeout: float | None,
 ) -> bool:
+    """Return whether the database service holds a database of this validated name."""
     count = (
         runner.run(
             _compose_exec(
@@ -177,7 +178,7 @@ def restore_database(
     ).stdout
     _require_embedding_data(listing, include_embeddings=include_embeddings)
 
-    existing = _existing_database(
+    existing = database_exists(
         runner=runner, root=root, settings=settings, database_name=database_name, timeout=timeout
     )
     if not existing:
