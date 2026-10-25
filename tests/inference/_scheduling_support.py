@@ -359,7 +359,7 @@ def complete_target(
     input_sha256 = target_input_sha256(target_input, request_digest)
     evidence = InferenceEvidenceRepository(factory)
     spec = InferencePipelineRunSpec.from_contracts(
-        settings, pack, execution=_execution(model_identity=model_identity)
+        settings, execution=_execution(model_identity=model_identity)
     )
     run = evidence.create_run(spec)
     target = packet.target
@@ -369,8 +369,8 @@ def complete_target(
             target_group_id=target_input.target_group_id,
             activity_as_of_academic_year_start=target.activity_as_of_academic_year_start,
             activity_window_years=target.activity_window_years,
-            input_sha256=input_sha256,
         ),
+        input_sha256,
     ).work
     result = InferenceTargetResultV2(
         required=(),

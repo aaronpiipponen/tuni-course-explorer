@@ -1,13 +1,11 @@
-"""Real PostgreSQL command composition plus network-free CLI contracts.
+"""Real PostgreSQL command composition for the prerequisite commands.
 
-The command function is exercised end to end over a real normalized test database. The CLI
-adapter is proved network-free against canned reports. Shared report builders live in
-`_command_support`. This module owns the real command cases and the script loading.
+The command functions are exercised end to end over a real normalized test database. The shared
+search policy lives in `_command_support`. This module owns the real command cases.
 """
 
 from __future__ import annotations
 
-import importlib.util
 import json
 from decimal import Decimal
 from pathlib import Path
@@ -18,39 +16,14 @@ from course_explorer.ingestion.normalization import normalize_curriculum
 from course_explorer.ingestion.normalization_repository import NormalizationRepository
 from course_explorer.ingestion.repository import CaptureRepository
 from course_explorer.prerequisite import commands as command_module
-from course_explorer.prerequisite.domain import (
-    CardinalityRequirement,
-    CreditRequirement,
-    OfficialPrerequisiteKind,
-    PrerequisiteOrigin,
-)
 from tests.ingestion._normalization_repository_support import (
     GUIDE_URL,
     build_completed_fixture_store,
     fixture_bytes,
 )
-from tests.prerequisite._command_support import (
-    excluded_graph_report_for,
-    excluded_report_for,
-    report_for,
-    search_settings,
-    shortfall_report_for,
-)
+from tests.prerequisite._command_support import search_settings
 from tests.prerequisite._graph_support import course_nodes, root_summary
-from tests.prerequisite._path_support import (
-    course_summary,
-    make_compilation,
-    official_course,
-    selected_group_ids,
-    solve_route,
-)
-
-_CLI_SPEC = importlib.util.spec_from_file_location(
-    "prerequisites", Path(__file__).parents[2] / "scripts" / "prerequisites.py"
-)
-assert _CLI_SPEC is not None and _CLI_SPEC.loader is not None
-_CLI_MODULE = importlib.util.module_from_spec(_CLI_SPEC)
-_CLI_SPEC.loader.exec_module(_CLI_MODULE)
+from tests.prerequisite._path_support import selected_group_ids, solve_route
 
 
 def _inactive_prerequisite_fixture(database, tmp_path: Path):
@@ -188,209 +161,6 @@ def test_drawing_refusal_preserves_calculation_and_truthful_counts(
     assert route["state"] == "exact"
     assert Decimal(route["total_new_credits"]) == Decimal("0")
     assert route["satisfaction"]["basis_group_ids"] == ["course-group-inactive"]
-
-
-def test_prerequisite_cli_forwards_completed_codes_and_toggles_and_prints_one_report(
-    monkeypatch, capsys, solver_bundle: None
-) -> None:
-    """The script forwards its arguments and prints exactly the one dispatched operation's JSON."""
-    expected = report_for()
-    route_expected = solve_route(expected.solver, ())
-    graph_calls: list[dict] = []
-    route_calls: list[dict] = []
-    monkeypatch.setattr(
-        _CLI_MODULE,
-        "run_prerequisite_command",
-        lambda course_code, **kwargs: (
-            graph_calls.append({"course_code": course_code, **kwargs}) or expected
-        ),
-    )
-    monkeypatch.setattr(
-        _CLI_MODULE,
-        "run_minimum_route_command",
-        lambda course_code, **kwargs: (
-            route_calls.append({"course_code": course_code, **kwargs}) or route_expected
-        ),
-    )
-
-    assert _CLI_MODULE.main(["COMP.CS.500"]) == 0
-    assert graph_calls[-1] == {
-        "course_code": "COMP.CS.500",
-        "completed_codes": [],
-        "selected_codes": [],
-        "excluded_codes": [],
-        "completed_node_keys": [],
-        "excluded_node_keys": [],
-        "include_recommended": False,
-        "include_inferred": False,
-        "active_only": False,
-        "basis": "completed",
-    }
-    assert route_calls == []
-    default_output = capsys.readouterr().out
-    assert default_output == expected.model_dump_json() + "\n"
-    # The default dispatch is the graph-only report: compilation and drawing facts, no route result.
-    default_payload = json.loads(default_output)
-    assert (
-        not {
-            "selected_group_ids",
-            "completed_group_ids",
-            "excluded_group_ids",
-            "basis",
-            "completed_node_keys",
-            "excluded_node_keys",
-        }
-        & default_payload.keys()
-    )
-    assert "path" not in default_payload
-    assert "state" not in default_payload
-    assert default_payload["drawing"]["limit"] is None
-    root_course = next(
-        course
-        for course in default_payload["solver"]["courses"]
-        if course["group_id"] == default_payload["solver"]["root_group_id"]
-    )
-    assert root_course["credits_min"] == "5"
-
-    full_arguments = [
-        "COMP.CS.500",
-        "--completed",
-        "COMP.CS.100",
-        "--completed",
-        "MATH.1",
-        "--selected",
-        "COMP.CS.200",
-        "--excluded",
-        "COMP.CS.300",
-        "--excluded",
-        "COMP.CS.400",
-        "--include-recommended",
-        "--include-inferred",
-        "--active-only",
-        "--basis",
-        "selected",
-        "--completed-node",
-        "s:root:d:aaaaaaaaaaaaaaaaaaaaaaaa",
-        "--excluded-node",
-        "s:root:d:bbbbbbbbbbbbbbbbbbbbbbbb",
-    ]
-    full_options = {
-        "course_code": "COMP.CS.500",
-        "completed_codes": ["COMP.CS.100", "MATH.1"],
-        "selected_codes": ["COMP.CS.200"],
-        "excluded_codes": ["COMP.CS.300", "COMP.CS.400"],
-        "completed_node_keys": ["s:root:d:aaaaaaaaaaaaaaaaaaaaaaaa"],
-        "excluded_node_keys": ["s:root:d:bbbbbbbbbbbbbbbbbbbbbbbb"],
-        "include_recommended": True,
-        "include_inferred": True,
-        "active_only": True,
-        "basis": "selected",
-    }
-    assert _CLI_MODULE.main(full_arguments) == 0
-    assert graph_calls[-1] == full_options
-    assert route_calls == []
-    assert capsys.readouterr().out == expected.model_dump_json() + "\n"
-
-    # --route dispatches the same parsed options to the route operation only and prints its result.
-    assert _CLI_MODULE.main([*full_arguments, "--route"]) == 0
-    assert graph_calls[-1] == full_options
-    assert route_calls[-1] == full_options
-    route_output = capsys.readouterr().out
-    assert route_output == json.dumps(route_expected) + "\n"
-    route_payload = json.loads(route_output)
-    assert route_payload["state"] == "exact"
-    assert route_payload["total_new_credits"] == "5"
-    assert route_payload["new_courses"]
-    assert "solver" not in route_payload
-    assert "drawing" not in route_payload
-    assert "path" not in route_payload
-
-    # A real graph report keeps the excluded node drawn and embeds no route result.
-    excluded_graph = excluded_graph_report_for()
-    monkeypatch.setattr(
-        _CLI_MODULE, "run_prerequisite_command", lambda course_code, **kwargs: excluded_graph
-    )
-    assert _CLI_MODULE.main(["COMP.CS.500", "--excluded", "blocked"]) == 0
-    payload = json.loads(capsys.readouterr().out)
-    assert payload["solver"]["excluded_group_ids"] == ["blocked"]
-    assert "path" not in payload
-    assert "node_states" not in payload["display"]
-    assert [
-        node["node_id"]
-        for node in payload["display"]["nodes"]
-        if node["kind"] == "course" and node["course_group_id"] == "blocked"
-    ] == ["course:blocked"]
-
-    # The separate no-solution route result names the blocking exclusion through --route.
-    excluded_route = excluded_report_for()
-    assert excluded_route["state"] == "no_solution"
-    monkeypatch.setattr(
-        _CLI_MODULE, "run_minimum_route_command", lambda course_code, **kwargs: excluded_route
-    )
-    assert _CLI_MODULE.main(["COMP.CS.500", "--excluded", "blocked", "--route"]) == 0
-    excluded_payload = json.loads(capsys.readouterr().out)
-    assert excluded_payload["state"] == "no_solution"
-    assert excluded_payload["blocked_excluded_group_ids"] == ["blocked"]
-    assert "solver" not in excluded_payload
-
-    # The active-only case prints a real shortfall route result as-is through the same CLI adapter.
-    shortfall = shortfall_report_for()
-    monkeypatch.setattr(
-        _CLI_MODULE, "run_minimum_route_command", lambda course_code, **kwargs: shortfall
-    )
-    assert _CLI_MODULE.main(["COMP.CS.500", "--active-only", "--route"]) == 0
-    shortfall_output = capsys.readouterr().out
-    assert shortfall_output == json.dumps(shortfall) + "\n"
-    shortfall_payload = json.loads(shortfall_output)
-    assert shortfall_payload["state"] == "shortfall"
-    assert shortfall_payload["new_courses"] == []
-    assert shortfall_payload["total_new_credits"] == "0"
-    first_shortfall = shortfall_payload["shortfalls"][0]
-    assert first_shortfall["kind"] == "all_mandatory"
-    assert first_shortfall["required_count"] == 1
-    assert first_shortfall["achieved_count"] == 0
-    assert first_shortfall["count_deficit"] == 1
-
-    greedy_miss = make_compilation(
-        root_summary(expected.solver),
-        CreditRequirement(
-            type="credits",
-            origin=PrerequisiteOrigin.OFFICIAL,
-            official_kind=OfficialPrerequisiteKind.MODULE_RULE,
-            credits_min=Decimal("3"),
-            credits_max=Decimal("3"),
-            child=CardinalityRequirement(
-                type="cardinality",
-                origin=PrerequisiteOrigin.OFFICIAL,
-                official_kind=OfficialPrerequisiteKind.MODULE_RULE,
-                require_min=1,
-                require_max=1,
-                children=(official_course("cheap"), official_course("dear")),
-            ),
-        ),
-        (course_summary("cheap", credits_min="1"), course_summary("dear", credits_min="3")),
-    ).solver
-    failed_path = solve_route(greedy_miss, [], max_compact_nodes=1)
-    monkeypatch.setattr(
-        _CLI_MODULE, "run_minimum_route_command", lambda course_code, **kwargs: failed_path
-    )
-    assert _CLI_MODULE.main(["COMP.CS.500", "--route"]) == 0
-    failed_payload = json.loads(capsys.readouterr().out)
-    assert failed_payload["state"] == "approximation_failed"
-    assert failed_payload["total_new_credits"] is None
-    assert failed_payload["new_courses"] == []
-    assert failed_payload["problems"][0]["reason"] == "search_too_large"
-
-    # A package failure is not caught into a fabricated JSON error line for either dispatch.
-    def fail(course_code, **kwargs):
-        raise ValueError("unknown official course code 'MISSING'")
-
-    monkeypatch.setattr(_CLI_MODULE, "run_prerequisite_command", fail)
-    monkeypatch.setattr(_CLI_MODULE, "run_minimum_route_command", fail)
-    with pytest.raises(ValueError):
-        _CLI_MODULE.main(["MISSING"])
-    with pytest.raises(ValueError):
-        _CLI_MODULE.main(["MISSING", "--route"])
 
 
 @pytest.mark.integration

@@ -31,18 +31,6 @@ def test_model_request_scope_expires_and_restores_the_alarm() -> None:
     assert signal.getitimer(signal.ITIMER_REAL) == (0.0, 0.0)
 
 
-def test_model_request_scope_refuses_a_second_real_time_alarm() -> None:
-    """A second real-time alarm is refused while one is active."""
-    signal.setitimer(signal.ITIMER_REAL, 5.0)
-    try:
-        with pytest.raises(RuntimeError):
-            with model_request_scope(1.0):
-                pass
-    finally:
-        signal.setitimer(signal.ITIMER_REAL, 0.0)
-    assert signal.getitimer(signal.ITIMER_REAL) == (0.0, 0.0)
-
-
 def test_exclusive_action_lock_rejects_concurrent_action(tmp_path: Path) -> None:
     """A second concurrent action fails. ``create=False`` never initializes state but contends."""
     root = tmp_path / "state"

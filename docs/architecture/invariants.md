@@ -1,8 +1,8 @@
 # Invariants and their enforcement
 
-This page records the invariants the TUNI Course Explorer code enforces, naming the module that owns each rule and the tests that cover it.
+This page records the invariants the TUNI Course Explorer code enforces, naming the module that owns each rule and the tests that cover it where a test exists.
 
-The table indexes every invariant with its owner module and its test file. Each section below states the rule in full with every enforcer and every covering test.
+The table indexes every invariant with its owner module and its test file. The one invariant without a test is held by the shape of the code it names. Each section below states the rule in full with every enforcer and every covering test.
 
 | Invariant | Owner | Test file |
 |---|---|---|
@@ -16,8 +16,8 @@ The table indexes every invariant with its owner module and its test file. Each 
 | [Model output is validated before use and failures are recorded](#model-output-is-validated-before-use-and-failures-are-recorded) | `src/course_explorer/inference/domain.py` | `tests/inference/test_inference_target_pass.py` |
 | [A broad or transitive foundation is suppressed from the direct options](#a-broad-or-transitive-foundation-is-suppressed-from-the-direct-options) | `src/course_explorer/inference/proposals.py` | `tests/inference/test_inference_proposals.py` |
 | [Stages resume from a checkpoint and process pending, failed, or changed work only](#stages-resume-from-a-checkpoint-and-process-pending-failed-or-changed-work-only) | `src/course_explorer_admin/lifecycle.py` | `tests/admin/test_lifecycle.py` |
-| [Every stage exposes one lifecycle](#every-stage-exposes-one-lifecycle) | `src/course_explorer_admin/cli.py` | `tests/admin/test_operator_commands.py` |
-| [Adapters hold no business logic](#adapters-hold-no-business-logic) | `scripts/` | `tests/admin/test_operator_commands.py` |
+| [Every stage exposes one lifecycle](#every-stage-exposes-one-lifecycle) | `src/course_explorer_admin/cli.py` | `tests/admin/test_lifecycle.py`, `tests/admin/test_remote_lifecycle.py` |
+| [Adapters hold no business logic](#adapters-hold-no-business-logic) | `scripts/` | No test file |
 | [The course-exploration web server never mutates authoritative data, starts a stage, or reaches the worker](#the-course-exploration-web-server-never-mutates-authoritative-data-starts-a-stage-or-reaches-the-worker) | `src/course_explorer_web/app.py`, `src/course_explorer_web/admission/` | `tests/web/test_boundary.py`, `tests/web/test_feature_switches.py`, `tests/web/test_usage.py`, `tests/web/test_admission.py` |
 | [Credentials live outside tracked files](#credentials-live-outside-tracked-files) | `src/course_explorer/config.py` | `tests/config/test_configuration_sources.py`, `tests/web/test_launcher.py`, `tests/admin/test_operator_commands.py` |
 | [The administration backend checks the lock, exact site, session and CSRF token before every route](#the-administration-backend-checks-the-lock-exact-site-session-and-csrf-token-before-every-route) | `src/course_explorer_admin_web/middleware.py` | `tests/admin_web/test_security.py`, `tests/admin_web/test_commands.py`, `tests/admin_web/test_routes.py` |
@@ -60,9 +60,9 @@ Covered by `web/src/solver/route-minimum.test.ts::minimum path uses global union
 
 Every table, index, and constraint is created by a migration in one chain, and each migration names the single revision before it. A database is read only at the executing checkout's one migration head.
 
-Enforced by `migrations/versions/` (head `20261014_0018`) and `src/course_explorer/datasets.py` (`require_database_schema`).
+Enforced by `migrations/versions/` (head `20261025_0019`) and `src/course_explorer/datasets.py` (`require_database_schema`).
 
-Covered by `tests/db/test_database_schema.py::test_shared_migration_chain_builds_fresh_current_schema` and `tests/db/test_database_schema.py::test_migration_downgrade_and_reupgrade_round_trip`.
+Covered by `tests/db/test_database_schema.py::test_shared_migration_chain_builds_fresh_head_schema` and `tests/db/test_database_schema.py::test_head_schema_matches_metadata_and_preserves_operator_decision`.
 
 ### Only the current schema and format are read
 
@@ -114,7 +114,7 @@ Ingestion, embedding, translation, and inference share one lifecycle with the fi
 
 Enforced by `src/course_explorer_admin/lifecycle.py` (`run_lifecycle_command`), `src/course_explorer_admin/cli.py` (`_STAGES`, `_ACTIONS`), and `src/course_explorer_admin/commands.py` (`run_administrative_command`).
 
-Covered by `tests/admin/test_lifecycle.py::test_local_lifecycle_actions_checkpoint_pause_stop_and_resume_pending`, `tests/admin/test_remote_lifecycle.py::test_remote_due_checkpoint_reboots_and_continues_same_session`, and `tests/admin/test_operator_commands.py::test_operator_setup_preflight_and_cli_preserve_owners_notices_and_safe_failures`.
+Covered by `tests/admin/test_lifecycle.py::test_local_lifecycle_actions_checkpoint_pause_stop_and_resume_pending`, which runs the five actions through `run_lifecycle_command` for the ingestion and embedding stages, and `tests/admin/test_remote_lifecycle.py::test_remote_due_checkpoint_reboots_and_continues_same_session`, which runs the translation and inference stage lifecycle commands through `course_explorer_admin.remote_stages`. The stage and action sets in `cli.py` are the closed grammar over the same five actions, and no test names them directly.
 
 ### Adapters hold no business logic
 
@@ -122,7 +122,7 @@ Each script under `scripts/` parses its arguments and delegates once to one pack
 
 Enforced by `scripts/search.py`, `scripts/admin.py`, `scripts/prerequisites.py`, and the other adapters in that directory, each of which calls one command function.
 
-Covered by `tests/admin/test_operator_commands.py::test_operator_setup_preflight_and_cli_preserve_owners_notices_and_safe_failures`, which covers the dispatcher's delegate-once contract.
+This invariant has no test of its own. No test loads a script, and the adapter shape holds the rule. The tests of an owning command call it at its public boundary, and [Command adapters](/docs/backend/interfaces/command-adapters.md#adding-an-adapter) lists them.
 
 ## Web
 
@@ -185,4 +185,4 @@ The administration credential is stored as a hash file rather than as an environ
 
 Enforced by `src/course_explorer/config.py` (`DatabaseSettings.postgres_password`, `hide_input_in_errors`), `src/course_explorer/configuration.py` (`read_local_configuration`), `src/course_explorer_admin/credentials.py` (`set_admin_password`, `read_admin_credential`), and `src/course_explorer_web/launch.py` (`main`).
 
-Covered by `tests/config/test_configuration_sources.py::test_automatic_configuration_and_override_precedence`, `tests/web/test_launcher.py::test_web_launcher_excludes_operator_credentials`, and `tests/admin/test_operator_commands.py::test_operator_setup_preflight_and_cli_preserve_owners_notices_and_safe_failures`.
+Covered by `tests/config/test_configuration_sources.py::test_automatic_configuration_and_override_precedence`, `tests/web/test_launcher.py::test_web_launcher_excludes_operator_credentials`, and `tests/admin/test_operator_commands.py::test_operator_commands_report_status_refuse_bad_input_and_map_nothing`.

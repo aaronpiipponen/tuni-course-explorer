@@ -68,7 +68,7 @@ A feature adapter lets every exception propagate, so a command failure reaches t
 - `_emit(report)` prints `report.model_dump_json()` to standard output and the fixed `worker_origin_notice(report)` text to standard error.
 - `main` returns 0 on success, 1 on failure, and 130 on `KeyboardInterrupt`. `preflight` returns 1 when the report carries no resources or reports them as not ready.
 - `_fail(exc, operation)` prints `format_operator_error(exc)`, which holds only the exception class name and the `returncode` of a checked subprocess failure. It then prints `operator_guidance(operation, configuration_error=isinstance(exc, ValidationError))`.
-- The operation of an invocation is one of 15 fixed names: `setup`, `preflight`, `stage`, `report`, `migration`, `disposition`, `hubs`, `dataset-cleanup`, `backup-cleanup`, `configuration`, `server`, `logs`, `rebuild`, `usage` and `password`. Each name selects one fixed line of guidance: `setup` and `stage` for the setup and stage commands, `preflight` for the worker preflight, `report` for coverage and summary, `migration` for the dataset migration, `disposition` for the target and decision commands, `hubs` for the hub write, the two cleanup names for the dataset and backup operations, `configuration` for the configuration commands, `server` for the server status, `logs` for the log reads, `rebuild` for the three rebuild and restart verbs, `usage` for the usage report, and `password` for the password command.
+- The operation of an invocation is one of 16 fixed names: `setup`, `preflight`, `stage`, `report`, `migration`, `disposition`, `target-read`, `hubs`, `dataset-cleanup`, `backup-cleanup`, `configuration`, `server`, `logs`, `rebuild`, `usage` and `password`. Each name selects one fixed line of guidance: `setup` and `stage` for the setup and stage commands, `preflight` for the worker preflight, `report` for coverage and summary, `migration` for the dataset migration, `disposition` for the decision command, `target-read` for the target read, `hubs` for the hub write, the two cleanup names for the dataset and backup operations, `configuration` for the configuration commands, `server` for the server status, `logs` for the log reads, `rebuild` for the three rebuild and restart verbs, `usage` for the usage report, and `password` for the password command.
 - `coverage` and `summary` print `REPORT_SCOPE` to standard error as well.
 
 The four cleanup commands each call one command function and emit its report. `run_administrative_dataset_list` returns a `DatasetListReport`, `run_administrative_dataset_delete` takes the one dataset id and returns a `DatasetDeletionReport`, `run_administrative_backup_list` returns a `BackupListReport`, and `run_administrative_backup_delete` takes the one relative name and returns a `BackupDeletionReport`. The two dataset delegates resolve the production subprocess runner exactly as setup does, because the listing owner probes the database through Compose and the deletion owner drops it through Compose, and each owner lives in its own module: `course_explorer_admin.datasets` owns the receipt chain and the drop, and `course_explorer_admin.backups` owns the directory under `data/backups`. A cleanup failure prints the class token and the `dataset-cleanup` or `backup-cleanup` guidance, so a refusal names the listing and the running database service rather than a payload.
@@ -91,7 +91,7 @@ The server status and the log reads resolve the production subprocess runner exa
 
 `run_administrative_password(*, username, read_password=None)` reads the password twice through the caller's reader, which defaults to the hidden terminal prompt, refuses two different entries, and delegates once to `course_explorer_admin.credentials.set_admin_password` with a wrapped password. It returns the credential owner's `PasswordSetReport`, whose only field is its own `configured` token, so the acknowledgment carries no credential. The command takes no password argument, no environment source and no piped-password mode. `commands` re-exports `PasswordSetReport` beside the delegate.
 
-`dispose ... nothing` maps the token to `None` before the call, so the stored decision records an automatic target rather than a terminal one. A refusal of `dispose` or of `target` prints the same class token and the same `disposition` guidance, because both commands read the same selected dataset and stage state.
+`dispose ... nothing` maps the token to `None` before the call, so the stored decision records an automatic target rather than a terminal one. A refusal of `dispose` prints the class token and the disposition guidance. A refusal of `target` prints the class token and the target-read guidance. Both commands read the same selected dataset.
 
 ## The launcher scripts
 
@@ -109,26 +109,24 @@ The server status and the log reads resolve the production subprocess runner exa
 
 The command refuses a selected-dataset-enabled configuration before it opens an engine, and it requires the database at the single migration head. It writes the configured database rather than reading it, and the read-only web surface does not reach it.
 
-## Adding an adapter and its tests
+## Adding an adapter
 
 To add an adapter:
 
 1. Put the behavior in one command function in the owning package, with caller-input validation before any settings load or I/O.
 2. Add `scripts/<name>.py` with `main(argv=None) -> int`, an `ArgumentParser`, one call to that function, `print(report.model_dump_json())`, `return 0`, and the `__main__` guard.
-3. Add a test that loads the script as a standalone module and asserts the delegation and the printed report.
-
-The adapter tests load a script by path with `importlib.util.spec_from_file_location(name, Path(__file__).parents[2] / "scripts" / f"{name}.py")`, monkeypatch the command symbol on the loaded module to record its arguments and return a prepared report, and then assert that `main(...)` returns 0, that exactly one call carried the expected keyword arguments, and that standard output is `report.model_dump_json()` plus a newline.
+3. Keep the adapter to that shape: it carries no logic of its own, and the tests of the owning command cover its public behavior at its own boundary. The table below lists the test files.
 
 | Test file | Covers |
 |---|---|
-| `tests/search/test_search_command.py` | The search adapter forwarding every option and printing one unified report, and the missing-language usage failure. |
-| `tests/search/test_lookup_commands.py` | The catalogue adapter printing one delegated report and rejecting an undeclared argument, the catalogue command's minimal projection, and the empty summary shortcut. |
-| `tests/comparison/test_comparison_command.py` | The comparison adapter delegating both identities once and the missing-argument usage failure. |
-| `tests/prerequisite/test_prerequisite_command.py` | The prerequisite adapter forwarding every option to the graph command, `--route` dispatching the same options to the route command alone, each operation running only its own read, and the machine command returning the shared Node result. |
-| `tests/next_courses/test_next_courses_command.py` | The discovery adapter with the mode and activity defaults, both activity flags, and the missing-language usage failure. |
-| `tests/recommendations/test_recommendations_command.py` | The recommendation adapter forwarding all toggles once and emitting the recommendation report. |
-| `tests/study_structure/test_study_structure_command.py` | The structure adapter delegating one identity and printing one report, passing a `--module-version` selection through with its surrounding spaces trimmed, refusing a duplicate group selection and an undeclared option, and the batch command forwarding its `module_versions` map to the service with a blank root refused before any settings load. |
-| `tests/admin/test_operator_commands.py` | The dispatcher's delegate-once contract across setup, migration, cleanup, configuration, status, log, usage, password and rebuild, the report emission and targets, the injected family tuple, the syntax failures that dispatch nothing, and the safe failure token with no payload. |
+| `tests/search/test_search_command.py` | The search command's service composition and engine disposal, the single bounded query-embedding attempt, and the real lexical methods served without any embedding composition. |
+| `tests/search/test_lookup_commands.py` | The catalogue command's minimal official projection and its empty summary shortcut. |
+| `tests/comparison/test_comparison_command.py` | The comparison command's refusal of blank inputs before any settings load or I/O. |
+| `tests/prerequisite/test_prerequisite_command.py` | Graph and route preparation over one shared structure with their results kept separate, the drawing refusal that leaves calculation and counts truthful, and the machine command returning the shared Node result. |
+| `tests/next_courses/test_next_courses_command.py` | The next-course command's input validation before I/O and its empty-basis shortcut with no candidate or compiler read. |
+| `tests/recommendations/test_recommendations_command.py` | The recommendation command's input validation and its empty-basis shortcut with no I/O. |
+| `tests/study_structure/test_study_structure_command.py` | The structure command's blank-root refusal before settings and the explicit module-version selection forwarded to the shared batch service. |
+| `tests/admin/test_operator_commands.py` | The dispatcher's input refusal, preflight status, hidden password entry with mismatch refusal, class-only safe failures with no payload, and the `nothing` disposition mapping. |
 | `tests/admin/test_operator_menu.py` | The numbered entries, their confirmations, and every refusal, cancel, end-of-input and interrupt that mutates nothing. |
 | `tests/admin/test_configuration.py` | One subsystem-file key save and one environment-file key save, each preserving the other bytes, and each refused candidate changing neither the file nor its directories. |
 | `tests/admin/test_backups.py` | The backup listing and the deletion of one confined listed file, with a refused name deleting nothing. |

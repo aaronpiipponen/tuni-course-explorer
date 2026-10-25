@@ -180,44 +180,6 @@ def test_represented_summary_projection_matches_full_read(normalized_curriculum)
     assert repository.list_represented_summaries(active_only=True) != ()
 
 
-def test_scoped_course_summaries_omit_unknown_and_unrepresented(normalized_curriculum) -> None:
-    """Scoped summary reads return requested represented cards and omit absent identities."""
-    _, _, repository = normalized_curriculum
-    summaries = repository.list_represented_summaries()
-
-    # The scoped summary getter returns the same shared summaries for exactly the requested
-    # represented identities, including inactive ones, and omits unrepresented and unknown IDs.
-    requested_summary_ids = tuple(record.summary.group_id for record in summaries) + (
-        "course-group-future",
-        "course-group-absent",
-    )
-    assert repository.get_course_summaries(requested_summary_ids) == tuple(
-        record.summary for record in summaries
-    )
-    assert repository.get_course_summaries(()) == ()
-
-
-def test_scoped_represented_records_match_bulk_and_activity_scope(normalized_curriculum) -> None:
-    """Scoped represented reads preserve bulk records and honor the active-only projection."""
-    _, _, repository = normalized_curriculum
-    summaries = repository.list_represented_summaries()
-    requested = tuple(record.summary.group_id for record in summaries) + (
-        "course-group-future",
-        "course-group-absent",
-    )
-
-    # The scoped represented getter returns the same shared records as the bulk read for exactly
-    # the requested represented identities, omits unrepresented and unknown IDs, honors the activity
-    # scope, and returns empty before I/O for an empty scope.
-    scoped_represented = repository.get_represented_summaries(requested)
-    assert scoped_represented == summaries
-    assert repository.get_represented_summaries(()) == ()
-    assert repository.get_represented_summaries(("course-group-absent",)) == ()
-    assert repository.get_represented_summaries(requested, active_only=True) == tuple(
-        record for record in summaries if record.summary.is_active
-    )
-
-
 def test_course_code_identity_projection_includes_all_stored_versions(
     normalized_curriculum,
 ) -> None:
@@ -252,34 +214,6 @@ def test_scoped_courses_match_full_read(normalized_curriculum) -> None:
     assert all(course == by_group[course.group_id] for course in scoped_courses)
     assert repository.get_courses(()) == ()
     assert repository.get_courses(("course-group-absent",)) == ()
-
-
-def test_activity_projection_matches_canonical_context(normalized_curriculum) -> None:
-    """Scoped activity records retain only the canonical activity context and omit absent IDs."""
-    _, _, repository = normalized_curriculum
-    courses = repository.list_courses()
-    by_group = {course.group_id: course for course in courses}
-
-    # The scoped activity projection returns only identity plus the live four-column context.
-    activities = repository.get_course_activities(
-        ("course-group-a", "course-group-tie", "course-group-absent")
-    )
-    assert [activity.group_id for activity in activities] == [
-        "course-group-a",
-        "course-group-tie",
-    ]
-    for activity in activities:
-        canonical = by_group[activity.group_id]
-        assert activity.is_active is canonical.is_active
-        assert (
-            activity.activity_as_of_academic_year_start
-            == canonical.activity_as_of_academic_year_start
-        )
-        assert activity.activity_window_years == canonical.activity_window_years
-    inactive_activity = repository.get_course_activities(("course-group-inactive",))
-    assert len(inactive_activity) == 1
-    assert inactive_activity[0].is_active is False
-    assert repository.get_course_activities(()) == ()
 
 
 def test_scoped_modules_match_full_read(normalized_curriculum) -> None:

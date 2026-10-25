@@ -36,7 +36,6 @@ from course_explorer.inference.domain import (
 )
 from course_explorer.inference.evidence import (
     InferenceModelAttemptRecord,
-    InferencePipelineRunRecord,
     InferenceTargetWorkRecord,
 )
 from course_explorer.prerequisite.domain import (
@@ -550,7 +549,6 @@ def _compose_equivalence(
 def compose_target_proposal(
     work: InferenceTargetWorkRecord,
     attempt: InferenceModelAttemptRecord,
-    run: InferencePipelineRunRecord,
     descriptors: RequestCourseDescriptors,
     target: CatalogueCourse,
     referenced_courses: tuple[CatalogueCourse, ...],

@@ -330,7 +330,7 @@ def test_admin_requests_enforce_host_origin_and_csrf(
     elif case == "duplicate-host":
         response = client.get(
             "/auth/session",
-            headers=[("Host", "localhost:8027"), ("Host", "localhost:8027")],
+            headers=[("Host", "localhost:8039"), ("Host", "localhost:8039")],
         )
     elif case == "foreign-origin":
         response = client.get("/auth/session", headers={"Origin": "https://evil.example.com"})
@@ -347,7 +347,7 @@ def test_admin_requests_enforce_host_origin_and_csrf(
             "/auth/session",
             headers={
                 "Host": "evil.example.com",
-                "X-Forwarded-Host": "localhost:8027",
+                "X-Forwarded-Host": "localhost:8039",
                 "X-Forwarded-Proto": "https",
             },
         )

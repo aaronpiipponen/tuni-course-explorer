@@ -127,7 +127,7 @@ def test_routes_take_their_admission_class_and_cost() -> None:
     assert next_courses_cost(26, settings, active_only=False) == pytest.approx(1.026186)
 
     assert policy.light_load_factor(0.5, settings) == pytest.approx(0.625)
-    assert policy.heavy_budget(0.5, settings) == pytest.approx(72)
+    assert policy.heavy_budget(0.5, settings) == pytest.approx(80)
     assert policy.heavy_queue_limit(0.5, settings) == 32
     assert policy.heavy_slots(0.5, settings) == 2
     assert policy.light_concurrency(1.0, settings) == 2
@@ -171,7 +171,7 @@ def test_score_scales_admission_and_holds_saturation_until_release(
     assert policy.regime(state.load_position, settings) is policy.Regime.MIDDLE
     assert policy.heavy_slots(state.load_position, settings) == 2
     assert policy.light_load_factor(state.load_position, settings) == pytest.approx(0.625)
-    assert policy.heavy_budget(state.load_position, settings) == pytest.approx(72)
+    assert policy.heavy_budget(state.load_position, settings) == pytest.approx(80)
     assert policy.heavy_queue_limit(state.load_position, settings) == 32
 
     # Fifteen more admissions add 0.15, and four more host core-seconds raise the window's total to
@@ -186,7 +186,7 @@ def test_score_scales_admission_and_holds_saturation_until_release(
     assert policy.regime(state.load_position, settings) is policy.Regime.SATURATED
     assert policy.heavy_slots(state.load_position, settings) == 1
     assert policy.light_load_factor(state.load_position, settings) == pytest.approx(0.25)
-    assert policy.heavy_budget(state.load_position, settings) == pytest.approx(24)
+    assert policy.heavy_budget(state.load_position, settings) == pytest.approx(40)
     assert policy.heavy_queue_limit(state.load_position, settings) == 16
 
     # Eight more host core-seconds fill the window, and the thirty older admissions leave it. The

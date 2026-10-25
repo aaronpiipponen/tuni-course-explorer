@@ -13,7 +13,14 @@
 /docker-compose.yml
 /docker-compose.*.yml
 /compose.override.yml
-/deploy/
+
+# Deployment files. The deploy script and the runner unit template are tracked. Every other
+# deployment file is local and ignored.
+/deploy/*
+!/deploy/deploy.sh
+!/deploy/systemd/
+/deploy/systemd/*
+!/deploy/systemd/course-explorer-actions-runner.service.in
 
 # Runtime data and models. The fictional example fixture is the tracked data: keep its five exact
 # files and ignore every other data, model, and runtime artifact.

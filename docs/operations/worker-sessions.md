@@ -4,11 +4,11 @@ A worker session is one run of a remote stage on the worker, from the prepared c
 
 ## What a session binds
 
-The translation and inference stages are [remote stages](/docs/reference/glossary.md#administration). Each run of one of them is a [worker session](/docs/reference/glossary.md#administration), and one session binds the identity of the source dataset, the revision of the server checkout, the stage, the derived worker database, and the full input snapshot of the selected dataset.
+The translation and inference stages are [remote stages](/docs/reference/glossary.md#administration). Each run of one of them is a [worker session](/docs/reference/glossary.md#administration), and one session binds the identity of the source dataset, the stage, the derived worker database, and the full input snapshot of the selected dataset.
 
 The worker database name is derived from the session id with `ADMIN_WORKER_DATABASE_PREFIX`, and the name of the returned server database with `ADMIN_DATASET_DATABASE_PREFIX`. Both prefixes are in `config/worker.toml`. The session evidence lives under `ADMIN_STATE_ROOT`, which is in `config/database.toml`, and the worker holds the same evidence under its own copy of that path.
 
-Each read of the session record checks the session identity, and each read of the control record and the worker state checks the session identity and the revision. A mismatch fails before any model or command work.
+Each read of the session record, the control record, and the worker state checks the session identity. A mismatch fails before any model or command work.
 
 ## Explicit setup and the recurring start
 
@@ -18,7 +18,7 @@ Worker preparation and the recurring stage work are two separate operations.
 
 `uv run python scripts/admin.py preflight` is the read-only check of the prepared code and the prepared resources. It changes nothing and returns a nonzero exit status when a resource is missing.
 
-The recurring start never fetches, installs, or downloads. It validates that the worker checkout is a clean prepared tree, checks the installed locked environment without syncing it, and runs every worker helper without dependency resolution or download.
+The recurring start never fetches, installs, or downloads. It checks the installed locked environment without syncing it, and runs every worker helper without dependency resolution or download.
 
 ```bash
 uv run python scripts/admin.py setup datasets
@@ -29,11 +29,11 @@ uv run python scripts/admin.py translation status
 uv run python scripts/admin.py translation stop
 ```
 
-Prerequisites: the tracked subsystem files under `config/` and the ignored environment file hold the values these commands read, a dataset is selected, and the worker account runs the setup commands without an interactive prompt. The [Operator menu](/docs/operations/operator-menu.md#setup-and-preflight) lists the same entries with their machine commands.
+Prerequisites: the tracked subsystem files under `config/` and the ignored environment file hold the values these commands read, a dataset is selected, and the worker account runs the setup commands without an interactive prompt. [Setup and preflight](/docs/operations/setup-and-preflight.md) lists the same entries with their machine commands.
 
 ## Starting a session
 
-A start captures a session when the stage holds none. The administration command dumps the selected dataset, including the embedding table data, into the session directory, records the digest of that dump and a verification of the selected database, records the revision of the server checkout, and publishes the session record. A reservation that already holds session evidence is refused before any dump.
+A start captures a session when the stage holds none. The administration command dumps the selected dataset, including the embedding table data, into the session directory, records the digest of that dump and a verification of the selected database, and publishes the session record. A reservation that already holds session evidence is refused before any dump.
 
 Preparation brings the worker up in order:
 
@@ -44,7 +44,7 @@ Preparation brings the worker up in order:
 
 The worker then restores the input dump into its derived database and checks the restored database against the input snapshot. A mismatch fails the session.
 
-A worker run requires its own clean prepared checkout and a received database at the migration head of the worker code. A mismatch fails before any model or command work and changes no state.
+A worker run requires a received database at the migration head of the worker code. A mismatch fails before any model or command work and changes no state.
 
 The launch runs exactly one detached worker helper, which writes its log beside the session. A lost launcher response is reconciled from the worker status within the recovery bound, and the launcher is never run a second time. A fresh preparation is one-shot for the same reason, so a lost acknowledgement fails loudly rather than repeating a restore.
 
@@ -52,7 +52,7 @@ While the session runs, the stage mirrors the worker status into its own durable
 
 ## Cooperative control and checkpoints
 
-The worker reads one control record. It names the session, the revision, and one requested action: run, pause, or stop. The record is published atomically under a per-session lock.
+The worker reads one control record. It names the session and one requested action: run, pause, or stop. The record is published atomically under a per-session lock.
 
 A stop always writes stop. A pause never overwrites a pending stop, and nothing clears a pending pause or stop except an explicit re-arm, which only a locked resume performs.
 
@@ -93,7 +93,7 @@ A resume acts on a session that is prepared, paused, interrupted, stopped, or fa
 | The run ended on its own in the meantime | The real status is returned as it is | The real status is returned as it is |
 | Otherwise | The model runtime the session started is stopped, and the control is re-armed to run | The model runtime the session started is stopped, and the session is recorded as stopped with its retained count |
 
-Both wait for an exiting runner first and then decide under the session lock. A resume also requires the worker's prepared checkout and a received database at the migration head before it re-arms.
+Both wait for an exiting runner first and then decide under the session lock. A resume also requires a received database at the migration head before it re-arms.
 
 ## Owned resources only
 
@@ -129,7 +129,7 @@ The stage status carries the last mirrored `reboot_due` value inside the progres
 
 `uv run python scripts/admin.py <stage> status` reads the durable state and the owned process. It starts no service and reaches no worker, so a remote stage reports the last status its run recorded.
 
-A remote stage's status therefore refreshes from server state alone, while its two worker logs are read on demand. `uv run python scripts/admin.py logs read inference SESSION_ID worker-runner --lines N` and the same command with `worker-runtime` read the worker's own `runner.log` and `runtime.log` over the transport, and `keepalive` reads the shared session directory's `keepalive.log`. [Operator menu](/docs/operations/operator-menu.md#the-fixed-log-reads) lists every source and its refusals.
+A remote stage's status therefore refreshes from server state alone, while its two worker logs are read on demand. `uv run python scripts/admin.py logs read inference SESSION_ID worker-runner --lines N` and the same command with `worker-runtime` read the worker's own `runner.log` and `runtime.log` over the transport, and `keepalive` reads the shared session directory's `keepalive.log`. [The fixed log reads](/docs/backend/interfaces/command-line.md#the-fixed-log-reads) lists every source and its refusals.
 
 The server-side logs live beside the session receipt. A local stage's detached worker writes `runner.out` and `runner.err` there, and the keepalive log of a remote session sits in the shared session directory. The inference stage launches its server process with its output sent to the null device, so its two runner streams are reported as unavailable rather than written. A stop removes the two runner streams and the keepalive log with the rest of the session's scratch.
 
@@ -141,7 +141,7 @@ A session keeps its evidence on both sides until its cleanup runs.
 
 | Evidence | What it holds |
 |---|---|
-| Session record | The identity of the session, the source dataset, the revision, the stage, and the input snapshot |
+| Session record | The identity of the session, the source dataset, the stage, and the input snapshot |
 | Stage policy | The configuration identity the stage binds to the session |
 | Input snapshot and dump | The verified copy of the selected dataset that the worker restored |
 | Control record | The requested action of the session |

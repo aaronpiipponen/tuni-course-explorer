@@ -22,7 +22,6 @@ from course_explorer.administration import (
     utc_now,
 )
 from course_explorer.config import (
-    CaptureSettings,
     KoriSettings,
     NormalizationSettings,
     load_capture_settings,
@@ -59,24 +58,31 @@ from course_explorer_admin.lifecycle import (
     StageOptions,
     StageProgress,
     read_lifecycle_state,
-    require_retained_ingestion_manifest,
     run_lifecycle_command,
     stage_state_root,
 )
 
+_OPERATIONAL_KORI_FIELDS = frozenset(
+    {
+        "kori_request_timeout_seconds",
+        "kori_max_attempts",
+        "kori_retry_backoff_seconds",
+        "kori_concurrency",
+    }
+)
+
 
 def ingestion_configuration_sha256(
-    capture_settings: CaptureSettings,
-    kori_settings: KoriSettings,
-    normalization_settings: NormalizationSettings,
+    kori_settings: KoriSettings, normalization_settings: NormalizationSettings
 ) -> str:
-    """Hash only the validated configuration values that change captured work identity.
+    """Hash the source, request-shape, and normalization values that change captured work.
 
-    Controller timing and state-root values do not affect work identity, so they are excluded.
+    The payload carries the Kori settings as JSON without the four operational values
+    ``kori_request_timeout_seconds``, ``kori_max_attempts``, ``kori_retry_backoff_seconds`` and
+    ``kori_concurrency``, and the normalization settings as JSON.
     """
     payload = {
-        "capture": capture_settings.model_dump(mode="json"),
-        "kori": kori_settings.model_dump(mode="json"),
+        "kori": kori_settings.model_dump(mode="json", exclude=_OPERATIONAL_KORI_FIELDS),
         "normalization": normalization_settings.model_dump(mode="json"),
     }
     return json_sha256(payload, ensure_ascii=True)
@@ -131,7 +137,7 @@ class IngestionStage:
 
     def identity_sha256(self, options: StageOptions) -> str:
         configuration = ingestion_configuration_sha256(
-            load_capture_settings(), load_kori_settings(), load_normalization_settings()
+            load_kori_settings(), load_normalization_settings()
         )
         return stage_identity_sha256(self.name, configuration, options)
 
@@ -175,6 +181,7 @@ class IngestionStage:
             "verification_total": progress.verification_total,
             "normalized": progress.normalized,
         }
+        selected_store: RawCaptureStore | None = None
 
         def snapshot() -> IngestionProgress:
             return IngestionProgress(
@@ -189,26 +196,25 @@ class IngestionStage:
                 normalized=bool(tracker["normalized"]),
             )
 
-        def record_manifest(manifest_path: str, run_id: uuid.UUID) -> None:
-            digest = sha256_file(Path(manifest_path))
+        def record_manifest(store: RawCaptureStore) -> None:
+            digest = store.manifest_sha256
             if tracker["manifest_sha256"] != digest:
-                # The producing capture legitimately rewrote the bytes, so any retained
-                # verification prefix is invalid.
+                # A different manifest digest invalidates any retained verification prefix.
                 tracker["verified_response_count"] = 0
                 tracker["verification_total"] = None
-            tracker["manifest_path"] = manifest_path
-            tracker["run_id"] = run_id
+            tracker["manifest_path"] = store.manifest_relative_path
+            tracker["run_id"] = store.manifest.run_id
             tracker["manifest_sha256"] = digest
 
         def refresh_manifest_identity() -> None:
-            manifest_path = tracker["manifest_path"]
-            run_id = tracker["run_id"]
-            if manifest_path is None or run_id is None:
+            if selected_store is None:
                 return
-            record_manifest(str(manifest_path), run_id)  # type: ignore[arg-type]
+            record_manifest(selected_store)
 
         def on_store_selected(store: RawCaptureStore) -> None:
-            record_manifest(store.manifest_relative_path, store.manifest.run_id)
+            nonlocal selected_store
+            selected_store = store
+            record_manifest(store)
 
         def on_boundary(stage: str, completed: int, total: int | None) -> bool:
             tracker["stage"] = stage
@@ -282,7 +288,6 @@ class IngestionStage:
         if not isinstance(progress, IngestionProgress):
             raise ValueError("ingestion stage requires ingestion progress")
         if progress.manifest_path is not None:
-            require_retained_ingestion_manifest(progress.manifest_path, progress.manifest_sha256)
             return
         options = context.session.options
         if not isinstance(options, IngestionOptions) or options.manifest_path is None:
@@ -295,7 +300,7 @@ class IngestionStage:
                 update={
                     "manifest_path": store.manifest_relative_path,
                     "run_id": store.manifest.run_id,
-                    "manifest_sha256": sha256_file(store.manifest_path),
+                    "manifest_sha256": store.manifest_sha256,
                 }
             )
         )
@@ -361,7 +366,7 @@ class EmbeddingStage:
         measurement_start: datetime | None = None
 
         def pace(embedded_count: int) -> float | None:
-            """Measure this invocation's successful vectors over elapsed post-reconciliation time."""
+            """Measure this invocation's successful vectors over the time since reconciliation."""
             if measurement_start is None or embedded_count <= 0:
                 return None
             elapsed = (context.clock() - measurement_start).total_seconds()

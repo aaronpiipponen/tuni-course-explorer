@@ -18,7 +18,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Protocol
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from course_explorer.administration import atomic_write_private_text
 from course_explorer.administration import utc_now as _utc_now
@@ -29,7 +29,6 @@ from course_explorer.enums import (
     TeachingTextLanguage,
     TranslationMethod,
 )
-from course_explorer.hashing import json_sha256
 from course_explorer.http_retry import RequestNotStarted
 from course_explorer.teaching_text.commands import load_translation_file
 from course_explorer.teaching_text.service import (
@@ -46,7 +45,6 @@ from course_explorer.translation.provider import (
     TranslationContractError,
     TranslationRequestError,
 )
-from course_explorer.validation import require_aware, require_sha256
 
 _SAFE_FAILURE_MESSAGE = re.compile(r"^[A-Za-z0-9_ /:().-]+$")
 _OPPOSITE_LANGUAGE = {
@@ -97,35 +95,24 @@ class TranslationWorkSelection(_TranslationModel):
 
 
 class TranslationFailureRecord(_TranslationModel):
-    """One deterministic, text-free record of a terminal worker failure."""
+    """One deterministic, text-free record of a terminal worker failure.
 
-    work_key_sha256: str
+    The cell tuple is the failure identity and the record type identifies the stage. It carries
+    only the safe error class and a short safe reason.
+    """
+
     sisu_course_unit_id: str
     field: TeachingTextField
     language: TeachingTextLanguage
-    source_language: TeachingTextLanguage
-    source_text_hash: str
-    translation_model: str
-    failed_at: datetime
     error_type: str
     error_message: str
 
-    @field_validator("work_key_sha256", "source_text_hash")
-    @classmethod
-    def validate_hashes(cls, value: str) -> str:
-        return require_sha256(value, "hash values")
-
-    @field_validator("sisu_course_unit_id", "translation_model", "error_type", "error_message")
+    @field_validator("sisu_course_unit_id", "error_type", "error_message")
     @classmethod
     def reject_blank_text(cls, value: str) -> str:
         if not value.strip():
             raise ValueError("failure record text values must not be blank")
         return value
-
-    @field_validator("failed_at")
-    @classmethod
-    def reject_naive_timestamp(cls, value: datetime) -> datetime:
-        return require_aware(value, "timestamp")
 
 
 class TranslationRunReport(_TranslationModel):
@@ -153,18 +140,6 @@ class TranslationTextProvider(Protocol):
         source_language: TeachingTextLanguage,
         target_language: TeachingTextLanguage,
     ) -> str: ...
-
-
-def _work_key(item: TranslationWorkItem, settings: TranslationSettings) -> str:
-    payload = {
-        "sisu_course_unit_id": item.sisu_course_unit_id,
-        "field": item.field.value,
-        "language": item.language.value,
-        "source_language": item.source_language.value,
-        "source_text_hash": item.source_text_hash,
-        "translation_model": settings.provenance_model,
-    }
-    return json_sha256(payload, ensure_ascii=True)
 
 
 def _safe_failure_message(exc: Exception) -> str:
@@ -425,33 +400,11 @@ class TranslationWorkerService:
                     f"{entry.sisu_course_unit_id}/{entry.field}/{entry.language}"
                 )
 
-    def _require_matching_sidecar(
-        self,
-        sidecar: Path,
-        pending_without_output: tuple[TranslationWorkItem, ...],
-    ) -> None:
-        if not sidecar.exists():
-            return
-        try:
-            record = TranslationFailureRecord.model_validate_json(sidecar.read_bytes())
-        except (OSError, ValidationError) as exc:
-            raise ValueError("failure sidecar is malformed") from exc
-        if not pending_without_output:
-            raise ValueError("failure sidecar exists but no pending work remains")
-        expected = _work_key(pending_without_output[0], self._settings)
-        if record.work_key_sha256 != expected:
-            raise ValueError("failure sidecar does not match the first pending work item")
-
     def _write_failure(self, sidecar: Path, item: TranslationWorkItem, exc: Exception) -> None:
         record = TranslationFailureRecord(
-            work_key_sha256=_work_key(item, self._settings),
             sisu_course_unit_id=item.sisu_course_unit_id,
             field=item.field,
             language=item.language,
-            source_language=item.source_language,
-            source_text_hash=item.source_text_hash,
-            translation_model=self._settings.provenance_model,
-            failed_at=self._clock(),
             error_type=type(exc).__name__,
             error_message=_safe_failure_message(exc),
         )
@@ -526,13 +479,6 @@ class TranslationWorkerService:
 
         retained = _load_retained_output(output_path)
         self._validate_retained(retained, candidates)
-
-        pending_without_output = tuple(
-            item
-            for item in selection.items
-            if translation_key(item.sisu_course_unit_id, item.field, item.language) not in retained
-        )
-        self._require_matching_sidecar(sidecar, pending_without_output)
 
         output: dict[TranslationKey, DerivedTranslationInput] = dict(retained)
         generated_count = 0

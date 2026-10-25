@@ -74,6 +74,6 @@ Each artifact is pinned by a revision and a SHA-256 digest. `INFERENCE_RUNTIME_R
 
 `INFERENCE_HOST` and `INFERENCE_RERANK_HOST` accept only a loopback address, so the worker serves the models to itself. `INFERENCE_LOCAL_VARIANTS` names two ordered keys for the language model, ordered by increasing context. A key that is loaded counts the tokens of a request, and the run loads the first key when no key is loaded. The example sets the two keys to 131072 and 163840 tokens.
 
-A pinned revision or digest, the prompt, the result schema, and the recorded runtime values all take part in the execution identity, so work produced under different values has a distinct identity. The stored output records the identity that produced it.
+The execution identity is built from the pinned model and runtime identities, the prompt version, the result schema version, the pipeline version and the route. Each target adds its canonical identity, its activity context and the digest of its rendered input, so work produced under different values has a distinct identity. The stored output records the identity that produced it.
 
 The module layout, the identities, and the stored tables behind the behavior on this page are described in [Inference pipeline](/docs/backend/inference/inference-pipeline.md).

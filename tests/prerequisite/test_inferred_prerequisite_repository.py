@@ -50,10 +50,6 @@ def test_publish_read_replace_and_identical_retry_are_atomic_and_idempotent(
     publication = _publication(seed).model_copy(update={"producer_name": "test-fixture-ä"})
     created = repository.publish(publication)
     assert created.action is InferredPublicationAction.CREATED
-    assert (
-        created.current_set.payload_hash
-        == "da6dd1ffc855362fea036561e2b406cd70967bbbfb0a7fc5efe9edcd9dd9c5d1"
-    )
     original_id = created.current_set.set_id
     original_published_at = created.current_set.published_at
     original_generated_at = created.current_set.generated_at

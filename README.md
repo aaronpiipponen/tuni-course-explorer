@@ -50,7 +50,23 @@ This tab shows an ordered list of programmes, each with the official structure o
 
 The profile menu in the top bar is named after the active profile (**My plan** by default). It lists the saved profiles and creates new ones. A profile stores the selected and completed courses, exclusions and graph marks, the ordered programmes with their edits, and the tab options. The open tab belongs to the browser tab instead, so switching a profile never moves it. The FI/EN switch sets the interface wording and the language of official course and module names.
 
+The same menu exports one profile or all saved data as a file and imports those files for transfer between browsers or backup. [Profiles and language](/docs/guides/profiles-and-language.md#exporting-a-profile-or-the-saved-data) describes the file controls and their confirmations.
+
 ![The profile menu lists My plan and Alternative plan with their selected and completed counts, next to the FI and EN language switch with EN pressed](/docs/screenshots/profile-menu.png)
+
+### Sisu plan import
+
+A script copied from the profile menu reads an open plan in Sisu's **Structure of studies** view and downloads one capture file. Importing that file creates one browser-local profile with the plan's programmes, choices and completions, and the exact module versions Sisu showed.
+
+The script runs in the Sisu browser tab. It reads the open page and asks the public Kori interface for the modules and courses the plan shows, without sending the Sisu login cookies. [Sisu import script](/docs/guides/sisu-import.md) gives the capture and import steps.
+
+![The Import Sisu plan dialog with a typed profile name and the captured programme listed above Cancel and Import](/docs/screenshots/sisu-import-dialog.png)
+
+## Admission control
+
+The web server uses a browser cookie to apply admission control to nine fixed API POST paths. With `ADMISSION_ENABLED` true in `config/admission.toml`, reads are classified as free, light or heavy. Light reads have rate and concurrency limits. Heavy reads use a budget of estimated processing cost and wait in a queue for a shared slot.
+
+The limits adjust to server load, using the host's CPU use and the admitted request activity. An admitted heavy read has a fixed estimated charge, and a refused read returns HTTP 429 with a retry delay. [Admission control](/docs/backend/interfaces/admission-control.md) describes the classes, budgets, queues and settings.
 
 ## Data and limits
 
@@ -60,6 +76,16 @@ The profile menu in the top bar is named after the active profile (**My plan** b
 - Selection and completion use one canonical course identity in every tab.
 - The application is read-only. It does not change the data and does not start ingestion, translation, embedding or inference.
 - The interface does not establish enrolment eligibility, and its analysis is not verified by the university.
+
+## Administration console
+
+The administration console is a separate signed-in browser application with its own backend, running the fixed administration commands. Its five tabs are **Dashboard**, **Data preparation**, **Inference**, **Logs** and **Settings**.
+
+The console reports the website, host, database and model runtime, controls the preparation stages, records inference decisions, reads logs and usage, and manages configuration, datasets and backups. The course application is a read-only API client. Preparation and maintenance run through the console or the administration command.
+
+![The administration console on the Dashboard tab, with the five tabs above the serving state, website, host, database and embedding runtime panels](/docs/screenshots/admin-console-dashboard.png)
+
+[Administration console](/docs/operations/admin-console/README.md) covers signing in, the tabs and their panels.
 
 ## Run your own copy
 
@@ -127,16 +153,7 @@ Runtime configuration and deployment files are provided as examples under `examp
 
 The example dataset in `data/mock/` is invented. Its courses, modules, prerequisites and structure rules are not university data, and its embedding vectors are bundled with it, so nothing needs to be generated.
 
-Checks for the browser application and the administration console:
-
-```bash
-npm --prefix web run typecheck
-npm --prefix web run test
-npm --prefix web run format:check
-npm --prefix admin-web run typecheck
-npm --prefix admin-web run test
-npm --prefix admin-web run format:check
-```
+The lint, Python, database, browser application and console checks for a local checkout are in [Local checks](/docs/testing/local-checks.md).
 
 ## Architecture
 

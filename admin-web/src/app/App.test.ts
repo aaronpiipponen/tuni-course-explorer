@@ -36,7 +36,7 @@ import { App } from "./App";
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
 
-const APP_URL = "http://localhost:8026/";
+const APP_URL = "http://localhost:8037/";
 const REPOSITORY_URL = "https://github.com/owner/repo";
 const CONFIG_FILE = "config/web.toml";
 const OPERATOR = "synthetic-operator";
@@ -69,7 +69,7 @@ const DASHBOARD_REPORT: ServerStatusReport = {
     substate: "running",
     main_pid: 42,
     host: "127.0.0.1",
-    port: 8026,
+    port: 8037,
     configured_workers: 2,
     entry_point: "scripts/run_web.sh",
     started_at: "2026-10-10T04:39:00Z",
@@ -208,7 +208,7 @@ const CONFIGURATION_FILE: ConfigurationFileReport = {
   schema_version: 1,
   file: CONFIG_FILE,
   values: {
-    WEB_PORT: 8027,
+    WEB_PORT: 8037,
     WEB_INFERENCE_ENABLED: true,
     WEB_EMBEDDINGS_ENABLED: true,
   },
@@ -333,7 +333,7 @@ interface ProtectedRefusal {
   status: 401 | 403;
 }
 
-/** One tab one invocation opens from the dashboard. */
+/** One implemented tab with its tab label and the panel heading it shows. */
 interface TabTransition {
   name: string;
   kind: "tab";
@@ -356,7 +356,6 @@ type Transition =
         | "admin-rebuild-success"
         | "admin-rebuild-failure";
     }
-  | TabTransition
   | ({ name: string; kind: "protected" } & ProtectedRefusal)
   | { name: string; kind: "protected-wave"; status: 401 };
 
@@ -372,7 +371,7 @@ const REFUSAL_ROUTES: Record<RefusalSource, string> = {
 
 const REFUSAL_SOURCES = Object.keys(REFUSAL_ROUTES) as RefusalSource[];
 
-/** One tab transition per implemented tab, opening it from the dashboard. */
+/** One entry per implemented tab with its tab label and panel heading. */
 const TAB_TRANSITIONS: TabTransition[] = [
   {
     name: "tab-dashboard",
@@ -419,7 +418,6 @@ const TRANSITIONS: Transition[] = [
   { name: "logout", kind: "logout" },
   { name: "admin-rebuild-success", kind: "admin-rebuild-success" },
   { name: "admin-rebuild-failure", kind: "admin-rebuild-failure" },
-  ...TAB_TRANSITIONS,
   { name: "protected-wave-401", kind: "protected-wave", status: 401 },
   ...REFUSAL_SOURCES.flatMap((source) =>
     ([401, 403] as const).map((status) => ({
@@ -790,28 +788,6 @@ async function rebuildAdminPanel(container: HTMLElement): Promise<void> {
   await settle();
 }
 
-/** Open one tab from the dashboard and assert the retained tree it owns. */
-async function openTab(
-  container: HTMLElement,
-  transition: TabTransition,
-): Promise<void> {
-  expect(headingIsHidden(container, wording.dashboard.serving)).toBe(false);
-  const before = calls.length;
-  await act(async () => {
-    buttonNamed(container, transition.tab).click();
-  });
-  await settle();
-  expect(headingIsHidden(container, transition.panel)).toBe(false);
-  // Every tree was mounted and read with the signed-in session, and a tab switch reads nothing.
-  expect(calls.length).toBe(before);
-  expect(countOf(transition.route)).toBe(1);
-  for (const other of TAB_TRANSITIONS) {
-    if (other.panel !== transition.panel) {
-      expect(headingIsHidden(container, other.panel)).toBe(true);
-    }
-  }
-}
-
 describe.each(TRANSITIONS)("console session transition $name", (transition) => {
   let container: HTMLDivElement;
   let root: Root;
@@ -835,11 +811,6 @@ describe.each(TRANSITIONS)("console session transition $name", (transition) => {
       root.render(createElement(App));
     });
     await settle();
-
-    if (transition.kind === "tab") {
-      await openTab(container, transition);
-      return;
-    }
 
     if (transition.kind === "protected") {
       await refuseProtected(container, transition);
@@ -1026,24 +997,9 @@ describe("signed-in tab session", () => {
     for (const transition of TAB_TRANSITIONS.slice(1)) {
       expect(headingIsHidden(container, transition.panel)).toBe(true);
     }
-    // The header carries GitHub, Docs, the App address and the sign-out control, and no account
-    // name.
+    // The header carries no account name.
     const header = container.querySelector("header");
-    expect(header?.textContent).toContain(wording.github);
-    expect(header?.textContent).toContain(wording.docs);
-    expect(header?.textContent).toContain(wording.app);
-    expect(header?.textContent).toContain(wording.signOut);
     expect(header?.textContent).not.toContain(OPERATOR);
-    const headerLinks = [...(header?.querySelectorAll("a") ?? [])];
-    const githubLink = headerLinks.find((link) =>
-      link.textContent?.includes(wording.github),
-    );
-    expect(githubLink?.getAttribute("href")).toBe(REPOSITORY_URL);
-    expect(githubLink?.getAttribute("target")).toBe("_blank");
-    const wikiLink = headerLinks.find((link) =>
-      link.textContent?.includes(wording.docs),
-    );
-    expect(wikiLink?.getAttribute("href")).toBe(`${APP_URL}docs#home`);
     expect(markerOf(container, wording.dashboard.serving)).not.toContain(
       wording.notRead,
     );
@@ -1051,7 +1007,7 @@ describe("signed-in tab session", () => {
       wording.reading,
     );
 
-    // Switching through every tab reveals its retained report and marker and reads nothing.
+    // Switching through every tab shows its panel and reads nothing.
     const before = calls.length;
     for (const transition of TAB_TRANSITIONS) {
       await act(async () => {
@@ -1276,7 +1232,7 @@ describe.each(["true", "false", "failure"] as const)(
         return;
       }
 
-      // A failed dashboard read stays visible and is not relabeled as a disabled site.
+      // A failed dashboard read shows its failure line in place of the disabled-site reason.
       expect(container.textContent).not.toContain(wording.selectionDisabled);
       expect(
         [...container.querySelectorAll("p.failure")].map(

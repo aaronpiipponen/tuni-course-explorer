@@ -1,9 +1,6 @@
-"""Unified command and CLI contracts for course search."""
+"""Unified command contracts for course search."""
 
 from __future__ import annotations
-
-import importlib.util
-from pathlib import Path
 
 import httpx
 import pytest
@@ -19,13 +16,6 @@ from tests.support import (
     settings_factory,
     version,
 )
-
-_CLI_SPEC = importlib.util.spec_from_file_location(
-    "search", Path(__file__).parents[2] / "scripts" / "search.py"
-)
-assert _CLI_SPEC is not None and _CLI_SPEC.loader is not None
-_CLI_MODULE = importlib.util.module_from_spec(_CLI_SPEC)
-_CLI_SPEC.loader.exec_module(_CLI_MODULE)
 
 
 def search_settings(semantic: float | str = "0.40", fuzzy: float | str = "80") -> SearchSettings:
@@ -277,60 +267,3 @@ def test_search_without_semantic_preserves_lexical_results(monkeypatch) -> None:
     assert report.semantic_available is False
     assert report.tier_priority == ("exact_code", "substring", "fuzzy_name")
     assert engine.disposed
-
-
-def test_search_cli_forwards_options_and_prints_one_report(monkeypatch, capsys) -> None:
-    """CLI delegates once to the unified command, requires locale, and prints one unified report."""
-    expected = command_module.UnifiedSearchReport(
-        display_language="fi",
-        semantic_min_score=0.40,
-        fuzzy_min_score=80,
-        include_inactive=True,
-        semantic_available=False,
-        tier_priority=("exact_code", "substring", "fuzzy_name", "semantic"),
-        results=(),
-    )
-    calls: list[dict] = []
-    monkeypatch.setattr(
-        _CLI_MODULE,
-        "run_search_command",
-        lambda query, **kwargs: calls.append({"query": query, **kwargs}) or expected,
-    )
-
-    assert _CLI_MODULE.main(["COMP.CS", "--display-language", "fi"]) == 0
-    assert calls[-1] == {
-        "query": "COMP.CS",
-        "display_language": "fi",
-        "semantic_min_score": None,
-        "fuzzy_min_score": None,
-        "include_inactive": True,
-    }
-    printed = capsys.readouterr().out
-    assert printed == expected.model_dump_json() + "\n"
-    assert '"semantic_available":false' in printed
-
-    assert (
-        _CLI_MODULE.main(
-            [
-                "tensorit",
-                "--display-language",
-                "en",
-                "--semantic-min-score",
-                "0.25",
-                "--fuzzy-min-score",
-                "90",
-                "--active-only",
-            ]
-        )
-        == 0
-    )
-    assert calls[-1] == {
-        "query": "tensorit",
-        "display_language": "en",
-        "semantic_min_score": 0.25,
-        "fuzzy_min_score": 90,
-        "include_inactive": False,
-    }
-
-    with pytest.raises(SystemExit):
-        _CLI_MODULE.main(["tensorit"])

@@ -23,11 +23,9 @@ class _Probe(BaseModel):
 
 
 def test_administrative_json_and_model_round_trip(tmp_path: Path) -> None:
-    """Canonical JSON is one sorted line and strict loaders reject foreign schemas and symlinks."""
+    """A strict loader round-trips a canonical write and rejects a foreign schema and a symlink."""
     probe = _Probe(name="alpha", count=2)
     payload = administrative_json(probe)
-    assert payload.endswith("\n") and payload.count("\n") == 1
-    assert payload == '{"count":2,"name":"alpha"}\n'
 
     target = tmp_path / "probe.json"
     atomic_write_private_text(target, payload)

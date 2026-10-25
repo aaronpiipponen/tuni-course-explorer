@@ -117,7 +117,6 @@ def sample_receipt(
         database_name=database_name,
         predecessor_id=None,
         kind="initial",
-        revision=REVISION,
         dump_sha256=None,
         verification=sample_verification(),
     )

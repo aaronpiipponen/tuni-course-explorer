@@ -26,19 +26,6 @@ from uuid import UUID
 import httpx
 from pydantic import BaseModel, ConfigDict, Field
 
-# The one shared runtime pathspec every stage validates before starting a detached session. Its
-# breadth prevents one stage from starting against a checkout modified by another stage's runtime file.
-_RUNTIME_PATHS = (
-    "src/",
-    "scripts/",
-    "config/",
-    "pyproject.toml",
-    "uv.lock",
-    "migrations/",
-    "docker-compose.yml",
-    "docker/",
-)
-
 # The one shared five-action lifecycle vocabulary every administrative stage accepts. The remote
 # controller re-exports this same type, so one literal is declared.
 type ControllerAction = Literal["start", "pause", "resume", "status", "stop"]
@@ -362,42 +349,23 @@ class SubprocessRunner:
 type ComposeCommand = Callable[[Sequence[str]], bytes]
 
 
-def read_prepared_checkout(
-    run: Callable[[Sequence[str]], bytes], *, full_tree: bool = False
-) -> tuple[str, str]:
-    """Read a non-detached branch, cleanliness, and HEAD from one checkout command runner.
+def read_checkout_identity(run: Callable[[Sequence[str]], bytes]) -> tuple[str, str]:
+    """Read a non-detached branch and HEAD from one checkout command runner.
 
-    ``run`` executes one git argv in the checkout and returns captured stdout bytes. With
-    ``full_tree=False`` cleanliness is limited to the shared runtime pathspec every stage
-    validates before a detached session. With ``full_tree=True`` it covers the whole checkout
-    including untracked files, which explicit setup/update requires. Returns ``(branch, HEAD)``.
+    ``run`` executes one git argv in the checkout and returns captured stdout bytes. Returns
+    ``(branch, HEAD)``.
     """
     branch = run(("git", "branch", "--show-current")).decode().strip()
     if not branch:
-        raise ValueError("prepared checkout requires a non-detached Git branch")
-    if full_tree:
-        dirty = run(("git", "status", "--porcelain", "--untracked-files=normal")).decode()
-        if dirty.strip():
-            raise ValueError("prepared checkout requires a clean full tree")
-    else:
-        dirty = run(
-            ("git", "status", "--porcelain", "--untracked-files=no", "--", *_RUNTIME_PATHS)
-        ).decode()
-        if dirty.strip():
-            raise ValueError("controller start requires clean runtime paths")
+        raise ValueError("checkout identity requires a non-detached Git branch")
     revision = run(("git", "rev-parse", "HEAD")).decode().strip()
     if len(revision) != 40 or any(character not in "0123456789abcdef" for character in revision):
-        raise ValueError("controller start requires a 40-character lowercase revision")
+        raise ValueError("checkout identity requires a 40-character lowercase revision")
     return branch, revision
 
 
-def require_prepared_checkout(runner: ProcessRunner, root: Path) -> tuple[str, str]:
-    """Require a non-detached branch, a clean shared runtime checkout, and return (branch, HEAD)."""
-    return read_prepared_checkout(lambda argv: runner.run(tuple(argv), cwd=root).stdout)
-
-
 def current_revision(runner: ProcessRunner, root: Path) -> str:
-    """Return the checkout HEAD revision without a branch or cleanliness requirement."""
+    """Return the checkout HEAD revision without a branch requirement."""
     return runner.run(("git", "rev-parse", "HEAD"), cwd=root).stdout.decode().strip()
 
 

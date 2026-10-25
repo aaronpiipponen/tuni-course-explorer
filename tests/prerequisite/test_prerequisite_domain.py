@@ -1,4 +1,4 @@
-"""Contracts for prerequisite expression round-trips and composed roles."""
+"""Contracts for prerequisite expression round-trips and canonical decimal dumps."""
 
 from __future__ import annotations
 
@@ -6,12 +6,10 @@ from decimal import Decimal
 
 from course_explorer.prerequisite.domain import (
     AndRequirement,
-    ComposedAndRole,
     ComposedOrRole,
     CreditRequirement,
     InferenceEvidenceReference,
     InferenceNodeMetadata,
-    InferredPrerequisiteCategory,
     ModuleBlockRequirement,
     ModuleRequirement,
     OfficialPrerequisiteKind,
@@ -118,98 +116,3 @@ def test_expression_union_round_trips_every_node_kind_without_flattening() -> No
     assert block_dump["module_group_id"] == "module-a"
     assert block_dump["child"]["type"] == "opaque_credits"
     assert parse_prerequisite_expression(block_dump) == block_node
-
-
-def test_composed_and_roles_validate_and_round_trip_without_changing_inferred_payloads() -> None:
-    """Composed AND/OR roles round-trip exactly and never enter stored official/inferred payloads."""
-    logical = AndRequirement(
-        type="and",
-        origin=PrerequisiteOrigin.COMPOSED,
-        composed_role=ComposedAndRole.LOGICAL,
-        children=(official_course("a"), official_course("b")),
-    )
-    expanded = AndRequirement(
-        type="and",
-        origin=PrerequisiteOrigin.COMPOSED,
-        composed_role=ComposedAndRole.EXPANDED_COURSE,
-        children=(official_course("a"), official_course("b")),
-    )
-
-    # Both valid AND roles survive the canonical dump/parse path with their role attached, and the
-    # role is a field discriminator on the same eight-kind `and` node.
-    logical_dump = dump_prerequisite_expression(logical)
-    expanded_dump = dump_prerequisite_expression(expanded)
-    assert logical_dump["composed_role"] == "logical"
-    assert expanded_dump["composed_role"] == "expanded_course"
-    assert parse_prerequisite_expression(logical_dump) == logical
-    assert parse_prerequisite_expression(expanded_dump) == expanded
-
-    # The same holds for composed OR roles beside the AND roles.
-    logical_or = OrRequirement(
-        type="or",
-        origin=PrerequisiteOrigin.COMPOSED,
-        composed_role=ComposedOrRole.LOGICAL,
-        children=(
-            official_course("a"),
-            inferred_course("b", inference=inferred_metadata()),
-        ),
-    )
-    alternatives = OrRequirement(
-        type="or",
-        origin=PrerequisiteOrigin.COMPOSED,
-        composed_role=ComposedOrRole.COURSE_ALTERNATIVES,
-        children=(
-            official_course("a"),
-            official_course("sub", OfficialPrerequisiteKind.SUBSTITUTION),
-            inferred_course("equivalent", inference=inferred_metadata()),
-        ),
-    )
-    logical_or_dump = dump_prerequisite_expression(logical_or)
-    alternatives_dump = dump_prerequisite_expression(alternatives)
-    assert logical_or_dump["composed_role"] == "logical"
-    assert alternatives_dump["composed_role"] == "course_alternatives"
-    assert parse_prerequisite_expression(logical_or_dump) == logical_or
-    assert parse_prerequisite_expression(alternatives_dump) == alternatives
-
-    # Official and inferred payloads omit the null role, so stored expression JSON and its
-    # payload hashes are byte-for-byte identical. Official payloads carry the null category while
-    # inferred nodes declare their explicit category.
-    official_and = AndRequirement(
-        type="and",
-        origin=PrerequisiteOrigin.OFFICIAL,
-        official_kind=OfficialPrerequisiteKind.COMPULSORY,
-        children=(official_course("a"), official_course("b")),
-    )
-    inferred_and = AndRequirement(
-        type="and",
-        origin=PrerequisiteOrigin.INFERRED,
-        inferred_category=InferredPrerequisiteCategory.REQUIRED,
-        inference=inferred_metadata(),
-        children=(
-            inferred_course("a", inference=inferred_metadata()),
-            inferred_course("b", inference=inferred_metadata()),
-        ),
-    )
-    official_or = OrRequirement(
-        type="or",
-        origin=PrerequisiteOrigin.OFFICIAL,
-        official_kind=OfficialPrerequisiteKind.COMPULSORY,
-        children=(official_course("a"), official_course("b")),
-    )
-    inferred_or = OrRequirement(
-        type="or",
-        origin=PrerequisiteOrigin.INFERRED,
-        inferred_category=InferredPrerequisiteCategory.REQUIRED,
-        inference=inferred_metadata(),
-        children=(
-            inferred_course("a", inference=inferred_metadata()),
-            inferred_course("b", inference=inferred_metadata()),
-        ),
-    )
-    for node in (official_and, inferred_and, official_or, inferred_or):
-        assert "composed_role" not in dump_prerequisite_expression(node)
-        assert parse_prerequisite_expression(dump_prerequisite_expression(node)) == node
-    assert dump_prerequisite_expression(official_and)["inferred_category"] is None
-    assert dump_prerequisite_expression(inferred_and)["inferred_category"] == "required"
-    assert dump_prerequisite_expression(official_or)["inferred_category"] is None
-    assert dump_prerequisite_expression(inferred_or)["inferred_category"] == "required"

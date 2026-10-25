@@ -25,8 +25,8 @@ from course_explorer_admin.mechanics import ProcessRunner
 from course_explorer_admin_web.app import create_app
 from course_explorer_admin_web.security import SESSION_COOKIE_NAME
 
-ORIGIN = "https://localhost:8027"
-APP_URL = "http://localhost:8026/"
+ORIGIN = "https://localhost:8039"
+APP_URL = "http://localhost:8037/"
 REPOSITORY_URL = "https://github.com/aaronpiipponen/tuni-course-explorer"
 OPERATOR_NAME = "synthetic-operator"
 OPERATOR_PASSWORD = "synthetic-password"
@@ -128,7 +128,7 @@ def admin_web_settings(**overrides: object) -> AdminWebSettings:
     """Build administration settings from explicit values in place of any configuration file."""
     values: dict[str, object] = {
         "ADMIN_WEB_HOST": "127.0.0.1",
-        "ADMIN_WEB_PORT": 8027,
+        "ADMIN_WEB_PORT": 8039,
         "ADMIN_WEB_ORIGIN": ORIGIN,
         "ADMIN_WEB_SESSION_IDLE_MINUTES": 30,
         "ADMIN_WEB_SESSION_MAX_HOURS": 12,

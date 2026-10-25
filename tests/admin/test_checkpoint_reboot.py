@@ -25,7 +25,6 @@ from course_explorer_admin.reboot import (
 from course_explorer_admin.transport import SshWslTransport, WorkerConnectionLost
 
 SESSION_ID = "0123456789abcdef0123456789abcdef"
-REVISION = "a" * 40
 
 
 class VirtualMonotonic:
@@ -72,7 +71,6 @@ def test_gpu_clock_counts_only_loaded_checkpoint_time_and_survives_same_boot_res
     subject = WorkerGpuClock(
         directory,
         session_id=SESSION_ID,
-        revision=REVISION,
         settings=reboot_settings(),
         monotonic=clock,
     )
@@ -85,10 +83,7 @@ def test_gpu_clock_counts_only_loaded_checkpoint_time_and_survives_same_boot_res
     subject.checkpoint()
     assert read_checkpoint(directory).loaded_seconds == 30
     assert (
-        worker_gpu_reboot_due(
-            directory, session_id=SESSION_ID, revision=REVISION, settings=reboot_settings()
-        )
-        is False
+        worker_gpu_reboot_due(directory, session_id=SESSION_ID, settings=reboot_settings()) is False
     )
     # A repeated checkpoint at the same instant never double-counts.
     subject.checkpoint()
@@ -108,17 +103,13 @@ def test_gpu_clock_counts_only_loaded_checkpoint_time_and_survives_same_boot_res
     assert subject.due is True
     assert read_checkpoint(directory).loaded_seconds == 70
     assert (
-        worker_gpu_reboot_due(
-            directory, session_id=SESSION_ID, revision=REVISION, settings=reboot_settings()
-        )
-        is True
+        worker_gpu_reboot_due(directory, session_id=SESSION_ID, settings=reboot_settings()) is True
     )
 
     # A fresh same-boot invocation reuses saved seconds but latches due only after a checkpoint.
     retained = WorkerGpuClock(
         directory,
         session_id=SESSION_ID,
-        revision=REVISION,
         settings=reboot_settings(),
         monotonic=clock,
     )
@@ -132,50 +123,39 @@ def test_gpu_clock_counts_only_loaded_checkpoint_time_and_survives_same_boot_res
     # The due read is read-only and writes nothing.
     before = (directory / "gpu-clock.json").read_bytes()
     assert (
-        worker_gpu_reboot_due(
-            directory, session_id=SESSION_ID, revision=REVISION, settings=reboot_settings()
-        )
-        is True
+        worker_gpu_reboot_due(directory, session_id=SESSION_ID, settings=reboot_settings()) is True
     )
     assert (directory / "gpu-clock.json").read_bytes() == before
 
     # A different worker boot starts a fresh budget without rewriting the saved record.
     monkeypatch.setattr(mechanics, "current_boot_id", lambda: uuid4())
     assert (
-        worker_gpu_reboot_due(
-            directory, session_id=SESSION_ID, revision=REVISION, settings=reboot_settings()
-        )
-        is False
+        worker_gpu_reboot_due(directory, session_id=SESSION_ID, settings=reboot_settings()) is False
     )
     assert (directory / "gpu-clock.json").read_bytes() == before
     fresh = WorkerGpuClock(
         directory,
         session_id=SESSION_ID,
-        revision=REVISION,
         settings=reboot_settings(),
         monotonic=clock,
     )
     assert fresh.due is False
 
-    # A foreign session/revision record refuses in both the read and the constructor.
+    # A foreign session record refuses in both the read and the constructor.
     foreign = WorkerGpuCheckpoint(
         schema_version=1,
         session_id="f" * 32,
-        revision=REVISION,
         boot_id=mechanics.current_boot_id(),
         loaded_seconds=120,
     )
     atomic_write_private_text(directory / "gpu-clock.json", administrative_json(foreign))
     foreign_before = (directory / "gpu-clock.json").read_bytes()
     with pytest.raises(ValueError):
-        worker_gpu_reboot_due(
-            directory, session_id=SESSION_ID, revision=REVISION, settings=reboot_settings()
-        )
+        worker_gpu_reboot_due(directory, session_id=SESSION_ID, settings=reboot_settings())
     with pytest.raises(ValueError):
         WorkerGpuClock(
             directory,
             session_id=SESSION_ID,
-            revision=REVISION,
             settings=reboot_settings(),
             monotonic=clock,
         )

@@ -23,7 +23,6 @@ from course_explorer.inference.evidence import (
     InferenceExecutionProfile,
     InferencePipelineRunSpec,
 )
-from course_explorer.inference.prompts import load_prompt_pack
 from course_explorer.inference.routing import local_execution
 from tests.support import settings_factory
 
@@ -67,11 +66,10 @@ def run_spec(
     *,
     execution: InferenceExecutionProfile | None = None,
 ) -> InferencePipelineRunSpec:
-    """Derive one shared execution spec from the real prompt pack, settings and execution profile."""
+    """Derive one shared execution spec from the validated settings and execution profile."""
     resolved = settings if settings is not None else inference_settings()
     return InferencePipelineRunSpec.from_contracts(
         resolved,
-        load_prompt_pack("v9"),
         execution=execution if execution is not None else execution_profile(resolved),
     )
 

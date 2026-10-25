@@ -1,0 +1,16 @@
+# GitHub Actions runner service for this repository's deployment job.
+[Unit]
+Description=TUNI Course Explorer deployment runner
+
+[Service]
+WorkingDirectory=@RUNNER@
+ExecStart=@RUNNER@/run.sh
+Environment=HOME=@HOME@
+Environment=PATH=@HOME@/.pyenv/shims:@HOME@/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin
+UMask=0077
+Restart=on-failure
+# The deployment restarts the feature web unit through its passwordless sudo grant.
+NoNewPrivileges=false
+
+[Install]
+WantedBy=default.target

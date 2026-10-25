@@ -25,7 +25,6 @@ from course_explorer_admin.reboot import WorkerGpuCheckpoint
 from course_explorer_admin.remote import WorkerControl
 from course_explorer_admin.worker_session import write_worker_control
 from tests.admin.inference._worker_support import (
-    REVISION,
     SESSION_ID,
     FakeEngine,
     FakeRepository,
@@ -47,7 +46,6 @@ def test_gpu_interval_yields_after_ce_and_generation_checkpoints(
     monkeypatch.setattr(worker_module, "create_database_engine", lambda _settings: FakeEngine())
     monkeypatch.setattr(worker_module, "create_session_factory", lambda engine: object())
     monkeypatch.setattr(worker_module, "InferenceSchedulingRepository", FakeRepository)
-    monkeypatch.setattr(worker_session, "require_worker_checkout", lambda *a, **k: None)
     stable_boot = uuid4()
     monkeypatch.setattr(worker_module.mechanics, "current_boot_id", lambda: stable_boot)
     monkeypatch.setattr(worker_module.mechanics, "read_process_command_line", lambda pid: ("x",))
@@ -141,7 +139,6 @@ def test_interrupted_resume_retires_owned_runtime_before_rearming(
         WorkerControl(
             schema_version=1,
             session_id=SESSION_ID,
-            revision=REVISION,
             requested_action="pause",
         ),
     )

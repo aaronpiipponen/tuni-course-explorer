@@ -30,6 +30,7 @@ from course_explorer.inference.prompts import load_prompt_pack
 from course_explorer.inference.provider import InferenceRequestError
 from course_explorer.inference.target_pass import (
     TargetPassError,
+    prepare_target_request,
     render_target_request,
     run_target,
     target_work_identity,
@@ -69,9 +70,17 @@ def _refuse_after_requests(boundary: InferenceHttpBoundary, allowed: int):
     return admit
 
 
+def _identity(packet, value, pack, settings, execution):
+    """Prepare one target request once and bind the selected route's work identity."""
+    prepared = prepare_target_request(value, pack, settings, packet=packet)
+    return target_work_identity(value, settings, execution, packet=packet, prepared=prepared)
+
+
 def _work_key(packet, value, pack, settings, execution) -> str:
-    identity = target_work_identity(value, pack, settings, execution, packet=packet)
-    return work_key_sha256(identity.work_request, run_identity_sha256(identity.spec))
+    identity = _identity(packet, value, pack, settings, execution)
+    return work_key_sha256(
+        identity.work_request, run_identity_sha256(identity.spec), identity.input_sha256
+    )
 
 
 def test_render_never_leaks_labels_ranks_or_same_target_example() -> None:
@@ -118,7 +127,7 @@ def test_render_never_leaks_labels_ranks_or_same_target_example() -> None:
     assert example_json not in labeled_request.system_prompt
 
 
-def test_configured_schema_version_selects_request_and_run_identity() -> None:
+def test_configured_schema_version_selects_request_and_work_identity() -> None:
     """The explicit v2 schema selects the request schema and binds the current identity."""
     pack = load_prompt_pack("v9")
     packet = target_packet(50)
@@ -126,19 +135,24 @@ def test_configured_schema_version_selects_request_and_run_identity() -> None:
     settings = target_settings()
     execution = execution_profile(settings)
 
-    request = render_target_request(packet, pack, "v2")
-    assert request.schema_name == "inference_target_result_v2"
+    prepared = prepare_target_request(value, pack, settings, packet=packet)
+    assert prepared.request.schema_name == "inference_target_result_v2"
     assert value.packet_sha256 == selection_references_sha256(value.references)
 
-    identity = target_work_identity(value, pack, settings, execution, packet=packet)
+    identity = target_work_identity(value, settings, execution, packet=packet, prepared=prepared)
     assert identity.spec.schema_version == "v2"
     assert identity.request.schema_name == "inference_target_result_v2"
-    assert identity.request == request
+    assert identity.request == prepared.request
     assert identity.spec.configuration == {"route": "local"}
     assert identity.input_sha256 == canonical_json_sha256(
-        {"packet_sha256": value.packet_sha256, "request_sha256": identity.request_sha256}
+        {"packet_sha256": value.packet_sha256, "request_sha256": prepared.request_sha256}
     )
-    assert identity.work_request.input_sha256 == identity.input_sha256
+
+    # A prompt pack whose version disagrees with configured settings is rejected before rendering.
+    with pytest.raises(ValueError):
+        prepare_target_request(
+            value, pack.model_copy(update={"version": "v2"}), settings, packet=packet
+        )
 
 
 def test_changed_packet_prompt_model_or_activity_changes_work_key() -> None:
@@ -147,36 +161,60 @@ def test_changed_packet_prompt_model_or_activity_changes_work_key() -> None:
     settings = target_settings()
     execution = execution_profile(settings)
     base_packet = target_packet(50)
-    normal = target_work_identity(
-        operational_input(base_packet), pack, settings, execution, packet=base_packet
+    normal = _identity(base_packet, operational_input(base_packet), pack, settings, execution)
+    normal_key = work_key_sha256(
+        normal.work_request, run_identity_sha256(normal.spec), normal.input_sha256
     )
-    normal_key = work_key_sha256(normal.work_request, run_identity_sha256(normal.spec))
 
     # A changed packet (reversed candidate order) changes the request and input/work key.
     reversed_packet = base_packet.model_copy(
         update={"candidates": tuple(reversed(base_packet.candidates))}
     )
-    changed_packet = target_work_identity(
-        operational_input(reversed_packet),
-        pack,
-        settings,
-        execution,
-        packet=reversed_packet,
+    changed_packet = _identity(
+        reversed_packet, operational_input(reversed_packet), pack, settings, execution
     )
-    assert changed_packet.request_sha256 != normal.request_sha256
+    assert changed_packet.request != normal.request
     assert changed_packet.input_sha256 != normal.input_sha256
     assert (
-        work_key_sha256(changed_packet.work_request, run_identity_sha256(changed_packet.spec))
+        work_key_sha256(
+            changed_packet.work_request,
+            run_identity_sha256(changed_packet.spec),
+            changed_packet.input_sha256,
+        )
         != normal_key
     )
 
+    # An example this target excludes from its request leaves that request and work key unchanged.
+    edited_pack = pack.model_copy(
+        update={
+            "examples": tuple(
+                example.model_copy(update={"explanation": "edited example text"})
+                if example.target.course_code == base_packet.target.course_code
+                else example
+                for example in pack.examples
+            )
+        }
+    )
+    edited_identity = _identity(
+        base_packet, operational_input(base_packet), edited_pack, settings, execution
+    )
+    assert edited_identity.request == normal.request
+    assert (
+        work_key_sha256(
+            edited_identity.work_request,
+            run_identity_sha256(edited_identity.spec),
+            edited_identity.input_sha256,
+        )
+        == normal_key
+    )
+
     # A changed execution route/key changes the run identity.
-    second_key = target_work_identity(
+    second_key = _identity(
+        base_packet,
         operational_input(base_packet),
         pack,
         settings,
         execution_profile(settings, variant_index=1),
-        packet=base_packet,
     )
     assert run_identity_sha256(second_key.spec) != run_identity_sha256(normal.spec)
 
@@ -209,12 +247,12 @@ def test_result_rejects_unknown_direct_or_equivalence_code(database) -> None:
     boundary = InferenceHttpBoundary(settings, content=_result_json(good))
     work = run_target(
         value,
-        pack,
         settings,
         repository,
         local_structured_provider(settings, boundary),
         execution,
         packet=packet,
+        identity=_identity(packet, value, pack, settings, execution),
         scheduling_repository=scheduling,
         cycle_id=cycle.cycle_id,
     )
@@ -244,12 +282,12 @@ def test_result_rejects_unknown_direct_or_equivalence_code(database) -> None:
     with pytest.raises(RequestNotStarted):
         run_target(
             bad_value,
-            pack,
             settings,
             repository,
             local_structured_provider(settings, bad_boundary),
             execution,
             packet=reversed_packet,
+            identity=_identity(reversed_packet, bad_value, pack, settings, execution),
             scheduling_repository=bad_scheduling,
             cycle_id=bad_cycle.cycle_id,
             before_request=_refuse_after_requests(bad_boundary, 1),
@@ -301,12 +339,12 @@ def test_result_rejects_unknown_direct_or_equivalence_code(database) -> None:
     with pytest.raises(RequestNotStarted):
         run_target(
             multi_value,
-            pack,
             settings,
             repository,
             local_structured_provider(settings, multi_boundary),
             execution,
             packet=multi_packet,
+            identity=_identity(multi_packet, multi_value, pack, settings, execution),
             scheduling_repository=multi_scheduling,
             cycle_id=multi_cycle.cycle_id,
             before_request=_refuse_after_requests(multi_boundary, 1),
@@ -337,12 +375,12 @@ def test_run_reuses_completed_work_and_explicitly_retries_failed_work(database) 
     good = InferenceHttpBoundary(settings)
     work = run_target(
         value,
-        pack,
         settings,
         repository,
         local_structured_provider(settings, good),
         execution,
         packet=packet,
+        identity=_identity(packet, value, pack, settings, execution),
         scheduling_repository=scheduling,
         cycle_id=cycle.cycle_id,
     )
@@ -352,12 +390,12 @@ def test_run_reuses_completed_work_and_explicitly_retries_failed_work(database) 
     reuse_boundary = InferenceHttpBoundary(settings)
     reused = run_target(
         value,
-        pack,
         settings,
         repository,
         local_structured_provider(settings, reuse_boundary),
         execution,
         packet=packet,
+        identity=_identity(packet, value, pack, settings, execution),
         scheduling_repository=scheduling,
         cycle_id=cycle.cycle_id,
     )
@@ -374,12 +412,12 @@ def test_run_reuses_completed_work_and_explicitly_retries_failed_work(database) 
     with pytest.raises(RequestNotStarted):
         run_target(
             failed_value,
-            pack,
             settings,
             repository,
             local_structured_provider(settings, failing),
             execution,
             packet=failed_packet,
+            identity=_identity(failed_packet, failed_value, pack, settings, execution),
             scheduling_repository=failed_scheduling,
             cycle_id=failed_cycle.cycle_id,
             before_request=_refuse_after_requests(failing, 1),
@@ -397,12 +435,12 @@ def test_run_reuses_completed_work_and_explicitly_retries_failed_work(database) 
     with pytest.raises(TargetPassError):
         run_target(
             failed_value,
-            pack,
             settings,
             repository,
             local_structured_provider(settings, InferenceHttpBoundary(settings)),
             execution,
             packet=failed_packet,
+            identity=_identity(failed_packet, failed_value, pack, settings, execution),
             scheduling_repository=failed_scheduling,
             cycle_id=failed_cycle.cycle_id,
         )
@@ -411,12 +449,12 @@ def test_run_reuses_completed_work_and_explicitly_retries_failed_work(database) 
     retry_boundary = InferenceHttpBoundary(settings)
     retried = run_target(
         failed_value,
-        pack,
         settings,
         repository,
         local_structured_provider(settings, retry_boundary),
         execution,
         packet=failed_packet,
+        identity=_identity(failed_packet, failed_value, pack, settings, execution),
         scheduling_repository=failed_scheduling,
         cycle_id=failed_cycle.cycle_id,
         retry_failed=True,
@@ -444,12 +482,12 @@ def test_terminal_request_and_contract_failures_retain_safe_evidence(database) -
     with pytest.raises(RequestNotStarted):
         run_target(
             request_value,
-            pack,
             settings,
             repository,
             local_structured_provider(settings, request_boundary),
             execution,
             packet=packet,
+            identity=_identity(packet, request_value, pack, settings, execution),
             scheduling_repository=request_scheduling,
             cycle_id=request_cycle.cycle_id,
             before_request=_refuse_after_requests(request_boundary, 1),
@@ -469,12 +507,12 @@ def test_terminal_request_and_contract_failures_retain_safe_evidence(database) -
     with pytest.raises(RequestNotStarted):
         run_target(
             contract_value,
-            pack,
             settings,
             repository,
             local_structured_provider(settings, contract_boundary),
             execution,
             packet=contract_packet,
+            identity=_identity(contract_packet, contract_value, pack, settings, execution),
             scheduling_repository=contract_scheduling,
             cycle_id=contract_cycle.cycle_id,
             before_request=_refuse_after_requests(contract_boundary, 1),
@@ -500,12 +538,12 @@ def test_terminal_request_and_contract_failures_retain_safe_evidence(database) -
     with pytest.raises(InferenceRequestError):
         run_target(
             infra_value,
-            pack,
             settings,
             repository,
             local_structured_provider(settings, infra_boundary),
             execution,
             packet=infra_packet,
+            identity=_identity(infra_packet, infra_value, pack, settings, execution),
             scheduling_repository=infra_scheduling,
             cycle_id=infra_cycle.cycle_id,
         )
@@ -530,12 +568,12 @@ def test_terminal_request_and_contract_failures_retain_safe_evidence(database) -
     retry_scheduling, retry_cycle = prepare_generation_cycle(factory, retry_value)
     completed = run_target(
         retry_value,
-        pack,
         settings,
         repository,
         local_structured_provider(settings, retry_boundary),
         execution,
         packet=retry_packet,
+        identity=_identity(retry_packet, retry_value, pack, settings, execution),
         scheduling_repository=retry_scheduling,
         cycle_id=retry_cycle.cycle_id,
     )
@@ -579,12 +617,14 @@ def test_terminal_request_and_contract_failures_retain_safe_evidence(database) -
     with pytest.raises(RequestNotStarted):
         run_target(
             contradiction_value,
-            pack,
             settings,
             repository,
             local_structured_provider(settings, contradiction_boundary),
             execution,
             packet=contradiction_packet,
+            identity=_identity(
+                contradiction_packet, contradiction_value, pack, settings, execution
+            ),
             scheduling_repository=contradiction_scheduling,
             cycle_id=contradiction_cycle.cycle_id,
             before_request=_refuse_after_requests(contradiction_boundary, 1),
@@ -620,12 +660,12 @@ def test_preclaim_refusal_creates_no_run_or_attempt(database) -> None:
     with pytest.raises(RequestNotStarted):
         run_target(
             value,
-            pack,
             settings,
             repository,
             local_structured_provider(settings, boundary),
             execution,
             packet=packet,
+            identity=_identity(packet, value, pack, settings, execution),
             scheduling_repository=scheduling,
             cycle_id=cycle.cycle_id,
             before_request=lambda: False,
@@ -663,12 +703,12 @@ def test_control_change_after_claim_declines_target_generation(database) -> None
     with pytest.raises(RequestNotStarted):
         run_target(
             value,
-            pack,
             settings,
             repository,
             local_structured_provider(settings, boundary),
             execution,
             packet=packet,
+            identity=_identity(packet, value, pack, settings, execution),
             scheduling_repository=scheduling,
             cycle_id=cycle.cycle_id,
             before_request=lambda: admitted["value"],

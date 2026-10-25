@@ -34,7 +34,7 @@ The inferred side has its own tables, apart from the official catalogue. An infe
 
 ## Inference pipeline state
 
-The pipeline has its own records. One run row holds the shared execution identity of a run. One work row per canonical target course and work key names the run that created it and holds the input hash, the work key, and a status. Work with a matching key is reused instead of recomputed, and a changed identity creates a distinct row. One completion row per finished generation holds the completion payload. A proposal is immutable, names the completion it was composed from, and holds the composed expression and the equivalence candidates of one target course under a unique identity hash.
+The pipeline has its own records. One run row holds the shared execution identity of a run. One work row per canonical target course and work key names the run that created it and holds the activity context and a status, with the transient input digest bound into the work key. Work with a matching key is reused instead of recomputed, and a changed digest creates a distinct row. One completion row per finished generation holds the completion payload. A proposal is immutable, names the completion it was composed from, and holds the composed expression and the equivalence candidates of one target course under a unique identity hash.
 
 One processing marker per canonical course holds whether the course was processed, a pointer to the last accepted proposal, and the operator disposition (done, failed, or empty for automatic). One processing cycle holds the stage it has reached (multiview, rerank, inference, publication, or complete), and one checkpoint per cycle and target course holds the state of each stage and its proposal pointer. A failure summary records one failed episode of a target inside a cycle and holds the failing stage and the fixed reason, and failure summaries are written once and retained.
 
@@ -46,7 +46,7 @@ How the pipeline runs is described in [Inference](/docs/backend/inference/infere
 
 ## Datasets
 
-A dataset is one whole database. A process resolves the selected dataset outside the database from one pointer that names it and one receipt per enrolled dataset, and each receipt records the database name, the predecessor dataset, the revision, the dump hash, and a verification record.
+A dataset is one whole database. A process resolves the selected dataset outside the database from one pointer that names it and one receipt per enrolled dataset, and each receipt records the database name, the predecessor dataset, the dump hash, and a verification record that carries the schema head recorded at verification. The live head comes from the selected database's own Alembic revision, which the dataset verification and the schema check before a stage compare against the single head of the migration chain that the running code carries.
 
 `SELECTED_DATASET_ENABLED` in `config/database.toml` decides whether a process reads the configured database or the selected dataset's database. A database whose revision is not the single head of the migration chain is refused rather than migrated. The dataset lifecycle is described in [Datasets](/docs/operations/datasets.md), and the boundary between the administration side and the web server is described in [Boundaries](/docs/architecture/boundaries.md).
 

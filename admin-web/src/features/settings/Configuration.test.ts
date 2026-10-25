@@ -43,7 +43,7 @@ const CASES: Case[] = [
   {
     name: "primitive values",
     values: {
-      WEB_PORT: 8027,
+      WEB_PORT: 8037,
       WEB_INFERENCE_ENABLED: true,
       POSTGRES_PASSWORD: SECRET,
     },

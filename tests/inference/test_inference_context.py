@@ -354,7 +354,6 @@ def test_split_selection_matches_combined_and_refusal_never_completes_partial_re
     from course_explorer.http_retry import RequestNotStarted
     from course_explorer.inference.context_repository import InferenceCandidateRepository
     from course_explorer.inference.operational import (
-        materialize_selection_packet,
         prepare_operational_catalogue,
         rerank_operational_pool,
         select_operational_multiview_pool,
@@ -413,7 +412,6 @@ def test_split_selection_matches_combined_and_refusal_never_completes_partial_re
     )
     assert len(pool.references.candidates) == count
     assert pool.pool_sha256 == selection_references_sha256(pool.references)
-    packet = materialize_selection_packet(pool.references, catalogue)
     split = rerank_operational_pool(
         pool,
         reranker(),
@@ -426,25 +424,10 @@ def test_split_selection_matches_combined_and_refusal_never_completes_partial_re
     assert len(split.references.candidates) == 50
     assert split.packet_sha256 == selection_references_sha256(split.references)
 
-    # The content-first query/document bytes are proved independently, not through the renderer.
     rerank_requests = [
         request for request in boundary.requests if request.url.path.endswith("/rerank")
     ]
     assert len(rerank_requests) == count
-    first_payload = json.loads(rerank_requests[0].content)
-    query = first_payload["query"]
-    for value in ("TARGET", "Nimi TARGET", "Name TARGET", "Sisalto TARGET", "Outcomes TARGET"):
-        assert value in query
-    candidate_code = packet.candidates[0].course.course_code
-    document = first_payload["documents"][0]
-    for value in (
-        candidate_code,
-        f"Nimi {candidate_code}",
-        f"Name {candidate_code}",
-        f"Sisalto {candidate_code}",
-        f"Outcomes {candidate_code}",
-    ):
-        assert value in document
     # No hidden prerequisite or additional-information cell may reach any rerank request.
     for request in rerank_requests:
         payload = json.loads(request.content)

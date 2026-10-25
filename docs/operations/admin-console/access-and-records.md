@@ -93,7 +93,7 @@ The count and the sessions live in the process's memory. A restart of the admini
 
 Each site holds one administration account in `data/admin-web/password`, a JSON document with the username and an argon2id encoded hash. The file is published at mode 0600 under a mode-0700 state directory. The password itself is never written, echoed or acknowledged.
 
-Set the account with the administration command's password entry, which prompts for the password twice at a hidden prompt. The [Operator menu](/docs/operations/operator-menu.md#the-administration-password) page states the entry and its prompts, and [self-hosting](/docs/getting-started/self-hosting.md#the-administration-account) states the setup step. The command writes the credential file alone and changes neither the lock nor the failed-attempt count.
+Set the account with the administration command's password entry, which prompts for the password twice at a hidden prompt. [Setup and preflight](/docs/operations/setup-and-preflight.md#the-administration-password) states the entry and its prompts, and [self-hosting](/docs/getting-started/self-hosting.md#the-administration-account) states the setup step. The command writes the credential file alone and changes neither the lock nor the failed-attempt count.
 
 A sign-in verifies the stored argon2id hash before it compares the username. A wrong username or password answers `401` with `{"detail":"Authentication failed"}` and records one failed attempt. A malformed or unreadable stored hash raises an operational failure, which answers `500` with a content-free error and records no failed attempt.
 
@@ -130,7 +130,7 @@ Every fixed command that runs appends its entry, including a command that failed
 
 An entry holds no captured command output beyond the one safe failure line. It holds no password, key value, session token or free-form command argument, and no target id, dataset id, file name or branch name.
 
-The [Command log panel](/docs/operations/admin-console/logs.md#command-log) reads the log in the console. The operator menu's Server and log reads choice five runs the same read and prints the entries oldest first. The [Operator menu](/docs/operations/operator-menu.md#the-command-log-read) page states the entry and the machine command. An explicit read of the log appends its own `logs commands` entry, while an automatic console read appends none.
+The [Command log panel](/docs/operations/admin-console/logs.md#command-log) reads the log in the console. The operator menu's Server and log reads choice five runs the same read and prints the entries oldest first. [The command-log read](/docs/backend/interfaces/command-line.md#the-command-log-read) states the machine command. An explicit read of the log appends its own `logs commands` entry, while an automatic console read appends none.
 
 ## Request records and the usage report
 
@@ -142,7 +142,7 @@ The status is the response's own status, or `500` when a handler fails before it
 
 The report takes a positive whole number of hours. Its window is the current rounded UTC hour and the preceding hours, inclusive. A count longer than the retention in hours is refused before the file is opened, and a nonpositive count is refused. The report returns the window bounds, the request count, the mean duration and one row per route sorted by route. A window with no recorded request reports zero requests, a null mean and no route rows. A missing file returns that report and creates nothing, and a malformed line fails the report without rewriting the file.
 
-The [Usage panel](/docs/operations/admin-console/logs.md#usage) reads the report in the console. The operator menu's Server and log reads choice four runs the same report, and the [Operator menu](/docs/operations/operator-menu.md#the-usage-report) page states the window and the pruning side effect.
+The [Usage panel](/docs/operations/admin-console/logs.md#usage) reads the report in the console. The operator menu's Server and log reads choice four runs the same report, and [The request usage report](/docs/backend/interfaces/command-line.md#the-request-usage-report) states the window and the pruning side effect.
 
 ## Settings
 

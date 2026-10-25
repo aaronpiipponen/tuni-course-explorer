@@ -55,7 +55,7 @@ INITIAL_ID = "0" * 32
 
 
 class _Runner:
-    """Local process runner for worker checkout validation only."""
+    """Local process runner for the worker runtime-artifact observations."""
 
     def run(self, argv, *, cwd=None, env=None, stdin_path=None, stdout_path=None, timeout=None):
         import subprocess
@@ -115,8 +115,6 @@ def test_partial_worker_publication_preserves_unfinished_cycle_and_real_results(
         session = WorkerDatasetSession(
             schema_version=1,
             session_id=SESSION_ID,
-            revision=REVISION,
-            branch="course-search",
             database_name=database_name,
             stage="inference",
             source_dataset_id=INITIAL_ID,
@@ -132,7 +130,6 @@ def test_partial_worker_publication_preserves_unfinished_cycle_and_real_results(
                 InferenceControllerPolicy(
                     schema_version=2,
                     session_id=SESSION_ID,
-                    revision=REVISION,
                     configuration_sha256=inference_configuration_sha256(),
                 )
             ),
@@ -142,7 +139,6 @@ def test_partial_worker_publication_preserves_unfinished_cycle_and_real_results(
             WorkerControl(
                 schema_version=1,
                 session_id=SESSION_ID,
-                revision=REVISION,
                 requested_action="run",
             ),
         )
@@ -152,7 +148,6 @@ def test_partial_worker_publication_preserves_unfinished_cycle_and_real_results(
                 InferenceControllerWorkerState(
                     schema_version=2,
                     session_id=SESSION_ID,
-                    revision=REVISION,
                     lifecycle="prepared",
                     desired_count=None,
                     completed_count=None,
@@ -168,7 +163,6 @@ def test_partial_worker_publication_preserves_unfinished_cycle_and_real_results(
         m.setattr(worker_module, "create_database_engine", lambda _settings: engine)
         m.setattr(worker_session, "create_database_engine", lambda _settings: engine)
         m.setattr(worker_module, "WorkerInferenceRuntime", lambda *a, **k: fake_runtime)
-        m.setattr(worker_session, "require_worker_checkout", lambda *a, **k: None)
 
         worker_live = {"value": False}
         real_owned_alive = mechanics.owned_process_is_alive
@@ -270,7 +264,6 @@ def _snapshot():
     return DatabaseSnapshot(
         schema_version=1,
         session_id=SESSION_ID,
-        revision=REVISION,
         database_name="course_explorer_test",
         dump_sha256="c" * 64,
         verification=sample_verification(),

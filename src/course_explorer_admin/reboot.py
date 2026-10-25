@@ -33,7 +33,7 @@ from course_explorer.administration import (
     load_private_model,
 )
 from course_explorer.config import WorkerConnectionSettings, WorkerGpuRebootSettings
-from course_explorer.datasets import DatasetId, DatasetRevision
+from course_explorer.datasets import DatasetId
 from course_explorer.validation import require_finite_nonnegative
 from course_explorer_admin import mechanics
 from course_explorer_admin.transport import (
@@ -52,17 +52,16 @@ _WSL_BOOT_ID_ARGV = ("cat", "/proc/sys/kernel/random/boot_id")
 class WorkerGpuCheckpoint(BaseModel):
     """One frozen per-session sample of accumulated loaded-GPU seconds.
 
-    It carries only the session/revision
-    identity, the worker kernel boot the seconds belong to, and the finite nonnegative accumulated
-    loaded-GPU seconds. The kernel boot id proves same-boot continuity. A different worker boot
-    starts a fresh budget without rewriting this record until a real checkpoint.
+    It carries the session identity, the worker kernel boot the seconds belong to, and the finite
+    nonnegative accumulated loaded-GPU seconds. The kernel boot id proves same-boot continuity. A
+    different worker boot starts a fresh budget without rewriting this record until a real
+    checkpoint.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     schema_version: Literal[1] = 1
     session_id: DatasetId
-    revision: DatasetRevision
     boot_id: UUID
     loaded_seconds: float
 
@@ -72,13 +71,11 @@ class WorkerGpuCheckpoint(BaseModel):
         return require_finite_nonnegative(value, "loaded_seconds")
 
 
-def _read_checkpoint(
-    directory: Path, *, session_id: str, revision: str
-) -> WorkerGpuCheckpoint | None:
+def _read_checkpoint(directory: Path, *, session_id: str) -> WorkerGpuCheckpoint | None:
     """Strictly load the one gpu-clock record, or ``None`` when absent.
 
-    After the strict load it compares the record's session/revision identity once and refuses a
-    foreign record. It writes nothing.
+    After the strict load it compares the record's session identity once and refuses a foreign
+    record. It writes nothing.
     """
     path = directory / _CHECKPOINT_NAME
     if path.is_symlink():
@@ -86,7 +83,7 @@ def _read_checkpoint(
     if not path.exists():
         return None
     checkpoint = load_private_model(path, WorkerGpuCheckpoint)
-    if checkpoint.session_id != session_id or checkpoint.revision != revision:
+    if checkpoint.session_id != session_id:
         raise ValueError("gpu clock record identity does not match the session")
     return checkpoint
 
@@ -95,7 +92,6 @@ def worker_gpu_reboot_due(
     directory: Path,
     *,
     session_id: str,
-    revision: str,
     settings: WorkerGpuRebootSettings,
 ) -> bool:
     """Report whether the saved sample proves this worker boot has reached the interval.
@@ -104,7 +100,7 @@ def worker_gpu_reboot_due(
     malformed, or foreign-identity record refuses. A record from another worker boot
     reports not-due (its stored kernel boot id differs) without rewriting it.
     """
-    checkpoint = _read_checkpoint(directory, session_id=session_id, revision=revision)
+    checkpoint = _read_checkpoint(directory, session_id=session_id)
     if checkpoint is None:
         return False
     if checkpoint.boot_id != mechanics.current_boot_id():
@@ -115,12 +111,12 @@ def worker_gpu_reboot_due(
 class WorkerGpuClock:
     """The one in-memory loaded-GPU clock that persists only at checkpoint samples.
 
-    The constructor reuses same-boot saved seconds so a paused-then-resumed session resumes from them.
-    A record from another boot supplies zero to this invocation and is not rewritten until a
+    The constructor reuses same-boot saved seconds so a paused-then-resumed session resumes from
+    them. A record from another boot supplies zero to this invocation and is not rewritten until a
     real GPU checkpoint. ``loaded``/``unloaded`` open and close one loaded segment, ``checkpoint``
-    samples it and publishes the accumulated seconds at a completed atomic unit or a committed failed
-    generation attempt, and ``due`` is latched only from the last published sample, never a running
-    wall-clock test.
+    samples it and publishes the accumulated seconds at a completed atomic unit or a committed
+    failed generation attempt, and ``due`` is latched only from the last published sample, never a
+    running wall-clock test.
     """
 
     def __init__(
@@ -128,19 +124,17 @@ class WorkerGpuClock:
         directory: Path,
         *,
         session_id: str,
-        revision: str,
         settings: WorkerGpuRebootSettings,
         monotonic: Callable[[], float] = time.monotonic,
     ) -> None:
         self._directory = directory
         self._session_id = session_id
-        self._revision = revision
         self._settings = settings
         self._monotonic = monotonic
         self._seconds = 0.0
         self._segment_start: float | None = None
         self._due = False
-        checkpoint = _read_checkpoint(directory, session_id=session_id, revision=revision)
+        checkpoint = _read_checkpoint(directory, session_id=session_id)
         if checkpoint is not None and checkpoint.boot_id == mechanics.current_boot_id():
             self._seconds = checkpoint.loaded_seconds
 
@@ -185,7 +179,6 @@ class WorkerGpuClock:
         checkpoint = WorkerGpuCheckpoint(
             schema_version=1,
             session_id=self._session_id,
-            revision=self._revision,
             boot_id=mechanics.current_boot_id(),
             loaded_seconds=self._seconds,
         )
@@ -250,7 +243,7 @@ def reboot_windows_worker(
     sleep: Callable[[float], None] = time.sleep,
     monotonic: Callable[[], float] = time.monotonic,
 ) -> bool:
-    """Read the Windows boot before the restart, issue one restart, and prove a different boot plus healthy WSL.
+    """Read the Windows boot, restart the worker once, and prove a changed boot plus healthy WSL.
 
     The boot before the restart is read first, then ``run_allowed`` is rechecked immediately before
     the single irreversible request. A denied control returns ``False`` without issuing anything.

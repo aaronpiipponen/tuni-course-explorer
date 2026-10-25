@@ -112,6 +112,8 @@ def test_router_treats_an_unreadable_meter_as_unloaded(
         "time",
         types.SimpleNamespace(time=lambda: wall_second[0], monotonic=time.monotonic),
     )
+    # The expected utilisation below is arithmetic over four cores, whatever the host has.
+    monkeypatch.setattr(host_cpu, "core_count", lambda: 4)
 
     async def exercise() -> None:
         application = create_router(

@@ -86,7 +86,7 @@ from tests.config._support import (
     TRANSLATION_CONTROLLER_KEYS,
     TRANSLATION_KEYS,
 )
-from tests.datasets._support import INITIAL_ID, REVISION, sample_verification
+from tests.datasets._support import INITIAL_ID, sample_verification
 from tests.inference._scheduling_support import reconcile, seed_courses
 
 pytestmark = [
@@ -166,35 +166,10 @@ def test_full_snapshot_return_and_rotation_preserve_database_state(
     """Setup, one full snapshot round trip, vector/verification preservation, and real rotation."""
     runner = mechanics.SubprocessRunner()
     repository = repository_root()
-    # The in-process worker uses the installed product code. Isolate its real Git-metadata
-    # preflight from user work in the development checkout, without copying any source.
     worker_checkout = tmp_path / "prepared-worker"
+    # The in-process worker uses this scratch worker root.
     worker_checkout.mkdir()
-    runner.run(("git", "init", "--initial-branch=prepared-test"), cwd=worker_checkout)
-    runner.run(
-        (
-            "git",
-            "-c",
-            "user.name=Course Explorer Test",
-            "-c",
-            "user.email=test@example.invalid",
-            "commit",
-            "--allow-empty",
-            "-m",
-            "Prepared checkout metadata",
-        ),
-        cwd=worker_checkout,
-    )
 
-    class DatasetRunner(mechanics.SubprocessRunner):
-        """Use real isolated Git metadata. Execute all data/code operations in their actual cwd."""
-
-        def run(self, argv, *, cwd=None, **options):
-            if argv[0] == "git" and cwd == repository:
-                cwd = worker_checkout
-            return super().run(argv, cwd=cwd, **options)
-
-    runner = DatasetRunner()
     admin_state = f"data/admin-tests/{uuid.uuid4().hex}"
     initial = f"course_i542_test_initial_{uuid.uuid4().hex[:8]}"
     monkeypatch.setenv("SELECTED_DATASET_ENABLED", "0")
@@ -286,7 +261,6 @@ def test_full_snapshot_return_and_rotation_preserve_database_state(
                 TranslationControllerPolicy(
                     schema_version=2,
                     session_id=translation_id,
-                    revision=translation_session.revision,
                     translation_model=load_translation_settings().provenance_model,
                 )
             ),
@@ -319,7 +293,6 @@ def test_full_snapshot_return_and_rotation_preserve_database_state(
                 TranslationControllerWorkerState(
                     schema_version=2,
                     session_id=translation_id,
-                    revision=translation_session.revision,
                     lifecycle="completed",
                     desired_count=2,
                     completed_count=1,
@@ -516,7 +489,6 @@ def test_manual_dataset_cleanup_drops_one_retained_database(
             database_name=database_name,
             predecessor_id=predecessor,
             kind=kind,
-            revision=REVISION,
             dump_sha256=dump_sha256,
             verification=sample_verification(),
         )
@@ -690,8 +662,9 @@ def test_selected_migration_preserves_work_and_frozen_receipt(
 
         directory = root / "datasets" / dataset_id
         directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+        receipt_path = directory / "receipt.json"
         atomic_write_private_text(
-            directory / "receipt.json",
+            receipt_path,
             administrative_json(
                 DatasetReceipt(
                     schema_version=1,
@@ -699,7 +672,6 @@ def test_selected_migration_preserves_work_and_frozen_receipt(
                     database_name="course_explorer_test",
                     predecessor_id=None,
                     kind="initial",
-                    revision="a" * 40,
                     dump_sha256=None,
                     verification=verification,
                 )
@@ -711,7 +683,7 @@ def test_selected_migration_preserves_work_and_frozen_receipt(
         )
         dump = directory / "database.dump"
         dump.write_bytes(b"frozen-dump-sentinel")
-        receipt_bytes = (directory / "receipt.json").read_bytes()
+        receipt_bytes = receipt_path.read_bytes()
         pointer_bytes = (root / "selected-dataset.json").read_bytes()
         dump_bytes = dump.read_bytes()
 

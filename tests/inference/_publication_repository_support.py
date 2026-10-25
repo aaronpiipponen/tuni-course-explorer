@@ -30,7 +30,6 @@ from course_explorer.enums import (
     IngestionRunStatus,
     SourceObjectType,
 )
-from course_explorer.hashing import canonical_json_sha256
 from course_explorer.inference.context import (
     RequestCourseDescriptor,
     RequestCourseDescriptors,
@@ -38,7 +37,6 @@ from course_explorer.inference.context import (
 from course_explorer.inference.domain import (
     InferenceRoutingMetadata,
     InferenceTargetResultV2,
-    target_result_json_schema,
 )
 from course_explorer.inference.evidence import (
     InferenceCompletionFacts,
@@ -141,9 +139,7 @@ def _run_spec(*, model_identity: str = _MODEL_IDENTITY) -> InferencePipelineRunS
         model_identity=model_identity,
         runtime_identity=_RUNTIME_IDENTITY,
         prompt_version="v9",
-        prompt_content_sha256=_hash("prompt"),
         schema_version="v2",
-        schema_sha256=canonical_json_sha256(target_result_json_schema("v2")),
         pipeline_version="v1",
         configuration={"route": "local"},
     )
@@ -164,9 +160,12 @@ def _completed_work(
         target_group_id=target_group_id,
         activity_as_of_academic_year_start=YEAR,
         activity_window_years=WINDOW,
-        input_sha256=_hash(input_seed or f"input-{target_group_id}"),
     )
-    work = evidence.claim_work(run.run_id, request).work
+    work = evidence.claim_work(
+        run.run_id,
+        request,
+        _hash(input_seed or f"input-{target_group_id}"),
+    ).work
     descriptors = RequestCourseDescriptors(
         target=RequestCourseDescriptor(
             group_id=target_group_id,
@@ -216,9 +215,8 @@ def _failed_work(
         target_group_id=target_group_id,
         activity_as_of_academic_year_start=YEAR,
         activity_window_years=WINDOW,
-        input_sha256=_hash(f"failed-input-{target_group_id}"),
     )
-    work = evidence.claim_work(run.run_id, request).work
+    work = evidence.claim_work(run.run_id, request, _hash(f"failed-input-{target_group_id}")).work
     failed = evidence.fail_work(run.run_id, work.work_id)
     assert failed.status is InferenceWorkStatus.FAILED
     return failed

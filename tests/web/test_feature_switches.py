@@ -482,7 +482,6 @@ def test_cached_reads_report_one_serving_dataset_identity(
         database_name="selected_two",
         predecessor_id="0" * 32,
         kind="returned",
-        revision="a" * 40,
         dump_sha256="d" * 64,
         verification=initial.verification,
     )

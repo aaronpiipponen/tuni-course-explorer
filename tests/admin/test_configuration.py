@@ -382,11 +382,6 @@ _REFUSED_CASES: dict[str, tuple[str, str, str]] = {
         "ADMIN_WEB_APP_URL",
         json.dumps("https://example.org/#"),
     ),
-    "app-url-both-markers": (
-        "config/admin_web.toml",
-        "ADMIN_WEB_APP_URL",
-        json.dumps("https://example.org/?#"),
-    ),
     "lowercase-owned-invalid-environment-value": (
         ".env",
         "WEB_HOST",

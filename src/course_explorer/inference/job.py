@@ -198,11 +198,11 @@ def _ordered_units(
 ) -> list[str]:
     """Return the target IDs one stage must visit, in that stage's scheduling order.
 
-    Ordinary eligible targets are ordered TRUE-marker first and then by ID. At the inference stage an
-    explicit operator FAILED decision is visited after every ordinary eligible target and is included
-    even when its rerank was legitimately skipped, so the job can honour the terminal decision without
-    admitting, recovering or generating anything for it. A DONE target already carries a completed
-    inference state and is not eligible.
+    Ordinary eligible targets are ordered TRUE-marker first and then by ID. At the inference stage
+    an explicit operator FAILED decision is visited after every ordinary eligible target and is
+    included even when its rerank state is ``skipped``, so the job can honour the terminal decision
+    without admitting, recovering or generating anything for it. A DONE target already carries a
+    completed inference state and is not eligible.
     """
 
     def key(group_id: str) -> tuple[bool, str]:
@@ -728,7 +728,8 @@ def run_inference_job(
             if not select_rerank(markers[group_id].processed, candidate_ids, markers):
                 if markers[group_id].disposition is not None:
                     # A disposed target keeps its decision-owned inference state, planned key and
-                    # proposal. Only the legitimately skipped rerank stage is projected.
+                    # proposal. The update sets its rerank state to ``skipped`` and clears its
+                    # target input.
                     update: dict[str, object] = {"rerank_state": "skipped", "target_input": None}
                 else:
                     update = {
@@ -830,6 +831,7 @@ def run_inference_job(
                 planned = work_key_sha256(
                     identity.work_request,
                     run_identity_sha256(identity.spec),
+                    identity.input_sha256,
                 )
                 record = repository.checkpoint(
                     record.model_copy(update={"generation_work_key_sha256": planned})

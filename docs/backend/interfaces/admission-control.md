@@ -8,7 +8,7 @@ With `ADMISSION_ENABLED` true, the [front router](/docs/reference/glossary.md#ad
 
 Admission expresses a read's cost in core-seconds, estimated from the configured curve or the fixed search charge, and a prerequisite graph is charged the elapsed seconds recorded for an earlier build. The front router charges a heavy read that cost against its cookie's budget, so the limits bound the reads a cookie starts and the cost charged for them. The charge is fixed when the front router admits the read, and the read's CPU use after admission does not change it.
 
-The example `config/admission.toml` sets `ADMISSION_ENABLED` to `false`, and a copy that uses the example file forwards every read without a limit and sets no cookie. A site with admission enabled needs at least two worker processes, because the global heavy slots cap at one fewer than `WEB_WORKERS` and at least one worker process carries no heavy work.
+The example `config/admission.toml` sets `ADMISSION_ENABLED` to `true`, so a copy that uses the example file gives every read on the nine API paths an admission class, queues a heavy read that finds no free slot while its queue has room, and sets the `tce_anon` cookie on every response under `/api/`. A site with admission enabled needs at least two worker processes, because the global heavy slots cap at one fewer than `WEB_WORKERS` and at least one worker process carries no heavy work.
 
 The front router takes the whole policy when it starts, so a changed key reaches a site when the web server restarts. Its admission counters, tickets and graph costs live in process memory, so a replacement front router starts with empty admission state. A dataset read uses the serving dataset, and the front router appends one request record for every HTTP request, refused or served.
 
@@ -62,7 +62,7 @@ A light read that finds the cookie's concurrency in use or its balance below one
 
 ## The heavy budget
 
-One cookie holds a heavy bucket whose capacity is the current budget: `ADMISSION_HEAVY_BUDGET_CORE_SECONDS` at the headroom line (120 core-seconds in the example) and `ADMISSION_HEAVY_BUDGET_SATURATED_CORE_SECONDS` at saturation (24 in the example). Between the two lines the budget falls linearly. The bucket refills over `ADMISSION_WINDOW_SECONDS` (60 seconds in the example) at the budget divided by the window.
+One cookie holds a heavy bucket whose capacity is the current budget: `ADMISSION_HEAVY_BUDGET_CORE_SECONDS` at the headroom line (120 core-seconds in the example) and `ADMISSION_HEAVY_BUDGET_SATURATED_CORE_SECONDS` at saturation (40 in the example). Between the two lines the budget falls linearly. The bucket refills over `ADMISSION_WINDOW_SECONDS` (60 seconds in the example) at the budget divided by the window.
 
 A heavy read is charged its cost. A read whose cost is above the budget is charged the whole budget, so it passes while the bucket is full and fails once the balance has fallen below the budget. A read whose charge the balance cannot cover answers 429 at once. A read that is refused at the queue cap gets its charge back.
 
@@ -86,15 +86,15 @@ While the site is saturated, every limit reads a load position of 1. Otherwise t
 
 | Regime | Score | Light rate and concurrency | Heavy budget | Heavy slots | Queue cap |
 |---|---|---|---|---|---|
-| Headroom | at or below 0.60 | 120 a minute and 8 at once | 120 core-seconds | `ADMISSION_HEAVY_SLOTS`, capped at one fewer than `WEB_WORKERS` | 64 waiting reads |
-| Middle | above 0.60 and below 1.05, unless the latch holds | falls linearly | falls linearly from 120 to 24 core-seconds | falls to one | 32 waiting reads |
-| Saturated | at or above 1.05, then held until the score falls below 0.90 | `ADMISSION_LIGHT_LOAD_FLOOR` of the headroom values, 30 a minute and 2 at once | 24 core-seconds | one | 16 waiting reads |
+| Headroom | at or below 0.60 | 120 a minute and 8 at once | 120 core-seconds | 3 (`ADMISSION_HEAVY_SLOTS`, capped at one fewer than `WEB_WORKERS`) | 64 waiting reads |
+| Middle | above 0.60 and below 1.05, unless the latch holds | falls linearly | falls linearly from 120 to 40 core-seconds | falls from three to two | 32 waiting reads |
+| Saturated | at or above 1.05, then held until the score falls below 0.90 | `ADMISSION_LIGHT_LOAD_FLOOR` of the headroom values, 30 a minute and 2 at once | 40 core-seconds | one | 16 waiting reads |
 
 The example sets `ADMISSION_SCORE_HEADROOM` to 0.60, `ADMISSION_SCORE_SATURATION` to 1.05, `ADMISSION_SCORE_RELEASE` to 0.90 and `ADMISSION_LIGHT_LOAD_FLOOR` to 0.25.
 
 ## The heavy slots and the queue
 
-The global heavy slots are `ADMISSION_HEAVY_SLOTS` at the headroom line and fall to one at saturation. The count is capped at one fewer than `WEB_WORKERS` and floored at one, so the example's two worker processes give one slot in every regime, whatever `ADMISSION_HEAVY_SLOTS` holds. An admitted heavy read holds its slot until its response body ends.
+The global heavy slots are `ADMISSION_HEAVY_SLOTS` at the headroom line and fall to one at saturation. The count is capped at one fewer than `WEB_WORKERS` and floored at one, so the example's four worker processes cap the count at three: three slots while the load position is below one half, two from one half up to saturation, and one at saturation. An admitted heavy read holds its slot until its response body ends.
 
 A heavy read that finds no free slot joins a first-in-first-out queue and waits without a time limit. A read joins the queue while it holds fewer waiting reads than the regime's cap, which is `ADMISSION_HEAVY_QUEUE_HEADROOM_LIMIT` at headroom, `ADMISSION_HEAVY_QUEUE_MIDDLE_LIMIT` in the middle regime and `ADMISSION_HEAVY_QUEUE_SATURATED_LIMIT` at saturation. A waiting read holds its place when the cap drops, and a read that finds the queue at its cap answers 429 at once.
 
@@ -125,13 +125,13 @@ The table gives the value the example configuration sets for each key, and every
 
 | Setting | Bound | Example |
 |---|---|---|
-| `ADMISSION_ENABLED` | Whether the front router limits reads at all. | `false` |
+| `ADMISSION_ENABLED` | Whether the front router limits reads at all. | `true` |
 | `ADMISSION_LIGHT_OPERATIONS_PER_MINUTE` | The refill rate of one cookie's light bucket at the headroom line. | 120 |
 | `ADMISSION_LIGHT_BURST` | The light tokens one cookie's bucket holds. | 20 |
 | `ADMISSION_LIGHT_CONCURRENCY` | The light reads one cookie runs at once at the headroom line. | 8 |
 | `ADMISSION_LIGHT_LOAD_FLOOR` | The share of the headroom light limits that applies at saturation. | 0.25 |
 | `ADMISSION_HEAVY_BUDGET_CORE_SECONDS` | One cookie's heavy budget for a window at the headroom line. | 120 |
-| `ADMISSION_HEAVY_BUDGET_SATURATED_CORE_SECONDS` | The same budget at saturation. | 24 |
+| `ADMISSION_HEAVY_BUDGET_SATURATED_CORE_SECONDS` | The same budget at saturation. | 40 |
 | `ADMISSION_WINDOW_SECONDS` | The window one heavy budget refills over. | 60 |
 | `ADMISSION_HEAVY_SLOTS` | The global heavy slots at the headroom line, before the cap at one fewer than `WEB_WORKERS`. | 3 |
 | `ADMISSION_HEAVY_QUEUE_HEADROOM_LIMIT` | The waiting heavy reads the queue admits at the headroom line. | 64 |

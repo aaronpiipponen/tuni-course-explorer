@@ -2,14 +2,14 @@
 
 This module owns the DTO boundary between the frozen inference runtime/result/prompt/provider
 contracts declared by this package and durable inference evidence. It defines one shared execution
-identity derived from validated configuration plus a prompt pack, per-target work requests whose
-exact input hash owns reuse, and the two normal completion states of one completed generation. The
-``request_payload`` JSONB carries a completion payload: before composition it holds the descriptors
-and the uncomposed validated result for zero-model recovery. After composition both are absent and
-only the generated time, target teaching digest and candidate count remain for publication/seed
-coverage. Canonical JSON hashing lives in the neutral ``course_explorer.hashing`` owner. Nothing here
-reads configuration from the environment, calls a model, calculates a target, or writes any official
-or final product store.
+identity derived from validated configuration and the selected execution, per-target work requests
+whose exact execution and transient input identity own reuse, and the two normal completion states
+of one completed generation. The ``request_payload`` JSONB carries a completion payload: before
+composition it holds the descriptors and the uncomposed validated result for zero-model recovery.
+After composition both are absent and only the generated time, target teaching digest and candidate
+count remain for publication/seed coverage. Canonical JSON hashing lives in the neutral
+``course_explorer.hashing`` owner. Nothing here reads configuration from the environment, calls a
+model, calculates a target, or writes any official or final product store.
 """
 
 from __future__ import annotations
@@ -33,9 +33,7 @@ from course_explorer.hashing import canonical_json_sha256, require_json_compatib
 from course_explorer.inference.context import RequestCourseDescriptors
 from course_explorer.inference.domain import (
     InferenceTargetResultV2,
-    target_result_json_schema,
 )
-from course_explorer.inference.prompts import PromptPack
 from course_explorer.validation import (
     require_aware as _require_aware,
 )
@@ -82,20 +80,19 @@ class InferenceExecutionProfile(_EvidenceModel):
 
 
 class InferencePipelineRunSpec(_EvidenceModel):
-    """One shared execution identity derived from the frozen runtime contracts.
+    """One shared execution identity derived from validated settings and the selected execution.
 
     It carries only the coarse configuration identity consumed by claim/reuse and mixed-result
     attribution: the model/runtime/prompt/schema/pipeline identity plus the route. Catalogue
     identity, activity context and full operational configuration are absent, so
-    unrelated catalogue or operational changes never invalidate retained work.
+    unrelated catalogue or operational changes never invalidate retained work. The rendered
+    request carries content identity.
     """
 
     model_identity: str
     runtime_identity: str
     prompt_version: str
-    prompt_content_sha256: str
     schema_version: str
-    schema_sha256: str
     pipeline_version: str
     configuration: dict[str, object]
 
@@ -111,12 +108,6 @@ class InferencePipelineRunSpec(_EvidenceModel):
         """Require meaningful nonblank identity and version text."""
         return _require_text(value, "run spec identity")
 
-    @field_validator("prompt_content_sha256", "schema_sha256")
-    @classmethod
-    def validate_sha256(cls, value: str) -> str:
-        """Require every declared identity hash to be a full lowercase digest."""
-        return _require_sha256(value, "run spec hash")
-
     @field_validator("configuration")
     @classmethod
     def validate_configuration(cls, value: dict[str, object]) -> dict[str, object]:
@@ -128,53 +119,37 @@ class InferencePipelineRunSpec(_EvidenceModel):
     def from_contracts(
         cls,
         settings: InferenceSettings,
-        prompt_pack: PromptPack,
         *,
         execution: InferenceExecutionProfile,
     ) -> Self:
-        """Derive one shared execution spec from validated settings and a loaded prompt pack.
+        """Derive one shared execution spec from validated settings and the selected route.
 
         Model and runtime identities and the recorded route come from the selected execution route,
-        the schema hash from the live target-result JSON Schema, and the version fields from
-        validated settings. This never reads configuration files or the process environment.
+        and the version fields come from validated settings. This never reads configuration files
+        or the process environment.
         """
-        if prompt_pack.version != settings.inference_prompt_version:
-            raise ValueError(
-                "prompt pack version must equal the configured inference prompt version"
-            )
         return cls(
             model_identity=execution.model_identity,
             runtime_identity=execution.runtime_identity,
-            prompt_version=prompt_pack.version,
-            prompt_content_sha256=prompt_pack.content_sha256,
+            prompt_version=settings.inference_prompt_version,
             schema_version=settings.inference_schema_version,
-            schema_sha256=canonical_json_sha256(
-                target_result_json_schema(settings.inference_schema_version)
-            ),
             pipeline_version=settings.inference_pipeline_version,
             configuration={"route": execution.route},
         )
 
 
 class InferenceTargetWorkRequest(_EvidenceModel):
-    """One target's activity context plus its exact input identity."""
+    """One target's canonical identity and activity context."""
 
     target_group_id: str
     activity_as_of_academic_year_start: int = Field(gt=0)
     activity_window_years: int = Field(gt=0)
-    input_sha256: str
 
     @field_validator("target_group_id")
     @classmethod
     def validate_target_group_id(cls, value: str) -> str:
         """Require a meaningful canonical target identity."""
         return _require_text(value, "target_group_id")
-
-    @field_validator("input_sha256")
-    @classmethod
-    def validate_input_sha256(cls, value: str) -> str:
-        """Require the target's input identity to be a full lowercase digest."""
-        return _require_sha256(value, "input_sha256")
 
 
 class InferenceRequestEvidence(_EvidenceModel):
@@ -291,24 +266,25 @@ def run_identity_sha256(spec: InferencePipelineRunSpec) -> str:
             "model_identity": spec.model_identity,
             "runtime_identity": spec.runtime_identity,
             "prompt_version": spec.prompt_version,
-            "prompt_content_sha256": spec.prompt_content_sha256,
             "schema_version": spec.schema_version,
-            "schema_sha256": spec.schema_sha256,
             "pipeline_version": spec.pipeline_version,
             "configuration": spec.configuration,
         }
     )
 
 
-def work_key_sha256(request: InferenceTargetWorkRequest, run_identity: str) -> str:
+def work_key_sha256(
+    request: InferenceTargetWorkRequest, run_identity: str, input_sha256: str
+) -> str:
     """Hash one target's global matching-work identity: execution identity plus exact input."""
     _require_sha256(run_identity, "run_identity")
+    _require_sha256(input_sha256, "input_sha256")
     return canonical_json_sha256(
         {
             "target_group_id": request.target_group_id,
             "activity_as_of_academic_year_start": request.activity_as_of_academic_year_start,
             "activity_window_years": request.activity_window_years,
-            "input_sha256": request.input_sha256,
+            "input_sha256": input_sha256,
             "run_identity_sha256": run_identity,
         }
     )

@@ -97,8 +97,6 @@ def session() -> WorkerDatasetSession:
     return WorkerDatasetSession(
         schema_version=1,
         session_id=SESSION_ID,
-        revision=REVISION,
-        branch="course-search",
         database_name=configured.database_name(SESSION_ID, worker=True),
         stage="inference",
         source_dataset_id=INITIAL_ID,
@@ -106,7 +104,6 @@ def session() -> WorkerDatasetSession:
         input_snapshot=DatabaseSnapshot(
             schema_version=1,
             session_id=SESSION_ID,
-            revision=REVISION,
             database_name="course_explorer",
             dump_sha256="c" * 64,
             verification=sample_verification(),
@@ -148,16 +145,14 @@ def coverage(
 
 
 class FakeRunner:
-    """Local process runner for worker checkout validation."""
+    """Local process runner for the worker runtime-artifact observations."""
 
     def run(self, argv, *, cwd=None, env=None, stdin_path=None, stdout_path=None, timeout=None):
         import subprocess
 
         command = tuple(argv)
         output = b""
-        if command[:3] == ("git", "branch", "--show-current"):
-            output = b"course-search\n"
-        elif command[:2] == ("git", "rev-parse"):
+        if command[:2] == ("git", "rev-parse"):
             output = (REVISION + "\n").encode()
         elif command[:2] == ("git", "status"):
             output = b""
@@ -177,7 +172,6 @@ def seed_session(
             InferenceControllerPolicy(
                 schema_version=2,
                 session_id=SESSION_ID,
-                revision=REVISION,
                 configuration_sha256=inference_configuration_sha256(),
             )
         ),
@@ -187,7 +181,6 @@ def seed_session(
         WorkerControl(
             schema_version=1,
             session_id=SESSION_ID,
-            revision=REVISION,
             requested_action="run",
         ),
     )
@@ -197,7 +190,6 @@ def seed_session(
             InferenceControllerWorkerState(
                 schema_version=2,
                 session_id=SESSION_ID,
-                revision=REVISION,
                 lifecycle=lifecycle,  # type: ignore[arg-type]
                 desired_count=None,
                 completed_count=None,

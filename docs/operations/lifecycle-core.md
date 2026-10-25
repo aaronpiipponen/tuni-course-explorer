@@ -28,9 +28,9 @@ The lifecycle core owns the one detached five-action lifecycle that the ingestio
 
 ## Identity and compatibility
 
-`local_stages.stage_identity_sha256` hashes the stage name, a stage configuration hash, the selected `postgres_db`, and the options. `ingestion_configuration_sha256` covers the capture, Kori, and normalization settings, `embedding_configuration_sha256` covers the embedding runtime settings, and the translation and inference adapters supply their own configuration hashes.
+`local_stages.stage_identity_sha256` hashes the stage name, a stage configuration hash, the selected `postgres_db`, and the options. `ingestion_configuration_sha256` covers the Kori source, request-shape, and academic-year fields and the normalization settings, `embedding_configuration_sha256` covers the embedding runtime settings, and the translation and inference adapters supply their own configuration hashes.
 
-`_require_compatible` compares the retained receipt's `identity_sha256` with `stage.identity_sha256(session.options)`. For a retained ingestion session it also calls `require_retained_ingestion_manifest`, which re-reads the retained manifest, requires a regular non-symlink file, and compares its SHA-256 with the recorded one. The ingestion finalize hook calls the same function, so the continuation boundary has one owner.
+`_require_compatible` runs when a start continues a retained session and when resume re-arms one. It compares the retained receipt's `identity_sha256` with `stage.identity_sha256(session.options)`, and for a retained ingestion session it also calls `require_retained_ingestion_manifest`, which re-reads the retained manifest, requires a regular non-symlink file, and compares its SHA-256 with the recorded one. That comparison is the one manifest check before a continued or resumed ingestion action.
 
 `_start_action` decides in one order: an absent state creates a fresh session, a live owned process or a completed state returns the current status, an idle state whose work is complete or whose stage does not retain work creates a fresh session, and anything else passes the compatibility check and continues the retained session.
 

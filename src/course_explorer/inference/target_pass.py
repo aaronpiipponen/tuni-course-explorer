@@ -218,18 +218,23 @@ class TargetWorkIdentity(_TargetPassModel):
     """The exact reusable work identity for one operational input and settings pair."""
 
     request: InferenceRequestEvidence
-    request_sha256: str
     input_sha256: str
     spec: InferencePipelineRunSpec
     work_request: InferenceTargetWorkRequest
 
 
+class PreparedTargetRequest(_TargetPassModel):
+    """One rendered request with its transient request and target-input digests."""
+
+    request: InferenceRequestEvidence
+    request_sha256: str
+    input_sha256: str
+
+
 def target_input_sha256(value: OperationalTargetInput, request_digest: str) -> str:
     """Hash one operational target's exact work input from its compact selection and request.
 
-    This is the one shared two-key formula (packet digest and rendered request digest) used by
-    work-identity derivation and by scheduling acceptance, so a recorded completion can be proven to
-    bind this exact retained target input rather than another packet.
+    This is the one two-key formula over the packet digest and the rendered request digest.
     """
     _require_sha256(request_digest, "request_digest")
     return canonical_json_sha256(
@@ -240,50 +245,66 @@ def target_input_sha256(value: OperationalTargetInput, request_digest: str) -> s
     )
 
 
-def target_work_identity(
+def prepare_target_request(
     value: OperationalTargetInput,
     pack: PromptPack,
+    settings: InferenceSettings,
+    *,
+    packet: InferenceTargetPacket,
+) -> PreparedTargetRequest:
+    """Render one target's request once and derive its request and input digests.
+
+    The pack version must equal the configured inference prompt version, so a mismatching pack
+    fails before token counting or generation. No Pydantic object is passed to the hashers.
+    """
+    if pack.version != settings.inference_prompt_version:
+        raise ValueError("prompt pack version must equal the configured inference prompt version")
+    request = render_target_request(packet, pack, settings.inference_schema_version)
+    request_digest = request_sha256(request)
+    return PreparedTargetRequest(
+        request=request,
+        request_sha256=request_digest,
+        input_sha256=target_input_sha256(value, request_digest),
+    )
+
+
+def target_work_identity(
+    value: OperationalTargetInput,
     settings: InferenceSettings,
     execution: InferenceExecutionProfile,
     *,
     packet: InferenceTargetPacket,
+    prepared: PreparedTargetRequest,
 ) -> TargetWorkIdentity:
-    """Derive one operational CE-only target's exact request, execution spec, and reuse request.
+    """Derive one operational CE-only target's execution spec and reuse request.
 
-    All dictionary values are JSON-native. No Pydantic object is passed to the hasher. The transient
-    ``packet`` is the router's one materialization. The work input binds the selected packet digest
-    and the rendered request digest, so a changed CE-only selection or route/key invalidates
-    operational work without changing any historical saved identity.
+    The work input binds the selected packet digest and the prepared request digest, so a changed
+    CE-only selection or route/key invalidates operational work without changing any historical
+    saved identity. The packet supplies only the target activity context; nothing is rendered again.
     """
-    request = render_target_request(packet, pack, settings.inference_schema_version)
-    request_digest = request_sha256(request)
-    input_sha256 = target_input_sha256(value, request_digest)
     target = packet.target
-    spec = InferencePipelineRunSpec.from_contracts(settings, pack, execution=execution)
     work_request = InferenceTargetWorkRequest(
         target_group_id=value.target_group_id,
         activity_as_of_academic_year_start=target.activity_as_of_academic_year_start,
         activity_window_years=target.activity_window_years,
-        input_sha256=input_sha256,
     )
     return TargetWorkIdentity(
-        request=request,
-        request_sha256=request_digest,
-        input_sha256=input_sha256,
-        spec=spec,
+        request=prepared.request,
+        input_sha256=prepared.input_sha256,
+        spec=InferencePipelineRunSpec.from_contracts(settings, execution=execution),
         work_request=work_request,
     )
 
 
 def run_target(
     value: OperationalTargetInput,
-    pack: PromptPack,
     settings: InferenceSettings,
     repository: InferenceEvidenceRepository,
     provider: TargetGenerationProvider,
     execution: InferenceExecutionProfile,
     *,
     packet: InferenceTargetPacket,
+    identity: TargetWorkIdentity,
     scheduling_repository: InferenceSchedulingRepository,
     cycle_id: UUID,
     retry_failed: bool = False,
@@ -292,6 +313,9 @@ def run_target(
     sleep: Callable[[float], None] = time.sleep,
 ) -> InferenceTargetWorkRecord:
     """Run or reuse one complete-target call for one operational CE-only target.
+
+    ``identity`` is the route's one prepared work identity; this writer renders nothing and claims
+    the work key from ``identity.input_sha256``.
 
     Matching completed work is reused without any reservation or HTTP request. The writer owns the
     whole-target generation loop for the route: unbounded on the local route, at most
@@ -308,9 +332,8 @@ def run_target(
     """
     if before_request is not None and not before_request():
         raise RequestNotStarted("inference target request not started")
-    identity = target_work_identity(value, pack, settings, execution, packet=packet)
     run = repository.create_run(identity.spec)
-    claim = repository.claim_work(run.run_id, identity.work_request)
+    claim = repository.claim_work(run.run_id, identity.work_request, identity.input_sha256)
     work_id = claim.work.work_id
     if claim.action is InferenceWorkClaimAction.REUSED:
         return claim.work

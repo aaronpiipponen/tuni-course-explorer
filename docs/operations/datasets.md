@@ -6,7 +6,7 @@ A dataset is one complete database of courses, modules, and derived data, and th
 
 One dataset is selected at a time. The pointer under `ADMIN_STATE_ROOT` names one dataset id, and one receipt per dataset records what that dataset is. `ADMIN_STATE_ROOT` is in `config/database.toml`.
 
-A receipt names the dataset id, the database name, the kind of the enrollment, the revision of the checkout that produced it, the digest of its retained dump when it has one, and the verification that was read from the database.
+A receipt names the dataset id, the database name, the kind of the enrollment, the digest of its retained dump when it has one, and the verification that was read from the database.
 
 | Kind | What the receipt names |
 |---|---|
@@ -25,9 +25,9 @@ The pointer and the receipt are the authority for every read. A missing pointer 
 uv run python scripts/admin.py setup datasets
 ```
 
-The command migrates the configured database to the migration head of the checkout, verifies it, records the checkout revision, writes the initial receipt, and selects it. It starts the server database service when the service is not running.
+The command migrates the configured database to the migration head of the checkout, verifies it, writes the initial receipt, and selects it. It starts the server database service when the service is not running.
 
-Enrollment is idempotent. With a dataset already selected it returns the receipt it holds and writes nothing, and an enrollment interrupted between the receipt and the pointer publishes the pointer from the retained receipt alone, without repeating the migration or the verification. Enrollment compares the dataset identity, so a change of checkout revision alone is not a mismatch.
+Enrollment is idempotent. With a dataset already selected it returns the receipt it holds and writes nothing, and an enrollment interrupted between the receipt and the pointer publishes the pointer from the retained receipt alone, without repeating the migration or the verification.
 
 ## The schema head and migration
 
@@ -48,13 +48,13 @@ A [database snapshot](/docs/reference/glossary.md#administration) is a verified 
 
 | Record | What it holds |
 |---|---|
-| Database snapshot | The session, the revision, the database name, the digest of one dump, and the verification read from that database |
+| Database snapshot | The session, the database name, the digest of one dump, and the verification read from that database |
 | Dataset verification | The migration head, the row count of every table, the catalogue summary, and the teaching-text, embedding, and inference coverage reads |
 | Dataset receipt | The identity of one enrolled dataset |
 
 A dump lands in a destination that must not already exist, at mode 0600, and its listing is checked against the embedding-data policy. The input snapshot and the return snapshot include the embedding table data, and a dump without it is refused. A failure removes only the temporary file of the dump.
 
-A restore requires a regular dump file with the expected digest and the requested embedding policy. An absent target database is created and restored, and a present target is refused unless an expected verification matches a fresh verification of that database.
+One confined path holds each dataset's retained dump. A return downloads the worker's dump into that path, and it reuses a dump already there when its digest matches the return snapshot. The restore requires a regular non-symlink dump file with that digest, and it checks the file's listing against the requested embedding policy. An absent target database is created and restored, and a present target is refused unless an expected verification matches a fresh verification of that database.
 
 > [!CAUTION]
 > A restore into a database that already exists is refused unless its fresh verification equals the expected snapshot, and a mismatching database is left in place. The selected dataset therefore changes only through a verified promotion.
@@ -119,7 +119,7 @@ The command reads the pointer and the requested receipt again under the dataset 
 
 `backups delete NAME` removes the one file that relative name identifies under `data/backups`, and the name is the one the listing prints. Empty and absolute names, a backslash, a NUL, an empty, dot or dot-dot segment, a parent that is a symlink or not a directory, and a target that is missing, a symlink or not a file are all refused. Nothing else under the directory changes, and rotation reads and removes no backup file.
 
-The automatic rotation and this cleanup share one drop path, so both drop a database through the same Compose command with the same protected-name check and the same operation timeout. The [Operator menu](/docs/operations/operator-menu.md#cleanup-of-datasets-and-backups) holds the two deletions behind a listing and a confirmation that names the exact dataset or backup file.
+The automatic rotation and this cleanup share one drop path, so both drop a database through the same Compose command with the same protected-name check and the same operation timeout. The [Setup and preflight](/docs/operations/setup-and-preflight.md#cleanup-of-datasets-and-backups) menu entries hold the two deletions behind a listing and a confirmation that names the exact dataset or backup file.
 
 ## Backups and the chain
 

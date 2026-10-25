@@ -61,9 +61,7 @@ def run_spec() -> InferencePipelineRunSpec:
         + "9" * 64,
         runtime_identity="llama.cpp@rev;alias=a;context=131072",
         prompt_version="v9",
-        prompt_content_sha256="1" * 64,
         schema_version="v2",
-        schema_sha256="2" * 64,
         pipeline_version="v1",
         configuration={"route": "local"},
     )
@@ -71,15 +69,12 @@ def run_spec() -> InferencePipelineRunSpec:
 
 def work_request(
     seed: PrerequisiteCatalogueSeed,
-    *,
-    input_sha256: str = "a" * 64,
 ) -> InferenceTargetWorkRequest:
     """Build one target-work request bound to the seeded target activity context."""
     return InferenceTargetWorkRequest(
         target_group_id=seed.active_target_group_id,
         activity_as_of_academic_year_start=seed.activity_as_of_academic_year_start,
         activity_window_years=seed.activity_window_years,
-        input_sha256=input_sha256,
     )
 
 
@@ -165,7 +160,7 @@ def completed_work(
 ) -> tuple[InferenceTargetWorkRecord, InferenceModelAttemptRecord]:
     """Create one completed completion through the sole evidence writer."""
     run = evidence.create_run(run_spec())
-    created = evidence.claim_work(run.run_id, work_request(seed))
+    created = evidence.claim_work(run.run_id, work_request(seed), "a" * 64)
     completed = evidence.record_completion(
         run.run_id,
         created.work.work_id,
@@ -244,7 +239,7 @@ def test_proposal_rejects_failed_work_and_preserves_evidence(
     repository = InferenceProposalRepository(factory)
     run = evidence.create_run(run_spec())
 
-    failed_work = evidence.claim_work(run.run_id, work_request(seed, input_sha256="f" * 64))
+    failed_work = evidence.claim_work(run.run_id, work_request(seed), "f" * 64)
     failed = evidence.fail_work(run.run_id, failed_work.work.work_id)
     placeholder = InferenceModelAttemptRecord(
         attempt_id=UUID(int=999),

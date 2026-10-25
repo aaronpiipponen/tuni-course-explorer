@@ -14,14 +14,23 @@ import signal
 import subprocess
 import time
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
-from course_explorer.config import CaptureSettings
+from course_explorer.config import (
+    CaptureSettings,
+    KoriSettings,
+    NormalizationSettings,
+)
+from course_explorer.ingestion.capture import capture_curriculum
 from course_explorer.ingestion.manifest import RawCaptureStore
 from course_explorer_admin import local_stages
 from course_explorer_admin.lifecycle import (
+    IngestionOptions,
+    IngestionProgress,
     read_lifecycle_state,
+    require_retained_ingestion_manifest,
     run_lifecycle_command,
 )
 from tests.admin._lifecycle_support import (
@@ -39,7 +48,31 @@ from tests.admin._lifecycle_support import (
     wait_for_stable_state,
     wait_for_units,
 )
+from tests.ingestion._capture_support import (
+    FixtureSource,
+    RecordingCapturePersistence,
+    new_store,
+)
 from tests.support import settings_factory
+
+
+class _CheckpointContext:
+    """A lifecycle context double that records each checkpoint as the ingestion progress."""
+
+    def __init__(self, progress: IngestionProgress, options: IngestionOptions) -> None:
+        self.progress = progress
+        self.session = SimpleNamespace(options=options)
+        self.checkpoints: list[IngestionProgress] = []
+
+    def read_state(self) -> SimpleNamespace:
+        return SimpleNamespace(progress=self.progress)
+
+    def checkpoint(self, progress: IngestionProgress) -> None:
+        self.progress = progress
+        self.checkpoints.append(progress)
+
+    def admit(self) -> bool:
+        return True
 
 
 def _unit_files(root: Path, session_id: str) -> dict[str, bytes]:
@@ -388,6 +421,161 @@ def _configure_ingestion_raw_root(
     )
     monkeypatch.setattr(local_stages, "load_capture_settings", lambda: capture_settings)
     return LocalLifecycleRunner(root=root, running={"db"})
+
+
+@pytest.mark.parametrize(
+    ("kori_override", "normalization_override", "capture_override", "same_identity"),
+    [
+        ({"KORI_REQUEST_TIMEOUT_SECONDS": 90.0}, {}, {}, True),
+        ({"KORI_MAX_ATTEMPTS": 5}, {}, {}, True),
+        ({"KORI_RETRY_BACKOFF_SECONDS": 5.0}, {}, {}, True),
+        ({"KORI_CONCURRENCY": 2}, {}, {}, True),
+        ({}, {}, {"CAPTURE_CHECKPOINT_RESPONSE_COUNT": 20}, True),
+        ({}, {}, {"RAW_DATA_ROOT": Path("raw-other")}, True),
+        ({"KORI_SEARCH_PAGE_SIZE": 50}, {}, {}, False),
+        ({"KORI_BATCH_SIZE": 20}, {}, {}, False),
+        ({"KORI_MAX_PARTITION_DEPTH": 4}, {}, {}, False),
+        ({}, {"ACTIVE_ACADEMIC_YEAR_WINDOW": 4}, {}, False),
+    ],
+)
+def test_ingestion_identity_ignores_operational_tuning(
+    kori_override: dict[str, object],
+    normalization_override: dict[str, object],
+    capture_override: dict[str, object],
+    same_identity: bool,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The identity covers the stage, the configuration, the selected database and the options.
+
+    The configuration is the kori settings without their operational tuning values, plus the
+    normalization settings.
+    """
+    base_kori = settings_factory(KoriSettings)
+    base_normalization = settings_factory(NormalizationSettings)
+    base_capture = settings_factory(CaptureSettings)
+    changed_kori = settings_factory(KoriSettings, **kori_override)
+    changed_normalization = settings_factory(NormalizationSettings, **normalization_override)
+    changed_capture = settings_factory(CaptureSettings, **capture_override)
+    database = SimpleNamespace(postgres_db="course_explorer_test")
+    stage = local_stages.IngestionStage()
+    options = IngestionOptions(kind="ingestion")
+
+    def identity(
+        kori: KoriSettings,
+        normalization: NormalizationSettings,
+        capture: CaptureSettings,
+    ) -> str:
+        monkeypatch.setattr(local_stages, "load_kori_settings", lambda: kori)
+        monkeypatch.setattr(local_stages, "load_normalization_settings", lambda: normalization)
+        monkeypatch.setattr(local_stages, "load_capture_settings", lambda: capture)
+        monkeypatch.setattr(local_stages, "load_database_settings", lambda: database)
+        return stage.identity_sha256(options)
+
+    baseline = identity(base_kori, base_normalization, base_capture)
+    changed = identity(changed_kori, changed_normalization, changed_capture)
+    assert (changed == baseline) is same_identity
+
+
+def test_ingestion_continuation_refuses_changed_retained_manifest(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A recorded continuation identity admits its retained bytes and refuses any change."""
+    monkeypatch.chdir(tmp_path)
+    store = new_store(tmp_path)
+    capture_settings = settings_factory(CaptureSettings, RAW_DATA_ROOT=Path("raw"))
+    monkeypatch.setattr(local_stages, "load_capture_settings", lambda: capture_settings)
+    context = _CheckpointContext(
+        IngestionProgress(
+            kind="ingestion",
+            stage="capture",
+            response_count=0,
+            verified_response_count=0,
+            normalized=False,
+        ),
+        IngestionOptions(kind="ingestion", manifest_path=store.manifest_relative_path),
+    )
+
+    local_stages.IngestionStage().finalize(context)
+
+    retained = context.progress
+    assert retained.manifest_path == store.manifest_relative_path
+    assert retained.run_id == store.manifest.run_id
+    assert retained.manifest_sha256 == store.manifest_sha256
+    require_retained_ingestion_manifest(retained.manifest_path, retained.manifest_sha256)
+
+    store.manifest_path.write_bytes(store.manifest_path.read_bytes() + b" ")
+    with pytest.raises(ValueError):
+        require_retained_ingestion_manifest(retained.manifest_path, retained.manifest_sha256)
+
+
+def test_ingestion_checkpoints_reuse_published_manifest_identity(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A capture checkpoint records the store's published digest without rereading the file."""
+    monkeypatch.chdir(tmp_path)
+    store = new_store(tmp_path)
+
+    def reject_first_positive(stage: str, completed: int, total: int | None) -> bool:
+        return not (stage == "capture" and completed > 0)
+
+    assert (
+        capture_curriculum(
+            FixtureSource(),
+            store,
+            RecordingCapturePersistence(),
+            checkpoint_response_count=100,
+            on_boundary=reject_first_positive,
+        )
+        is None
+    )
+    assert len(store.manifest.responses) > 0
+    prefix = len(store.manifest.responses)
+    progress = IngestionProgress(
+        kind="ingestion",
+        stage="capture",
+        manifest_path=store.manifest_relative_path,
+        run_id=store.manifest.run_id,
+        manifest_sha256=store.manifest_sha256,
+        response_count=prefix,
+        verified_response_count=prefix,
+        verification_total=prefix,
+        normalized=False,
+    )
+    context = _CheckpointContext(progress, IngestionOptions(kind="ingestion"))
+    original_sha256_file = local_stages.sha256_file
+    reread: list[Path] = []
+
+    def guard_manifest_reread(path: Path) -> str:
+        if path == store.manifest_path:
+            reread.append(path)
+            raise AssertionError("a manifest checkpoint reread its own bytes")
+        return original_sha256_file(path)
+
+    def fake_run_capture_command(**kwargs: object) -> None:
+        on_store_selected = kwargs["on_store_selected"]
+        on_boundary = kwargs["on_boundary"]
+        assert callable(on_store_selected) and callable(on_boundary)
+        on_store_selected(store)
+        assert on_boundary("verification", prefix, prefix)
+        store.mark_failed(ValueError("synthetic"))
+        assert on_boundary("capture", prefix, None)
+        return None
+
+    monkeypatch.setattr(local_stages, "sha256_file", guard_manifest_reread)
+    monkeypatch.setattr(local_stages, "run_capture_command", fake_run_capture_command)
+    assert local_stages.IngestionStage().run(context) is False
+
+    verification = next(
+        checkpoint for checkpoint in context.checkpoints if checkpoint.stage == "verification"
+    )
+    assert verification.verified_response_count == prefix
+    assert verification.verification_total == prefix
+    checkpoint = context.checkpoints[-1]
+    assert checkpoint.stage == "capture"
+    assert checkpoint.manifest_sha256 == store.manifest_sha256
+    assert checkpoint.verified_response_count == 0
+    assert checkpoint.verification_total is None
+    assert reread == []
 
 
 def test_ingestion_idle_stop_prunes_unretained_capture_directories(

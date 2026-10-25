@@ -835,11 +835,7 @@ class InferencePipelineRun(Base):
         _not_blank("model_identity"),
         _not_blank("runtime_identity"),
         _not_blank("prompt_version"),
-        CheckConstraint(
-            "prompt_content_sha256 ~ '^[0-9a-f]{64}$'", name="prompt_content_sha256_sha256"
-        ),
         _not_blank("schema_version"),
-        CheckConstraint("schema_sha256 ~ '^[0-9a-f]{64}$'", name="schema_sha256_sha256"),
         _not_blank("pipeline_version"),
         CheckConstraint(
             "run_identity_sha256 ~ '^[0-9a-f]{64}$'", name="run_identity_sha256_sha256"
@@ -850,9 +846,7 @@ class InferencePipelineRun(Base):
     model_identity: Mapped[str] = mapped_column(Text)
     runtime_identity: Mapped[str] = mapped_column(Text)
     prompt_version: Mapped[str] = mapped_column(Text)
-    prompt_content_sha256: Mapped[str] = mapped_column(Text)
     schema_version: Mapped[str] = mapped_column(Text)
-    schema_sha256: Mapped[str] = mapped_column(Text)
     pipeline_version: Mapped[str] = mapped_column(Text)
     run_identity_sha256: Mapped[str] = mapped_column(Text)
     configuration: Mapped[dict] = mapped_column(JSONB(none_as_null=True))
@@ -862,10 +856,11 @@ class InferenceTargetWork(Base):
     """One global matching-work row for a canonical target and exact execution identity.
 
     `(target_course_id, work_key_sha256)` is the global matching-work authority: a completed
-    row is reused across executions with the same coarse identity, target activity context, and
-    input hash, and a changed identity creates a distinct row instead of overwriting retained
-    evidence. One completion row in `inference_model_attempts` carries the generated result. This
-    row carries only the current generation resumability status.
+    row is reused across executions with the same coarse identity, target activity context and
+    transient input identity bound into the key, and a changed identity creates a distinct row
+    instead of overwriting retained evidence. One completion row in `inference_model_attempts`
+    carries the generated result. This row carries the work key, the activity context and the
+    generation resumability status.
     """
 
     __tablename__ = "inference_target_work"
@@ -874,7 +869,6 @@ class InferenceTargetWork(Base):
             "activity_as_of_academic_year_start > 0", name="activity_year_start_positive"
         ),
         CheckConstraint("activity_window_years > 0", name="activity_window_years_positive"),
-        CheckConstraint("input_sha256 ~ '^[0-9a-f]{64}$'", name="input_sha256_sha256"),
         CheckConstraint("work_key_sha256 ~ '^[0-9a-f]{64}$'", name="work_key_sha256_sha256"),
         UniqueConstraint(
             "target_course_id",
@@ -893,7 +887,6 @@ class InferenceTargetWork(Base):
     )
     activity_as_of_academic_year_start: Mapped[int] = mapped_column(Integer)
     activity_window_years: Mapped[int] = mapped_column(Integer)
-    input_sha256: Mapped[str] = mapped_column(Text)
     work_key_sha256: Mapped[str] = mapped_column(Text)
     status: Mapped[InferenceWorkStatus] = mapped_column(
         _enum(InferenceWorkStatus, "inference_work_status")

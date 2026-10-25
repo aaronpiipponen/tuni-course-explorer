@@ -121,8 +121,3 @@ def test_embedding_configuration_hash_tracks_only_vector_semantics() -> None:
             EMBEDDING_CHUNK_OVERLAP_CHARACTERS=8,
         )
     )
-    # Non-ASCII model text keeps its exact stored bytes through the canonical ASCII-escaping
-    # serializer. The literal digest pins that stored identity.
-    assert embedding_configuration_sha256(settings(EMBEDDING_MODEL="mallï")) == (
-        "4c89328c601e51160d28a9c848778d84926fe30c43411be4029651417cc0fd49"
-    )

@@ -66,7 +66,7 @@ This read installs nothing, prepares nothing, reads no worker status, starts no 
 | `read_worker_status(stage, session_id, *, clock)` | The read-only operator status |
 | `project_worker_lifecycle(state, *, directory)` | The interrupted projection of a vanished runner |
 | `await_worker_quiescence(...)` and `require_worker_quiescence(state, directory)` | The bounded exit wait and the locked re-proof |
-| `require_worker_checkout(runner, worker_root)` and `require_worker_database_schema(session)` | The prepared-checkout and schema-head preconditions |
+| `require_worker_database_schema(session)` | The received-database schema-head precondition |
 | `worker_main(stage)` | The prepare, run, pause, resume, status, finalize, cleanup, and stop subcommands |
 
 The server-side adapter is `remote_stages.RemoteStage`. `run(context)` captures the session, brings the worker up, launches the run, and mirrors progress until a terminal status. `release(context)` is the pause path, and `finalize(context)` is the stop path that finalizes, returns, cleans, and releases. `_bring_up(context, transport, connection, session, *, recovery)` starts the keepalive, the worker database service, the remote session directory, the uploads, the check of the locked environment, and the worker restore. `_launch(...)` re-arms a retained session and starts the detached run, and `_await_launch_acknowledgment(...)` resolves a lost launcher response from read-only status. `_mutation_with_reconcile(operation, read_status, accepted)` reads the real status before a retry, and the closed accepted sets are `_RESUME_ACCEPTED`, `_PAUSE_ACCEPTED`, `_STOP_ACCEPTED`, `_FINALIZE_ACCEPTED`, and `_CLEANUP_ACCEPTED`. `_transport(runner, connection)` is the single construction point, and `_worker_helper(...)` wraps every worker invocation in `uv run --no-sync --offline --no-python-downloads`.
@@ -114,7 +114,7 @@ Where to change what:
 
 ## The checkpoint clock and the model runtime
 
-`reboot.WorkerGpuClock(directory, *, session_id, revision, settings, monotonic=time.monotonic)` counts loaded seconds only. `loaded()` opens one segment, `unloaded()` closes it, `checkpoint()` samples the open segment and publishes `WorkerGpuCheckpoint` as `gpu-clock.json`, and `due` reports the last published sample. `worker_gpu_reboot_due(directory, *, session_id, revision, settings)` is the read-only due check, and `reboot_windows_worker(transport, connection, *, run_allowed, recovery=None, sleep=..., monotonic=...)` issues one restart request and proves a changed boot plus a healthy worker environment before it returns.
+`reboot.WorkerGpuClock(directory, *, session_id, settings, monotonic=time.monotonic)` counts loaded seconds only. `loaded()` opens one segment, `unloaded()` closes it, `checkpoint()` samples the open segment and publishes `WorkerGpuCheckpoint` as `gpu-clock.json`, and `due` reports the last published sample. `worker_gpu_reboot_due(directory, *, session_id, settings)` is the read-only due check, and `reboot_windows_worker(transport, connection, *, run_allowed, recovery=None, sleep=..., monotonic=...)` issues one restart request and proves a changed boot plus a healthy worker environment before it returns.
 
 `runtime.OwnedWorkerRuntime(runner, *, root, directory, sleep=...)` owns one model child through the `runtime.json` ownership record. `start(spec, *, attempts, interval, timeout)` reuses a live identical record or spawns after `provisioning_worker.require_prepared_runtime`, and `stop(*, timeout, interval)` retires only a proved-owned process. `WorkerInferenceRuntime` adds `activate`, `stop`, `start_rerank`, `stop_rerank`, and `request_scope` over that owner, and the inference stage passes its `WorkerGpuClock` in so a mode switch closes and opens the loaded segment.
 
@@ -125,7 +125,7 @@ Where to change what:
 | `tests/admin/test_remote_lifecycle.py` | The due reboot and the same-session resume, the pending-pause suppression, the bounded mirror failure and its diagnostics, the stop recovery, the failed return, and the genuine helper error |
 | `tests/admin/test_datasets.py` | Enrollment idempotency, the pointer-only interruption, return before selection, the cleanup authorities, the retained pair and rotation, the redirected collection, and the serialized worker export |
 | `tests/admin/test_dataset_database.py` | The real dump, restore, and return round trip, the vector and verification preservation, three rotations, and the guarded migration |
-| `tests/admin/test_worker_setup.py` | The fast-forward code update, the read-only resource check, the artifact verification, and the dirty-checkout refusal |
+| `tests/admin/test_worker_setup.py` | The fast-forward code update, preservation of user work in a dirty checkout, the read-only resource check, and the artifact verification |
 | `tests/admin/test_checkpoint_reboot.py` | The clock arithmetic and the changed-boot plus healthy-environment requirement |
 | `tests/admin/test_log_reads.py` | Each fixed local source, a redirected session directory chain, the classified absent worker log beside a genuine read failure, the symlink refusals, and the one fixed worker command |
 | `tests/admin/test_runtime.py` | The configured runtime builders, the ownership record, the occupied port, the reused foreign PID, and the record from another boot |

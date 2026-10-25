@@ -478,6 +478,7 @@ def operator_guidance(
         "report",
         "migration",
         "disposition",
+        "target-read",
         "hubs",
         "dataset-cleanup",
         "backup-cleanup",
@@ -530,11 +531,16 @@ def operator_guidance(
         )
     if operation in {"setup", "preflight"}:
         return (
-            "finish or stop retained stages before updates, then check the prepared clean checkout "
+            "finish or stop retained stages before updates, then check the checkout branch "
             "and the configured origin"
         )
     if operation == "migration":
         return "ordinary-stop all four stages, ensure the server db is running, then retry"
+    if operation == "target-read":
+        return (
+            "select the dataset, ensure the server db is running at the current schema, "
+            "then retry the target read"
+        )
     if operation == "disposition":
         return (
             "ordinary-stop all four stages, select the verified returned selected dataset and keep "
@@ -736,9 +742,14 @@ def _perform(
 def _setup_worker(read: Callable[[str], str], write: Callable[[str], None]) -> None:
     """Prepare or update the worker, asking for a non-main origin branch when the server is not main."""
     try:
-        server_branch = mechanics.require_prepared_checkout(
-            mechanics.SubprocessRunner(), repository_root()
-        )[0]
+        server_branch = (
+            mechanics.SubprocessRunner()
+            .run(("git", "branch", "--show-current"), cwd=repository_root())
+            .stdout.decode()
+            .strip()
+        )
+        if not server_branch:
+            raise ValueError("checkout identity requires a non-detached Git branch")
     except Exception as exc:
         write(format_operator_error(exc))
         write(operator_guidance("setup"))
@@ -1094,7 +1105,7 @@ def _dispose_target_menu(read: Callable[[str], str], write: Callable[[str], None
     except Exception as exc:
         write(format_operator_error(exc))
         write(
-            operator_guidance("disposition", configuration_error=isinstance(exc, ValidationError))
+            operator_guidance("target-read", configuration_error=isinstance(exc, ValidationError))
         )
         return
     write(current.model_dump_json())

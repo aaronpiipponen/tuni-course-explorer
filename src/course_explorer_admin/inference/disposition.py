@@ -1,16 +1,16 @@
-"""Server-only operator disposition of one canonical inference target.
+"""Operator disposition of one canonical inference target.
 
-This module is the server administrative surface for an explicit per-target inference decision: it
-reads and sets the durable NOTHING/DONE/FAILED choice on the cleanly stopped, verified-returned,
-selected dataset through the scheduling repository and sole publication owner. Its guards are
-server-local: all four tools idle, a returned selected dataset, and the executing checkout's schema
-head.
+This module is the disposition surface of the administration command: it reads and sets the
+durable NOTHING/DONE/FAILED choice on the selected dataset through the scheduling repository and
+sole publication owner. A read resolves the selected dataset and requires the executing checkout's
+schema head. A decision write additionally requires all four stages idle and a verified returned
+selected dataset.
 """
 
 from __future__ import annotations
 
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session, sessionmaker
@@ -53,26 +53,34 @@ class InferenceTargetDisposition(BaseModel):
 def _disposition_context(*, mutating: bool) -> Iterator[tuple[str, sessionmaker[Session]]]:
     """Guard and open one selected-dataset context for a read or a decision write.
 
-    It resolves the configured admin state root, holds the shared datasets action lock (read-only
-    callers take it without creating anything), requires the selected-dataset switch, a verified returned
-    receipt and the schema head, then yields the dataset id and one short-lived session factory bound
-    to the selected database.
+    It resolves the configured admin state root, requires the selected-dataset switch and the
+    live schema head of the selected database, then yields the dataset id and one short-lived
+    session factory bound to the selected database. A decision write additionally requires a
+    verified returned receipt and takes the shared datasets action lock with idle stages. A read
+    takes no action lock.
     """
     settings = load_administrative_dataset_settings()
     root = admin_state_root(settings)
-    with mechanics.exclusive_action_lock(root, controller_name="datasets", create=mutating):
-        raw = load_raw_database_settings()
-        if not raw.selected_dataset_enabled:
-            raise ValueError("target disposition requires the selected dataset")
+    raw = load_raw_database_settings()
+    if not raw.selected_dataset_enabled:
+        raise ValueError("target disposition requires the selected dataset")
+    with ExitStack() as stack:
+        if mutating:
+            stack.enter_context(
+                mechanics.exclusive_action_lock(root, controller_name="datasets", create=True)
+            )
         receipt = resolve_selected_dataset(root)
-        if receipt.kind != "returned":
-            raise ValueError("target disposition requires a verified returned selected dataset")
-        require_stages_idle()
+        if mutating:
+            if receipt.kind != "returned":
+                raise ValueError(
+                    "target disposition write requires a verified returned selected dataset"
+                )
+            require_stages_idle()
         database = raw.model_copy(update={"postgres_db": receipt.database_name})
-        with database_context(database) as factory:
-            with factory() as session:
-                require_database_schema(session.connection())
-            yield receipt.dataset_id, factory
+        factory = stack.enter_context(database_context(database))
+        with factory() as session:
+            require_database_schema(session.connection())
+        yield receipt.dataset_id, factory
 
 
 def _resolve_target_summary(factory: sessionmaker[Session], target_group_id: str) -> CourseSummary:
@@ -109,8 +117,8 @@ def set_inference_target_disposition(
 ) -> InferenceTargetDisposition:
     """Set one canonical target's decision and publish the resulting current cohort once.
 
-    The decision is committed by the scheduling repository first, so a publication failure leaves the
-    durable choice for an idempotent repeat. An identical set runs the publisher, so a failed
+    The decision is committed by the scheduling repository first, so a publication failure leaves
+    the durable choice for an idempotent repeat. An identical set runs the publisher, so a failed
     publication is repaired idempotently. The repository decision and eligibility persist across a
     repeat.
     """

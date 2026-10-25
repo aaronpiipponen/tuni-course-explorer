@@ -36,7 +36,6 @@ from course_explorer.inference.evidence import (
     InferenceCompletionFacts,
     InferenceCompletionPayload,
     InferenceModelAttemptRecord,
-    InferencePipelineRunRecord,
     InferencePipelineRunSpec,
     InferenceTargetWorkRecord,
     InferenceTargetWorkRequest,
@@ -131,35 +130,28 @@ def _descriptors(
 
 def _records(
     result: InferenceTargetResultV2, descriptors: RequestCourseDescriptors
-) -> tuple[InferenceTargetWorkRecord, InferenceModelAttemptRecord, InferencePipelineRunRecord]:
-    """Build the completed work, its completion, and the shared execution for one result."""
+) -> tuple[InferenceTargetWorkRecord, InferenceModelAttemptRecord]:
+    """Build the completed work and its completion for one result."""
     spec = InferencePipelineRunSpec(
         model_identity=_MODEL_IDENTITY,
         runtime_identity=_RUNTIME_IDENTITY,
         prompt_version="v9",
-        prompt_content_sha256=_hash("prompt"),
         schema_version="v2",
-        schema_sha256=_hash("schema"),
         pipeline_version="v1",
         configuration={"route": "local"},
     )
-    run = InferencePipelineRunRecord(
-        run_id=UUID(int=1),
-        spec=spec,
-        run_identity_sha256=run_identity_sha256(spec),
-    )
+    run_identity = run_identity_sha256(spec)
     work_request = InferenceTargetWorkRequest(
         target_group_id="T",
         activity_as_of_academic_year_start=2026,
         activity_window_years=3,
-        input_sha256=_hash("input"),
     )
     work = InferenceTargetWorkRecord(
         work_id=UUID(int=2),
-        created_by_run_id=run.run_id,
+        created_by_run_id=UUID(int=1),
         target_course_id=UUID(int=99),
         request=work_request,
-        work_key_sha256=work_key_sha256(work_request, run.run_identity_sha256),
+        work_key_sha256=work_key_sha256(work_request, run_identity, _hash("input")),
         status=InferenceWorkStatus.COMPLETED,
     )
     completion = InferenceModelAttemptRecord(
@@ -175,7 +167,7 @@ def _records(
         ),
         finished_at=STARTED_AT,
     )
-    return work, completion, run
+    return work, completion
 
 
 def _option(

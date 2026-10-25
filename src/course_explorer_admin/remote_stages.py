@@ -182,7 +182,7 @@ def _parse_status[StatusT: WorkerControllerStatus](
 
 
 def _validate_status(status: WorkerControllerStatus, session: WorkerDatasetSession) -> None:
-    if status.session_id != session.session_id or status.revision != session.revision:
+    if status.session_id != session.session_id:
         raise ValueError("worker status identity does not match the session")
     if status.course_limit != session.course_limit:
         raise ValueError("worker status course limit does not match the session")
@@ -477,7 +477,7 @@ class RemoteStage:
         load_connection: Callable[[], WorkerConnectionSettings],
         startup_attempts: int,
         load_session: Callable[[str], tuple[WorkerDatasetSession, object, Path]],
-        make_policy: Callable[[str, str], object],
+        make_policy: Callable[[str], object],
         configuration_sha256: Callable[[], str],
         server_worker_module: str = "course_explorer_admin.worker",
     ) -> None:
@@ -623,7 +623,7 @@ class RemoteStage:
         if not policy_path.exists() and not policy_path.is_symlink():
             atomic_write_private_text(
                 policy_path,
-                administrative_json(self._make_policy(session.session_id, session.revision)),
+                administrative_json(self._make_policy(session.session_id)),
             )
         return session
 
@@ -1023,10 +1023,9 @@ def translation_stage() -> RemoteStage:
         load_connection=load_translation_controller_settings,
         startup_attempts=connection.translation_controller_health_attempts,
         load_session=load_translation_dataset_session,
-        make_policy=lambda session_id, revision: TranslationControllerPolicy(
+        make_policy=lambda session_id: TranslationControllerPolicy(
             schema_version=2,
             session_id=session_id,
-            revision=revision,
             translation_model=load_translation_settings().provenance_model,
         ),
         configuration_sha256=lambda: json_sha256(
@@ -1054,10 +1053,9 @@ def inference_stage(
         load_connection=load_inference_controller_settings,
         startup_attempts=connection.inference_controller_health_attempts,
         load_session=load_inference_dataset_session,
-        make_policy=lambda session_id, revision: InferenceControllerPolicy(
+        make_policy=lambda session_id: InferenceControllerPolicy(
             schema_version=2,
             session_id=session_id,
-            revision=revision,
             configuration_sha256=inference_configuration_sha256(),
         ),
         configuration_sha256=inference_configuration_sha256,

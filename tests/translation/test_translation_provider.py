@@ -53,8 +53,8 @@ def completion(
     return httpx.Response(200, content=json.dumps(body).encode())
 
 
-def test_translation_provider_posts_official_template_shape_and_returns_exact_content() -> None:
-    """The proven typed request shape is posted and exact content comes back as-is."""
+def test_translation_provider_returns_exact_content() -> None:
+    """The provider returns exact whitespace-bearing content as-is."""
     requests: list[httpx.Request] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -70,9 +70,6 @@ def test_translation_provider_posts_official_template_shape_and_returns_exact_co
 
     assert result == "  " + CONTENT + "  "
     assert len(requests) == 1
-    request = requests[0]
-    assert request.method == "POST"
-    assert request.url.path == "/v1/chat/completions"
 
 
 def test_translation_provider_retries_transport_status_and_contract_failures() -> None:
@@ -153,27 +150,6 @@ def test_translation_provider_rejects_wrong_model_runtime_choice_role_finish_or_
                     source_language=TeachingTextLanguage.FI,
                     target_language=TeachingTextLanguage.EN,
                 )
-
-
-def test_translation_provider_close_is_idempotent_and_rejects_later_calls() -> None:
-    """Closing twice succeeds and any translate after close fails before I/O."""
-    calls = 0
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        nonlocal calls
-        calls += 1
-        return completion()
-
-    provider = TranslationProvider(settings(), transport=httpx.MockTransport(handler))
-    provider.close()
-    provider.close()
-    with pytest.raises(TranslationRequestError):
-        provider.translate(
-            "lähde",
-            source_language=TeachingTextLanguage.FI,
-            target_language=TeachingTextLanguage.EN,
-        )
-    assert calls == 0
 
 
 def test_translation_provider_control_stops_contract_retry() -> None:

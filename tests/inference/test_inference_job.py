@@ -50,7 +50,7 @@ def test_job_control_refusal_preserves_partial_work(
     assert not all(marker.processed for marker in repository.read_processing())
 
 
-def test_public_oversize_target_fails_without_generation_or_false_coverage(
+def test_oversize_target_fails_without_generation_or_false_coverage(
     database: tuple[Engine, object],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -325,8 +325,8 @@ def test_operator_disposition_clear_resumes_automatic_processing(
     repository, runtime, boundary = prepare_job_case(factory, monkeypatch, ("job-t1", "job-t2"))
 
     if variant == "consumed_selection":
-        # Finish a genuine cycle, then run the next matching multiview-all cycle whose true
-        # membership legitimately skips rerank/inference, consuming both selection payloads.
+        # Finish a genuine cycle, then run the next matching multiview-all cycle whose processed
+        # targets skip rerank and inference and consume both selection payloads.
         genuine = run_job(factory, runtime, before_unit=lambda: True)
         assert genuine.stage == "complete"
         skip = run_job(

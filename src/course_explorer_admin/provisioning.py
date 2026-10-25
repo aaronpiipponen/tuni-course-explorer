@@ -1,14 +1,12 @@
-"""Sole explicit worker code-setup/update and prepared-checkout owner.
+"""Sole explicit worker code-setup/update and checkout-identity owner.
 
 This module owns the one explicit operation that brings the already-provisioned worker checkout
 onto a selected GitHub-origin branch with ``git pull --ff-only``, the worker-side package/dependency
-bootstrap and pointed resource preparation, and the read-only preflight that verifies prepared code
-and worker resources. The remote update is a fast-forward pull, and the bootstrap and pointed
-resource preparation run
-through the captured, completion-reported transport, so the provisioned worker's sudo must be
-passwordless. Code
-sync is separate from the recurring translation/inference lifecycle, which validates prepared code
-through ``worker_session.require_worker_checkout``.
+bootstrap and pointed resource preparation, and the read-only preflight that reads the checkout
+identity and the worker resources. The remote update is a fast-forward pull, and the bootstrap and
+pointed resource preparation run through the captured, completion-reported transport, so the
+provisioned worker's sudo must be passwordless. Code sync is separate from the recurring
+translation/inference lifecycle, which validates worker schema and actual resources before work.
 """
 
 from __future__ import annotations
@@ -53,7 +51,7 @@ _PROJECT_NAME = _repository_project_name()
 
 
 class WorkerCodeReport(BaseModel):
-    """Ordinary frozen report of one explicit worker code update or prepared-code read."""
+    """Ordinary frozen report of one explicit worker code update or checkout-identity read."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -95,7 +93,9 @@ def _update_worker_code(
     root = repository_root()
     _validate_branch(runner, root, branch)
     setup = load_worker_setup_settings()
-    server_branch, server_revision = mechanics.require_prepared_checkout(runner, root)
+    server_branch, server_revision = mechanics.read_checkout_identity(
+        lambda argv: runner.run(tuple(argv), cwd=root).stdout
+    )
     _require_matching_origin(runner, root, setup.worker_setup_project_url)
     server_origin_differs = _server_origin_differs(
         runner, root, branch=server_branch, revision=server_revision, fetch=True
@@ -114,10 +114,16 @@ def _update_worker_code(
 
 
 def preflight_worker(*, runner: mechanics.ProcessRunner) -> ProvisioningReport:
-    """Read-only prepared-code and worker-resource check. Installs, builds, and downloads nothing."""
+    """Read the checkout identity and the worker resources.
+
+    The checkout identity is the branch and HEAD, and the read installs, builds and downloads
+    nothing.
+    """
     root = repository_root()
     setup = load_worker_setup_settings()
-    branch, revision = mechanics.require_prepared_checkout(runner, root)
+    branch, revision = mechanics.read_checkout_identity(
+        lambda argv: runner.run(tuple(argv), cwd=root).stdout
+    )
     _require_matching_origin(runner, root, setup.worker_setup_project_url)
     server_origin_differs = _server_origin_differs(
         runner, root, branch=branch, revision=revision, fetch=False
@@ -207,11 +213,18 @@ def _update_worker_checkout(
     project_url: str,
 ) -> tuple[str, str]:
     worker_root = connection.worker_project_root
-    # Refuse a dirty or detached checkout through the one shared full-tree read before the worker
-    # fetch/branch-switch/pull script can change it. The requested branch is selected
-    # from the worker's tracking branches independently. The server and worker branch names may
-    # differ.
-    current_branch, _revision = _read_worker_checkout(transport, connection)
+    # The worker's current branch selects the requested origin branch before the
+    # fetch/branch-switch/pull script. The server and worker branch names may differ.
+    current_branch = (
+        transport.run(
+            ("git", "branch", "--show-current"),
+            cwd=PurePosixPath(str(worker_root)),
+        )
+        .decode()
+        .strip()
+    )
+    if not current_branch:
+        raise ValueError("checkout identity requires a non-detached Git branch")
     script = _worker_update_script(
         worker_root,
         project_url,
@@ -233,7 +246,7 @@ def _read_worker_checkout(
     def run(argv: Sequence[str]) -> bytes:
         return transport.run(tuple(argv), cwd=PurePosixPath(str(worker_root)))
 
-    return mechanics.read_prepared_checkout(run, full_tree=True)
+    return mechanics.read_checkout_identity(run)
 
 
 def _worker_update_script(
@@ -276,8 +289,7 @@ def _worker_update_script(
         f"{selection}"
         f"git -c {ssh_config} pull --ff-only origin {name}; "
         f'test "$(git branch --show-current)" = {name}; '
-        f'test "$(git rev-parse HEAD)" = "$(git rev-parse {remote_ref})"; '
-        'test -z "$(git status --porcelain --untracked-files=normal)"'
+        f'test "$(git rev-parse HEAD)" = "$(git rev-parse {remote_ref})"'
     )
 
 

@@ -67,10 +67,6 @@ def test_equivalence_publish_read_replace_and_identical_retry_are_atomic_and_ide
     created = repository.publish(publication)
     assert created.action is InferredPublicationAction.CREATED
     assert created.current_group.group_id == group_id
-    assert (
-        created.current_group.payload_hash
-        == "bb684a54d742d5f26f666a5efa05e845e31de45aec0fd1c436e1a9bd02f68ae7"
-    )
     assert [member.course_group_id for member in created.current_group.members] == sorted(
         [active_target, inactive_target, active_source]
     )

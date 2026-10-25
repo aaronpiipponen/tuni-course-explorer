@@ -33,14 +33,13 @@ from course_explorer.db.session import create_database_engine, create_session_fa
 from course_explorer.teaching_text.commands import load_translation_file
 from course_explorer.teaching_text.repository import DerivedTranslationRepository
 from course_explorer.translation.commands import run_translation_command
-from course_explorer.translation.service import TranslationRunReport, select_translation_work
+from course_explorer.translation.service import select_translation_work
 from course_explorer_admin import mechanics, worker_session
 from course_explorer_admin.reboot import WorkerGpuClock, worker_gpu_reboot_due
 from course_explorer_admin.remote import WorkerControl, WorkerDatasetSession
 from course_explorer_admin.runtime import OwnedWorkerRuntime, translation_runtime_spec
 from course_explorer_admin.translation.controller import (
     TranslationControllerImportReceipt,
-    TranslationControllerOutputManifest,
     TranslationControllerPolicy,
     TranslationControllerStatus,
     TranslationControllerWorkerState,
@@ -59,8 +58,6 @@ _CLEANUP_ARTIFACTS = (
     "return.dump",
     "output.json",
     "output.json.failure.json",
-    "output-manifest.json",
-    "run-report.json",
     "runner.json",
     "runtime.json",
     "runtime.log",
@@ -93,7 +90,7 @@ def _read_import_receipt(
     """Strictly load one canonical session's import receipt, or ``None`` when genuinely absent.
 
     Only a genuinely absent file returns ``None``. A symlinked, nonregular, malformed, foreign, or
-    inconsistent receipt fails loudly. The receipt must describe this session and revision, agree
+    inconsistent receipt fails loudly. The receipt must describe this session, agree
     with the worker state's completed count, carry a hash exactly when its count is positive, and
     report a requested count equal to its output count. The receipt file is its only input.
     """
@@ -103,7 +100,7 @@ def _read_import_receipt(
     if not path.exists():
         return None
     receipt = load_translation_controller_import_receipt(path)
-    if receipt.session_id != session.session_id or receipt.revision != session.revision:
+    if receipt.session_id != session.session_id:
         raise ValueError("import receipt identity does not match the session")
     if receipt.output_count != state.completed_count:
         raise ValueError("import receipt output count does not match the worker state")
@@ -138,28 +135,25 @@ def _status_from_state(
     )
     output_path = directory / "output.json"
     output_sha256 = None
-    if state.completed_count > 0 and output_path.is_file() and not output_path.is_symlink():
-        output_sha256 = sha256_file(output_path)
     import_report = None
     if receipt is not None:
-        if output_sha256 is not None and receipt.output_count > 0:
-            if output_sha256 != receipt.output_sha256:
+        output_sha256 = receipt.output_sha256
+        if receipt.output_count > 0 and output_path.is_file() and not output_path.is_symlink():
+            current = sha256_file(output_path)
+            if current != receipt.output_sha256:
                 raise ValueError("retained output hash does not match the import receipt")
-        if output_sha256 is None:
-            output_sha256 = receipt.output_sha256
+            output_sha256 = current
         import_report = receipt.import_report
     reboot_due = False
     if projected == "paused":
         reboot_due = worker_gpu_reboot_due(
             directory,
             session_id=session.session_id,
-            revision=session.revision,
             settings=load_worker_gpu_reboot_settings(),
         )
     return TranslationControllerStatus(
         session_id=session.session_id,
         lifecycle=projected,  # type: ignore[arg-type]
-        revision=session.revision,
         course_limit=session.course_limit,
         desired_count=state.desired_count,
         completed_count=state.completed_count,
@@ -206,14 +200,12 @@ def _publish_prepared_session(
         WorkerControl(
             schema_version=1,
             session_id=session.session_id,
-            revision=session.revision,
             requested_action="run",
         ),
     )
     state = TranslationControllerWorkerState(
         schema_version=2,
         session_id=session.session_id,
-        revision=session.revision,
         lifecycle="prepared",
         desired_count=desired_count,
         completed_count=0,
@@ -271,58 +263,25 @@ def _require_cleanup_evidence(receipt: TranslationControllerImportReceipt, direc
         raise ValueError("zero import receipt requires no output file")
 
 
-def _export_worker_output_locked(
-    session: WorkerDatasetSession,
-    state: TranslationControllerWorkerState,
-    directory: Path,
-) -> TranslationControllerOutputManifest:
-    """Count, hash, and publish one terminal output manifest under the held instance lock.
-
-    This is the one output validator for finalize: a positive recorded count requires a regular
-    retained output whose strict entry count matches, a zero count requires no output path at all,
-    and an optional run report is strictly validated before it is hashed.
-    """
-    output_path = directory / "output.json"
-    output_sha256 = None
-    if state.completed_count > 0:
-        retained_count = _retained_output_count(directory)
-        if retained_count == 0:
-            raise ValueError("positive completed count requires a regular output file")
-        if retained_count != state.completed_count:
-            raise ValueError("output entry count does not match recorded completed count")
-        output_sha256 = sha256_file(output_path)
-    elif output_path.exists() or output_path.is_symlink():
-        raise ValueError("zero completed count requires no output file")
-
-    run_report_path = directory / "run-report.json"
-    run_report_sha256 = None
-    if run_report_path.is_file() and not run_report_path.is_symlink():
-        TranslationRunReport.model_validate_json(run_report_path.read_text(encoding="utf-8"))
-        run_report_sha256 = sha256_file(run_report_path)
-
-    manifest = TranslationControllerOutputManifest(
-        schema_version=1,
-        session_id=session.session_id,
-        revision=session.revision,
-        output_count=state.completed_count,
-        output_sha256=output_sha256,
-        run_report_sha256=run_report_sha256,
-    )
-    atomic_write_private_text(directory / "output-manifest.json", administrative_json(manifest))
-    return manifest
-
-
 def _finalize(
     session: WorkerDatasetSession,
     state: TranslationControllerWorkerState,
     directory: Path,
 ) -> None:
     """Import one canonical terminal session's retained output exactly once."""
-    manifest = _export_worker_output_locked(session, state, directory)
-    if manifest.output_count > 0:
-        translations = load_translation_file(directory / "output.json")
+    output_path = directory / "output.json"
+    if state.completed_count > 0:
+        if output_path.is_symlink() or not output_path.is_file():
+            raise ValueError("positive completed count requires a regular output file")
+        translations = load_translation_file(output_path)
+        if len(translations) != state.completed_count:
+            raise ValueError("output entry count does not match recorded completed count")
+        output_sha256 = sha256_file(output_path)
     else:
+        if output_path.exists() or output_path.is_symlink():
+            raise ValueError("zero completed count requires no output file")
         translations = ()
+        output_sha256 = None
     database_settings = load_raw_database_settings()
     session_settings = database_settings.model_copy(update={"postgres_db": session.database_name})
     engine = create_database_engine(session_settings)
@@ -334,9 +293,8 @@ def _finalize(
     receipt = TranslationControllerImportReceipt(
         schema_version=1,
         session_id=session.session_id,
-        revision=session.revision,
-        output_count=manifest.output_count,
-        output_sha256=manifest.output_sha256,
+        output_count=state.completed_count,
+        output_sha256=output_sha256,
         import_report=report,
     )
     atomic_write_private_text(directory / "import-receipt.json", administrative_json(receipt))
@@ -392,7 +350,6 @@ class TranslationWorkerStage:
         gpu_clock = WorkerGpuClock(
             directory,
             session_id=session.session_id,
-            revision=session.revision,
             settings=load_worker_gpu_reboot_settings(),
             monotonic=monotonic,
         )
@@ -412,7 +369,6 @@ class TranslationWorkerStage:
                 TranslationControllerWorkerState(
                     schema_version=2,
                     session_id=session.session_id,
-                    revision=session.revision,
                     lifecycle=lifecycle,  # type: ignore[arg-type]
                     desired_count=state.desired_count,
                     completed_count=int(tracker["completed_count"]),
@@ -498,7 +454,6 @@ class TranslationWorkerStage:
         gpu_clock.unloaded()
         tracker["runtime_pid"] = None
         tracker["completed_count"] = report.output_count
-        atomic_write_private_text(directory / "run-report.json", administrative_json(report))
         # A request that arrives between the last durable gate and the provider's own admission
         # ends the run with a partial report. Classify the terminal lifecycle from live control so
         # an interrupted stop or pause publishes stopped or paused. A latched due

@@ -125,7 +125,6 @@ export interface EmbeddingProgress {
 export interface WorkerControllerStatus {
   session_id: string | null;
   lifecycle: string;
-  revision: string | null;
   desired_count: number | null;
   completed_count: number | null;
   active_seconds: number;
@@ -452,7 +451,6 @@ export interface DatasetReceipt {
   dataset_id: string;
   database_name: string;
   kind: "initial" | "returned";
-  revision: string;
   verification: DatasetVerification;
 }
 

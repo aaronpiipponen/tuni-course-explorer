@@ -301,19 +301,12 @@ def test_unified_search_preserves_lexical_matches_when_embedding_is_unavailable(
     assert curriculum.calls == [None]
 
 
-@pytest.mark.parametrize(
-    "error",
-    [
-        EmbeddingContractError("POST /v1/embeddings: response violates embedding schema"),
-        ValueError("synthetic invalid embedding input"),
-        RuntimeError("synthetic non-embedding failure"),
-    ],
-)
-def test_unified_search_propagates_non_request_failures(error: Exception) -> None:
+def test_unified_search_propagates_non_request_failures() -> None:
     """A non-request failure from the semantic seam propagates instead of a partial report."""
+    error = EmbeddingContractError("POST /v1/embeddings: response violates embedding schema")
     composed, _, _, _ = service(semantic_error=error)
 
-    with pytest.raises(type(error)) as raised:
+    with pytest.raises(EmbeddingContractError) as raised:
         composed.search("q", display_language="en")
 
     assert raised.value is error

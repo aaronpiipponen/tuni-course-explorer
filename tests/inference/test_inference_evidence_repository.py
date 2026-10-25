@@ -48,7 +48,6 @@ def work_request(
     seed: PrerequisiteCatalogueSeed,
     *,
     target_group_id: str | None = None,
-    input_sha256: str = INPUT_SHA256,
     activity_as_of_academic_year_start: int | None = None,
     activity_window_years: int | None = None,
 ) -> InferenceTargetWorkRequest:
@@ -63,7 +62,6 @@ def work_request(
         activity_window_years=(
             seed.activity_window_years if activity_window_years is None else activity_window_years
         ),
-        input_sha256=input_sha256,
     )
 
 
@@ -118,8 +116,8 @@ def test_shared_execution_is_reused_by_coarse_identity(
     read_back = repository.read_run(created.run_id)
     assert read_back.spec.configuration == spec.configuration
     assert read_back.spec.model_identity == spec.model_identity
-    assert read_back.spec.prompt_content_sha256 == spec.prompt_content_sha256
-    assert read_back.spec.schema_sha256 == spec.schema_sha256
+    assert read_back.spec.prompt_version == spec.prompt_version
+    assert read_back.spec.schema_version == spec.schema_version
 
     # An identical coarse identity reuses the one retained execution row.
     second = repository.create_run(spec)
@@ -155,14 +153,14 @@ def test_claim_reuses_completed_matching_work_and_preserves_changed_identity_his
     second_run = repository.create_run(run_spec())
 
     request = work_request(seed)
-    created = repository.claim_work(first_run.run_id, request)
+    created = repository.claim_work(first_run.run_id, request, INPUT_SHA256)
     assert created.action is InferenceWorkClaimAction.CREATED
     assert created.work.status is InferenceWorkStatus.PENDING
     assert created.work.request == request
     work_key = created.work.work_key_sha256
-    assert work_key == work_key_sha256(request, first_run.run_identity_sha256)
+    assert work_key == work_key_sha256(request, first_run.run_identity_sha256, INPUT_SHA256)
 
-    existing = repository.claim_work(second_run.run_id, request)
+    existing = repository.claim_work(second_run.run_id, request, INPUT_SHA256)
     assert existing.action is InferenceWorkClaimAction.EXISTING
     assert existing.work.work_id == created.work.work_id
 
@@ -172,7 +170,7 @@ def test_claim_reuses_completed_matching_work_and_preserves_changed_identity_his
     assert completion is not None
     assert completion.payload.facts.candidate_count == 0
 
-    reused = repository.claim_work(second_run.run_id, request)
+    reused = repository.claim_work(second_run.run_id, request, INPUT_SHA256)
     assert reused.action is InferenceWorkClaimAction.REUSED
     assert reused.work.work_id == created.work.work_id
 
@@ -181,9 +179,7 @@ def test_claim_reuses_completed_matching_work_and_preserves_changed_identity_his
     assert repository.read_work(seed.active_target_group_id, "f" * 64) is None
     assert repository.read_work("missing-target", work_key) is None
 
-    changed_input = repository.claim_work(
-        second_run.run_id, work_request(seed, input_sha256="9" * 64)
-    )
+    changed_input = repository.claim_work(second_run.run_id, work_request(seed), "9" * 64)
     assert changed_input.action is InferenceWorkClaimAction.CREATED
     assert changed_input.work.work_id != created.work.work_id
 
@@ -191,6 +187,7 @@ def test_claim_reuses_completed_matching_work_and_preserves_changed_identity_his
     changed_activity = repository.claim_work(
         second_run.run_id,
         work_request(seed, activity_as_of_academic_year_start=2027, activity_window_years=2),
+        INPUT_SHA256,
     )
     assert changed_activity.action is InferenceWorkClaimAction.CREATED
     assert changed_activity.work.work_key_sha256 != work_key
@@ -211,7 +208,7 @@ def test_failed_work_is_visible_retryable_and_writes_no_raw_history(
     repository = InferenceEvidenceRepository(factory)
     seed = prerequisite_catalogue
     run = repository.create_run(run_spec())
-    created = repository.claim_work(run.run_id, work_request(seed))
+    created = repository.claim_work(run.run_id, work_request(seed), INPUT_SHA256)
     work_id = created.work.work_id
     assert repository.read_completion(work_id) is None
 
@@ -219,7 +216,7 @@ def test_failed_work_is_visible_retryable_and_writes_no_raw_history(
     assert failed.status is InferenceWorkStatus.FAILED
     assert repository.read_completion(work_id) is None
 
-    again = repository.claim_work(run.run_id, work_request(seed))
+    again = repository.claim_work(run.run_id, work_request(seed), INPUT_SHA256)
     assert again.action is InferenceWorkClaimAction.EXISTING
     # A completed-only completion writer refuses a non-pending row.
     with pytest.raises(ValueError):
@@ -260,24 +257,30 @@ def test_claim_rejects_unknown_inactive_and_stale_targets_without_final_store_wr
     run = repository.create_run(run_spec())
 
     with pytest.raises(ValueError):
-        repository.claim_work(run.run_id, work_request(seed, target_group_id="missing-target"))
-    with pytest.raises(ValueError):
         repository.claim_work(
-            run.run_id, work_request(seed, target_group_id=seed.inactive_target_group_id)
+            run.run_id, work_request(seed, target_group_id="missing-target"), INPUT_SHA256
         )
     with pytest.raises(ValueError):
         repository.claim_work(
-            run.run_id, work_request(seed, activity_as_of_academic_year_start=2025)
+            run.run_id,
+            work_request(seed, target_group_id=seed.inactive_target_group_id),
+            INPUT_SHA256,
         )
     with pytest.raises(ValueError):
-        repository.claim_work(UUID(int=1), work_request(seed))
+        repository.claim_work(
+            run.run_id,
+            work_request(seed, activity_as_of_academic_year_start=2025),
+            INPUT_SHA256,
+        )
+    with pytest.raises(ValueError):
+        repository.claim_work(UUID(int=1), work_request(seed), INPUT_SHA256)
 
-    created = repository.claim_work(run.run_id, work_request(seed))
+    created = repository.claim_work(run.run_id, work_request(seed), INPUT_SHA256)
     failed = repository.fail_work(run.run_id, created.work.work_id)
     assert failed.status is InferenceWorkStatus.FAILED
     set_prerequisite_course_activity(seed.active_target_group_id, True, 2027, 3)
     with pytest.raises(ValueError):
-        repository.claim_work(run.run_id, work_request(seed))
+        repository.claim_work(run.run_id, work_request(seed), INPUT_SHA256)
     retried = repository.retry_work(run.run_id, created.work.work_id)
     assert retried.status is InferenceWorkStatus.PENDING
 

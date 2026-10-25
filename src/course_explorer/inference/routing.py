@@ -1,9 +1,10 @@
 """One fit-only routing owner around the sole complete-target evidence writer.
 
-This module owns the operating path's real execution orchestration: it renders the one request,
-counts its prompt tokens through the first ordered local key's pinned template/tokenize endpoints,
-selects the first key that genuinely fits, and routes strictly by fit: the same open first-key
-provider generates when it fits, and only the selected larger no-MTP key is opened when only it fits.
+This module owns the operating path's real execution orchestration: it prepares the one rendered
+request and its one route-bound work identity, counts its prompt tokens through the first ordered
+local key's pinned template/tokenize endpoints, selects the first key that genuinely fits, and
+routes strictly by fit: the same open first-key provider generates when it fits, and only the
+selected larger no-MTP key is opened when only it fits.
 A caller may supply a :class:`GenerationRuntimeControl` to load/unload the selected local key on a
 worker. With no runtime the externally prepared bounded endpoints are used and no process action is
 taken.
@@ -29,7 +30,6 @@ from uuid import UUID
 
 from course_explorer.config import InferenceLocalVariantSettings, InferenceSettings
 from course_explorer.http_retry import RequestNotStarted
-from course_explorer.inference.context import InferenceTargetPacket
 from course_explorer.inference.evidence import (
     InferenceExecutionProfile,
     InferenceTargetWorkRecord,
@@ -47,7 +47,7 @@ from course_explorer.inference.provider import StructuredJsonProvider
 from course_explorer.inference.target_pass import (
     TargetGenerationProvider,
     TargetWorkIdentity,
-    render_target_request,
+    prepare_target_request,
     target_work_identity,
 )
 
@@ -131,13 +131,16 @@ def run_routed_operational_target(
     """Run or reuse one whole-target call through the one fit-only route and sole writer.
 
     Admission is checked before any runtime activation. The compact selection references are
-    materialized once into the transient packet. Prompt tokens are counted through the
-    already-loaded local key when one is loaded, so a loaded runtime is not reloaded to
-    count. The first ordered key is loaded only on genuine first use. The first key generates when
-    it fits, and only the selected larger no-MTP key is switched to when only it fits. A loaded local
-    runtime is loaded across an injected oversize call, so the next local target needs no reload.
-    A packet fitting neither key has no local route: the fixed :class:`TargetContextError` is raised,
-    or an explicitly supplied ``oversize_route`` opens its provider/profile and the same
+    materialized once into the transient packet, and its request is rendered and hashed once before
+    any tokenizer or runtime work. Prompt tokens are counted from that prepared request through the
+    already-loaded local key when one is loaded, so a loaded runtime is not reloaded to count. The
+    first ordered key is loaded only on genuine first use. The first key generates when it fits, and
+    only the selected larger no-MTP key is switched to when only it fits. A loaded local runtime
+    is loaded across an injected oversize call, so the next local target needs no reload. Every
+    selected route binds one work identity from that prepared request and passes it to the writer.
+
+    A packet fitting neither key has no local route: the fixed :class:`TargetContextError` is
+    raised, or an explicitly supplied ``oversize_route`` opens its provider/profile and the same
     :func:`run_operational_target` writer runs once with the identical packet, durable scheduling
     owner/cycle and live admission/request-scope and failure callbacks, reporting the exact planned
     work identity through ``on_identity`` immediately before generation. A tokenizer or generation
@@ -147,6 +150,7 @@ def run_routed_operational_target(
     if before_request is not None and not before_request():
         raise RequestNotStarted("inference target request not started")
     packet = materialize_selection_packet(value.references, catalogue)
+    prepared = prepare_target_request(value, pack, settings, packet=packet)
     first_variant = settings.inference_local_variants[0]
     counting_variant = None if runtime is None else runtime.active_variant()
     if counting_variant is None:
@@ -158,21 +162,22 @@ def run_routed_operational_target(
     )
     selected: InferenceLocalVariantSettings | None = None
     try:
-        prompt_tokens = tokenizer.count_prompt_tokens(
-            render_target_request(packet, pack, settings.inference_schema_version)
-        )
+        prompt_tokens = tokenizer.count_prompt_tokens(prepared.request)
         selected = select_fitting_variant(settings, prompt_tokens)
         if selected == counting_variant:
             execution = local_execution(settings, selected)
-            _notify_identity(value, pack, settings, execution, packet, on_identity)
+            identity = target_work_identity(
+                value, settings, execution, packet=packet, prepared=prepared
+            )
+            _notify_identity(identity, on_identity)
             return run_operational_target(
                 value,
-                pack,
                 settings,
                 repository,
                 tokenizer,
                 execution,
                 packet=packet,
+                identity=identity,
                 scheduling_repository=scheduling_repository,
                 cycle_id=cycle_id,
                 retry_failed=retry_failed,
@@ -189,15 +194,18 @@ def run_routed_operational_target(
         with oversize_route(
             settings, before_request=before_request, request_scope=request_scope
         ) as (provider, execution):
-            _notify_identity(value, pack, settings, execution, packet, on_identity)
+            identity = target_work_identity(
+                value, settings, execution, packet=packet, prepared=prepared
+            )
+            _notify_identity(identity, on_identity)
             return run_operational_target(
                 value,
-                pack,
                 settings,
                 repository,
                 provider,
                 execution,
                 packet=packet,
+                identity=identity,
                 scheduling_repository=scheduling_repository,
                 cycle_id=cycle_id,
                 retry_failed=retry_failed,
@@ -209,18 +217,19 @@ def run_routed_operational_target(
     if runtime is not None:
         runtime.activate(selected)
     execution = local_execution(settings, selected)
-    _notify_identity(value, pack, settings, execution, packet, on_identity)
+    identity = target_work_identity(value, settings, execution, packet=packet, prepared=prepared)
+    _notify_identity(identity, on_identity)
     with StructuredJsonProvider(
         settings, selected, before_request=before_request, request_scope=request_scope
     ) as provider:
         return run_operational_target(
             value,
-            pack,
             settings,
             repository,
             provider,
             execution,
             packet=packet,
+            identity=identity,
             scheduling_repository=scheduling_repository,
             cycle_id=cycle_id,
             retry_failed=retry_failed,
@@ -230,14 +239,10 @@ def run_routed_operational_target(
 
 
 def _notify_identity(
-    value: OperationalTargetInput,
-    pack: PromptPack,
-    settings: InferenceSettings,
-    execution: InferenceExecutionProfile,
-    packet: InferenceTargetPacket,
+    identity: TargetWorkIdentity,
     on_identity: Callable[[TargetWorkIdentity], None] | None,
 ) -> None:
-    """Call the planned-identity callback with the exact work identity, if one is supplied."""
+    """Call the optional planned-identity callback with the supplied work identity."""
     if on_identity is None:
         return
-    on_identity(target_work_identity(value, pack, settings, execution, packet=packet))
+    on_identity(identity)

@@ -4,8 +4,8 @@
 	auto_https disable_redirects
 }
 
-https://{$COURSE_EXPLORER_PUBLIC_DOMAIN} {
-	bind {$COURSE_EXPLORER_PUBLIC_BIND}
+https://{$COURSE_EXPLORER_WEB_DOMAIN} {
+	bind {$COURSE_EXPLORER_WEB_BIND}
 	tls {
 		issuer acme {
 			disable_http_challenge

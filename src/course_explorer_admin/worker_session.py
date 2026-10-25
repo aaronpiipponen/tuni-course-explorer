@@ -15,7 +15,6 @@ from __future__ import annotations
 import argparse
 import math
 import os
-import shlex
 import sys
 import time
 from collections.abc import Callable, Sequence
@@ -50,7 +49,6 @@ class WorkerState(Protocol):
 
     schema_version: int
     session_id: str
-    revision: str
     lifecycle: str
     runner_pid: int | None
     runtime_pid: int | None
@@ -167,25 +165,6 @@ def require_worker_quiescence(state: WorkerState, directory: Path) -> None:
         raise ValueError("worker session is not quiescent")
 
 
-def require_worker_checkout(runner: mechanics.ProcessRunner, worker_root: Path) -> None:
-    """Require the worker pwd/top-level full-tree checkout to be clean and prepared.
-
-    Code synchronization is a separate explicit setup/update operation, so this worker helper only
-    validates that the already-prepared checkout is a clean non-detached full tree and never fetches
-    or writes. The actual branch/HEAD is discarded: the worker runs the code the explicit
-    setup pulled from origin, independent of any recorded server/session label.
-    """
-    script = (
-        "set -euo pipefail; "
-        f'test "$(pwd -P)" = {shlex.quote(str(worker_root))}; '
-        f'test "$(git rev-parse --show-toplevel)" = {shlex.quote(str(worker_root))}'
-    )
-    runner.run(("bash", "-c", script), cwd=worker_root)
-    mechanics.read_prepared_checkout(
-        lambda argv: runner.run(tuple(argv), cwd=worker_root).stdout, full_tree=True
-    )
-
-
 def require_worker_database_schema(session: WorkerDatasetSession) -> None:
     """Require the received worker database to match this worker code's Alembic head.
 
@@ -212,7 +191,7 @@ def write_runner_record(directory: Path, record: mechanics.OwnedProcessRecord) -
 def read_control(directory: Path, session: WorkerDatasetSession) -> WorkerControl:
     """Read live control and require it to describe exactly the requested session."""
     current = load_private_model(directory / "control.json", WorkerControl)
-    if current.session_id != session.session_id or current.revision != session.revision:
+    if current.session_id != session.session_id:
         raise ValueError("control file identity does not match the session")
     return current
 
@@ -254,7 +233,6 @@ def publish_worker_control(
             WorkerControl(
                 schema_version=1,
                 session_id=session.session_id,
-                revision=session.revision,
                 requested_action=requested,
             ),
         )
@@ -315,8 +293,6 @@ def _load_worker_control_state[StateT: WorkerState](
     state = stage.load_state(directory / "state.json")
     if control.session_id != session.session_id or state.session_id != session.session_id:
         raise ValueError("control or state file identity does not match the requested session")
-    if control.revision != session.revision or state.revision != session.revision:
-        raise ValueError("control or state revision does not match the session")
     return control, state
 
 
@@ -327,7 +303,7 @@ def _quiescence_read[StateT: WorkerState](
 
     def read() -> StateT:
         current = stage.load_state(directory / "state.json")
-        if current.session_id != session.session_id or current.revision != session.revision:
+        if current.session_id != session.session_id:
             raise ValueError("worker state identity does not match the session")
         return current
 
@@ -360,8 +336,6 @@ def prepare_worker_session[StateT: WorkerState, PolicyT: BaseModel](
     recorded, policy, directory = stage.load_session(session.session_id)
     if recorded != session:
         raise ValueError("uploaded canonical session does not match the requested session")
-    settings = stage.connection()
-    require_worker_checkout(runner, settings.worker_project_root)
     stage.require_policy(session, policy)
 
     with mechanics.exclusive_action_lock(directory, controller_name=stage.controller_name):
@@ -453,10 +427,9 @@ def _run_worker_session[StateT: WorkerState, PolicyT: BaseModel](
         raise ValueError("worker session already has a live runner process")
 
     # Precondition before any runtime owner/clock construction, runtime stop/start, runner-record,
-    # selection, provider or job call: the clean prepared checkout and a received worker database
-    # that matches this worker code's Alembic head. A mismatch fails here and changes no state.
+    # selection, provider or job call: a received worker database that matches this worker code's
+    # Alembic head. A mismatch fails here and changes no state.
     worker_root = settings.worker_project_root
-    require_worker_checkout(runner, worker_root)
     require_worker_database_schema(session)
 
     # Retire any runtime this session owns from a stopped invocation through the shared
@@ -574,7 +547,7 @@ def _stop_unloaded_session[StateT: WorkerState](
         directory, controller_name=stage.controller_name, blocking=True
     ):
         state = stage.load_state(directory / "state.json")
-        if state.session_id != session.session_id or state.revision != session.revision:
+        if state.session_id != session.session_id:
             raise ValueError("worker state identity does not match the session")
         if state.lifecycle == "cleaned":
             raise ValueError("worker session is already cleaned")
@@ -626,7 +599,7 @@ def _rearm_retained_session[StateT: WorkerState](
         directory, controller_name=stage.controller_name, blocking=True
     ):
         state = stage.load_state(directory / "state.json")
-        if state.session_id != session.session_id or state.revision != session.revision:
+        if state.session_id != session.session_id:
             raise ValueError("worker state identity does not match the session")
         if state.lifecycle == "cleaned":
             raise ValueError("worker session is already cleaned")
@@ -645,7 +618,6 @@ def _rearm_retained_session[StateT: WorkerState](
             return stage.status(
                 session, state, directory=directory, clock=clock, lifecycle=state.lifecycle
             )
-        require_worker_checkout(runner, settings.worker_project_root)
         require_worker_database_schema(session)
         OwnedWorkerRuntime(
             runner, root=settings.worker_project_root, directory=directory, sleep=sleep
@@ -749,7 +721,7 @@ def read_worker_status[StateT: WorkerState](
     """Read strict worker state and derive one text-free operator status."""
     session, _policy, directory = stage.load_session(session_id)
     state = stage.load_state(directory / "state.json")
-    if state.session_id != session_id or state.revision != session.revision:
+    if state.session_id != session_id:
         raise ValueError("worker state identity does not match the session")
     return stage.status(
         session,
@@ -775,7 +747,7 @@ def finalize_worker_session[StateT: WorkerState](
     settings = stage.connection()
     session, _policy, directory = stage.load_session(session_id)
     state = stage.load_state(directory / "state.json")
-    if state.session_id != session_id or state.revision != session.revision:
+    if state.session_id != session_id:
         raise ValueError("worker state identity does not match the session")
     if state.lifecycle not in _TERMINAL_LIFECYCLES:
         raise ValueError("finalize requires a stopped, completed, or failed worker session")
@@ -785,7 +757,7 @@ def finalize_worker_session[StateT: WorkerState](
         directory, controller_name=stage.controller_name, blocking=True
     ):
         state = stage.load_state(directory / "state.json")
-        if state.session_id != session_id or state.revision != session.revision:
+        if state.session_id != session_id:
             raise ValueError("worker state identity does not match the session")
         if state.lifecycle not in _TERMINAL_LIFECYCLES:
             raise ValueError("finalize requires a stopped, completed, or failed worker session")
@@ -818,7 +790,7 @@ def cleanup_worker_session[StateT: WorkerState](
     settings = stage.connection()
     session, _policy, directory = stage.load_session(session_id)
     state = stage.load_state(directory / "state.json")
-    if state.session_id != session_id or state.revision != session.revision:
+    if state.session_id != session_id:
         raise ValueError("worker state identity does not match the session")
     if state.lifecycle in {"running", "paused", "starting", "prepared"}:
         raise ValueError("cleanup requires a terminal worker session")
@@ -828,7 +800,7 @@ def cleanup_worker_session[StateT: WorkerState](
         directory, controller_name=stage.controller_name, blocking=True
     ):
         state = stage.load_state(directory / "state.json")
-        if state.session_id != session_id or state.revision != session.revision:
+        if state.session_id != session_id:
             raise ValueError("worker state identity does not match the session")
         if state.lifecycle in {"running", "paused", "starting", "prepared"}:
             raise ValueError("cleanup requires a terminal worker session")

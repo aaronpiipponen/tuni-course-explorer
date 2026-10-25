@@ -8,7 +8,7 @@ indivisible result, so the target's direct option sets and its suppressed candid
 together, so a direct prerequisite excludes a broad or transitive foundation.
 
 Only the v2 schema is supported. Its emitted JSON Schema includes the model and enum descriptions
-and the explicit root description below, and that emitted text participates in request/run/work
+and the explicit root description below, and that emitted text participates in request/work
 identity.
 """
 
@@ -275,8 +275,8 @@ class InferenceEquivalenceProposalV2(_InferenceModel):
 
 
 # The explicit root JSON-Schema description emitted by the v2 model. The generated schema text,
-# including the model and enum descriptions and this root description, participates in
-# request/run/work identity.
+# including the model and enum descriptions and this root description, participates in request/work
+# identity.
 _V2_RESULT_WIRE_DESCRIPTION = (
     "One indivisible v2 complete target result: required and recommended option sets, equivalence\n"
     "groups, and routing metadata.\n\n"
@@ -293,7 +293,7 @@ class InferenceTargetResultV2(_InferenceModel):
     sets carry per-finding ``finding_flags``. The model enforces category, duplicate, and
     direct-versus-suppressed completeness in one indivisible result. The class docstring is Python
     documentation, while the explicit root JSON-Schema description above is emitted schema text that
-    participates in request/run/work identity.
+    participates in request/work identity.
     """
 
     model_config = ConfigDict(
@@ -452,7 +452,8 @@ def _replace_confidence_alternatives(node: object) -> object:
 def target_result_json_schema(schema_version: str) -> dict[str, object]:
     """Return a closed JSON Schema with numeric-only confidence.
 
-    This applies the v2 numeric-confidence rewriting. The emitted bytes feed ``schema_sha256`` and request/run/work identity.
+    This applies the v2 numeric-confidence rewriting. The emitted bytes participate in request/work
+    identity.
     """
     schema = target_result_model(schema_version).model_json_schema(mode="validation")
     rewritten = _replace_confidence_alternatives(schema)

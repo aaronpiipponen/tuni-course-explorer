@@ -1,7 +1,7 @@
 """Worker-side selected dataset session core, neutral worker control DTO, and its confined CLI.
 
-One immutable :class:`WorkerDatasetSession` names the selected source dataset, the prepared code
-revision, the derived worker database, and the full input snapshot. The neutral :class:`WorkerControl`
+One immutable :class:`WorkerDatasetSession` names the selected source dataset, the derived worker
+database, and the full input snapshot. The neutral :class:`WorkerControl`
 is the one cooperative control-intent record shared by the stage controllers. The server creates the
 session and dumps the selected dataset. The worker prepares the derived database from that dump,
 exports a verified full return snapshot, and the server returns it through the sole retention writer
@@ -49,7 +49,6 @@ from course_explorer.datasets import (
     DatasetDatabaseName,
     DatasetId,
     DatasetReceipt,
-    DatasetRevision,
     DatasetVerification,
     read_dataset_verification,
     resolve_selected_dataset,
@@ -62,6 +61,7 @@ from course_explorer_admin.datasets import (
     require_droppable_database,
     require_returned_dataset_receipt,
     retain_returned_dataset,
+    retained_dump_path,
 )
 from course_explorer_admin.snapshots import dump_database, restore_database
 
@@ -71,7 +71,6 @@ if TYPE_CHECKING:
 _STAGE = Literal["translation", "inference"]
 
 _SESSION_ID_PATTERN = re.compile(r"^[0-9a-f]{32}$")
-_REVISION_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 
 
 class _ControllerModel(BaseModel):
@@ -86,18 +85,12 @@ def _require_session_id(value: str) -> str:
     return value
 
 
-def _require_revision(value: str) -> str:
-    if _REVISION_PATTERN.fullmatch(value) is None:
-        raise ValueError("revision must be 40 lowercase hexadecimal characters")
-    return value
-
-
 class WorkerControllerStatus(_ControllerModel):
     """Text-free stage-neutral operator status with derived remaining count, rate, and ETA.
 
     ``idle`` marks an absent session, which differs from complete coverage: a stopped partial
-    session carries partial counts with its terminal lifecycle. Session identity is present together
-    for every non-idle lifecycle and absent only for idle. The top-level desired/completed counts
+    session carries partial counts with its terminal lifecycle. Session identity is present for
+    every non-idle lifecycle and absent only for idle. The top-level desired/completed counts
     are the owning stage's eligible/retained counts, never pools, skips, or attempts.
     """
 
@@ -115,7 +108,6 @@ class WorkerControllerStatus(_ControllerModel):
         "cleaned",
         "imported",
     ]
-    revision: str | None = None
     course_limit: int | None = Field(default=None, gt=0)
     desired_count: int | None = Field(default=None, ge=0)
     completed_count: int | None = Field(default=None, ge=0)
@@ -129,13 +121,6 @@ class WorkerControllerStatus(_ControllerModel):
         if value is None:
             return value
         return _require_session_id(value)
-
-    @field_validator("revision")
-    @classmethod
-    def validate_revision(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        return _require_revision(value)
 
     @field_validator("error_type")
     @classmethod
@@ -175,10 +160,8 @@ class WorkerControllerStatus(_ControllerModel):
         ):
             raise ValueError("completed_count must not exceed desired_count")
         if self.session_id is None:
-            if self.revision is not None or self.lifecycle != "idle":
+            if self.lifecycle != "idle":
                 raise ValueError("only idle status may omit session identity")
-        elif self.revision is None:
-            raise ValueError("session and revision must be present together")
         return self
 
     @computed_field
@@ -232,21 +215,11 @@ class WorkerDatasetSession(BaseModel):
 
     schema_version: Literal[1] = 1
     session_id: DatasetId
-    revision: DatasetRevision
-    branch: str
     database_name: DatasetDatabaseName
     stage: Literal["translation", "inference"]
     source_dataset_id: DatasetId
     course_limit: int | None = Field(default=None, gt=0)
     input_snapshot: DatabaseSnapshot
-
-    @field_validator("branch")
-    @classmethod
-    def validate_branch(cls, value: str) -> str:
-        """Require a nonblank prepared branch name without rewriting it."""
-        if not value.strip():
-            raise ValueError("branch must not be blank")
-        return value
 
 
 class WorkerControl(BaseModel):
@@ -260,7 +233,6 @@ class WorkerControl(BaseModel):
 
     schema_version: Literal[1]
     session_id: DatasetId
-    revision: DatasetRevision
     requested_action: Literal["run", "pause", "stop"]
 
 
@@ -314,7 +286,7 @@ def create_worker_dataset_session(
     course_limit: int | None = None,
     runner: mechanics.ProcessRunner,
 ) -> WorkerDatasetSession:
-    """Snapshot the selected dataset and current checkout revision into one fresh session."""
+    """Snapshot the selected dataset into one fresh worker session."""
     settings = load_administrative_dataset_settings()
     root = admin_state_root(settings)
     with mechanics.exclusive_action_lock(root, controller_name="datasets"):
@@ -322,14 +294,6 @@ def create_worker_dataset_session(
         source = resolve_selected_dataset(root)
         if database.postgres_db != source.database_name:
             raise ValueError("resolved database does not match the selected dataset")
-        branch = (
-            runner.run(("git", "branch", "--show-current"), cwd=repository_root())
-            .stdout.decode()
-            .strip()
-        )
-        revision = (
-            runner.run(("git", "rev-parse", "HEAD"), cwd=repository_root()).stdout.decode().strip()
-        )
         directory = session_directory(root / "sessions", session_id)
         directory.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
         directory.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -349,8 +313,6 @@ def create_worker_dataset_session(
         session = WorkerDatasetSession(
             schema_version=1,
             session_id=session_id,
-            revision=revision,
-            branch=branch,
             database_name=settings.database_name(session_id, worker=True),
             stage=stage,
             source_dataset_id=source.dataset_id,
@@ -358,7 +320,6 @@ def create_worker_dataset_session(
             input_snapshot=DatabaseSnapshot(
                 schema_version=1,
                 session_id=session_id,
-                revision=revision,
                 database_name=database.postgres_db,
                 dump_sha256=dump_sha256,
                 verification=read_dataset_verification(database),
@@ -381,8 +342,6 @@ def prepare_worker_database(
         _require_session_identity(session, settings)
         directory = _session_directory(settings, session.session_id)
         dump = directory / "input.dump"
-        if sha256_file(dump) != session.input_snapshot.dump_sha256:
-            raise ValueError("worker input dump checksum does not match the session")
         verification = restore_database(
             runner=runner,
             root=repository_root(),
@@ -421,7 +380,6 @@ def export_worker_database(
             snapshot = load_private_model(return_json, DatabaseSnapshot)
             if (
                 snapshot.session_id != session.session_id
-                or snapshot.revision != session.revision
                 or snapshot.database_name != session.database_name
             ):
                 raise ValueError("existing return snapshot identity does not match the session")
@@ -446,7 +404,6 @@ def export_worker_database(
         snapshot = DatabaseSnapshot(
             schema_version=1,
             session_id=session.session_id,
-            revision=session.revision,
             database_name=session.database_name,
             dump_sha256=dump_sha256,
             verification=verification,
@@ -492,14 +449,10 @@ def return_worker_database(
         timeout=settings.database_operation_timeout_seconds,
     )
     snapshot = DatabaseSnapshot.model_validate_json(payload.decode("utf-8"))
-    if (
-        snapshot.session_id != session.session_id
-        or snapshot.revision != session.revision
-        or snapshot.database_name != session.database_name
-    ):
+    if snapshot.session_id != session.session_id or snapshot.database_name != session.database_name:
         raise ValueError("exported snapshot identity does not match the session")
 
-    retained = session_directory(root / "datasets", session.session_id) / "database.dump"
+    retained = retained_dump_path(root, session.session_id)
     retained.parent.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     retained.parent.mkdir(mode=0o700, exist_ok=True)
     if retained.is_symlink() or (retained.exists() and not retained.is_file()):
@@ -541,7 +494,6 @@ def cleanup_returned_worker_database(
     snapshot = load_private_model(directory / "return.json", DatabaseSnapshot)
     if (
         snapshot.session_id != session.session_id
-        or snapshot.revision != session.revision
         or snapshot.database_name != session.database_name
         or snapshot.dump_sha256 != receipt.dump_sha256
         or snapshot.verification != receipt.verification

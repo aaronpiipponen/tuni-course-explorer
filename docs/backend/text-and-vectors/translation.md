@@ -58,7 +58,7 @@ The retained output is the progress of the session. A resumed session translates
 
 Pause and stop act between two cells. The stage then unloads the model runtime, publishes a checkpoint with the completed count, and leaves the retained output in place. A periodic reboot of the worker ends the run at the same kind of checkpoint, and the session continues under the same identity. [Worker sessions](/docs/operations/worker-sessions.md) describes the session mechanics and [Stage lifecycle](/docs/operations/stage-lifecycle.md) describes the actions an operator runs.
 
-A failed translation writes one failure record beside the output. The record holds the identity hash of the queued work, the course version, the cell, the model identity, the time, and the error class. It never holds the source text or the generated text, and the next run translates that cell again and removes the record when it succeeds.
+A failed translation writes one failure record beside the output. The record holds the course version, the field, the target language, the error class, and one short safe reason. It holds no source text and no generated text, and the next run translates that cell again and removes the record when it succeeds.
 
 ## Configuration keys
 

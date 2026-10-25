@@ -90,9 +90,7 @@ def _run_spec_from_row(row: InferencePipelineRun) -> InferencePipelineRunSpec:
         model_identity=row.model_identity,
         runtime_identity=row.runtime_identity,
         prompt_version=row.prompt_version,
-        prompt_content_sha256=row.prompt_content_sha256,
         schema_version=row.schema_version,
-        schema_sha256=row.schema_sha256,
         pipeline_version=row.pipeline_version,
         configuration=row.configuration,
     )
@@ -128,7 +126,6 @@ def _work_record(row: InferenceTargetWork, *, target_group_id: str) -> Inference
             target_group_id=target_group_id,
             activity_as_of_academic_year_start=row.activity_as_of_academic_year_start,
             activity_window_years=row.activity_window_years,
-            input_sha256=row.input_sha256,
         ),
         work_key_sha256=row.work_key_sha256,
         status=row.status,
@@ -156,9 +153,7 @@ class InferenceEvidenceRepository:
                     model_identity=spec.model_identity,
                     runtime_identity=spec.runtime_identity,
                     prompt_version=spec.prompt_version,
-                    prompt_content_sha256=spec.prompt_content_sha256,
                     schema_version=spec.schema_version,
-                    schema_sha256=spec.schema_sha256,
                     pipeline_version=spec.pipeline_version,
                     run_identity_sha256=identity,
                     configuration=spec.configuration,
@@ -176,12 +171,18 @@ class InferenceEvidenceRepository:
                 raise ValueError(f"unknown inference pipeline run {run_id}")
             return _run_record(row)
 
-    def claim_work(self, run_id: UUID, request: InferenceTargetWorkRequest) -> InferenceWorkClaim:
-        """Claim or reuse the one global work row matching this target and execution identity."""
+    def claim_work(
+        self, run_id: UUID, request: InferenceTargetWorkRequest, input_sha256: str
+    ) -> InferenceWorkClaim:
+        """Claim or reuse the one global work row matching this target and execution identity.
+
+        ``input_sha256`` is the transient digest of this target's exact selection and rendered
+        request. It is hashed into the work key.
+        """
         with session_scope(self._factory) as session:
             run = self._locked_execution(session, run_id)
             course_id = self._current_target_course_id(session, request)
-            work_key = work_key_sha256(request, run.run_identity_sha256)
+            work_key = work_key_sha256(request, run.run_identity_sha256, input_sha256)
             row = session.scalar(
                 select(InferenceTargetWork)
                 .where(InferenceTargetWork.target_course_id == course_id)
@@ -194,7 +195,6 @@ class InferenceEvidenceRepository:
                     target_course_id=course_id,
                     activity_as_of_academic_year_start=(request.activity_as_of_academic_year_start),
                     activity_window_years=request.activity_window_years,
-                    input_sha256=request.input_sha256,
                     work_key_sha256=work_key,
                     status=InferenceWorkStatus.PENDING,
                 )

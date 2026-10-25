@@ -117,6 +117,11 @@ def _dataset_directory(root: Path, dataset_id: str) -> Path:
     return session_directory(root / "datasets", dataset_id)
 
 
+def retained_dump_path(root: Path, dataset_id: str) -> Path:
+    """Return the one confined retained dump path for a dataset identity."""
+    return _dataset_directory(root, dataset_id) / "database.dump"
+
+
 def _write_receipt(root: Path, receipt: DatasetReceipt) -> None:
     directory = _dataset_directory(root, receipt.dataset_id)
     directory.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -160,6 +165,8 @@ def _retain_dump(source: Path, destination: Path) -> None:
     destination.parent.mkdir(mode=0o700, exist_ok=True)
     if destination.is_symlink() or (destination.exists() and not destination.is_file()):
         raise ValueError("retained dataset dump must be a regular non-symlink file")
+    if source == destination:
+        return
     if destination.exists():
         if sha256_file(destination) != sha256_file(source):
             raise ValueError("retained dataset dump does not match the returned dump")
@@ -258,8 +265,7 @@ def initialize_selected_dataset(*, runner: mechanics.ProcessRunner) -> DatasetRe
     repository head and enrolled with the zero dataset id. An enrollment interrupted after the
     initial receipt but before the pointer is republished from that retained receipt alone: a
     matching zero-id initial receipt for the same database name proves the verification, so the
-    pointer is written without re-migrating, re-verifying, or reading the checkout revision. A
-    checkout revision change alone is not a mismatch.
+    pointer is written without re-migrating or re-verifying.
     """
     settings = load_administrative_dataset_settings()
     root = admin_state_root(settings)
@@ -282,7 +288,6 @@ def initialize_selected_dataset(*, runner: mechanics.ProcessRunner) -> DatasetRe
                 raise ValueError("retained initial dataset receipt does not match this setup")
             _write_pointer(root, retained.dataset_id)
             return retained
-        revision = mechanics.current_revision(runner, repository_root())
         timeout = settings.database_operation_timeout_seconds
         mechanics.ensure_prepared_services(
             lambda argv: runner.run(tuple(argv), cwd=repository_root(), timeout=timeout).stdout,
@@ -300,7 +305,6 @@ def initialize_selected_dataset(*, runner: mechanics.ProcessRunner) -> DatasetRe
             database_name=raw.postgres_db,
             predecessor_id=None,
             kind="initial",
-            revision=revision,
             dump_sha256=None,
             verification=read_dataset_verification(raw),
         )
@@ -332,7 +336,6 @@ def require_returned_dataset_receipt(
         or receipt.dataset_id != session.session_id
         or receipt.database_name != server_database
         or receipt.predecessor_id != session.source_dataset_id
-        or receipt.revision != session.revision
     ):
         raise ValueError("existing returned dataset receipt does not match the session")
 
@@ -357,10 +360,7 @@ def retain_returned_dataset(
         source, existing_receipt = _resolve_source_and_existing(root, session)
         if session.input_snapshot.database_name != source.database_name:
             raise ValueError("input snapshot database does not match the source dataset")
-        if (
-            session.input_snapshot.session_id != session.session_id
-            or session.input_snapshot.revision != session.revision
-        ):
+        if session.input_snapshot.session_id != session.session_id:
             raise ValueError("input snapshot session identity does not match the session")
         if session.database_name != settings.database_name(session.session_id, worker=True):
             raise ValueError("session worker database name is not the configured derived name")
@@ -376,12 +376,12 @@ def retain_returned_dataset(
 
         if snapshot is None or dump is None:
             raise ValueError("a new dataset return requires the snapshot and its dump")
-        if snapshot.session_id != session.session_id or snapshot.revision != session.revision:
+        if snapshot.session_id != session.session_id:
             raise ValueError("returned snapshot session identity does not match the session")
         if snapshot.database_name != session.database_name:
             raise ValueError("returned snapshot database is not the derived worker database")
 
-        retained = _dataset_directory(root, session.session_id) / "database.dump"
+        retained = retained_dump_path(root, session.session_id)
         _retain_dump(dump, retained)
         restore_database(
             runner=runner,
@@ -400,7 +400,6 @@ def retain_returned_dataset(
             database_name=server_database,
             predecessor_id=source.dataset_id,
             kind="returned",
-            revision=session.revision,
             dump_sha256=snapshot.dump_sha256,
             verification=snapshot.verification,
         )
@@ -471,7 +470,7 @@ def _drop_dataset_resources_locked(
     the receipt, the pointer, the dataset directory and the session files stay.
     """
     require_droppable_database(receipt.database_name)
-    dump_path = _dataset_directory(root, receipt.dataset_id) / "database.dump"
+    dump_path = retained_dump_path(root, receipt.dataset_id)
     if dump_path.is_symlink() or (dump_path.exists() and not dump_path.is_file()):
         raise ValueError("retained dataset dump must be a regular non-symlink file")
     raw = load_raw_database_settings()
@@ -506,7 +505,7 @@ def _rotate_locked(
 
 def _retained_dump_path(root: Path, receipt: DatasetReceipt) -> str | None:
     """Return the repository-relative retained dump path of one receipt, or ``None`` when absent."""
-    dump_path = _dataset_directory(root, receipt.dataset_id) / "database.dump"
+    dump_path = retained_dump_path(root, receipt.dataset_id)
     if dump_path.is_symlink() or (dump_path.exists() and not dump_path.is_file()):
         raise ValueError("retained dataset dump must be a regular non-symlink file")
     if not dump_path.exists():

@@ -10,6 +10,7 @@ from course_explorer.curriculum_repository import CurriculumRepository
 from course_explorer.enums import InferenceWorkStatus
 from course_explorer.http_retry import RequestNotStarted
 from course_explorer.inference import routing
+from course_explorer.inference import target_pass as target_pass_module
 from course_explorer.inference.evidence import run_identity_sha256, work_key_sha256
 from course_explorer.inference.evidence_repository import InferenceEvidenceRepository
 from course_explorer.inference.failures import TargetPreparationFailure
@@ -18,7 +19,7 @@ from course_explorer.inference.operational import (
     prepare_operational_catalogue,
 )
 from course_explorer.inference.prompts import load_prompt_pack
-from course_explorer.inference.target_pass import target_work_identity
+from course_explorer.inference.target_pass import prepare_target_request, target_work_identity
 from course_explorer.teaching_text.repository import DerivedTranslationRepository
 from course_explorer.teaching_text.service import TeachingTextService
 from tests.inference._fixture_support import embedding_settings
@@ -60,8 +61,11 @@ def _catalogue(factory: object):
 
 
 def _work_key(value: Any, packet: Any, pack: Any, settings: Any, execution: Any) -> str:
-    identity = target_work_identity(value, pack, settings, execution, packet=packet)
-    return work_key_sha256(identity.work_request, run_identity_sha256(identity.spec))
+    prepared = prepare_target_request(value, pack, settings, packet=packet)
+    identity = target_work_identity(value, settings, execution, packet=packet, prepared=prepared)
+    return work_key_sha256(
+        identity.work_request, run_identity_sha256(identity.spec), identity.input_sha256
+    )
 
 
 @pytest.mark.integration
@@ -94,9 +98,23 @@ def test_runtime_switch_is_fit_only_and_callbacks_reach_one_writer(
     runtime = _RecordingRuntime()
     identities: list[Any] = []
 
+    render_count = 0
+    original_render = target_pass_module.render_target_request
+
+    def render_once(packet: Any, pack_value: Any, schema_version: str) -> Any:
+        """Render one request per routed invocation and reject a second render."""
+        nonlocal render_count
+        render_count += 1
+        if render_count > 1:
+            raise AssertionError("a routed invocation rendered its request twice")
+        return original_render(packet, pack_value, schema_version)
+
+    monkeypatch.setattr(target_pass_module, "render_target_request", render_once)
+
     pool = build_pool(factory, TARGET_GROUP_ID, CANDIDATES)
     value = build_target_input(pool)
     scheduling, cycle = prepare_generation_cycle(factory, value)
+    render_count = 0
     work = routing.run_routed_operational_target(
         value,
         pack,
@@ -111,6 +129,7 @@ def test_runtime_switch_is_fit_only_and_callbacks_reach_one_writer(
     )
     assert work.status is InferenceWorkStatus.COMPLETED
     assert evidence.read_completion(work.work_id) is not None
+    assert render_count == 1
     run = evidence.read_run(work.created_by_run_id)
     assert len(identities) == 1
     assert run.spec.configuration == {"route": route}
@@ -126,9 +145,12 @@ def test_runtime_switch_is_fit_only_and_callbacks_reach_one_writer(
     failing_scheduling, failing_cycle = prepare_generation_cycle(factory, failing)
     failing_packet = materialize_selection_packet(failing.references, catalogue)
     execution = routing.local_execution(settings, settings.inference_local_variants[0])
+    render_count = 0
+    failing_key = _work_key(failing, failing_packet, pack, settings, execution)
     boundary.failure_path = "apply-template"
     boundary.failure_status = 500
     identities_before = len(identities)
+    render_count = 0
     with pytest.raises(TargetPreparationFailure) as preparation_error:
         routing.run_routed_operational_target(
             failing,
@@ -145,15 +167,12 @@ def test_runtime_switch_is_fit_only_and_callbacks_reach_one_writer(
     assert preparation_error.value.attempt_count == settings.inference_max_attempts
     assert preparation_error.value.reason == "request_failed"
     assert len(identities) == identities_before
-    assert (
-        evidence.read_work(
-            TARGET_GROUP_ID, _work_key(failing, failing_packet, pack, settings, execution)
-        )
-        is None
-    )
+    assert render_count == 1
+    assert evidence.read_work(TARGET_GROUP_ID, failing_key) is None
 
     # The same retained input recovers through the fit route once the transient failure ends.
     boundary.failure_path = None
+    render_count = 0
     recovered = routing.run_routed_operational_target(
         failing,
         pack,
@@ -168,9 +187,11 @@ def test_runtime_switch_is_fit_only_and_callbacks_reach_one_writer(
     )
     assert recovered.status is InferenceWorkStatus.COMPLETED
     assert len(identities) == identities_before + 1
+    assert render_count == 1
 
     # A denied admission raises before any runtime activation, provider, or writer call.
     controls_before = list(runtime.controls)
+    render_count = 0
     with pytest.raises(RequestNotStarted):
         routing.run_routed_operational_target(
             value,
@@ -184,3 +205,4 @@ def test_runtime_switch_is_fit_only_and_callbacks_reach_one_writer(
             before_request=lambda: False,
         )
     assert runtime.controls == controls_before
+    assert render_count == 0

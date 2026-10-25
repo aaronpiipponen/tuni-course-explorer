@@ -209,7 +209,7 @@ The values are the unit names installed on this host. `ADMIN_SITE_WEB_SERVICE_SC
 |---|---|---|
 | `WEB_HOST` | `127.0.0.1` | The bind address. The settings allow this value alone, so the server answers the host itself. |
 | `WEB_PORT` | `8037` | The port the server binds, and the port the reverse proxy targets. |
-| `WEB_WORKERS` | `2` | The number of worker processes behind the front router. The router serves the configured loopback port, and each worker listens on an ephemeral loopback port. |
+| `WEB_WORKERS` | `4` | The number of worker processes behind the front router. The router serves the configured loopback port, and each worker listens on an ephemeral loopback port. |
 | `WEB_RESPAWN_EXIT_LIMIT` | `3` | The exits of the same role, the router or one worker slot, inside the respawn window that stop the unit instead of starting another replacement. |
 | `WEB_RESPAWN_WINDOW_SECONDS` | `60` | The length of the sliding window in seconds over which the supervisor counts those exits. |
 | `WEB_EMBEDDINGS_ENABLED` | `true` | Whether the site serves semantic matching, comparison and the recommended courses, and mounts their controls. |
@@ -315,8 +315,8 @@ mkdir -p ~/.local/share/caddy-duckdns
 install -d -m 0700 ~/.local/share/caddy-duckdns/data ~/.local/share/caddy-duckdns/config
 sudo -n docker run -d --name caddy-duckdns --network host --restart unless-stopped \
   --env-file /path/to/checkout/deploy/caddy.env \
-  --env COURSE_EXPLORER_PUBLIC_DOMAIN=example.org \
-  --env COURSE_EXPLORER_PUBLIC_BIND=PUBLIC_INTERFACE_ADDRESS \
+  --env COURSE_EXPLORER_WEB_DOMAIN=example.org \
+  --env COURSE_EXPLORER_WEB_BIND=WEB_INTERFACE_ADDRESS \
   --env COURSE_EXPLORER_ADMIN_DOMAIN=admin.example.org \
   --env COURSE_EXPLORER_ADMIN_BIND=ADMIN_INTERFACE_ADDRESS \
   -v /path/to/checkout/deploy/Caddyfile:/etc/caddy/Caddyfile:ro \
@@ -335,9 +335,9 @@ The `/data` directory holds the issued certificates and the ACME account state. 
 Probe each site through the interface it binds, with certificate verification enabled:
 
 ```bash
-public_address=PUBLIC_INTERFACE_ADDRESS
+web_address=WEB_INTERFACE_ADDRESS
 admin_address=ADMIN_INTERFACE_ADDRESS
-curl -fsS --resolve "example.org:443:$public_address" https://example.org/ -o /dev/null
+curl -fsS --resolve "example.org:443:$web_address" https://example.org/ -o /dev/null
 curl -fsS --resolve "admin.example.org:443:$admin_address" https://admin.example.org/ -o /dev/null
 ```
 
@@ -410,4 +410,4 @@ Run every command from the checkout root.
 
    A web unit that the system manager owns restarts with `sudo systemctl restart tuni-course-explorer-web.service` in place of the first command, and the administration unit always restarts through the user manager. The site service starts again and reads the updated code, the rebuilt browser app, the subsystem files, and the two hub files. A restart is also what makes an in-place change to the served data visible to the browser in either database mode. The administration service starts again and reads its own code and settings. [Derived files and the web restart](/docs/operations/README.md#derived-files-served-data-and-the-web-restart) describes why a serving copy reads the hubs at start and why its serving generation changes on a restart.
 
-Copy the templates into their working paths again after a change to a tracked file under `examples/`. `docker-compose.yml` at the checkout root and the files under `config/` are working copies, and Git ignores them. [Data preparation](/docs/getting-started/data-preparation.md) describes how the data behind a served copy is loaded and refreshed.
+Copy the templates into their working paths again after a change to a tracked file under `examples/`. `docker-compose.yml` at the checkout root and the files under `config/` are working copies, and Git ignores them. [Getting started](/docs/getting-started/README.md) describes the two ways to load and refresh the data behind a served copy.

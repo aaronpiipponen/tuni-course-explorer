@@ -120,7 +120,7 @@ All three kinds wait in one pending import until that confirmation, which reads 
 - `addCoursesToFreeChoice(store, courseIds)` appends the identities that are not already selected, de-duplicated through a `Set`, and leaves the completion set alone. It returns the number the latest stored envelope gained, read inside the update callback, so a repeated request returns zero and a failed write throws without a count.
 - `useNotice` in `web/src/shared/useNotice.ts` reads the app-level notice API from `NoticeContext`. `NoticeProvider` in `web/src/shared/NoticeProvider.tsx` renders one `role="status"` notice at the bottom of the window for 2200 milliseconds, resolves its text in the live language and runs one optional action inside `useAction`, so a navigation failure reaches `ErrorNotice`. `App` mounts it around the app shell with the current profile as its key, above the carousel panes. Replacing a notice restarts its lifetime, a profile switch or a move to the docs unmounts it, and no notice is stored.
 - `removeFromSelection(store, courseId)` in `web/src/features/structure/actions.ts` drops the identity from both sets.
-- `applyStructure` in the same file is the only writer of `selectedCourseIds`, `completedCourseIds`, and the structure slice together, and it is described in [Structure model](/docs/frontend/structure-model.md).
+- `applyStructure` in the same file is the only writer of `selectedCourseIds`, `completedCourseIds`, and the structure slice together, and it is described in [Structure edits](/docs/frontend/structure-edits.md#selection-migration-and-the-shared-sets).
 
 ## Per-feature slices and wording
 
@@ -198,7 +198,6 @@ A module operation holds its abort controller, its pending identity and its visi
 | `web/src/features/compare/actions.test.ts` | Slot uniqueness, the write-free duplicate and full-slot refusals, and a slot removal that leaves the study slices at their references and the saved study values as they are |
 | `web/src/features/compare/ComparePane.test.ts` | One slot's replacement summary read while the other slot's card stays the same node |
 | `web/src/features/compare/results.test.ts` | An unavailable meter rendered apart from a zero value, and the meter positions held during a slot change until its report settles |
-| `web/src/features/discover/actions.test.ts` | The Discover options persisted without a change to the shared course sets or the exclusion |
 | `web/src/features/discover/DiscoverControls.test.ts` | The saved list left as it is when its effective tab is selected, and recommended result rows that stay the same node after another tab adds a comparison course |
 | `web/src/features/structure/model.test.ts` | Choice resolution, single placement, and the projection of the rule kinds |
 | `web/src/features/structure/edits.test.ts` | The scoped reset and the resolved-destination placement of an added module |

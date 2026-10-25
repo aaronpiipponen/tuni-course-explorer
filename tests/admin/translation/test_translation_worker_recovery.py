@@ -26,7 +26,6 @@ from course_explorer_admin.translation.controller import (
     TranslationControllerStatus,
 )
 from tests.admin.translation._worker_support import (
-    REVISION,
     SESSION_ID,
     STARTED_AT,
     FakeOwnedRuntime,
@@ -131,6 +130,19 @@ def test_status_projects_dead_runner_as_interrupted_without_writing(
     assert status.completed_count == 1
     assert status.active_seconds == 0.0
     assert (directory / "state.json").read_bytes() == before
+
+    # A pre-import status poll reports no output digest and hashes nothing.
+    (directory / "output.json").write_text("[]", encoding="utf-8")
+    with monkeypatch.context() as scope:
+        scope.setattr(
+            worker_module,
+            "sha256_file",
+            lambda path: pytest.fail("a pre-import status poll hashed its output"),
+        )
+        polling = worker_session.read_worker_status(
+            worker_module.TranslationWorkerStage(), SESSION_ID
+        )
+    assert polling.output_sha256 is None
 
     # A live runner record projects its real lifecycle.
     script_owned_process_is_alive(monkeypatch, {999999})
@@ -301,7 +313,6 @@ def test_worker_actions_revalidate_locked_ownership_and_lifecycle(
             TranslationControllerImportReceipt(
                 schema_version=1,
                 session_id=SESSION_ID,
-                revision=REVISION,
                 output_count=1,
                 output_sha256=digest,
                 import_report=TranslationImportReport(

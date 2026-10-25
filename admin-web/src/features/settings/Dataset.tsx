@@ -5,9 +5,10 @@
  * shared dashboard report for the serving pointer, the selection state and the schema facts.
  * Enrollment and migration are two separate confirmed actions, and each renders the receipt or the
  * verification its own command returned and refreshes both the listing and the shared report. The
- * recorded receipt revision and the live database head stay distinct observations, and a refused
- * action leaves the data with its own failure. The listing reads only while the site reports its
- * selection enabled, so a disabled site states that reason instead of repeating a refused read.
+ * receipt's recorded Alembic revision and the live database head stay distinct observations, and a
+ * refused action leaves the data with its own failure. The listing reads only while the site
+ * reports its selection enabled, so a disabled site states that reason instead of repeating a
+ * refused read.
  */
 import { useState } from "react";
 import { failureText, handleAdmissionFailure } from "../../api/http";

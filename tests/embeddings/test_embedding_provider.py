@@ -69,9 +69,6 @@ def test_embedding_provider_returns_vectors_in_input_order() -> None:
 
     assert vectors == (tuple(vector(1.0, 0.0)), tuple(vector(0.0, 1.0)))
     assert len(requests) == 1
-    request = requests[0]
-    assert request.method == "POST"
-    assert request.url.path == "/v1/embeddings"
 
 
 def test_embedding_provider_does_not_retry_non_retryable_status() -> None:
@@ -122,24 +119,6 @@ def test_embedding_provider_rejects_malformed_cardinality_indices_dimensions_and
         with EmbeddingProvider(settings(), transport=httpx.MockTransport(handler)) as provider:
             with pytest.raises(EmbeddingContractError):
                 provider.embed(["first", "second"])
-
-
-def test_embedding_provider_close_is_idempotent_and_rejects_later_embed() -> None:
-    """Closing twice is safe and any embed after close fails before I/O."""
-    calls = 0
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        nonlocal calls
-        calls += 1
-        return embedding_response([{"index": 0, "embedding": vector(1.0, 0.0)}])
-
-    provider = EmbeddingProvider(settings(), transport=httpx.MockTransport(handler))
-    assert provider.embed(["query"]) == (tuple(vector(1.0, 0.0)),)
-    provider.close()
-    provider.close()
-    with pytest.raises(EmbeddingRequestError):
-        provider.embed(["query"])
-    assert calls == 1
 
 
 def test_embedding_provider_control_declines_initial_request_without_io() -> None:

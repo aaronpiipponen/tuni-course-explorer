@@ -336,12 +336,19 @@ class RawCaptureStore:
     """Own immutable response envelopes and atomic versioned manifest publication."""
 
     def __init__(
-        self, raw_root: Path, run_root: Path, manifest_path: Path, manifest: CaptureManifest
+        self,
+        raw_root: Path,
+        run_root: Path,
+        manifest_path: Path,
+        manifest: CaptureManifest,
+        *,
+        manifest_sha256: str,
     ):
         self._raw_root = raw_root
         self._run_root = run_root
         self._manifest_path = manifest_path
         self._manifest = manifest
+        self._manifest_sha256 = manifest_sha256
         self._verified_manifest: CaptureManifest | None = None
         self._verified_response_count: int = 0
 
@@ -377,9 +384,14 @@ class RawCaptureStore:
             seed_course_version_ids=(),
             seed_selection_complete=False,
         )
-        store = cls(raw_root, run_root, manifest_path, manifest)
-        store._write_manifest(manifest)
-        return store
+        manifest_sha256 = cls._write_manifest(manifest_path, manifest)
+        return cls(
+            raw_root,
+            run_root,
+            manifest_path,
+            manifest,
+            manifest_sha256=manifest_sha256,
+        )
 
     @classmethod
     def open(cls, raw_data_root: Path, manifest_path: Path) -> Self:
@@ -388,17 +400,29 @@ class RawCaptureStore:
         if resolved_manifest.name != "manifest.json":
             raise ValueError("manifest path must name manifest.json")
         try:
-            manifest = CaptureManifest.model_validate_json(resolved_manifest.read_bytes())
+            payload = resolved_manifest.read_bytes()
         except OSError as exc:
             raise ValueError("manifest cannot be read") from exc
+        manifest = CaptureManifest.model_validate_json(payload)
         if manifest.raw_root_path != _relative_posix(raw_root):
             raise ValueError("manifest raw root does not match configured raw data root")
-        store = cls(raw_root, resolved_manifest.parent, resolved_manifest, manifest)
+        store = cls(
+            raw_root,
+            resolved_manifest.parent,
+            resolved_manifest,
+            manifest,
+            manifest_sha256=hashlib.sha256(payload).hexdigest(),
+        )
         return store
 
     @property
     def manifest(self) -> CaptureManifest:
         return self._manifest
+
+    @property
+    def manifest_sha256(self) -> str:
+        """Return the digest of the published manifest bytes."""
+        return self._manifest_sha256
 
     @property
     def manifest_path(self) -> Path:
@@ -412,18 +436,20 @@ class RawCaptureStore:
     def run_root(self) -> Path:
         return self._run_root
 
-    def _write_manifest(self, manifest: CaptureManifest) -> None:
+    @staticmethod
+    def _write_manifest(manifest_path: Path, manifest: CaptureManifest) -> str:
+        """Publish one manifest atomically and return the digest of its payload."""
         payload = _manifest_json_bytes(manifest)
         descriptor, temporary_path = tempfile.mkstemp(
-            dir=self._manifest_path.parent, prefix=".manifest-", suffix=".tmp"
+            dir=manifest_path.parent, prefix=".manifest-", suffix=".tmp"
         )
         try:
             with os.fdopen(descriptor, "wb") as temporary:
                 temporary.write(payload)
                 temporary.flush()
                 os.fsync(temporary.fileno())
-            os.replace(temporary_path, self._manifest_path)
-            directory_fd = os.open(self._manifest_path.parent, os.O_RDONLY)
+            os.replace(temporary_path, manifest_path)
+            directory_fd = os.open(manifest_path.parent, os.O_RDONLY)
             try:
                 os.fsync(directory_fd)
             finally:
@@ -434,12 +460,13 @@ class RawCaptureStore:
             except FileNotFoundError:
                 pass
             raise
+        return hashlib.sha256(payload).hexdigest()
 
     def _replace_manifest(self, **changes: object) -> None:
         candidate = CaptureManifest.model_validate(
             {**self._manifest.model_dump(mode="python"), **changes}
         )
-        self._write_manifest(candidate)
+        self._manifest_sha256 = self._write_manifest(self._manifest_path, candidate)
         previous = self._manifest
         self._manifest = candidate
         if self._verified_manifest is None:

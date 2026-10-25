@@ -11,7 +11,9 @@
     "build": "vite build",
     "solver:build": "vite build --ssr src/solver/cli.ts --outDir .solver-cli --emptyOutDir",
     "test": "vitest run && node --test tools/wiki/build.test.mjs",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "browser:install": "playwright install chromium --only-shell",
+    "browser:test": "cd .. && uv run python -m tests.web.browser_runner"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "1.2.0",
@@ -31,6 +33,7 @@
     "github-slugger": "2.0.0",
     "jsdom": "26.1.0",
     "mdast-util-to-string": "4.0.0",
+    "playwright": "1.64.0",
     "prettier": "3.9.10",
     "rehype-highlight": "7.0.2",
     "rehype-sanitize": "6.0.0",

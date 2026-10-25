@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 from uuid import uuid4
 
@@ -205,7 +206,10 @@ def test_manifest_open_defers_verification_and_discovery_locates_direct_runs(
     capture_curriculum(
         FixtureSource(), store, RecordingCapturePersistence(), checkpoint_response_count=100
     )
+    opened_manifest = store.manifest_path.read_bytes()
     reopened = RawCaptureStore.open(Path("raw"), store.manifest_path)
+    assert reopened.manifest_sha256 == hashlib.sha256(opened_manifest).hexdigest()
+    assert reopened.manifest_sha256 == store.manifest_sha256
     envelope = next((store.run_root / "responses").iterdir())
     envelope.write_bytes(b"corrupt")
     # Opening succeeded above. The corrupt envelope only fails the explicit verification pass.

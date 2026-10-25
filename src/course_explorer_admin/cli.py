@@ -158,6 +158,7 @@ def _fail(
         "report",
         "migration",
         "disposition",
+        "target-read",
         "hubs",
         "dataset-cleanup",
         "backup-cleanup",
@@ -306,7 +307,9 @@ def main(
             else "migration"
             if args.command == "migrate"
             else "disposition"
-            if args.command in {"dispose", "target"}
+            if args.command == "dispose"
+            else "target-read"
+            if args.command == "target"
             else "hubs"
             if args.command == "hubs"
             else "dataset-cleanup"

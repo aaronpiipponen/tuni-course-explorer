@@ -43,7 +43,7 @@ The solver is the pure TypeScript under `web/src/solver/` that evaluates a prere
 
 `web/src/solver/request.ts` dispatches one machine solver request to the route solver. `web/src/solver/cli.ts` reads one such request from standard input and writes its result, and the machine route command runs it through Node. The browser evaluates the drawing's box states directly, so there is no node-state operation on that dispatcher.
 
-The tests in `web/src/solver/` run the modules on structures the server wrote. `tests/prerequisite/export_solver_fixtures.py` writes the satisfaction fixture and `tests/prerequisite/export_route_fixtures.py` writes every route fixture, both from the real structure builder. The graph report carries no computed box states.
+The tests in `web/src/solver/` run the modules on structures the server wrote. The Python exporters under `tests/prerequisite/` write those structures from the real builder, and [Solver fixtures](/docs/testing/solver-fixtures.md) owns the seven files and their regeneration commands. The graph report carries no computed box states.
 
 ## The graph model
 

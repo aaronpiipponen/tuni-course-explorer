@@ -124,10 +124,10 @@ def test_web_launcher_excludes_operator_credentials(
     assert observed["POSTGRES_PASSWORD"] == "synthetic-database-password"
     assert observed["WEB_HOST"] == "127.0.0.1"
     assert observed["WEB_PORT"] == "8037"
-    assert observed["WEB_WORKERS"] == "2"
+    assert observed["WEB_WORKERS"] == "4"
     assert observed["WEB_EMBEDDINGS_ENABLED"] == ("1" if embeddings_enabled else "0")
     assert observed["WEB_INFERENCE_ENABLED"] == "1"
-    assert observed["ADMISSION_ENABLED"] == "0"
+    assert observed["ADMISSION_ENABLED"] == "1"
     assert {"HOME", "PATH", "LANG"} <= observed.keys()
     assert observed[SETTINGS_SOURCE_MARKER] == ENVIRONMENT_ONLY_SETTINGS_SOURCE
     assert (
@@ -159,12 +159,12 @@ def test_web_launcher_excludes_operator_credentials(
     assert observed["WEB_RESPAWN_EXIT_LIMIT"] == "3"
     assert observed["WEB_RESPAWN_WINDOW_SECONDS"] == "60"
     assert WebSettings().web_port == 8037
-    assert WebSettings().web_workers == 2
+    assert WebSettings().web_workers == 4
     assert WebSettings().web_respawn_exit_limit == 3
     assert WebSettings().web_respawn_window_seconds == 60
     assert WebSettings().embeddings_enabled is embeddings_enabled
     assert WebSettings().inference_enabled is True
-    assert AdmissionSettings().admission_enabled is False
+    assert AdmissionSettings().admission_enabled is True
     # The handoff carries the search policy for one query embedding request as well.
     assert SearchSettings().search_embedding_request_timeout_seconds == 5
     assert SearchSettings().search_embedding_max_attempts == 1
@@ -176,6 +176,8 @@ def test_web_launcher_excludes_operator_credentials(
         probe.bind(("127.0.0.1", 0))
         port = probe.getsockname()[1]
     monkeypatch.setenv("WEB_PORT", str(port))
+    # The crash-loop handoff below models two worker slots, whatever the example deploys.
+    monkeypatch.setenv("WEB_WORKERS", "2")
     monkeypatch.setenv(SERVING_GENERATION_ENV, "inherited-by-the-parent")
     spawned: list[dict[str, object]] = []
     worker_ports: list[int] = []

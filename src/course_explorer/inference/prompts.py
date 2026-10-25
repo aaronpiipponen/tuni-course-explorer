@@ -1,9 +1,10 @@
 """Versioned baseline prompt pack for the complete-target-result inference pass.
 
 The packed system prompt and curated real-catalogue examples are single-sourced versioned
-artifacts below this package's module root. The pack is content-hashed so a result records exactly
-which prompt produced it. Callers assemble a packet with ``examples_for_target``, which omits any
-example whose answer is the target itself.
+artifacts below this package's module root. The pack's content hash is part of the
+retained-session configuration hash, and a recorded run carries the prompt version. Callers
+assemble a packet with ``examples_for_target``, which omits any example whose answer is the
+target itself.
 """
 
 from __future__ import annotations

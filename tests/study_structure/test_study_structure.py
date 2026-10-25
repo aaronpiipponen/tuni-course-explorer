@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from datetime import date
 from decimal import Decimal
 
@@ -11,7 +10,6 @@ import pytest
 from course_explorer.curriculum import CatalogueCurriculumPeriod, CatalogueModule, CourseSummary
 from course_explorer.enums import ModuleRuleType, ModuleType
 from course_explorer.study_structure.service import (
-    StudyStructureModule,
     StudyStructureRootUnavailable,
     StudyStructureRule,
     StudyStructureService,
@@ -270,11 +268,6 @@ def _assert_full_structure(selection: str) -> None:
         assert unrestricted.course is None
         assert unrestricted.module is None
         assert unrestricted.unresolved is None
-
-    assert StudyStructureModule.model_validate_json(root.model_dump_json()) == root
-    payload = json.loads(root.model_dump_json())
-    assert payload["target_credits_min"] == "180"
-    assert payload["rule"]["children"][3]["credits_min"] == "5"
 
 
 def _assert_nested_missing_course() -> None:

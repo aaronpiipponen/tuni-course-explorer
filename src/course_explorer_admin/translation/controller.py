@@ -20,7 +20,7 @@ from pydantic import Field, field_validator, model_validator
 
 from course_explorer.administration import load_private_model
 from course_explorer.config import load_administrative_dataset_settings
-from course_explorer.datasets import DatasetId, DatasetRevision
+from course_explorer.datasets import DatasetId
 from course_explorer.teaching_text.service import TranslationImportReport
 from course_explorer.validation import (
     require_error_type,
@@ -34,7 +34,6 @@ from course_explorer_admin.remote import (
     WorkerControllerStatus,
     WorkerDatasetSession,
     _ControllerModel,
-    _require_revision,
     _require_session_id,
     load_worker_dataset_session,
     worker_dataset_session_directory,
@@ -46,13 +45,12 @@ class TranslationControllerPolicy(_ControllerModel):
 
     The canonical session identity lives in the neutral ``WorkerDatasetSession`` and the derived
     database name in the administrative settings. This policy carries only the translation-owned
-    model provenance. Branch, database name, hash, and course limit come from the neutral session and
+    model provenance. Database name and course limit come from the neutral session and
     administrative settings.
     """
 
     schema_version: Literal[2]
     session_id: DatasetId
-    revision: DatasetRevision
     translation_model: str
 
     @field_validator("translation_model")
@@ -73,7 +71,6 @@ class TranslationControllerWorkerState(_ControllerModel):
 
     schema_version: Literal[2]
     session_id: str
-    revision: str
     lifecycle: Literal[
         "prepared",
         "starting",
@@ -97,11 +94,6 @@ class TranslationControllerWorkerState(_ControllerModel):
     @classmethod
     def validate_session_id(cls, value: str) -> str:
         return _require_session_id(value)
-
-    @field_validator("revision")
-    @classmethod
-    def validate_revision(cls, value: str) -> str:
-        return _require_revision(value)
 
     @field_validator("started_at")
     @classmethod
@@ -183,48 +175,11 @@ class TranslationControllerStatus(WorkerControllerStatus):
         return require_sha256(value, "hash")
 
 
-class TranslationControllerOutputManifest(_ControllerModel):
-    """Text-free manifest of one returned worker output and its optional run report."""
-
-    schema_version: Literal[1]
-    session_id: str
-    revision: str
-    output_count: int = Field(ge=0)
-    output_sha256: str | None = None
-    run_report_sha256: str | None = None
-
-    @field_validator("session_id")
-    @classmethod
-    def validate_session_id(cls, value: str) -> str:
-        return _require_session_id(value)
-
-    @field_validator("revision")
-    @classmethod
-    def validate_revision(cls, value: str) -> str:
-        return _require_revision(value)
-
-    @field_validator("output_sha256", "run_report_sha256")
-    @classmethod
-    def validate_hashes(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        return require_sha256(value, "hash")
-
-    @model_validator(mode="after")
-    def validate_output_hash_presence(self) -> TranslationControllerOutputManifest:
-        if self.output_count == 0 and self.output_sha256 is not None:
-            raise ValueError("zero output count requires no output hash")
-        if self.output_count > 0 and self.output_sha256 is None:
-            raise ValueError("positive output count requires an output hash")
-        return self
-
-
 class TranslationControllerImportReceipt(_ControllerModel):
     """Text-free evidence that one returned output was imported into the authoritative store."""
 
     schema_version: Literal[1]
     session_id: str
-    revision: str
     output_count: int = Field(ge=0)
     output_sha256: str | None = None
     import_report: TranslationImportReport
@@ -233,11 +188,6 @@ class TranslationControllerImportReceipt(_ControllerModel):
     @classmethod
     def validate_session_id(cls, value: str) -> str:
         return _require_session_id(value)
-
-    @field_validator("revision")
-    @classmethod
-    def validate_revision(cls, value: str) -> str:
-        return _require_revision(value)
 
     @field_validator("output_sha256")
     @classmethod
@@ -275,8 +225,6 @@ def load_translation_dataset_session(
         raise ValueError("canonical session is not a translation session")
     if session.database_name != settings.database_name(session_id, worker=True):
         raise ValueError("canonical session database name is not the configured derived name")
-    if session.revision != policy.revision:
-        raise ValueError("canonical policy revision does not match the session")
     return session, policy, directory
 
 

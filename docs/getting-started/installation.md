@@ -202,4 +202,4 @@ uv run pytest
 | `mock data import refuses a selected-dataset enabled configuration` | `SELECTED_DATASET_ENABLED` is true in `config/database.toml`. | Set it to `false`, then run the load command again. |
 | `the received database does not match the executing checkout's single Alembic head` | The database schema is not at the checkout's head revision. | Run `uv run python -m alembic upgrade head`. |
 
-The example dataset is invented, and its courses, modules, prerequisites, and structure rules are not university data. [Data preparation](/docs/getting-started/data-preparation.md) describes the loader and the artifact actions in full.
+The example dataset is invented, and its courses, modules, prerequisites, and structure rules are not university data. [The example dataset](/docs/getting-started/example-dataset.md) describes the loader and the artifact actions in full.

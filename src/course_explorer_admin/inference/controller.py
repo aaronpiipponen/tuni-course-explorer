@@ -26,7 +26,7 @@ from course_explorer.config import (
     load_inference_selection_settings,
     load_inference_settings,
 )
-from course_explorer.datasets import DatasetId, DatasetRevision, DatasetSha256
+from course_explorer.datasets import DatasetId, DatasetSha256
 from course_explorer.hashing import canonical_json_sha256
 from course_explorer.inference.diagnostics import InferenceCoverageSummary
 from course_explorer.inference.job import InferenceJobProgress
@@ -54,7 +54,6 @@ class InferenceControllerPolicy(_ControllerModel):
 
     schema_version: Literal[2]
     session_id: DatasetId
-    revision: DatasetRevision
     configuration_sha256: DatasetSha256
 
 
@@ -72,10 +71,10 @@ class InferenceControllerStatus(WorkerControllerStatus):
 
     The shared stage-neutral fields, validators and remaining-count derive live in
     ``WorkerControllerStatus``. This subclass exposes one per-stage projection and overrides
-    ``remaining_count``, throughput and ETA so they all describe the named compute stage
-    from its completed plus legitimately skipped counters, and publication/complete, idle/imported and
-    unknown observations report no rate or ETA. ``desired_count``/``completed_count`` cover
-    whole results and are separate from the stage counters.
+    ``remaining_count``, throughput and ETA so they all describe the named compute stage from its
+    completed and skipped counters, and publication/complete, idle/imported and
+    unknown observations report no rate or ETA. ``desired_count``/``completed_count`` cover whole
+    results and are separate from the stage counters.
     """
 
     progress: InferenceJobProgress | None = None
@@ -110,11 +109,12 @@ class InferenceControllerStatus(WorkerControllerStatus):
     @computed_field
     @property
     def stages(self) -> tuple[InferenceStageProgress, ...]:
-        """Return the three compute-stage projections in pipeline order, empty before known progress.
+        """Return the three compute-stage projections in pipeline order, empty before known
+        progress.
 
-        ``done`` counts completed plus legitimately skipped targets, never failures. ``remaining``
-        subtracts only the targets this invocation exhausted at that stage or an upstream stage, so a
-        retained retryable failure counts as remaining.
+        ``done`` counts completed targets plus targets whose stage state is ``skipped``, never
+        failures. ``remaining`` subtracts only the targets this invocation exhausted at that stage
+        or an upstream stage, so a retained retryable failure counts as remaining.
         """
         if self.progress is None:
             return ()
@@ -150,7 +150,8 @@ class InferenceControllerStatus(WorkerControllerStatus):
     @computed_field
     @property
     def stages_remaining(self) -> tuple[str, ...]:
-        """Return the compute stages with remaining work plus publication, unless the cycle is complete."""
+        """Return the compute stages with remaining work plus publication, unless the cycle is
+        complete."""
         if self.progress is None:
             return ()
         stages = tuple(stage.stage for stage in self.stages if stage.remaining > 0)
@@ -161,13 +162,15 @@ class InferenceControllerStatus(WorkerControllerStatus):
     @computed_field
     @property
     def remaining_count(self) -> int | None:
-        """Return the current compute stage's remaining count, or ``None`` outside a compute stage."""
+        """Return the current compute stage's remaining count, or ``None`` outside a compute
+        stage."""
         if self.progress is None or self.progress.stage not in _STAGE_LIFECYCLES:
             return None
         return next(stage.remaining for stage in self.stages if stage.stage == self.progress.stage)
 
     def _stage_remaining(self) -> int | None:
-        """Return the current compute stage's remaining count, or ``None`` outside a compute stage."""
+        """Return the current compute stage's remaining count, or ``None`` outside a compute
+        stage."""
         return self.remaining_count
 
     @computed_field
@@ -206,7 +209,6 @@ class InferenceControllerWorkerState(InferenceControllerStatus):
 
     schema_version: Literal[2]
     session_id: DatasetId
-    revision: DatasetRevision
     lifecycle: Literal[
         "prepared",
         "starting",
@@ -284,10 +286,9 @@ def load_inference_dataset_session(
 ) -> tuple[WorkerDatasetSession, InferenceControllerPolicy, Path]:
     """Load one canonical inference session, its policy, and its shared session directory.
 
-    It requires an inference-stage session whose derived worker database name is the configured
-    one, whose requested/session/policy identities agree, whose revision matches, and which is
-    unbounded, so a foreign, bounded, or mismatched session is never prepared, run, or cleaned as
-    this one.
+    It requires an inference-stage session whose derived worker database name is the configured one,
+    whose requested/session/policy identities agree, and which is unbounded, so a foreign, bounded,
+    or mismatched session is never prepared, run, or cleaned as this one.
     """
     settings = load_administrative_dataset_settings()
     directory = worker_dataset_session_directory(session_id)
@@ -301,8 +302,6 @@ def load_inference_dataset_session(
         raise ValueError("canonical session is not an inference session")
     if session.database_name != settings.database_name(session_id, worker=True):
         raise ValueError("canonical session database name is not the configured derived name")
-    if session.revision != policy.revision:
-        raise ValueError("canonical policy revision does not match the session")
     if session.course_limit is not None:
         raise ValueError("canonical inference session must not be bounded")
     return session, policy, directory

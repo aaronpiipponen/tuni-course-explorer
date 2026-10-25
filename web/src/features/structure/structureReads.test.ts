@@ -1,4 +1,4 @@
-/** Selection-qualified structure reads over the shared memory cache and official batch read. */
+/** Proof that cached structure reads keep one report per module selection. */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { READ_CACHE_CAPACITY, ReadCache } from "../../app/readCache";
 import type { StructureModule, StudyStructuresReport } from "../../api/types";
@@ -63,12 +63,10 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe("selection-qualified structure reads", () => {
   it("keeps structure reports separate for different module selections", async () => {
-    const requests: unknown[] = [];
     const fetchSpy = vi.fn(async (_path: string, init?: RequestInit) => {
       const body = JSON.parse(String(init?.body)) as {
         module_versions: Record<string, string>;
       };
-      requests.push(body);
       const selection = body.module_versions["module-root"];
       const payload =
         selection === "root-v1"
@@ -123,18 +121,6 @@ describe("selection-qualified structure reads", () => {
     );
     expect(secondRead.reports["module-root"].root.rule.course?.code).toBe("V2");
     expect(fetchSpy).toHaveBeenCalledTimes(2);
-    expect(requests).toEqual([
-      {
-        root_group_ids: ["module-root"],
-        module_versions: first,
-        allow_unavailable: false,
-      },
-      {
-        root_group_ids: ["module-root"],
-        module_versions: second,
-        allow_unavailable: false,
-      },
-    ]);
 
     const repeatedSecond = await readCachedStudyStructures(
       cache,

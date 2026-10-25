@@ -306,6 +306,12 @@
             "children": []
           },
           {
+            "id": "setup-and-preflight",
+            "path": "docs/operations/setup-and-preflight.md",
+            "nav": "Setup and preflight",
+            "children": []
+          },
+          {
             "id": "admin-console",
             "path": "docs/operations/admin-console/README.md",
             "nav": "Administration console",

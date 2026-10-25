@@ -4,7 +4,7 @@
 # Serving switch
 # Serve through the front router's admission control. With it off every request is served without a
 # limit.
-ADMISSION_ENABLED = false
+ADMISSION_ENABLED = true
 # Seconds one identity's light and heavy counters live after that identity's last use.
 ADMISSION_IDENTITY_TTL_SECONDS = 3600
 # Seconds the anonymous admission cookie lives in a browser.
@@ -44,7 +44,7 @@ ADMISSION_LIGHT_CONCURRENCY = 8
 ADMISSION_HEAVY_BUDGET_CORE_SECONDS = 120
 # Heavy core-seconds one identity may spend per window at saturation. The budget falls linearly
 # between the two bounds.
-ADMISSION_HEAVY_BUDGET_SATURATED_CORE_SECONDS = 24
+ADMISSION_HEAVY_BUDGET_SATURATED_CORE_SECONDS = 40
 # Heavy operations the site runs at once at headroom. The count falls to one at saturation and is
 # capped at WEB_WORKERS - 1.
 ADMISSION_HEAVY_SLOTS = 3

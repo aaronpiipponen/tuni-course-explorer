@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import gzip
+import hashlib
 import json
 from pathlib import Path
 
@@ -33,6 +34,7 @@ def test_capture_writes_deterministic_gzip_manifest_and_replays_raw_positions(
 
     assert report.status is IngestionRunStatus.COMPLETED
     assert report.manifest_path == store.manifest_relative_path
+    assert store.manifest_sha256 == hashlib.sha256(store.manifest_path.read_bytes()).hexdigest()
     assert store.run_root.name == f"20260910T120000000000Z-{store.manifest.run_id}"
     assert not tuple(store.run_root.glob(".manifest-*.tmp"))
     assert all(

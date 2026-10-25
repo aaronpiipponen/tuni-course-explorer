@@ -104,7 +104,7 @@ The **Target decisions** panel records one decision for one canonical target: **
 
 A decision applies only to the identity the lookup resolved. Editing the input after a lookup shows **The input differs from the recorded identity.** and disables the decision controls until **Search** runs again. A recorded decision replaces the shown decision and refreshes the summary panels.
 
-The lookup and the decision require a returned selected dataset, a database at the migration head, and every stage idle. A refusal appears in the panel.
+The lookup requires the selected-dataset switch `SELECTED_DATASET_ENABLED` in `config/database.toml` enabled, and the selected database at the migration head. The decision additionally requires a verified returned dataset and every stage idle. A refusal appears in the panel.
 
 ## Dataset cleanup
 

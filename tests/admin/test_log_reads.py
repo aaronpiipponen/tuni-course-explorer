@@ -113,8 +113,6 @@ def _write_worker_session(root: Path, stage: str, session_id: str) -> Path:
             WorkerDatasetSession(
                 schema_version=1,
                 session_id=session_id,
-                revision=REVISION,
-                branch="synthetic-branch",
                 database_name=settings.database_name(session_id, worker=True),
                 stage=stage,
                 source_dataset_id=INITIAL_ID,
@@ -122,7 +120,6 @@ def _write_worker_session(root: Path, stage: str, session_id: str) -> Path:
                 input_snapshot=DatabaseSnapshot(
                     schema_version=1,
                     session_id=session_id,
-                    revision=REVISION,
                     database_name="course_explorer_test",
                     dump_sha256="a" * 64,
                     verification=sample_verification(),

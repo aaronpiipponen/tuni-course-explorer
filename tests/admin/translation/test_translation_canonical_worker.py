@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import json
 import threading
-from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -36,9 +35,7 @@ from tests.config._support import ADMIN_DATASET_KEYS
 from tests.datasets._support import sample_verification
 
 SESSION_ID = "0123456789abcdef0123456789abcdef"
-REVISION = "a" * 40
 SOURCE_ID = "f" * 32
-STARTED_AT = datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
 SNAPSHOT_HASH = "a" * 64
 
 
@@ -103,8 +100,6 @@ def canonical_session() -> WorkerDatasetSession:
     return WorkerDatasetSession(
         schema_version=1,
         session_id=SESSION_ID,
-        revision=REVISION,
-        branch="course-search",
         database_name=settings.database_name(SESSION_ID, worker=True),
         stage="translation",
         source_dataset_id=SOURCE_ID,
@@ -112,7 +107,6 @@ def canonical_session() -> WorkerDatasetSession:
         input_snapshot=DatabaseSnapshot(
             schema_version=1,
             session_id=SESSION_ID,
-            revision=REVISION,
             database_name="course_explorer",
             dump_sha256="c" * 64,
             verification=sample_verification(),
@@ -127,7 +121,6 @@ def write_policy(directory: Path, model: str) -> None:
             TranslationControllerPolicy(
                 schema_version=2,
                 session_id=SESSION_ID,
-                revision=REVISION,
                 translation_model=model,
             )
         ),
@@ -368,7 +361,6 @@ def test_canonical_cleanup_requires_server_proof_and_retains_retry_authority(
             TranslationControllerImportReceipt(
                 schema_version=1,
                 session_id=SESSION_ID,
-                revision=REVISION,
                 output_count=1,
                 output_sha256=digest,
                 import_report=TranslationImportReport(
@@ -400,7 +392,6 @@ def test_canonical_cleanup_requires_server_proof_and_retains_retry_authority(
                 database_name=server_database,
                 predecessor_id=SOURCE_ID,
                 kind="returned",
-                revision=REVISION,
                 dump_sha256=SNAPSHOT_HASH,
                 verification=sample_verification(),
             )
@@ -412,7 +403,6 @@ def test_canonical_cleanup_requires_server_proof_and_retains_retry_authority(
             DatabaseSnapshot(
                 schema_version=1,
                 session_id=SESSION_ID,
-                revision=REVISION,
                 database_name=session.database_name,
                 dump_sha256=SNAPSHOT_HASH,
                 verification=sample_verification(),

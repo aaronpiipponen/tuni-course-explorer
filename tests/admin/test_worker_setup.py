@@ -90,6 +90,9 @@ def git_pair(tmp_path: Path) -> tuple[Path, Path, Path]:
     (server / "file.txt").write_text("one")
     _git(server, "add", "file.txt")
     _commit(server, "one")
+    (server / "notes.txt").write_text("shared\n")
+    _git(server, "add", "notes.txt")
+    _commit(server, "notes")
     _git(server, "push", "origin", "main")
     _git(server, "checkout", "-b", "prerequisite-inference")
     (server / "file.txt").write_text("two")
@@ -153,48 +156,45 @@ def test_code_update_is_ff_only_and_preserves_user_work(
     drifted = provisioning.update_worker_code(runner=mechanics.SubprocessRunner())
     assert drifted.server_origin_differs is True
 
-    # A dirty worktree is refused through the shared full-tree read before any worker mutation:
-    # branch, HEAD, every local branch ref, and the untracked bytes are byte-for-byte identical.
+    # A tracked edit and an untracked file keep their bytes across the branch switch, and the
+    # update succeeds.
+    notes = worker / "notes.txt"
+    notes.write_text("user edit\n")
     scratch = worker / "scratch.txt"
     scratch.write_text("work-in-progress")
-    branch_before = _git(worker, "branch", "--show-current").stdout.decode().strip()
-    head_before = _git(worker, "rev-parse", "HEAD").stdout.decode().strip()
-    heads_before = _git(
-        worker, "for-each-ref", "--format=%(refname) %(objectname)", "refs/heads"
-    ).stdout.decode()
-    scripts_before = transport.scripts()
     syncs_before = len(transport.syncs)
-    with pytest.raises(ValueError):
-        provisioning.update_worker_code(
-            branch="prerequisite-inference", runner=mechanics.SubprocessRunner()
-        )
-    assert len(transport.syncs) == syncs_before
-    assert branch_before == "main"
-    assert _git(worker, "branch", "--show-current").stdout.decode().strip() == branch_before
-    assert _git(worker, "rev-parse", "HEAD").stdout.decode().strip() == head_before
-    assert (
-        _git(
-            worker, "for-each-ref", "--format=%(refname) %(objectname)", "refs/heads"
-        ).stdout.decode()
-        == heads_before
-    )
-    assert scratch.read_text() == "work-in-progress"
-    assert transport.scripts() == scripts_before
-    scratch.unlink()
-
-    # A code-only update safely selects the independently requested origin branch: the worker
-    # switches from main to prerequisite-inference while the server is main, and syncs once.
-    syncs_before_switch = len(transport.syncs)
-    switched = provisioning.update_worker_code(
+    preserved = provisioning.update_worker_code(
         branch="prerequisite-inference", runner=mechanics.SubprocessRunner()
     )
-    assert switched.branch == "prerequisite-inference"
+    assert preserved.branch == "prerequisite-inference"
+    assert notes.read_text() == "user edit\n"
+    assert scratch.read_text() == "work-in-progress"
+    assert len(transport.syncs) == syncs_before + 1
     assert _git(worker, "branch", "--show-current").stdout.decode().strip() == (
         "prerequisite-inference"
     )
+
+    # Git's own overwrite refusal protects a local edit to a file that differs between branches.
+    edited_file = worker / "file.txt"
+    original_file = edited_file.read_text()
+    edited_file.write_text("local edit")
+    head_before = _git(worker, "rev-parse", "HEAD").stdout.decode().strip()
+    with pytest.raises(subprocess.CalledProcessError):
+        provisioning.update_worker_code(branch="main", runner=mechanics.SubprocessRunner())
+    assert _git(worker, "rev-parse", "HEAD").stdout.decode().strip() == head_before
+    edited_file.write_text(original_file)
+
+    # A code-only update safely selects the independently requested origin branch: the worker
+    # switches back to main while the server is main, and syncs once.
+    syncs_before_switch = len(transport.syncs)
+    switched = provisioning.update_worker_code(branch="main", runner=mechanics.SubprocessRunner())
+    assert switched.branch == "main"
+    assert _git(worker, "branch", "--show-current").stdout.decode().strip() == "main"
     assert switched.revision == _git(worker, "rev-parse", "HEAD").stdout.decode().strip()
     assert _git(server, "branch", "--show-current").stdout.decode().strip() == "main"
     assert len(transport.syncs) == syncs_before_switch + 1
+    assert notes.read_text() == "user edit\n"
+    assert scratch.read_text() == "work-in-progress"
 
     # Full setup keeps its branch selection: the target branch is switched to and pulled. The
     # worker-resource read is stubbed because it is a separate external boundary this local

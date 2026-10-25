@@ -130,6 +130,7 @@ This glossary defines the terms the documentation uses for courses, search, comp
 | Selected course | A course added to the current profile's selection. |
 | Completed course | A course marked with **Mark completed**. A completed course is always selected. |
 | Course menu | The menu of actions on a course: **Add to comparison** on a site that serves the embedding features, **Open prerequisite graph**, **Add to Unplaced studies**, **Mark completed**, and **Open in Sisu**. |
+| Sisu capture | The file the Sisu import script downloads from a plan in Sisu's structure of studies view, which the app imports as one profile. It is separate from a capture of the curriculum source. |
 | Profile | A named set of the app's state in the browser: language, selected and completed courses, and the state of each tab. |
 | Open tab | The tab a browser tab shows. It belongs to that browser tab's session storage rather than to a profile. |
 | App language | The language of the app's interface and course names in a profile, either Finnish or English. |
@@ -175,8 +176,9 @@ This glossary defines the terms the documentation uses for courses, search, comp
 | Heavy budget | The core-seconds of heavy requests one user may spend in one window. It moves linearly from `ADMISSION_HEAVY_BUDGET_CORE_SECONDS` at the headroom position to `ADMISSION_HEAVY_BUDGET_SATURATED_CORE_SECONDS` at saturation. |
 | Preparation path | The route from the administration command through the four stages to the database. |
 | Worker session | One run of a remote stage on the worker, from its prepared database copy to the return of the result. |
+| Checkout identity | The branch and the HEAD revision of one Git checkout, which setup and preflight read on the server and on the worker. |
 | Dataset | One complete database of courses, modules, and derived data. |
-| Dataset receipt | The record kept for one dataset that names its dataset id, database name, enrollment kind, producing checkout revision, retained dump digest, and the verification read from the database. |
+| Dataset receipt | The record kept for one dataset that names its dataset id, database name, enrollment kind, retained dump digest, and the verification read from the database. |
 | Selected dataset | The dataset that the web server and the stages read. |
 | Database snapshot | A verified dump of one dataset, taken when a worker session starts and when it returns. |
 | Dataset return | The step that brings the worker's finished database back and makes it the selected dataset. |

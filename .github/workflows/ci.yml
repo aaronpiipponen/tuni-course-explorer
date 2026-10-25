@@ -1,0 +1,148 @@
+# Verify every push to main, then deploy its commit from this server.
+#
+# The verify job runs on a GitHub-hosted runner. It installs the locked Python and Node
+# dependencies, runs the fast gate and the network-free Python suite, replaces the
+# tracked runtime configuration with the committed example files inside the checkout,
+# and runs both frontend gates, the PostgreSQL integration selection and the browser
+# journeys against the built app and disposable example data.
+#
+# The deploy job runs on the repository's self-hosted runner after verify succeeds. It admits
+# the serving checkout in its own run block, then builds and restarts the two serving
+# units from the admitted commit. It checks out nothing and pulls nothing.
+name: CI
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: ci-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - name: Check out the pushed commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+          clean: false
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - name: Set up uv
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e
+        with:
+          version: '0.11.3'
+          enable-cache: false
+      - name: Install Python
+        run: uv python install 3.14.3
+      - name: Install Python dependencies
+        run: uv sync --locked
+      - name: Install web dependencies
+        run: npm --prefix web ci --no-audit --no-fund
+      - name: Install administration console dependencies
+        run: npm --prefix admin-web ci --no-audit --no-fund
+      - name: uv run ruff check .
+        run: uv run ruff check .
+      - name: uv run ruff format --check .
+        run: uv run ruff format --check .
+      - name: git diff --check HEAD^ HEAD
+        run: git diff --check HEAD^ HEAD
+      - name: uv run pytest
+        run: uv run pytest
+      - name: Materialize example configuration
+        # The tracked configuration and Compose file hold environment-specific values, so the
+        # committed example tree replaces those copies inside the runner. Nothing is committed
+        # or published.
+        run: |
+          mkdir -p config/derived
+          cp examples/config/*.toml config/
+          cp examples/config/wiki.json config/wiki.json
+          cp examples/config/derived/*.json config/derived/
+          cp examples/docker-compose.yml docker-compose.yml
+      - name: npm --prefix web run typecheck
+        run: npm --prefix web run typecheck
+      - name: npm --prefix web run test
+        run: npm --prefix web run test
+      - name: npm --prefix web run format:check
+        run: npm --prefix web run format:check
+      - name: npm --prefix web run build
+        run: npm --prefix web run build
+      - name: npm --prefix admin-web run typecheck
+        run: npm --prefix admin-web run typecheck
+      - name: npm --prefix admin-web run test
+        run: npm --prefix admin-web run test
+      - name: npm --prefix admin-web run format:check
+        run: npm --prefix admin-web run format:check
+      - name: npm --prefix admin-web run build
+        run: npm --prefix admin-web run build
+      - name: uv run python -m course_explorer_admin.compose --non-interactive -- up -d --wait db
+        env: &database_environment
+          POSTGRES_PASSWORD: synthetic-ci-password
+          POSTGRES_DB: course_explorer_test
+          SELECTED_DATASET_ENABLED: '0'
+          COMPOSE_PROJECT_NAME: course-explorer-ci
+        run: uv run python -m course_explorer_admin.compose --non-interactive -- up -d --wait db
+      - name: uv run pytest -m "integration and not slow and not live" tests
+        env: *database_environment
+        run: uv run pytest -m "integration and not slow and not live" tests
+      - name: npm --prefix web run browser:install
+        run: npm --prefix web run browser:install
+      - name: npm --prefix web run browser:test
+        env: *database_environment
+        run: npm --prefix web run browser:test
+      - name: uv run python -m course_explorer_admin.compose --non-interactive -- down --volumes
+        if: always()
+        env: *database_environment
+        run: uv run python -m course_explorer_admin.compose --non-interactive -- down --volumes
+
+  deploy:
+    needs: verify
+    if: github.repository == 'aaronpiipponen/tuni-course-explorer' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, linux, ARM64, tuni-deploy]
+    concurrency:
+      # One deployment at a time. A newer push cancels its superseded verification and
+      # leaves an admitted deployment to finish its two restarts.
+      group: serving-deploy
+      cancel-in-progress: false
+    steps:
+      - name: Deploy the tested commit
+        working-directory: ${{ vars.SERVING_CHECKOUT }}
+        env:
+          TESTED_COMMIT: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          # Admission runs before any file of the serving checkout executes. An ordinary
+          # refusal exits zero and leaves both units as they are.
+          if ! [[ "$TESTED_COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "invalid tested commit" >&2
+            exit 1
+          fi
+          head_commit="$(git rev-parse HEAD)"
+          branch_status=0
+          branch="$(git symbolic-ref --quiet --short HEAD 2>/dev/null)" || branch_status=$?
+          if (( branch_status > 1 )); then
+            echo "checkout Git metadata is unreadable" >&2
+            exit 1
+          fi
+          if (( branch_status == 1 )) || [[ "$branch" != main ]]; then
+            echo "not deployed: checkout is not on main"
+            exit 0
+          fi
+          if [[ "$head_commit" != "$TESTED_COMMIT" ]]; then
+            echo "not deployed: checkout is not at tested commit"
+            exit 0
+          fi
+          checkout_status="$(git status --porcelain --untracked-files=normal)"
+          if [[ -n "$checkout_status" ]]; then
+            echo "not deployed: checkout is dirty"
+            exit 0
+          fi
+          bash deploy/deploy.sh "$TESTED_COMMIT"

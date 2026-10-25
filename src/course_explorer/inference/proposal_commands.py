@@ -55,7 +55,6 @@ def compose_proposal_from_work(
     result = completion.payload.result
     if descriptors is None or result is None:
         raise ValueError(f"target work {work_id} has no uncomposed validated result")
-    run = evidence.read_run(work.created_by_run_id)
     referenced_group_ids = named_candidate_group_ids(result, descriptors)
 
     curriculum = CurriculumRepository(factory)
@@ -66,7 +65,6 @@ def compose_proposal_from_work(
     proposal = compose_target_proposal(
         work,
         completion,
-        run,
         descriptors,
         target_rows[0],
         referenced_courses,

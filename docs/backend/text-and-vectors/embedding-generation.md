@@ -125,13 +125,12 @@ uv run python scripts/admin.py coverage embedding
 | File | Covers |
 |---|---|
 | `tests/embeddings/test_course_embedding_generation.py` | Deterministic bounded chunking with overlap and dropped blank windows, the field, language, and origin separation with exact provenance, prerequisite text kept out of every chunk, scoped assembly with unknown-scope rejection, and the configuration-hash fields. |
-| `tests/embeddings/test_embedding_provider.py` | Reordering by response index, a terminal 4xx that is not retried and does not echo its body, missing results, an extra component, a non-finite component, and a model mismatch, idempotent close with use after close, and the two admission paths. |
+| `tests/embeddings/test_embedding_provider.py` | Reordering by response index, a terminal 4xx that is not retried and does not echo its body, missing results, an extra component, a non-finite component, a model mismatch, and the two admission paths. |
 | `tests/embeddings/test_course_embedding_repository.py` | Opt-in PostgreSQL proofs of batched embedding and rerun reuse with no provider call, translation and representative changes that reset and delete rows, pause and restart at a batch checkpoint, failed and interrupted batches that retry, and the projected readiness read. |
 | `tests/embeddings/_repository_support.py` | Composes the real service and repository over a recording `FakeProvider` and the real curriculum reads. |
 | `tests/embeddings/test_embedding_service.py` | The live contract test of the running service, gated by `COURSE_EXPLORER_RUN_LIVE_EMBEDDING_TESTS=1`: dimension, finiteness, unit length, repeatability of one text, a Finnish and an English input, and a token-dense maximal character chunk. |
 | `tests/db/test_teaching_embedding_schema.py` | The chunk origin, lifecycle, hash, and dimension constraints and the cascade from a deleted course version. |
 | `tests/search/test_semantic_search_repository.py` | The exact-cosine read over representative chunks, the configuration-hash and lifecycle filters, the inactive scope, and the scoped vector and neighbor reads. |
 | `tests/comparison/` and `tests/recommendations/` | The hub-centred consumers of the stored vectors. |
-| `tests/embeddings/test_embedding_hub_files.py` | The catalogue mean over every current vector and the outcomes mean over outcomes chunks only, the compact JSON output with its trailing newline, and the rejection of a dataset without outcome chunks. |
-| `tests/admin/test_operator_commands.py` | The `hubs-cli` case: the `hubs` machine command delegates once to `run_administrative_hubs` and emits its report JSON. |
-| `tests/admin/test_operator_menu.py` | The `embedding-write-hubs` case: only the embedding tool offers `6 Write hubs`, and choosing it calls the writer once. |
+| `tests/embeddings/test_embedding_hub_files.py` | The hub arithmetic of the `hubs` command: the catalogue mean over every current vector, the outcomes mean over outcomes chunks only, the compact JSON output with its trailing newline, and the rejection of a dataset without outcome chunks. |
+| `tests/admin/test_operator_menu.py` | The `embedding-write-hubs` case of the `hubs` command path: choosing the write-hubs entry invokes the hub writer once and performs no other action. |

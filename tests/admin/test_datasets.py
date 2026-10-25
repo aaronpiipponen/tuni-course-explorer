@@ -34,35 +34,24 @@ from tests.config._support import (
     TRANSLATION_CONTROLLER_KEYS,
     set_database_environment,
 )
-from tests.datasets._support import INITIAL_ID, REVISION, sample_verification
+from tests.datasets._support import INITIAL_ID, sample_verification
 
 INITIAL_DATABASE = "course_initial_demo"
 
 
 class FakeRunner:
-    """Scripted local runner for git, Compose, Alembic, and database commands.
+    """Scripted local runner for Compose, Alembic, and database commands."""
 
-    The git handlers report a detached checkout with a dirty runtime path, so a caller that
-    requires a branch or a clean tree fails loudly.
-    """
-
-    def __init__(self, *, revision: str = REVISION) -> None:
+    def __init__(self) -> None:
         self.calls: list[tuple[str, ...]] = []
         self.envs: list[dict[str, str]] = []
-        self.revision = revision
 
     def run(self, argv, *, cwd=None, env=None, stdin_path=None, stdout_path=None, timeout=None):
         command = tuple(argv)
         self.calls.append(command)
         self.envs.append(dict(env or {}))
         output = b""
-        if command[:3] == ("git", "branch", "--show-current"):
-            output = b""
-        elif command[:2] == ("git", "status"):
-            output = b" M src/course_explorer/inference/domain.py\n"
-        elif command[:2] == ("git", "rev-parse"):
-            output = (self.revision + "\n").encode()
-        elif "ps" in command and "--services" in command:
+        if "ps" in command and "--services" in command:
             output = b"db\n"
         return subprocess.CompletedProcess(list(command), 0, stdout=output, stderr=b"")
 
@@ -126,8 +115,6 @@ def _session(
     return WorkerDatasetSession(
         schema_version=1,
         session_id=session_id,
-        revision=REVISION,
-        branch="prerequisite-inference",
         database_name=admin.database_name(session_id, worker=True),
         stage="inference",
         source_dataset_id=source_id,
@@ -135,7 +122,6 @@ def _session(
         input_snapshot=DatabaseSnapshot(
             schema_version=1,
             session_id=session_id,
-            revision=REVISION,
             database_name=source_database,
             dump_sha256=hashlib.sha256(dump.read_bytes()).hexdigest(),
             verification=sample_verification(),
@@ -147,7 +133,6 @@ def _snapshot(admin, session: WorkerDatasetSession, dump: Path) -> DatabaseSnaps
     return DatabaseSnapshot(
         schema_version=1,
         session_id=session.session_id,
-        revision=REVISION,
         database_name=admin.database_name(session.session_id, worker=True),
         dump_sha256=hashlib.sha256(dump.read_bytes()).hexdigest(),
         verification=sample_verification(),
@@ -175,7 +160,6 @@ def test_initial_setup_keeps_its_data_and_is_idempotent(
     assert receipt.kind == "initial"
     assert receipt.dataset_id == INITIAL_ID
     assert receipt.database_name == INITIAL_DATABASE
-    assert receipt.revision == REVISION
     assert not any("createdb" in call for call in runner.calls)
     assert not any("pg_dump" in call for call in runner.calls)
     alembic = [index for index, call in enumerate(runner.calls) if "alembic" in call]
@@ -201,10 +185,10 @@ def test_initial_setup_keeps_its_data_and_is_idempotent(
         sample_verification().model_copy(update={"alembic_revision": "20260101_9999"})
     )
 
-    # The retry runs against another revision of a detached checkout with dirty runtime paths:
-    # pointer repair reads no revision, and enrollment compares dataset identity only.
-    retry_runner = FakeRunner(revision="b" * 40)
+    # Pointer repair reads no checkout state, and enrollment compares dataset identity only.
+    retry_runner = FakeRunner()
     assert datasets_admin.initialize_selected_dataset(runner=retry_runner) == receipt
+    assert retry_runner.calls == []
     assert not any(
         "compose" in call or "alembic" in call or call[:2] == ("sudo", "docker")
         for call in retry_runner.calls
@@ -243,7 +227,9 @@ def test_return_verifies_before_selection_and_preserves_failed_evidence(
     assert len(restore.calls) == 1
 
     session_b = "b" * 32
-    dump_b = _dump(tmp_path, "b.dump", b"dump-b")
+    dump_b = datasets_admin.retained_dump_path(root, session_b)
+    dump_b.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    dump_b.write_bytes(b"dump-b")
     b = _session(
         admin,
         session_id=session_b,
@@ -254,6 +240,14 @@ def test_return_verifies_before_selection_and_preserves_failed_evidence(
     snapshot_b = _snapshot(admin, b, dump_b)
     restore.failure_database = admin.database_name(session_b, worker=False)
     pointer_before = (root / "selected-dataset.json").read_bytes()
+    original_sha256_file = datasets_admin.sha256_file
+
+    def guard_same_path(path: Path) -> str:
+        if path == dump_b:
+            raise AssertionError("a same-path retained dump must not be hashed")
+        return original_sha256_file(path)
+
+    monkeypatch.setattr(datasets_admin, "sha256_file", guard_same_path)
     with pytest.raises(ValueError):
         datasets_admin.retain_returned_dataset(b, snapshot_b, dump_b, runner=runner)
     # The selection is untouched and the failed return retains its dump without a receipt.
@@ -293,7 +287,6 @@ def test_cleanup_returned_worker_database_requires_both_authorities(
         database_name=admin.database_name(session_id, worker=False),
         predecessor_id=INITIAL_ID,
         kind="returned",
-        revision=REVISION,
         dump_sha256=snapshot.dump_sha256,
         verification=sample_verification(),
     )
@@ -462,7 +455,6 @@ def test_dataset_cleanup_refuses_unowned_or_selected_resources(
             database_name="retained_manual_database",
             predecessor_id=INITIAL_ID,
             kind="returned",
-            revision=REVISION,
             dump_sha256="d" * 64,
             verification=sample_verification(),
         )
@@ -473,7 +465,6 @@ def test_dataset_cleanup_refuses_unowned_or_selected_resources(
             database_name=selected_database,
             predecessor_id=INITIAL_ID if predecessor is None else predecessor_id,
             kind="returned",
-            revision=REVISION,
             dump_sha256="e" * 64,
             verification=sample_verification(),
         ),
@@ -484,7 +475,6 @@ def test_dataset_cleanup_refuses_unowned_or_selected_resources(
             database_name=initial_database,
             predecessor_id=None,
             kind="initial",
-            revision=REVISION,
             dump_sha256=None,
             verification=sample_verification(),
         ),

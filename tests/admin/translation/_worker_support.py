@@ -133,8 +133,6 @@ def session() -> WorkerDatasetSession:
     return WorkerDatasetSession(
         schema_version=1,
         session_id=SESSION_ID,
-        revision=REVISION,
-        branch="course-search",
         database_name=settings.database_name(SESSION_ID, worker=True),
         stage="translation",
         source_dataset_id=SOURCE_ID,
@@ -142,7 +140,6 @@ def session() -> WorkerDatasetSession:
         input_snapshot=DatabaseSnapshot(
             schema_version=1,
             session_id=SESSION_ID,
-            revision=REVISION,
             database_name="course_explorer",
             dump_sha256="c" * 64,
             verification=sample_verification(),
@@ -163,7 +160,6 @@ def seed_directory(
             TranslationControllerPolicy(
                 schema_version=2,
                 session_id=SESSION_ID,
-                revision=REVISION,
                 translation_model=load_translation_settings().provenance_model,
             )
         ),
@@ -181,9 +177,7 @@ class FakeRunner:
         command = tuple(argv)
         self.calls.append(command)
         output = b""
-        if command[:3] == ("git", "branch", "--show-current"):
-            output = b"course-search\n"
-        elif command[:2] == ("git", "rev-parse"):
+        if command[:2] == ("git", "rev-parse"):
             output = (REVISION + "\n").encode()
         elif command[:2] == ("git", "status"):
             output = b""
@@ -202,7 +196,6 @@ def write_control(directory: Path, action: str) -> None:
             TranslationControllerControl(
                 schema_version=1,
                 session_id=SESSION_ID,
-                revision=REVISION,
                 requested_action=action,  # type: ignore[arg-type]
             )
         ),
@@ -213,7 +206,6 @@ def write_state(directory: Path, **overrides) -> TranslationControllerWorkerStat
     values = {
         "schema_version": 2,
         "session_id": SESSION_ID,
-        "revision": REVISION,
         "lifecycle": "prepared",
         "desired_count": 2,
         "completed_count": 0,

@@ -10,7 +10,6 @@ import pytest
 from course_explorer.inference.context import (
     RequestCourseDescriptor,
     RequestCourseDescriptors,
-    request_descriptors_from_packet,
 )
 from course_explorer.inference.domain import (
     DirectnessOutcome,
@@ -44,20 +43,18 @@ from tests.inference._proposal_support import (
     _records,
     _required_option_codes,
 )
-from tests.inference._target_support import target_packet
 
 
 def test_compose_complete_category_pools_and_official_dedup() -> None:
     """The composer pools per-category options, applies direct-official dedup, and keeps flags."""
     target, candidates, result = _category_fixture()
     descriptors = _descriptors(target, candidates)
-    work, attempt, run = _records(result, descriptors)
+    work, attempt = _records(result, descriptors)
     referenced = {course.group_id: course for course in candidates}
 
     proposal = compose_target_proposal(
         work,
         attempt,
-        run,
         descriptors,
         target,
         tuple(referenced[group_id] for group_id in sorted(referenced)),
@@ -143,11 +140,10 @@ def test_compose_complete_category_pools_and_official_dedup() -> None:
             ),
         }
     )
-    single_work, single_attempt, single_run = _records(single_category, descriptors)
+    single_work, single_attempt = _records(single_category, descriptors)
     single = compose_target_proposal(
         single_work,
         single_attempt,
-        single_run,
         descriptors,
         target,
         (referenced["L"],),
@@ -161,7 +157,7 @@ def test_reject_ambiguous_or_multi_set_without_inventing_grouping() -> None:
     """Ambiguous codes and multi-set results fail loudly. Suppression is non-direct."""
     target, candidates, result = _category_fixture()
     descriptors = _descriptors(target, candidates)
-    work, attempt, run = _records(result, descriptors)
+    work, attempt = _records(result, descriptors)
 
     ambiguous = RequestCourseDescriptors(
         target=RequestCourseDescriptor(
@@ -196,12 +192,11 @@ def test_reject_ambiguous_or_multi_set_without_inventing_grouping() -> None:
         )
 
     ambiguous_result = only_option(("DUP",))
-    ambiguous_work, ambiguous_attempt, ambiguous_run = _records(ambiguous_result, descriptors)
+    ambiguous_work, ambiguous_attempt = _records(ambiguous_result, descriptors)
     with pytest.raises(TargetResultError) as ambiguous_error:
         compose_target_proposal(
             ambiguous_work,
             ambiguous_attempt,
-            ambiguous_run,
             ambiguous,
             target,
             (),
@@ -222,13 +217,12 @@ def test_reject_ambiguous_or_multi_set_without_inventing_grouping() -> None:
             "recommended": (),
         }
     )
-    multi_work, multi_attempt, multi_run = _records(multi_set, descriptors)
+    multi_work, multi_attempt = _records(multi_set, descriptors)
     referenced = {course.group_id: course for course in candidates}
     with pytest.raises(TargetResultError) as multi_error:
         compose_target_proposal(
             multi_work,
             multi_attempt,
-            multi_run,
             descriptors,
             target,
             tuple(referenced[group_id] for group_id in sorted(referenced)),
@@ -260,16 +254,13 @@ def test_reject_ambiguous_or_multi_set_without_inventing_grouping() -> None:
         }
     )
     suppressed_descriptors = _descriptors(target, (*candidates, suppressed_candidate))
-    suppressed_work, suppressed_attempt, suppressed_run = _records(
-        suppressed_result, suppressed_descriptors
-    )
+    suppressed_work, suppressed_attempt = _records(suppressed_result, suppressed_descriptors)
     suppressed_referenced = {
         course.group_id: course for course in (*candidates, suppressed_candidate)
     }
     suppressed = compose_target_proposal(
         suppressed_work,
         suppressed_attempt,
-        suppressed_run,
         suppressed_descriptors,
         target,
         (suppressed_referenced["D"], suppressed_referenced["E"], suppressed_referenced["S"]),
@@ -284,13 +275,12 @@ def test_equivalence_dedup_retains_exact_supporters() -> None:
     """Only the exact target+singleton substitute group drops. Larger and overlapping stay whole."""
     target, candidates, result = _equivalence_fixture()
     descriptors = _descriptors(target, candidates)
-    work, attempt, run = _records(result, descriptors)
+    work, attempt = _records(result, descriptors)
     referenced = {course.group_id: course for course in candidates}
 
     proposal = compose_target_proposal(
         work,
         attempt,
-        run,
         descriptors,
         target,
         tuple(referenced[group_id] for group_id in sorted(referenced)),
@@ -320,19 +310,4 @@ def test_equivalence_dedup_retains_exact_supporters() -> None:
     ]
     assert [proposal_id for proposal_id, _ in groups[0]] == sorted(
         (proposal.proposal_id, other.proposal_id)
-    )
-
-
-def test_descriptor_projection_is_exact_and_label_free() -> None:
-    """The current descriptor projection reads code/group/source directly from a packet."""
-    packet = target_packet(2)
-    descriptors = request_descriptors_from_packet(packet)
-    assert descriptors.target.group_id == packet.target.identity.group_id
-    assert descriptors.target.course_code == packet.target.course_code
-    assert (
-        descriptors.target.representative_source_sha256
-        == packet.target.identity.representative_source_sha256
-    )
-    assert tuple(candidate.group_id for candidate in descriptors.candidates) == tuple(
-        candidate.course.identity.group_id for candidate in packet.candidates
     )

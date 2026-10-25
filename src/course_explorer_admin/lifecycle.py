@@ -718,8 +718,8 @@ def _prepare(
 def require_retained_ingestion_manifest(path_text: str, expected_sha256: str | None) -> None:
     """Require the retained ingestion manifest to be a regular non-symlink file with exact bytes.
 
-    This is the one shared owner of the retained-manifest boundary: both the restart compatibility
-    check and the ingestion finalize check call it at their distinct operations.
+    This is the one continuation check that compares the retained manifest bytes with the recorded
+    identity before a resumed lifecycle action.
     """
     path = Path(path_text)
     if not path.is_file() or path.is_symlink():

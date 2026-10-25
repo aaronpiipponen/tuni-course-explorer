@@ -1,10 +1,8 @@
-"""Command and CLI contracts for the minimal official catalogue and course summaries."""
+"""Command contracts for the official catalogue and course summaries."""
 
 from __future__ import annotations
 
-import importlib.util
 from contextlib import contextmanager
-from pathlib import Path
 
 import pytest
 
@@ -16,7 +14,6 @@ from course_explorer.curriculum import (
 )
 from course_explorer.enums import ModuleType
 from course_explorer.search import lookup_commands as command_module
-from course_explorer.search.lookup_commands import CatalogueReport
 from tests.support import (
     FakeCurriculum,
     course,
@@ -24,20 +21,6 @@ from tests.support import (
     settings_factory,
     version,
 )
-
-
-def _load_script(name: str):
-    """Import one ``scripts/`` adapter as a standalone module."""
-    spec = importlib.util.spec_from_file_location(
-        name, Path(__file__).parents[2] / "scripts" / f"{name}.py"
-    )
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-_CATALOGUE_CLI = _load_script("catalogue")
 
 
 def _module_version(
@@ -152,21 +135,3 @@ def test_catalogue_command_maps_minimal_projection_and_empty_summaries_shortcut(
     ]
 
     assert command_module.run_course_summaries_command(()).results == ()
-
-
-def test_catalogue_cli_prints_one_delegated_report(monkeypatch, capsys) -> None:
-    """The catalogue CLI takes no data arguments and prints exactly one JSON report."""
-    report = CatalogueReport(courses=(), modules=())
-    calls: list[int] = []
-    monkeypatch.setattr(
-        _CATALOGUE_CLI,
-        "run_catalogue_command",
-        lambda: calls.append(1) or report,
-    )
-
-    assert _CATALOGUE_CLI.main([]) == 0
-    assert calls == [1]
-    assert capsys.readouterr().out == report.model_dump_json() + "\n"
-
-    with pytest.raises(SystemExit):
-        _CATALOGUE_CLI.main(["unexpected"])

@@ -61,8 +61,8 @@ Primary keys are `UUID` columns with a Python-side `uuid.uuid4` default, except 
 
 | Model | Table | Key columns | Unique constraints and foreign keys |
 |---|---|---|---|
-| `InferencePipelineRun` | `inference_pipeline_runs` | `id`, `model_identity`, `runtime_identity`, `prompt_version`, `prompt_content_sha256`, `schema_version`, `schema_sha256`, `pipeline_version`, `run_identity_sha256`, `configuration` | The identities non-blank and every hash a 64-character SHA-256 |
-| `InferenceTargetWork` | `inference_target_work` | `id`, `created_by_run_id`, `target_course_id`, `activity_as_of_academic_year_start`, `activity_window_years`, `input_sha256`, `work_key_sha256`, `status` | `uq_inference_target_work_target_work_key` on `(target_course_id, work_key_sha256)`, the index `ix_inference_target_work_status` on `status`, `created_by_run_id` referencing `inference_pipeline_runs.id` and `target_course_id` referencing `courses.id`, both with `RESTRICT` |
+| `InferencePipelineRun` | `inference_pipeline_runs` | `id`, `model_identity`, `runtime_identity`, `prompt_version`, `schema_version`, `pipeline_version`, `run_identity_sha256`, `configuration` | The identities non-blank and the run identity a 64-character SHA-256 |
+| `InferenceTargetWork` | `inference_target_work` | `id`, `created_by_run_id`, `target_course_id`, `activity_as_of_academic_year_start`, `activity_window_years`, `work_key_sha256`, `status` | `uq_inference_target_work_target_work_key` on `(target_course_id, work_key_sha256)`, the index `ix_inference_target_work_status` on `status`, `created_by_run_id` referencing `inference_pipeline_runs.id` and `target_course_id` referencing `courses.id`, both with `RESTRICT` |
 | `InferenceModelAttempt` | `inference_model_attempts` | `id`, `target_work_id`, `request_payload`, `finished_at` | `target_work_id` referencing `inference_target_work.id` with `RESTRICT` |
 | `InferenceProposal` | `inference_proposals` | `id`, `target_course_id`, `source_attempt_id`, `proposal_version`, `identity_sha256`, `expression`, `equivalence` | `uq_inference_proposals_identity_sha256` on `identity_sha256`, `target_course_id` referencing `courses.id` and `source_attempt_id` referencing `inference_model_attempts.id`, both with `RESTRICT` |
 | `InferenceCourseProcessing` | `inference_course_processing` | `course_id`, `teaching_text_sha256`, `processed`, `was_active`, `accepted_proposal_id`, `generation_attempt_count`, `disposition` | `course_id` is the primary key and references `courses.id` with `RESTRICT`, `accepted_proposal_id` references `inference_proposals.id` with `RESTRICT` and is nullable, the text hash a 64-character SHA-256, the counter nonnegative, and the disposition null or one of `done` and `failed` |
@@ -126,8 +126,9 @@ The module also declares `InferenceRunStatus` and `InferenceAttemptStatus`, and 
 16. `20261012_0016` adds `inference_course_processing.generation_attempt_count` and `inference_processing_targets.generation_started`, both with a default and non-null.
 17. `20261012_0017` adds the nullable `inference_course_processing.disposition` column and its closed choice check.
 18. `20261014_0018` widens the `inference_target_failures.reason` check with `context_exceeded`.
+19. `20261025_0019` drops the run prompt-content and schema hashes and the target-work input hash with their checks. Its downgrade raises.
 
-The head is `20261014_0018`. A revision that cannot restore the data it removes raises instead of dropping rows, so `20261008_0014` and `20261008_0015` apply in one direction only.
+The head is `20261025_0019`. A revision that cannot restore the data it removes raises instead of dropping rows, so `20261008_0014`, `20261008_0015`, and `20261025_0019` apply in one direction only.
 
 ## Adding a migration
 
@@ -136,7 +137,7 @@ The head is `20261014_0018`. A revision that cannot restore the data it removes 
    uv run python -m alembic revision -m "add x"
    ```
    The file written under `migrations/versions/` records the single current head in `down_revision`.
-2. Fill `upgrade()` and `downgrade()` with explicit operations, following the surrounding files. A `downgrade()` that cannot restore the data raises a `RuntimeError` with the reason, as `20261008_0014` and `20261008_0015` do.
+2. Fill `upgrade()` and `downgrade()` with explicit operations, following the surrounding files. A `downgrade()` that cannot restore the data raises a `RuntimeError` with the reason, as `20261008_0014`, `20261008_0015`, and `20261025_0019` do.
 3. Change `src/course_explorer/db/models.py` in the same step, because `migrations/env.py` uses `Base.metadata` and the schema tests compare the head schema against `Base.metadata.tables`.
 4. Keep one head. `require_database_schema` in `src/course_explorer/datasets.py` raises when the repository exposes more than one, and a database whose revision differs from the head raises `DatabaseSchemaMismatchError`.
 5. Apply the chain:
@@ -152,7 +153,7 @@ The tests are marked `integration` and run against the test database that `tests
 | File | Covers |
 |---|---|
 | `tests/db/_schema_support.py` | The `integrity_records` and `two_course_versions` fixtures and the `derived_text_row`, `embedding_chunk_row`, and `inferred_set_row` builders |
-| `tests/db/test_database_schema.py` | Table set parity with `Base.metadata.tables`, the installed `vector` extension, the additive column types and defaults, the refused downgrades, the fresh chain built from `template0` over a supplied connection, and the commit and rollback contract of `session_scope` |
+| `tests/db/test_database_schema.py` | Table set parity with `Base.metadata.tables`, the installed `vector` extension, the additive column types and defaults, head reapplication that preserves markers, failures and decisions, the fresh chain built from `template0` over a supplied connection, the identity-column migration over populated results with its irreversible 0019 refusal, and the commit and rollback contract of `session_scope` |
 | `tests/db/test_curriculum_repository.py` | Normalization into the real schema and the catalogue read seam over it, including the unique source identity and the same-module parent rule |
 | `tests/db/test_inferred_schema.py` | The category migration and the inferred set constraints, including a refused downgrade beside a recommended occurrence |
 | `tests/db/test_teaching_embedding_schema.py` | The derived text provenance constraints, the chunk origin and lifecycle constraints, the vector dimension, and the cascade with a deleted course version |

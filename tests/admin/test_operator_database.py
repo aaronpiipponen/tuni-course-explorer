@@ -401,14 +401,18 @@ def _fixture_database_context(factory: sessionmaker):
         ("wrong_actual_schema", None),
     ],
 )
-def test_disposition_requires_idle_returned_current_dataset(
+def test_disposition_reads_selected_schema_and_guards_writes(
     database: tuple[Engine, object],
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
     admission: str,
     choice: str | None,
 ) -> None:
-    """The disposition service refuses non-idle/initial/wrong-schema and writes through real owners."""
+    """The disposition service writes one disposition on an idle returned current-schema dataset.
+
+    Every other admission refuses the write and leaves the durable decision unset and the final
+    store empty.
+    """
     engine, factory = database
     repo_root = tmp_path / "repo"
     # The shared owners bind ``repository_root`` into their own module namespace, so redirect every
@@ -432,7 +436,6 @@ def test_disposition_requires_idle_returned_current_dataset(
             database_name=engine.url.database,
             predecessor_id="a" * 32,
             kind="returned",
-            revision="c" * 40,
             dump_sha256="d" * 64,
             verification=sample_verification(),
         )
@@ -501,6 +504,19 @@ def test_disposition_requires_idle_returned_current_dataset(
                 == disposition
             )
         else:
+            if admission == "wrong_actual_schema":
+                with pytest.raises(DatabaseSchemaMismatchError):
+                    disposition_module.read_inference_target_disposition(_DISPOSITION_TARGET)
+            else:
+                # A read succeeds on an initial or non-idle selected dataset and takes no action lock.
+                with monkeypatch.context() as read_scope:
+                    read_scope.setattr(
+                        disposition_module.mechanics, "exclusive_action_lock", _forbidden
+                    )
+                    read = disposition_module.read_inference_target_disposition(_DISPOSITION_TARGET)
+                assert read.dataset_id == receipt.dataset_id
+                assert read.target_group_id == _DISPOSITION_TARGET
+                assert read.disposition is None
             with pytest.raises((ValueError, DatabaseSchemaMismatchError)):
                 disposition_module.set_inference_target_disposition(_DISPOSITION_TARGET, "done")
             # Refused admissions leave the durable decision and the final store untouched.

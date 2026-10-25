@@ -10,6 +10,7 @@ import {
   changeProgrammes,
   programmeMoves,
   resetUnplaced,
+  VERSION_CONFLICT,
   type StructureChange,
 } from "./actions";
 import {
@@ -682,6 +683,21 @@ describe("structure selection actions", () => {
           placedCourseIds: [...state.structure.placedCourseIds],
         },
       }));
+      // A version that disagrees with the stored selection of the same group is refused, and the
+      // refused write leaves the stored selection, the programme list and the placements in place.
+      const beforeRefusal = structuredClone(
+        store.getSnapshot().profiles.default.state.structure,
+      );
+      expect(() =>
+        changeProgrammes(
+          store,
+          { kind: "add", groupId: "prog-a", versionId: "prog-a-v2" },
+          content,
+        ),
+      ).toThrow(VERSION_CONFLICT);
+      expect(store.getSnapshot().profiles.default.state.structure).toEqual(
+        beforeRefusal,
+      );
       changeProgrammes(
         store,
         operation === "replace"

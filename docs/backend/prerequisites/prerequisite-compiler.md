@@ -389,7 +389,7 @@ self-occurrence dropping, `test_graph_projection.py` structure sharing, marks an
 
 `test_prerequisite_satisfaction.py` covers the satisfaction fold. `test_prerequisite_command.py`
 covers the commands, the drawing allowance and the independent route operation.
-`test_prerequisite_domain.py` covers the expression vocabulary and its composed roles.
+`test_prerequisite_domain.py` covers the expression vocabulary, the mixed official and inferred expression round-trip, and canonical decimal serialization.
 `test_inferred_prerequisite_repository.py` covers inferred-set publication, replacement and read
 states, the rejection of unsupported nodes and activity reconciliation.
 `test_inferred_equivalence_repository.py` covers equivalence-group publication, read validation,

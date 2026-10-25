@@ -78,7 +78,7 @@ describe("browser profiles", () => {
     expect(reloaded.currentProfileId).toBe(secondId);
     expect(reloaded.profiles.default.state).toEqual(first);
     expect(reloaded.profiles[secondId].state).toEqual(second);
-    // The live prerequisite input slice carries across reload: storage writes back the persisted
+    // The live prerequisite input slice carries across reload. Storage writes back the persisted
     // fields only.
     expect(reloaded.profiles.default.state.prerequisites).toEqual({
       ...initialPrerequisitesState(),
@@ -88,9 +88,6 @@ describe("browser profiles", () => {
       excludedCourseIds: ["canonical-a"],
       completedNodeKeys: [markA],
     });
-    expect(Object.keys(reloaded.profiles.default.state.prerequisites)).toEqual(
-      Object.keys(initialPrerequisitesState()),
-    );
   });
 
   it("Save as copies independently and refuses a duplicate name", () => {

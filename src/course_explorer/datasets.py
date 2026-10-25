@@ -88,7 +88,6 @@ class DatabaseSnapshot(_DatasetModel):
 
     schema_version: Literal[1] = 1
     session_id: DatasetId
-    revision: DatasetRevision
     database_name: DatasetDatabaseName
     dump_sha256: DatasetSha256
     verification: DatasetVerification
@@ -102,7 +101,6 @@ class DatasetReceipt(_DatasetModel):
     database_name: DatasetDatabaseName
     predecessor_id: DatasetId | None
     kind: Literal["initial", "returned"]
-    revision: DatasetRevision
     dump_sha256: DatasetSha256 | None
     verification: DatasetVerification
 

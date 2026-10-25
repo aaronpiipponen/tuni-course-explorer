@@ -16,7 +16,6 @@ from course_explorer.ingestion.normalization import normalize_curriculum
 from course_explorer.ingestion.normalization_repository import NormalizationRepository
 from course_explorer.ingestion.repository import CaptureRepository
 from course_explorer.next_courses import commands as command_module
-from course_explorer.next_courses.commands import NextCoursesReport
 from course_explorer.next_courses.service import NextCourseMode
 from course_explorer.prerequisite.domain import (
     CourseRequirement,
@@ -264,6 +263,7 @@ def discovery_catalogue(
     )
 
     monkeypatch.setattr(command_module, "load_search_settings", search_settings)
+    monkeypatch.setattr(command_module, "_database_context", lambda _settings: nullcontext(factory))
     monkeypatch.setattr(recommendations_commands, "load_search_settings", search_settings)
     monkeypatch.setattr(recommendations_commands, "load_embedding_settings", embedding_settings)
     monkeypatch.setattr(recommendations_commands, "load_database_settings", lambda: object())
@@ -356,25 +356,6 @@ def test_real_next_course_command_rejects_partial_substitution(discovery_catalog
     )
     assert "course-next-sub" not in {
         result.course.group_id for result in partial_substitution.results
-    }
-
-
-def test_real_next_course_report_round_trips_serialized_fields(discovery_catalogue: object) -> None:
-    """The real report round-trips with the serialized fields."""
-    all_mode = command_module.run_next_courses_command(
-        completed_courses=BASIS, display_language="en", include_inferred=True, mode="all"
-    )
-    payload = json.loads(all_mode.model_dump_json())
-    assert NextCoursesReport.model_validate_json(all_mode.model_dump_json()) == all_mode
-    assert payload["mode"] == "all"
-    assert payload["active_only"] is True
-    assert payload["include_inferred"] is True
-    first = payload["results"][0]
-    assert set(first) == {
-        "course",
-        "required_coverage",
-        "recommended_coverage",
-        "depends_on_inferred",
     }
 
 

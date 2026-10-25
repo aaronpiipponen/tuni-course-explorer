@@ -97,7 +97,7 @@ The origin branch input starts empty. **Worker setup or update** is disabled unt
 
 A full setup also performs the worker bootstrap and prepares its resources. The report shows the code branch, the code revision, whether the server origin differs, whether the resources are ready and, when they are not, the missing resources. With **code only** on, the setup reports the code facts and shows resource readiness as **unknown**.
 
-**Preflight** only reads the worker's prepared code and resources. It sends nothing on its own, shows a preflight report from the worker when selected, and holds that report separate from a setup report. The panel's marker says **manual**.
+**Preflight** compares this checkout's Git origin with the configured origin, reports whether this checkout differs from its origin branch, and reads the worker's code branch and revision, together with the worker's prepared resources. It sends nothing on its own, shows a preflight report from the worker when selected, and holds that report separate from a setup report. The panel's marker says **manual**.
 
 [Worker sessions](/docs/operations/worker-sessions.md) describes the worker session that the stages run.
 

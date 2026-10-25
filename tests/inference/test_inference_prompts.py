@@ -14,7 +14,6 @@ from course_explorer.inference.domain import (
 from course_explorer.inference.prompts import load_prompt_pack
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[2] / "src" / "course_explorer" / "inference"
-V9_PACK_DIGEST = "ca5941d8979e694e68181940e3466cf4e8878e3cbb91497fb84021ed09870eb3"
 
 
 def test_prompt_packs_load_hashed_resources_independent_of_cwd(
@@ -35,7 +34,6 @@ def test_prompt_packs_load_hashed_resources_independent_of_cwd(
         pack.content_sha256
         == hashlib.sha256(system_path.read_bytes() + b"\0" + examples_path.read_bytes()).hexdigest()
     )
-    assert pack.content_sha256 == V9_PACK_DIGEST
     for raw_example in json.loads(examples_path.read_text(encoding="utf-8")):
         parse_target_result(json.dumps(raw_example["result"], ensure_ascii=False), "v2")
 

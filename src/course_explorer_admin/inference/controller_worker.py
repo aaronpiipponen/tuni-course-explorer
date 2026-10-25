@@ -73,7 +73,7 @@ def _read_import_receipt(
     """Strictly load one session's import status, or ``None`` when genuinely absent.
 
     Only a genuinely absent file returns ``None``. A symlinked, nonregular, malformed, foreign, or
-    inconsistent receipt fails loudly. The receipt must describe this session and revision, report
+    inconsistent receipt fails loudly. The receipt must describe this session, report
     the imported lifecycle, be unbounded, require a terminal worker state, and carry known counts
     and real coverage whose published targets equal its retained complete targets (an explicit
     operator DONE target contributes retained coverage once its inference-owned output is withdrawn).
@@ -84,7 +84,7 @@ def _read_import_receipt(
     if not path.exists():
         return None
     receipt = load_inference_controller_status(path)
-    if receipt.session_id != session.session_id or receipt.revision != session.revision:
+    if receipt.session_id != session.session_id:
         raise ValueError("import receipt identity does not match the session")
     if receipt.lifecycle != "imported":
         raise ValueError("import receipt must report the imported lifecycle")
@@ -124,7 +124,6 @@ def _status_from_state(
         reboot_due = worker_gpu_reboot_due(
             directory,
             session_id=session.session_id,
-            revision=session.revision,
             settings=load_worker_gpu_reboot_settings(),
         )
     return InferenceControllerStatus.model_validate(
@@ -152,14 +151,12 @@ def _publish_prepared_session(
         WorkerControl(
             schema_version=1,
             session_id=session.session_id,
-            revision=session.revision,
             requested_action="run",
         ),
     )
     state = InferenceControllerWorkerState(
         schema_version=2,
         session_id=session.session_id,
-        revision=session.revision,
         lifecycle="prepared",
         desired_count=None,
         completed_count=None,
@@ -215,7 +212,6 @@ def _finalize(
             raise ValueError("published targets do not match retained complete targets")
         receipt = InferenceControllerStatus(
             session_id=session.session_id,
-            revision=session.revision,
             lifecycle="imported",
             course_limit=None,
             desired_count=coverage.eligible_targets,
@@ -303,7 +299,6 @@ class InferenceWorkerStage:
                 InferenceControllerWorkerState(
                     schema_version=2,
                     session_id=session.session_id,
-                    revision=session.revision,
                     lifecycle=lifecycle,  # type: ignore[arg-type]
                     desired_count=tracker["desired_count"],  # type: ignore[arg-type]
                     completed_count=tracker["completed_count"],  # type: ignore[arg-type]
@@ -330,7 +325,6 @@ class InferenceWorkerStage:
         gpu_clock = WorkerGpuClock(
             directory,
             session_id=session.session_id,
-            revision=session.revision,
             settings=load_worker_gpu_reboot_settings(),
             monotonic=monotonic,
         )

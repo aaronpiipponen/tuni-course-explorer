@@ -62,7 +62,6 @@ from course_explorer.inference.operational_selection import (
     represented_identities,
     score_rerank_pairs,
 )
-from course_explorer.inference.prompts import PromptPack
 from course_explorer.inference.provider import RerankProvider
 from course_explorer.inference.target_pass import TargetGenerationProvider, run_target
 from course_explorer.teaching_text.service import (
@@ -77,6 +76,7 @@ from course_explorer.validation import (
 if TYPE_CHECKING:
     from course_explorer.inference.scheduling import ProcessingTargetRecord, TargetFailureRecord
     from course_explorer.inference.scheduling_repository import InferenceSchedulingRepository
+    from course_explorer.inference.target_pass import TargetWorkIdentity
 
 
 class _OperationalModel(BaseModel):
@@ -371,13 +371,13 @@ def rerank_operational_pool(
 
 def run_operational_target(
     value: OperationalTargetInput,
-    pack: PromptPack,
     settings: InferenceSettings,
     repository: InferenceEvidenceRepository,
     provider: TargetGenerationProvider,
     execution: InferenceExecutionProfile,
     *,
     packet: InferenceTargetPacket,
+    identity: TargetWorkIdentity,
     scheduling_repository: InferenceSchedulingRepository,
     cycle_id: UUID,
     retry_failed: bool = False,
@@ -386,20 +386,19 @@ def run_operational_target(
 ) -> InferenceTargetWorkRecord:
     """Run or reuse exactly one complete-target call through the sole evidence path.
 
-    It delegates only to :func:`run_target` for request rendering, claim/retry, schema validation,
+    It delegates only to :func:`run_target` for claim/retry, schema validation,
     code-boundary check, and immutable completion writer. The transient ``packet`` is the router's
-    one materialization. ``target_work_identity`` validates that the pack matches the configured
-    prompt version before any request. The supplied execution profile selects the local fit key or
-    a caller-injected alternative route, and no catalogue loop or second controller is involved.
+    one materialization and ``identity`` is its one prepared work identity for the selected
+    execution profile. No catalogue loop or second controller is involved.
     """
     return run_target(
         value,
-        pack,
         settings,
         repository,
         provider,
         execution,
         packet=packet,
+        identity=identity,
         scheduling_repository=scheduling_repository,
         cycle_id=cycle_id,
         retry_failed=retry_failed,

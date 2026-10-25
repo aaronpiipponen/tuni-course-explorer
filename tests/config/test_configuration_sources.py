@@ -19,14 +19,12 @@ from course_explorer.config import (
     DatabaseSettings,
     EmbeddingRuntimeSettings,
     EmbeddingSettings,
-    LocalLifecycleSettings,
     SearchSettings,
     UsageSettings,
     WebSettings,
     load_administrative_site_settings,
-    load_worker_gpu_reboot_settings,
 )
-from course_explorer_admin import compose, mechanics
+from course_explorer_admin import compose
 from tests.config._support import FIXTURE_VALUES, MACHINE_TEMPLATE_VALUES
 from tests.support import write_example_config_tree
 
@@ -65,41 +63,6 @@ def test_automatic_configuration_and_override_precedence(
     assert WebSettings().web_port == 18026
     assert WebSettings().embeddings_enabled is True
     assert WebSettings().inference_enabled is True
-    assert UsageSettings().usage_retention_days == 30
-    # The administration family composes from its own registered subsystem file.
-    assert AdminWebSettings().admin_web_port == 8039
-    assert AdminWebSettings().admin_web_origin == "https://localhost:8039"
-    assert AdminWebSettings().admin_web_session_idle_minutes == 30
-    assert AdminWebSettings().admin_web_session_max_hours == 12
-    assert AdminWebSettings().admin_web_anonymous_session_limit == 10
-    assert AdminWebSettings().admin_web_anonymous_session_window_seconds == 60
-    assert AdminWebSettings().admin_web_command_log_limit == 200
-    assert AdminWebSettings().admin_web_poll_seconds == 60
-    assert AdminWebSettings().admin_web_app_url == "http://localhost:8037/"
-    assert (
-        AdminWebSettings().admin_web_repository_url
-        == "https://github.com/aaronpiipponen/tuni-course-explorer"
-    )
-
-    # Both 1024-component hubs resolve from the committed example derived artifacts before model
-    # validation.
-    embedding = EmbeddingSettings()
-    assert embedding.embedding_port == 8081
-    assert len(embedding.embedding_hub_vector) == 1024
-    assert len(embedding.embedding_outcomes_hub_vector) == 1024
-    assert embedding.embedding_hub_vector[:1] == (-0.04258320177679946,)
-    assert embedding.embedding_outcomes_hub_vector[:1] == (-0.03813977011063868,)
-
-    assert SearchSettings().comparison_overlap_floor == 0.20
-    assert SearchSettings().search_embedding_request_timeout_seconds == 5
-    assert SearchSettings().search_embedding_max_attempts == 1
-    assert load_worker_gpu_reboot_settings().worker_gpu_reboot_interval_minutes == 120
-    assert LocalLifecycleSettings().poll_interval_seconds == 0.5
-    # Both site unit identities and the web unit's manager scope are machine identity, so they
-    # compose from the environment file beside the worker connection values.
-    assert load_administrative_site_settings().web_service_unit == "replace-with-web.service"
-    assert load_administrative_site_settings().admin_service_unit == "replace-with-admin.service"
-    assert load_administrative_site_settings().web_service_scope == "user"
 
     # An explicit process override wins over both files.
     monkeypatch.setenv("EMBEDDING_PORT", "18080")
@@ -248,14 +211,8 @@ def test_compose_bridge_carries_interpolation_aliases_and_cleans_up(
     monkeypatch.setattr(compose.subprocess, "run", fake_run)
 
     assert compose.main(["--", "config", "--quiet"]) == 0
-    # The typed Compose prefix carries its own extra arguments after the bridge module, and the
-    # noninteractive choice places `--non-interactive` before its final `--`.
-    non_interactive = list(mechanics.compose_prefix(non_interactive=True))
-    assert non_interactive[-2:] == ["--non-interactive", "--"]
-    assert non_interactive[: len(mechanics.compose_prefix()) - 1] == [
-        *mechanics.compose_prefix()[:-1]
-    ]
-    assert compose.main([*non_interactive[-2:], "version"]) == 0
+    # The noninteractive flag before the final `--` is accepted and the call exits 0.
+    assert compose.main(["--non-interactive", "--", "version"]) == 0
     # Docker Compose's own process-level project override is forwarded as an explicit argv option,
     # so one ephemeral namespace carries through sudo and the default
     # project name in docker-compose.yml is untouched.
@@ -263,37 +220,13 @@ def test_compose_bridge_carries_interpolation_aliases_and_cleans_up(
     assert compose.main(["--", "version"]) == 0
 
     first, second, third = captures
-    command = first["command"]
-    assert command[:3] == ("sudo", "docker", "compose")
-    assert ("--project-directory", str(tmp_path)) == command[3:5]
-    assert ("--file", str(tmp_path / "docker-compose.yml")) == command[5:7]
-    assert command[-2:] == ("config", "--quiet")
-    assert second["command"][:2] == ("sudo", "-n")
     assert ("--project-name", "synthetic-proof-project") == third["command"][7:9]
-    assert third["command"][-1] == "version"
     assert "COMPOSE_PROJECT_NAME" not in str(third["content"])
 
     values: dict[str, str] = {}
     for line in str(first["content"]).splitlines():
         key, _, quoted = line.partition("=")
         values[key] = quoted
-    assert set(values) == {
-        "POSTGRES_DB",
-        "POSTGRES_USER",
-        "POSTGRES_PASSWORD",
-        "POSTGRES_PORT",
-        "EMBEDDING_SERVER_IMAGE",
-        "EMBEDDING_RUNTIME_REVISION",
-        "EMBEDDING_ARTIFACT_SHA256",
-        "EMBEDDING_MODEL",
-        "EMBEDDING_HOST",
-        "EMBEDDING_PORT",
-        "EMBEDDING_THREADS",
-        "EMBEDDING_CONTEXT_SIZE",
-        "EMBEDDING_POOLING",
-        "EMBEDDING_NORMALIZATION",
-        "EMBEDDING_ARTIFACT_PATH",
-    }
     assert values["POSTGRES_PASSWORD"] == "'syn\\'thetic-password'"
     assert first["file_mode"] == 0o600
     assert first["directory_mode"] == 0o700

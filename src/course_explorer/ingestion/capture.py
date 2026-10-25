@@ -534,7 +534,6 @@ def capture_curriculum(
             ),
         ):
             return None
-        repository.verify_run(store.manifest, store.manifest_relative_path)
         store.mark_completed()
         repository.ensure_run(store.manifest, store.manifest_relative_path)
         # Completion rewrites the manifest bytes and publishes matching completed provenance, so

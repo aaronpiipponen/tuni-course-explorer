@@ -24,7 +24,7 @@ The selection and the completion are shared rather than owned by a tab. A course
 
 The **Structure of studies** tab reads the official structure reports of its ordered programmes, placed modules and exact version selections in one batch, keeps them in memory and in a derived IndexedDB store keyed by the serving dataset identity, the root and the selection identity, and lays the profile's own choices and places over that content. A canonical module with several eligible versions is chosen explicitly, and a group that still needs one shows its own candidate picker. Selecting a course there adds it to the shared selection, and each course shows on one card.
 
-[Structure editor](/docs/frontend/structure-editor.md) states the behaviour a reader can rely on, including the confirmations and the resets, and [Structure model](/docs/frontend/structure-model.md) describes the projection and the resolution behind it. [Structure of studies in the catalogue](/docs/backend/catalogue/study-structure.md) describes the official report itself.
+[Structure editor](/docs/frontend/structure-editor.md) states the behaviour a reader can rely on, including the confirmations and the resets. [Structure model](/docs/frontend/structure-model.md) describes the projection and the resolution behind it, [Structure edits](/docs/frontend/structure-edits.md) the placement edits and the selection migration, [Structure pane](/docs/frontend/structure-pane.md) the pane and its reads, and [Sisu capture](/docs/frontend/sisu-capture.md) the import of a captured plan. [Structure of studies in the catalogue](/docs/backend/catalogue/study-structure.md) describes the official report itself.
 
 ## The prerequisite graph
 
@@ -42,7 +42,7 @@ A worker log read and the worker preflight run on an explicit request alone. The
 
 The administration rebuild runs two fixed commands: the console build and the backend restart. Its confirmation states that it signs every operator out, and the next sign-in reads a fresh session.
 
-[Administration console code](/docs/frontend/admin-console.md) describes the separate build, the module ownership, the typed clients and the session, polling and error flow.
+[Administration console code](/docs/frontend/admin-console.md) describes the separate build, the module ownership, the typed clients and the session, polling and error flow, and [Administration console panels](/docs/frontend/admin-console-panels.md) describes each tab's panels, their reads and their routes.
 
 ## The documentation wiki
 
