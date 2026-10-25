@@ -15,6 +15,9 @@ This glossary defines the terms the documentation uses for courses, search, comp
 | Inactive course | A course with no version listed inside the activity window. The app labels it **inactive**. |
 | Module | A degree programme, study module, or other official grouping of courses, shared by all of its official versions. |
 | Module version | One exact official version of a module, with its type, target credits, validity, and rule tree. |
+| Minimal official catalogue | The list of courses, with their canonical identities, codes, names, credits and activity flags, and modules with their eligible versions, that the browser caches by serving dataset identity and filters locally. |
+| Narrowing | The browser's local filtering of the minimal official catalogue by name or code as text is typed into a course or module box. |
+| Projected read | A database read that selects only the columns its caller consumes rather than loading whole rows. For those columns it returns the same value as the full read. |
 | Credits | The credit range of a course version, or the target credits of a module version. The app abbreviates credits as **cr**. |
 | Official data | Data as the university publishes it in the public curriculum source. |
 | Teaching text | The name, content, and learning outcomes text of a course version. |
@@ -34,7 +37,9 @@ This glossary defines the terms the documentation uses for courses, search, comp
 | Settings family | The group of settings that one settings class loads and validates. |
 | Settings owner | The configuration module that reads the subsystem files and the environment file for every settings family. |
 | Compose environment file | The temporary environment file that the administration command generates for each Docker Compose run and deletes afterwards. |
-| Feature read | The one `POST /api/features` read the browser app makes before its shell mounts. It reports the two feature switches and runs no command. |
+| Feature read | The one `POST /api/features` read the browser app makes before its shell mounts. It reports the two feature switches and the serving dataset identity, and runs no command. |
+| Serving dataset identity | The opaque digest of the serving generation and the selected dataset id, or of the serving generation and a null selection when the site reads its configured database. Every cached web response reports it, and the browser's memory cache and derived structure store are scoped to it. |
+| Serving generation | The random value that the web server's supervisor creates once at startup and that every front router and worker process it starts inherits. A restart of the web server creates a new one. |
 | Feature switch | One of the two settings in `config/web.toml` that decide which features a site serves: `WEB_EMBEDDINGS_ENABLED` for comparison, recommendations and semantic search, and `WEB_INFERENCE_ENABLED` for inferred prerequisites. |
 
 ## Capture and data preparation
@@ -76,8 +81,14 @@ This glossary defines the terms the documentation uses for courses, search, comp
 | Required prerequisite | A prerequisite that must be met. The app labels these **Required**. |
 | Recommended prerequisite | A prerequisite that the course advises but does not demand. The app labels these **Recommended**. |
 | Official prerequisite | A prerequisite that the university publishes. |
-| Inferred prerequisite | A prerequisite found by analysis of teaching text and shown apart from official prerequisites. The app labels these **Inferred**. |
-| Prerequisite expression | The tree of requirements for one course, built from course, module, credit, count, and choice requirements joined by AND and OR groups. |
+| Inferred prerequisite | A prerequisite found by analysis of teaching text and stored separately from official prerequisites. It draws in the same graph, and a course reached only through inferred occurrences carries the **inferred** label. |
+| Prerequisite expression | The source form of a prerequisite requirement, built from course, AND, OR, cardinality, credit and course-count nodes, with module and unresolved nodes in official requirements only. An inferred set stores it, and the compiler reads it. It is not the calculation representation. |
+| Solver structure | The calculation representation of one graph root, built from calculation pieces. The graph report carries it beside the drawing, and the satisfaction evaluator and the minimum route read it. |
+| Calculation piece | One provenance-free node of the solver structure, interned once by its kind, its values, its ordered child piece IDs and its evaluation flags. |
+| Display piece | One drawn box identified within its course subtree by its displayed kind, values and drawn children. A saved node mark names one display piece. |
+| Support binding | The link in the graph report from one calculation support to the drawn node identities and the markable box identities it stands for. |
+| Drawing allowance | The counts of courses, nodes and connections that one graph read reports against the configured drawing limit `PREREQUISITE_GRAPH_MAX_ELEMENTS`, with whether the browser may draw them. |
+| Allocation limit | The configured bound `PREREQUISITE_PATH_MAX_COMPACT_NODES` on the exact minimum route search. A calculation past it restarts once with the greedy search. |
 | AND group | A group whose every member must be met. |
 | OR group | A group of options of which one must be met. |
 | Option pool | The OR group that collects every official and inferred option of one category, required or recommended, for one course. |
@@ -85,11 +96,11 @@ This glossary defines the terms the documentation uses for courses, search, comp
 | Graph root | The course whose prerequisite graph is open in the **Prerequisites** tab. |
 | Basis | The set of courses that counts as already covered in a calculation: either the completed courses, or every selected course. The app shows it as **Route basis** and **Discovery basis**. |
 | Exclusion | A course marked **Excluded**. It never counts as covered and no route passes through it, and the graph shows it and its own prerequisites. |
-| Node mark | A profile setting that completes or excludes one module or numeric requirement node in the prerequisite graph without changing the selected or completed course sets. |
+| Node mark | A profile setting that completes or excludes one drawn module or numeric requirement node in the prerequisite graph without changing the selected or completed course sets. A shared drawn node covers every source requirement it represents, and the mark applies to every calculation piece that node stands for. |
 | Active only | The setting that leaves inactive courses out of search results, the prerequisite graph and route, and the Discover lists. |
 | Minimum route | The set of courses that meets a course's prerequisites with the fewest new credits. The app finds it with **Find minimum route**. |
 | New credits | The credits of every course in a route that is not in the basis, each course counted once. |
-| Route outcome | The result of a minimum route request: **Exact minimum route**, **Approximate route**, **No route found**, **Route unresolved**, **No route exists**, or **Shortfall**. |
+| Route outcome | The result of a minimum route calculation: **Exact minimum route**, **Approximate route**, **No route found**, **Route unresolved**, **No route exists**, or **Shortfall**. |
 | Shortfall | The route outcome in which a module rule is below its bound because only active courses are allowed. |
 | Substitution | A set of courses that the university accepts in place of one course. A substitution applies in one direction only. |
 | Unresolved requirement | An official requirement that cannot be resolved to courses, such as a reference to a missing course. |
@@ -101,13 +112,13 @@ This glossary defines the terms the documentation uses for courses, search, comp
 | Term | Meaning |
 |---|---|
 | Next courses | The courses whose prerequisites the basis covers, listed in the **Discover** tab. |
-| Prerequisite mode | The rule for next courses: **All** lists a course when all of its prerequisites are covered, and **At least one** lists it when any one prerequisite is covered. |
+| Prerequisite mode | The rule for next courses: **All** lists a course when all of its prerequisites are covered, and **Partially covered** lists it when any one prerequisite is covered, including a course whose prerequisites are all covered. |
 | Prerequisite coverage | The share of a next course's prerequisites that the basis covers, shown separately for required and recommended prerequisites. |
 | Inferred dependence | The mark on a next course that is listed only because of inferred prerequisites. |
 | Recommendations | Courses with teaching text similar to the basis, ranked by similarity and listed in the **Discover** tab as **Recommended for you** on a site that serves the embedding features. |
 | Near-duplicate | A candidate recommendation that overlaps a basis course above a configured share. Near-duplicates are left out of recommendations. |
 | Structure of studies | The official structure of each programme in the **Structure of studies** tab, shown as modules, courses, and rules. |
-| Programme | A degree programme or a bare module at the top level of the structure of studies. The app adds one with **Add programme** and orders them in the tab. |
+| Programme | A degree programme or a bare module at the top level of the structure of studies. The app adds one with **Add programme** and orders them in the tab. The row's kind label follows the official type, so a top-level bare module reads **module** while its position gives it the programme menu and reset. |
 | Holder | The programme or module that a structure operation acts on: the one an addition or replacement places, a move relocates, and a reset or delete clears. |
 | Unplaced studies | The part of the structure of studies that holds selected courses not placed under any programme or module. |
 
@@ -123,6 +134,9 @@ This glossary defines the terms the documentation uses for courses, search, comp
 | Open tab | The tab a browser tab shows. It belongs to that browser tab's session storage rather than to a profile. |
 | App language | The language of the app's interface and course names in a profile, either Finnish or English. |
 | Browser state | The saved state of every profile, kept in the browser's local storage. |
+| Read cache | The bounded in-memory store of successful reads and calculations above the tab panes, scoped to the serving dataset identity and never part of a profile or of browser storage. Successful study structures also persist in a derived IndexedDB store under that identity, their root and their module-version selection. |
+| Bottom bar | The bar at the bottom of the app at a phone width, with one button for each served tab and **More**. |
+| Bottom notice | A temporary message at the bottom of the app that reports an action's result and can offer a button for a related action. |
 | Docs | The documentation wiki inside the app, opened from **Docs**. |
 
 ## Inference
@@ -152,6 +166,13 @@ This glossary defines the terms the documentation uses for courses, search, comp
 | Lifecycle | The state of a stage: idle, starting, running, paused, stopped, completed, or failed. A status read reports a starting or running stage with no live process as interrupted. |
 | Worker | The separate machine that runs the remote stages on its own copy of the selected dataset. |
 | Request path | The route from the browser app through the web server to the database and the embedding service. |
+| Front router | The web server process that listens on the configured loopback port, admits each request, forwards it to one worker process and writes its request record. |
+| Worker process | One of the `WEB_WORKERS` web server processes that serve dataset reads behind the front router. |
+| Admission control | The front router's limits on API requests when `ADMISSION_ENABLED` is true: the light rate and concurrency limits, the heavy budget, the heavy slots and the heavy queue, each scaled by the load regime. |
+| Admission class | The class the front router gives one API request: free, light or heavy. A heavy request carries an estimated cost in core-seconds and passes the heavy limits. |
+| Load score | The configured weighted sum of whole-host CPU utilisation and the front router's light and heavy request activity over the configured load window. |
+| Load regime | The admission state derived from the load score: headroom, middle or saturated. Saturation holds until the score falls below the configured release line. The regime controls the request limits, the heavy budget, the heavy slots and the queue capacity. |
+| Heavy budget | The core-seconds of heavy requests one user may spend in one window. It moves linearly from `ADMISSION_HEAVY_BUDGET_CORE_SECONDS` at the headroom position to `ADMISSION_HEAVY_BUDGET_SATURATED_CORE_SECONDS` at saturation. |
 | Preparation path | The route from the administration command through the four stages to the database. |
 | Worker session | One run of a remote stage on the worker, from its prepared database copy to the return of the result. |
 | Dataset | One complete database of courses, modules, and derived data. |

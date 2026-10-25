@@ -1,12 +1,11 @@
 """Pure next-course discovery: direct-prerequisite coverage, eligibility and ordering.
 
-This module owns the request-local arithmetic and ordering for "What Can I Study Next?".
-It consumes already-compiled direct category roots, the chosen basis, and the requested mode, and
-computes its result in memory. Coverage is built on the shared `traversal.ExpressionEvaluator` fold, so it is a
-course-share meter over each category's OR-of-AND options. Full ALL-mode eligibility is decided by
-the shared satisfaction owner with the
-actual numeric constraints. Official and inferred contributions are distinguishable through the
-relationship-local, official-wins `depends_on_inferred` flag.
+This module owns the request-local arithmetic and ordering for "What Can I Study Next?". It
+consumes already-compiled native direct category roots, the chosen basis and the requested mode.
+Coverage is a course-share meter over each category's OR-of-AND options, carried as a canonical
+course-slot set plus its implicit unresolved slot count. Full ALL-mode eligibility is decided by the
+shared satisfaction owner with the actual numeric constraints. Official and inferred contributions
+stay distinguishable through the relationship-local, official-wins `depends_on_inferred` flag.
 """
 
 from __future__ import annotations
@@ -18,30 +17,19 @@ from enum import StrEnum
 from pydantic import BaseModel, ConfigDict
 
 from course_explorer.curriculum import CourseSummary
-from course_explorer.prerequisite.domain import (
-    AndRequirement,
-    CardinalityRequirement,
-    ComposedOrRole,
-    CourseCountRequirement,
-    CourseRequirement,
-    CreditRequirement,
-    ModuleBlockRequirement,
-    OpaqueCreditRequirement,
-    OrRequirement,
-    PrerequisiteExpression,
-    PrerequisiteOrigin,
-    UnresolvedRequirement,
-)
 from course_explorer.prerequisite.graph import (
     DirectPrerequisiteCompilation,
     is_course_activity_eligible,
-    is_expanded_course_branch,
 )
 from course_explorer.prerequisite.satisfaction import (
     PrerequisiteSatisfactionSession,
     PrerequisiteSatisfactionState,
 )
-from course_explorer.prerequisite.traversal import ExpressionEvaluator
+from course_explorer.prerequisite.structure import (
+    PrerequisitePiece,
+    PrerequisiteSolverStructure,
+)
+from course_explorer.prerequisite.traversal import PieceEvaluator
 from course_explorer.search.lookup import DisplayLanguage, name_code_key, official_display_name
 
 
@@ -59,14 +47,7 @@ class _NextCourseModel(BaseModel):
 
 
 class NextCourseResult(_NextCourseModel):
-    """One proposed next course with its direct-prerequisite coverage and inferred attribution.
-
-    Coverage is a fraction `[0, 1]` of the best-matching option's direct course slots the basis
-    satisfies, and `None` when the category holds no course slot at all. `depends_on_inferred`
-    is relationship-local with
-    official precedence: true only when enabled inferred relationships make the course eligible but
-    its official-only direct compilation leaves it ineligible under the same basis and mode.
-    """
+    """One proposed next course with its direct-prerequisite coverage and inferred attribution."""
 
     course: CourseSummary
     required_coverage: float | None
@@ -82,17 +63,39 @@ class _CoverageSlot:
     covered: bool
 
 
-def _fraction(slots: frozenset[_CoverageSlot]) -> float:
-    """Return the covered share of one slot set, or `0.0` for an empty set."""
-    if not slots:
-        return 0.0
-    covered = sum(1 for slot in slots if slot.covered)
-    return covered / len(slots)
+@dataclass(frozen=True)
+class _Coverage:
+    """One coverage fold result: canonical slots plus the count of implicit unresolved slots."""
+
+    slots: frozenset[_CoverageSlot] = frozenset()
+    unresolved: int = 0
+
+    def union(self, other: _Coverage) -> _Coverage:
+        """Union canonical slots and sum implicit unresolved positions."""
+        return _Coverage(self.slots | other.slots, self.unresolved + other.unresolved)
+
+    @property
+    def denominator(self) -> int:
+        """Return the coverage denominator: canonical slots plus unresolved positions."""
+        return len(self.slots) + self.unresolved
+
+    @property
+    def covered(self) -> int:
+        """Return the covered canonical slot count."""
+        return sum(1 for slot in self.slots if slot.covered)
+
+    @property
+    def fraction(self) -> float:
+        """Return covered share, or zero for an empty denominator."""
+        return 0.0 if self.denominator == 0 else self.covered / self.denominator
 
 
-def _coverage(slots: frozenset[_CoverageSlot]) -> float | None:
-    """Return the covered share of one slot set, or `None` when the set holds no slot."""
-    return None if not slots else _fraction(slots)
+_EMPTY_COVERAGE = _Coverage()
+
+
+def _coverage(value: _Coverage) -> float | None:
+    """Return the covered share, or `None` when the category holds no slot at all."""
+    return None if value.denominator == 0 else value.fraction
 
 
 def _ranked(fraction: float | None) -> float:
@@ -100,109 +103,132 @@ def _ranked(fraction: float | None) -> float:
     return 0.0 if fraction is None else fraction
 
 
-def _head_course_group_id(expression: PrerequisiteExpression) -> str:
-    """Return the canonical course a course-alternative OR's represented branch names."""
-    if isinstance(expression, CourseRequirement):
-        return expression.course_group_id
-    if is_expanded_course_branch(expression):
-        return expression.children[0].course_group_id
+def _head_course_group_id(structure: PrerequisiteSolverStructure, piece: PrerequisitePiece) -> str:
+    """Return the canonical course a course-alternative branch names."""
+    pieces = {value.piece_id: value for value in structure.pieces}
+    if piece.kind == "course" and piece.course_group_id is not None:
+        return piece.course_group_id
+    if piece.kind == "expanded_course" and piece.children:
+        head = pieces[piece.children[0]]
+        if head.course_group_id is not None:
+            return head.course_group_id
     raise ValueError("a course-alternative branch must be headed by one canonical course")
 
 
-@dataclass(frozen=True)
-class _CoverageEvaluator(ExpressionEvaluator[frozenset[_CoverageSlot]]):
-    """One course-share coverage fold over a direct category expression.
+@dataclass
+class _CoverageEvaluator(PieceEvaluator[_Coverage]):
+    """One course-share coverage fold over a native direct category root."""
 
-    A direct course is one canonical slot, covered only when the shared satisfaction session says
-    its leaf is satisfied. A composed `COURSE_ALTERNATIVES` OR is one slot for the course it
-    replaces,
-    covered only when the whole alternative expression is satisfied, so a partly met multi-course
-    substitution never counts. Other AND/numeric nodes union canonical slots (repeats do not inflate
-    the meter), other OR nodes use the best covered share of one child, and an unresolved
-    occurrence is one unfulfilled slot keyed by its occurrence ID. The session memoizes subtree
-    results within one candidate, so repeated occurrences never re-fold.
-    """
-
+    structure: PrerequisiteSolverStructure
     session: PrerequisiteSatisfactionSession
+    owner_group_id: str
+    memo: dict[str, _Coverage] | None = None
 
-    def expanded_course(
-        self, expression: AndRequirement, occurrence_id: str
-    ) -> frozenset[_CoverageSlot]:
+    def __post_init__(self) -> None:
+        """Build the request-local piece index once."""
+        PieceEvaluator.__init__(self, self.structure)
+        self.memo = {}
+
+    def evaluate(self, piece_id: str, owner_group_id: str | None = None) -> _Coverage:
+        """Return one piece's memoized coverage under its owner."""
+        owner = owner_group_id or self.owner_group_id
+        key = f"{owner}|{piece_id}"
+        cached = self.memo.get(key) if self.memo is not None else None
+        if cached is not None:
+            return cached
+        result = PieceEvaluator.evaluate(self, piece_id, owner)
+        if self.memo is not None:
+            self.memo[key] = result
+        return result
+
+    def expanded_course(self, piece: PrerequisitePiece, owner_group_id: str) -> _Coverage:
         """Union an expanded course's head and descendant slots."""
-        head, descendants = expression.children
-        return self.evaluate(head, f"{occurrence_id}.0") | self.evaluate(
-            descendants, f"{occurrence_id}.1"
+        head = self.piece(piece.children[0])
+        head_owner = head.course_group_id or owner_group_id
+        return self.evaluate(head.piece_id, head_owner).union(
+            self.evaluate(piece.children[1], head_owner)
         )
 
-    def course(self, expression: CourseRequirement, occurrence_id: str) -> frozenset[_CoverageSlot]:
-        """Return one canonical course slot, covered only when its leaf is satisfied."""
-        covered = self.session.evaluate(expression) is PrerequisiteSatisfactionState.SATISFIED
-        return frozenset({_CoverageSlot(expression.course_group_id, covered)})
+    def course(self, piece: PrerequisitePiece, owner_group_id: str) -> _Coverage:
+        """Return one canonical course slot, covered only when its piece is satisfied."""
+        covered = (
+            self.session.evaluate(piece.piece_id, owner_group_id=owner_group_id)
+            is PrerequisiteSatisfactionState.SATISFIED
+        )
+        return _Coverage(frozenset({_CoverageSlot(piece.course_group_id or "", covered)}))
 
-    def unresolved(
-        self, expression: UnresolvedRequirement, occurrence_id: str
-    ) -> frozenset[_CoverageSlot]:
-        """Return one unknown, unfulfilled slot keyed by the occurrence ID."""
-        return frozenset({_CoverageSlot(f"unresolved:{occurrence_id}", False)})
+    def unresolved(self, piece: PrerequisitePiece, owner_group_id: str) -> _Coverage:
+        """Count one implicit unresolved source slot."""
+        del owner_group_id
+        return _Coverage(unresolved=1)
 
-    def module_block(
-        self, expression: ModuleBlockRequirement, occurrence_id: str
-    ) -> frozenset[_CoverageSlot]:
+    def module_block(self, piece: PrerequisitePiece, owner_group_id: str) -> _Coverage:
         """Fold a module boundary transparently over its inlined child slots."""
-        return self.evaluate(expression.child, f"{occurrence_id}.0")
+        return self.evaluate(piece.children[0], owner_group_id)
 
-    def opaque_credits(
-        self, expression: OpaqueCreditRequirement, occurrence_id: str
-    ) -> frozenset[_CoverageSlot]:
+    def opaque_credits(self, piece: PrerequisitePiece, owner_group_id: str) -> _Coverage:
         """Return no slot: an opaque obligation supplies no fabricated course witness."""
-        return frozenset()
+        del piece, owner_group_id
+        return _EMPTY_COVERAGE
 
     def conjunction(
         self,
-        expression: AndRequirement,
-        occurrence_id: str,
-        children: tuple[frozenset[_CoverageSlot], ...],
-    ) -> frozenset[_CoverageSlot]:
-        """Union every child's canonical slots, deduplicating repeats."""
-        return frozenset().union(*children)
+        piece: PrerequisitePiece,
+        owner_group_id: str,
+        children: tuple[_Coverage, ...],
+    ) -> _Coverage:
+        """Union every child's canonical slots and sum implicit unresolved positions."""
+        return _union(children)
 
     def alternatives(
         self,
-        expression: OrRequirement,
-        occurrence_id: str,
-        children: tuple[frozenset[_CoverageSlot], ...],
-    ) -> frozenset[_CoverageSlot]:
+        piece: PrerequisitePiece,
+        owner_group_id: str,
+        children: tuple[_Coverage, ...],
+    ) -> _Coverage:
         """Keep one slot for a course-alternative OR, otherwise the best-covered option."""
-        if (
-            expression.origin is PrerequisiteOrigin.COMPOSED
-            and expression.composed_role is ComposedOrRole.COURSE_ALTERNATIVES
-        ):
-            covered = self.session.evaluate(expression) is PrerequisiteSatisfactionState.SATISFIED
-            return frozenset(
-                {_CoverageSlot(_head_course_group_id(expression.children[0]), covered)}
+        if piece.kind == "course_alternatives":
+            covered = (
+                self.session.evaluate(piece.piece_id, owner_group_id=owner_group_id)
+                is PrerequisiteSatisfactionState.SATISFIED
             )
-        best_index = max(
-            range(len(children)), key=lambda index: (_fraction(children[index]), -index)
-        )
+            head = self.piece(piece.children[0])
+            return _Coverage(
+                frozenset({_CoverageSlot(_head_course_group_id(self.structure, head), covered)})
+            )
+        if not children:
+            return _EMPTY_COVERAGE
+        best_index = max(range(len(children)), key=lambda index: (children[index].fraction, -index))
         return children[best_index]
 
     def cardinality(
         self,
-        expression: CardinalityRequirement,
-        occurrence_id: str,
-        children: tuple[frozenset[_CoverageSlot], ...],
-    ) -> frozenset[_CoverageSlot]:
-        """Union the child course slots. Numeric bounds are enforced by the satisfaction owner."""
-        return frozenset().union(*children)
+        piece: PrerequisitePiece,
+        owner_group_id: str,
+        children: tuple[_Coverage, ...],
+    ) -> _Coverage:
+        """Union the child slots and sum implicit unresolved positions."""
+        return _union(children)
 
-    def bounded(
-        self,
-        expression: CreditRequirement | CourseCountRequirement,
-        occurrence_id: str,
-        child: frozenset[_CoverageSlot],
-    ) -> frozenset[_CoverageSlot]:
-        """Pass the wrapped child's course slots as-is."""
+    def bounded(self, piece: PrerequisitePiece, owner_group_id: str, child: _Coverage) -> _Coverage:
+        """Pass the wrapped child's coverage as-is."""
+        del piece, owner_group_id
         return child
+
+
+def _union(children: tuple[_Coverage, ...]) -> _Coverage:
+    """Union canonical slots and sum implicit unresolved positions over child coverage."""
+    result = _EMPTY_COVERAGE
+    for child in children:
+        result = result.union(child)
+    return result
+
+
+def _root_piece_id(structure: PrerequisiteSolverStructure, use_id: str | None) -> str | None:
+    """Resolve one category use ID through the structure's own use table."""
+    if use_id is None:
+        return None
+    return next(use.piece_id for use in structure.uses if use.use_id == use_id)
 
 
 def _candidate_outcome(
@@ -210,49 +236,48 @@ def _candidate_outcome(
     basis_group_ids: frozenset[str],
     mode: NextCourseMode,
 ) -> tuple[float | None, float | None] | None:
-    """Return one candidate's `(required, recommended)` coverage, or `None` when ineligible.
-
-    A basis course, an activity-ineligible candidate, and a candidate with no enabled prerequisite
-    category are always excluded, and a category whose slot set is empty reports no coverage
-    rather than a zero share. AT LEAST ONE requires one covered direct prerequisite slot. ALL
-    requires both category roots satisfied through the shared satisfaction owner (a `None` category
-    is neutral). One session per candidate shares subtree results between the coverage fold and the
-    ALL root check.
-    """
-    tree = compilation.tree
-    candidate_id = tree.root.group_id
+    """Return one candidate's `(required, recommended)` coverage, or `None` when ineligible."""
+    structure = compilation.solver
+    candidate_id = structure.root_group_id
     if candidate_id in basis_group_ids:
         return None
-    if not is_course_activity_eligible(tree, candidate_id, ()):
+    if not is_course_activity_eligible(structure, candidate_id, ()):
         return None
-    if compilation.required is None and compilation.recommended is None:
+    required_piece = _root_piece_id(structure, compilation.required_use_id)
+    recommended_piece = _root_piece_id(structure, compilation.recommended_use_id)
+    if required_piece is None and recommended_piece is None:
         return None
-    session = PrerequisiteSatisfactionSession(tree, basis_group_ids)
-    evaluator = _CoverageEvaluator(session=session)
-    required_slots = (
-        evaluator.evaluate(compilation.required, "required")
-        if compilation.required is not None
-        else frozenset()
+    session = PrerequisiteSatisfactionSession(structure, basis_group_ids)
+    evaluator = _CoverageEvaluator(
+        structure=structure,
+        session=session,
+        owner_group_id=candidate_id,
     )
-    recommended_slots = (
-        evaluator.evaluate(compilation.recommended, "recommended")
-        if compilation.recommended is not None
-        else frozenset()
+    required = (
+        evaluator.evaluate(required_piece, candidate_id)
+        if required_piece is not None
+        else _EMPTY_COVERAGE
     )
-    if not required_slots and not recommended_slots:
-        # Empty, fully dropped, or free-choice-only requirements supply no canonical prerequisite
-        # slot, so they never flood discovery. A real covered slot governs AT LEAST ONE.
+    recommended = (
+        evaluator.evaluate(recommended_piece, candidate_id)
+        if recommended_piece is not None
+        else _EMPTY_COVERAGE
+    )
+    if required.denominator == 0 and recommended.denominator == 0:
         return None
     if mode is NextCourseMode.AT_LEAST_ONE:
-        if not any(slot.covered for slot in required_slots | recommended_slots):
+        if not any(slot.covered for slot in required.slots | recommended.slots):
             return None
     else:
-        for pool in (compilation.required, compilation.recommended):
-            if pool is None:
+        for piece_id in (required_piece, recommended_piece):
+            if piece_id is None:
                 continue
-            if session.evaluate(pool) is not PrerequisiteSatisfactionState.SATISFIED:
+            if (
+                session.evaluate(piece_id, owner_group_id=candidate_id)
+                is not PrerequisiteSatisfactionState.SATISFIED
+            ):
                 return None
-    return _coverage(required_slots), _coverage(recommended_slots)
+    return _coverage(required), _coverage(recommended)
 
 
 def evaluate_next_course_outcomes(
@@ -261,15 +286,10 @@ def evaluate_next_course_outcomes(
     *,
     mode: NextCourseMode,
 ) -> dict[str, tuple[float | None, float | None] | None]:
-    """Return one root-keyed `(required, recommended)` outcome per compilation.
-
-    Every root is recorded, including `None` for an ineligible candidate, so a caller can evaluate
-    once and reuse the mapping for both eligibility scoping and final result creation. It is the one
-    shared outcome owner. Supplied maps must come from the same compilations, basis and mode.
-    """
+    """Return one root-keyed `(required, recommended)` outcome per compilation."""
     basis = frozenset(basis_group_ids)
     return {
-        compilation.tree.root.group_id: _candidate_outcome(compilation, basis, mode)
+        compilation.solver.root_group_id: _candidate_outcome(compilation, basis, mode)
         for compilation in compilations
     }
 
@@ -281,13 +301,7 @@ def eligible_next_course_group_ids(
     mode: NextCourseMode,
     candidate_outcomes: Mapping[str, tuple[float | None, float | None] | None] | None = None,
 ) -> tuple[str, ...]:
-    """Return the sorted canonical IDs eligible in one direct-compilation pass.
-
-    The command uses this shared eligibility core to bound the official-only recompile to the
-    candidates that actually qualify, so the one final result-service call receives an official
-    compilation for every result it can report. A supplied `candidate_outcomes` map is consumed
-    directly (indexed by root, never missing-as-ineligible). Otherwise this owner computes it.
-    """
+    """Return the sorted canonical IDs eligible in one direct-compilation pass."""
     outcomes = (
         candidate_outcomes
         if candidate_outcomes is not None
@@ -295,9 +309,9 @@ def eligible_next_course_group_ids(
     )
     return tuple(
         sorted(
-            compilation.tree.root.group_id
+            compilation.solver.root_group_id
             for compilation in compilations
-            if outcomes[compilation.tree.root.group_id] is not None
+            if outcomes[compilation.solver.root_group_id] is not None
         )
     )
 
@@ -311,23 +325,14 @@ def next_courses_from_compilations(
     official_compilations: Sequence[DirectPrerequisiteCompilation] = (),
     candidate_outcomes: Mapping[str, tuple[float | None, float | None] | None] | None = None,
 ) -> tuple[NextCourseResult, ...]:
-    """Return the ordered next-course list for one already-compiled candidate set.
-
-    `official_compilations`, when supplied, carries the same candidates compiled with
-    `include_inferred=False`. A result is marked inferred-dependent only when the official-only
-    compilation is present and ineligible under the same basis and mode, using a distinct outcome
-    map from the same owner. Without it (inference off) every result is false, without a second
-    compile. A supplied `candidate_outcomes` map is consumed directly instead of recomputing the
-    first-pass outcomes. ALL sorts by the displayed name/code key. AT LEAST ONE sorts by descending
-    required then recommended coverage, then the same key.
-    """
+    """Return the ordered next-course list for one already-compiled candidate set."""
     outcomes = (
         candidate_outcomes
         if candidate_outcomes is not None
         else evaluate_next_course_outcomes(compilations, basis_group_ids, mode=mode)
     )
     official_by_root = {
-        compilation.tree.root.group_id: compilation for compilation in official_compilations
+        compilation.solver.root_group_id: compilation for compilation in official_compilations
     }
     official_outcomes = (
         evaluate_next_course_outcomes(official_compilations, basis_group_ids, mode=mode)
@@ -336,16 +341,22 @@ def next_courses_from_compilations(
     )
     results: list[NextCourseResult] = []
     for compilation in compilations:
-        candidate_id = compilation.tree.root.group_id
+        structure = compilation.solver
+        candidate_id = structure.root_group_id
         outcome = outcomes[candidate_id]
         if outcome is None:
             continue
         required_coverage, recommended_coverage = outcome
         official = official_by_root.get(candidate_id)
         depends_on_inferred = official is not None and official_outcomes[candidate_id] is None
+        summary = next(
+            (course for course in structure.courses if course.group_id == candidate_id), None
+        )
+        if summary is None:
+            raise ValueError(f"candidate {candidate_id} is missing from its structure courses")
         results.append(
             NextCourseResult(
-                course=compilation.tree.root,
+                course=summary,
                 required_coverage=required_coverage,
                 recommended_coverage=recommended_coverage,
                 depends_on_inferred=depends_on_inferred,

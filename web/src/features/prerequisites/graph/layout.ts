@@ -2,16 +2,19 @@
 import type { GraphModel } from "./model";
 import { layoutWithElk } from "./elk";
 
+/** Node and edge spacing of the ELK layered layout, in pixels. */
 export const SPACING = {
   nodeNode: 40,
   layerNode: 80,
   edgeNode: 24,
   edgeEdge: 14,
 };
+/** Laid-out node positions and sizes and edge points by identity. */
 export type GraphLayout = {
   nodes: Map<string, { x: number; y: number; w: number; h: number }>;
   edges: Map<string, { points: { x: number; y: number }[] }>;
 };
+/** Return the layered layout of one graph model. */
 export async function layoutGraph(model: GraphModel): Promise<GraphLayout> {
   const result = await layoutWithElk({
     id: "root",

@@ -7,6 +7,7 @@ import { RouteControl } from "./RouteControl";
 import { RoutePanel } from "./RoutePanel";
 import type { MinimumRouteSession } from "./useMinimumRoute";
 
+/** Render the drawing-size refusal while keeping the route control available. */
 export function RefusedGraph({
   report,
   route,

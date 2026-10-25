@@ -30,31 +30,23 @@ from course_explorer.enums import (
     PrerequisiteRequirementKind,
 )
 from course_explorer.prerequisite.domain import (
-    AndRequirement,
-    CardinalityRequirement,
-    CourseCountRequirement,
-    CreditRequirement,
     CurrentEquivalenceGroup,
     EquivalenceGroupMember,
     InferenceNodeMetadata,
     InferredReadState,
     InferredSetCoverage,
     InferredSetReadResult,
-    ModuleRequirement,
-    OrRequirement,
-    PrerequisiteNodeOccurrence,
+    PrerequisiteExpression,
 )
-from course_explorer.prerequisite.graph import (
-    PrerequisiteCalculationTree,
-)
+from course_explorer.prerequisite.structure import PrerequisiteSolverStructure
 from tests.prerequisite._expression_support import (
     course_summary as course_summary,
 )
 from tests.prerequisite._expression_support import (
-    inferred_course as _shared_inferred_course,
+    fixture_structure as _fixture_structure,
 )
 from tests.prerequisite._expression_support import (
-    node_occurrences_for_fixture as _node_occurrences_for_fixture,
+    inferred_course as _shared_inferred_course,
 )
 from tests.prerequisite._expression_support import (
     official_course as official_course,
@@ -235,17 +227,6 @@ def catalogue_module(
     return CatalogueModule(group_id=group_id, versions=ordered)
 
 
-def contains_module_requirement(expression) -> bool:
-    """Return whether one expression occurrence tree contains a module leaf."""
-    if isinstance(expression, ModuleRequirement):
-        return True
-    if isinstance(expression, (AndRequirement, OrRequirement, CardinalityRequirement)):
-        return any(contains_module_requirement(child) for child in expression.children)
-    if isinstance(expression, (CreditRequirement, CourseCountRequirement)):
-        return contains_module_requirement(expression.child)
-    return False
-
-
 class FakeCurriculumRead:
     """Scoped `CurriculumGraphRead` implementation returning supplied DTOs and recording reads.
 
@@ -394,34 +375,124 @@ def current_result(
 inferred_course = functools.partial(_shared_inferred_course, inference=INFERENCE_METADATA)
 
 
-def make_tree(
+def make_structure(
     root: CourseSummary,
-    requirements,
+    requirements: PrerequisiteExpression | None,
     courses: tuple[CourseSummary, ...],
     *,
     include_recommended: bool = False,
     include_inferred: bool = False,
     active_only: bool = False,
     excluded_group_ids: tuple[str, ...] = (),
-) -> PrerequisiteCalculationTree:
-    """Build one valid calculation tree for pure projector tests."""
-    if root.group_id not in {course.group_id for course in courses}:
-        courses = (root, *courses)
-    ordered = tuple(sorted(courses, key=lambda course: course.group_id))
-    node_occurrences = (
-        PrerequisiteNodeOccurrence(occurrence_id="root", action_key=f"course:{root.group_id}"),
-        *_node_occurrences_for_fixture(requirements),
-    )
-    return PrerequisiteCalculationTree(
+    completed_node_keys: tuple[str, ...] = (),
+    excluded_node_keys: tuple[str, ...] = (),
+    cycle_group_ids: tuple[str, ...] = (),
+    coverage: tuple[object, ...] = (),
+) -> PrerequisiteSolverStructure:
+    """Build one native fixture structure with projector-installed bindings."""
+    return _fixture_structure(
+        requirements,
         root=root,
-        academic_year_start=2026,
-        requirements=requirements,
-        courses=ordered,
+        courses=courses,
         include_recommended=include_recommended,
         include_inferred=include_inferred,
         active_only=active_only,
-        inferred_coverage=(),
-        issues=(),
         excluded_group_ids=excluded_group_ids,
-        node_occurrences=node_occurrences,
+        completed_node_keys=completed_node_keys,
+        excluded_node_keys=excluded_node_keys,
+        cycle_group_ids=cycle_group_ids,
+        coverage=coverage,
     )
+
+
+def piece_of(structure: PrerequisiteSolverStructure, use_id: str):
+    """Return the native piece one use evaluates."""
+    return next(
+        piece
+        for piece in structure.pieces
+        if piece.piece_id == next(use.piece_id for use in structure.uses if use.use_id == use_id)
+    )
+
+
+def fact_of(structure: PrerequisiteSolverStructure, use_id: str):
+    """Return the provenance fact one use carries."""
+    fact_id = next(use.fact_id for use in structure.uses if use.use_id == use_id)
+    return next(fact for fact in structure.facts if fact.fact_id == fact_id)
+
+
+def child_uses(structure: PrerequisiteSolverStructure, use_id: str) -> tuple[str, ...]:
+    """Return one use's ordered child use IDs."""
+    return next(use.children for use in structure.uses if use.use_id == use_id)
+
+
+def leaf_group_ids(structure: PrerequisiteSolverStructure, use_id: str | None) -> set[str]:
+    """Return every canonical course leaf one use subtree represents."""
+    leaves: set[str] = set()
+    if use_id is None:
+        return leaves
+    stack = [use_id]
+    seen: set[str] = set()
+    while stack:
+        current = stack.pop()
+        if current in seen:
+            continue
+        seen.add(current)
+        piece = piece_of(structure, current)
+        if piece.kind == "course" and piece.course_group_id is not None:
+            leaves.add(piece.course_group_id)
+        stack.extend(child_uses(structure, current))
+    return leaves
+
+
+def course_node_ids(display) -> set[str]:
+    """Return every drawn canonical course group ID."""
+    return {
+        node.course_group_id
+        for node in display.nodes
+        if node.kind == "course" and node.course_group_id is not None
+    }
+
+
+def root_summary(structure: PrerequisiteSolverStructure) -> CourseSummary:
+    """Return one structure's root course summary."""
+    return next(
+        course for course in structure.courses if course.group_id == structure.root_group_id
+    )
+
+
+def ignored_parts(structure: PrerequisiteSolverStructure):
+    """Return every ignored-source diagnostic of one structure."""
+    return tuple(
+        diagnostic
+        for diagnostic in structure.diagnostics
+        if diagnostic.kind not in ("course_cycle", "module_cycle")
+    )
+
+
+def issues(structure: PrerequisiteSolverStructure):
+    """Return every cycle diagnostic of one structure."""
+    return tuple(
+        diagnostic
+        for diagnostic in structure.diagnostics
+        if diagnostic.kind in ("course_cycle", "module_cycle")
+    )
+
+
+def course_nodes(display):
+    """Return every drawn course node."""
+    return tuple(node for node in display.nodes if node.kind == "course")
+
+
+def connector_nodes(display):
+    """Return every drawn connector node."""
+    return tuple(node for node in display.nodes if node.kind not in ("course", "module", "ignored"))
+
+
+def module_nodes(display):
+    """Return every drawn module node."""
+    return tuple(node for node in display.nodes if node.kind == "module")
+
+
+def ignored_nodes(display):
+    """Return every drawn ignored annotation."""
+    return tuple(node for node in display.nodes if node.kind == "ignored")

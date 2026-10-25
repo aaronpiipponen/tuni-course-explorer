@@ -200,6 +200,9 @@
   align-items: center;
   gap: 6px;
 }
+.profile-transfer-actions-import {
+  justify-content: flex-start;
+}
 /* One transient profile notice grows into and out of the row it occupies. */
 .profile-notice-motion {
   overflow: hidden;
@@ -370,13 +373,90 @@
     transform: translateY(-10px) scale(0.98);
   }
 }
-/* The wrapped top bar spans the viewport at narrow widths, so the menu anchors to its right edge
-   inside the viewport rather than to the trigger beside the language control. */
+/* The panel fills its row inside the phone More sheet, where the sheet owns the anchor. */
 @media (max-width: 760px) {
-  .profile-control {
+  .phone-more-sheet .profile-control {
+    display: block;
     position: static;
   }
-  .profile-menu {
-    right: 12px;
+  .phone-more-sheet .profile-trigger {
+    width: 100%;
+    min-height: 48px;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 10px;
+    font-size: 14px;
+    text-align: left;
+  }
+  .phone-more-sheet .profile-name {
+    max-width: none;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .phone-more-sheet .profile-menu {
+    position: static;
+    width: auto;
+    max-height: none;
+    margin-top: 8px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .phone-more-sheet .profile-list {
+    max-height: none;
+    overflow-y: visible;
+  }
+  .phone-more-sheet .profile-select {
+    min-height: 48px;
+    padding: 10px 12px;
+  }
+  .phone-more-sheet .profile-row-name {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .phone-more-sheet .profile-icon {
+    width: 44px;
+    height: 44px;
+  }
+  .phone-more-sheet .profile-icon svg {
+    width: 18px;
+    height: 18px;
+  }
+  .phone-more-sheet .profile-save input {
+    min-height: 44px;
+    font-size: 16px;
+  }
+  .phone-more-sheet .profile-save button {
+    min-height: 44px;
+    padding-inline: 18px;
+  }
+  .phone-more-sheet .profile-drop {
+    min-height: 48px;
+  }
+  .phone-more-sheet .profile-transfer-actions {
+    flex-wrap: wrap;
+  }
+  .phone-more-sheet .profile-transfer-toggle {
+    min-height: 44px;
+    font-size: 13px;
+  }
+  .phone-more-sheet .profile-transfer-actions .help-tip {
+    width: 44px;
+    height: 44px;
+  }
+  .phone-more-sheet .profile-export-item {
+    min-height: 44px;
+    padding: 10px 12px;
+    white-space: normal;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
   }
 }

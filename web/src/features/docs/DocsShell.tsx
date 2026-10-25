@@ -1,18 +1,32 @@
 /** Docs route shell joining native hash routing, persistent navigation, article and TOC. */
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useReducedMotion } from "../../shared/useReducedMotion";
 import { DOCS_PAGES } from "./registry";
 import { useDocsRoute } from "./useDocsRoute";
 import { DocsHeader } from "./DocsHeader";
 import { DocsSidebar } from "./DocsSidebar";
 import { DocsArticle } from "./DocsArticle";
+import { DocsMenu } from "./DocsMenu";
+import { DocsPageTools } from "./DocsPageTools";
+import { useMediaQuery } from "../../shared/useMediaQuery";
+import { PHONE_SHELL_QUERY } from "../../shared/viewport";
 import { DocsToc } from "./DocsToc";
 
+/** Render the documentation route with responsive navigation and heading links. */
 export function DocsShell({ returnToApp }: { returnToApp: () => void }) {
   const { pageId, anchor } = useDocsRoute();
+  const mobile = useMediaQuery(PHONE_SHELL_QUERY);
+  const [menuOpen, setMenuOpen] = useState(false);
   const reducedMotion = useReducedMotion();
   const previousPage = useRef(pageId);
   const appTitle = useRef(document.title);
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pageId]);
+  useEffect(() => {
+    document.documentElement.classList.toggle("docs-menu-open", menuOpen);
+    return () => document.documentElement.classList.remove("docs-menu-open");
+  }, [menuOpen]);
   useEffect(() => {
     document.documentElement.classList.add("docs-active");
     return () => {
@@ -66,16 +80,34 @@ export function DocsShell({ returnToApp }: { returnToApp: () => void }) {
   }, [pageId, anchor, reducedMotion]);
   return (
     <div className="docs-shell">
-      <DocsHeader returnToApp={returnToApp} />
+      <DocsHeader returnToApp={returnToApp} mobile={mobile} />
+      {mobile && (
+        <DocsMenu
+          open={menuOpen}
+          pageId={pageId}
+          onClose={() => setMenuOpen(false)}
+        />
+      )}
       <div
         className={`docs-layout${pageId === "home" || pageId === null ? " nohome" : ""}`}
       >
-        <DocsSidebar pageId={pageId} />
+        {!mobile && <DocsSidebar pageId={pageId} />}
         <main>
           {pageId ? (
-            <DocsArticle pageId={pageId} />
+            <DocsArticle
+              pageId={pageId}
+              mobile={mobile}
+              menuOpen={menuOpen}
+              onOpenMenu={() => setMenuOpen(true)}
+            />
           ) : (
             <article>
+              {mobile && (
+                <DocsPageTools
+                  menuOpen={menuOpen}
+                  onOpenMenu={() => setMenuOpen(true)}
+                />
+              )}
               <div className="docs-crumbs">
                 <a href="/docs#home">{DOCS_PAGES.home.nav}</a>
               </div>

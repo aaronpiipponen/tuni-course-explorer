@@ -7,7 +7,7 @@ A plan from Sisu's structure of studies view imports into Course Explorer as one
 1. Open your plan in Sisu's **Structure of studies** view.
 2. Expand every module of the plan, including both degrees under its education. The script refuses the download while any module is collapsed.
 3. Open the developer console of that browser tab.
-4. Copy the script from the profile menu of Course Explorer with **Copy Sisu import script**, or select the whole block under [The script](#the-script) and copy it.
+4. Copy the script with **Copy Sisu import script** in the profile menu, or in the empty **Structure of studies** import area, or select the whole block under [The script](#the-script) and copy it.
 5. Paste the script into the console and run it.
 
 The script reads the open page and asks the public Kori interface for the modules and courses the page shows, and it sends those requests without your Sisu login cookies. It makes no request to Course Explorer. It finishes by downloading one file named `sisu-plan-capture.json`.
@@ -17,15 +17,19 @@ The script reads the open page and asks the public Kori interface for the module
 
 ## Importing the capture
 
-1. Open the profile menu in the top bar of Course Explorer with the profile control.
-2. Drop `sisu-plan-capture.json` onto the **Import** area, or select **Choose file** and pick it.
-3. The dialog **Import Sisu plan** opens. Type a name for the profile in **Profile name**.
-4. Select **Import**. The dialog lists the captured programmes in Sisu's order, and it names every item whose identity the capture could not resolve.
+1. Open the profile menu of Course Explorer. On desktop select the profile control in the top bar. On a phone open **More**, then select the profile row.
+2. Drop `sisu-plan-capture.json` onto the **Import** area, or select **Choose file** and pick it. While the **Structure of studies** tab holds no programme, its **Import** area below **Add programme** accepts the same file.
+3. The dialog **Import Sisu plan** opens. It names the captured programmes in Sisu's order, and it names every item whose identity the capture could not resolve under **Left out of the import:**. Type a name for the profile in **Profile name**.
+4. Select **Import**. The button is available once the name holds something.
 5. Select the created profile in the list, and open **Structure of studies**.
 
 ![The Import Sisu plan dialog with the Profile name field holding a name and the captured programmes listed above Cancel and Import.](/docs/screenshots/sisu-import-dialog.png)
 
-The profile holds the captured programmes, and the tab reads the official structure of each of them from the catalogue as it does for any other profile. The captured choices and completions are placed on the tab's first read, and the profile is stored in this browser alone.
+[Using the app on a phone](/docs/guides/phone.md) describes the **More** sheet that holds the profile control on a phone.
+
+The profile holds the captured programmes, and the tab reads the official structure of each of them from the catalogue as it does for any other profile. The capture's status cells name each module's exact official version, and the import records those versions before the first read, so the captured plan reads the same versions Sisu showed. A plan that names two different versions of one module fails the import with **Sisu plan selects two versions of a module** and writes no profile. The captured choices and completions are placed on the tab's first read, and the profile is stored in this browser alone.
+
+A profile file or a saved-data file can hold a waiting capture together with saved choices or places. The tab places no such capture and performs no structure write, and the notice **Sisu import paused to preserve saved edits. Your profile is unchanged.** appears above the structure. The imported profile keeps its saved structure and pending capture as the file supplied them. A capture imported from Sisu into a new profile starts with no saved choices or places, so its choices are placed on the first **Structure of studies** read.
 
 ## What the import places, and what it names
 
@@ -111,7 +115,7 @@ An import that finds one identity in two different branches of a programme fails
     }));
   }
 
-  // The plan tree markup; the importer reads the hierarchy out of it.
+  // The plan tree markup is read by the importer to recover its hierarchy.
   const markup = [...document.querySelectorAll("plan-module")]
     .filter((module) => module.parentElement.closest("plan-module") === null)
     .map((module) => module.outerHTML)

@@ -2,6 +2,7 @@
 import { useContext, useSyncExternalStore } from "react";
 import { StoreContext } from "./context";
 
+/** Read the current profile and its browser store. */
 export function useCurrentProfile() {
   const store = useContext(StoreContext);
   if (!store) throw new Error("Browser store provider is missing");
@@ -20,6 +21,7 @@ export function useCurrentProfile() {
   };
 }
 
+/** Read the current profile identity. */
 export function useCurrentProfileId(): string {
   const store = useContext(StoreContext);
   if (!store) throw new Error("Browser store provider is missing");

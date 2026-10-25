@@ -2,6 +2,7 @@
 import { useWording } from "../../../shared/useWording";
 import type { MinimumRouteSession } from "./useMinimumRoute";
 
+/** Render the explicit minimum route control. */
 export function RouteControl({
   route,
   disabled,

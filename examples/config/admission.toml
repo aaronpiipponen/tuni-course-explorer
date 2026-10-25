@@ -1,0 +1,97 @@
+# Admission control of the read-only API: the serving switch, the load score that places the site
+# in a regime, the per-user light and heavy limits and the cost curves that price one request in
+# total server core-seconds.
+# Serving switch
+# Serve through the front router's admission control. With it off every request is served without a
+# limit.
+ADMISSION_ENABLED = false
+# Seconds one identity's light and heavy counters live after that identity's last use.
+ADMISSION_IDENTITY_TTL_SECONDS = 3600
+# Seconds the anonymous admission cookie lives in a browser.
+ADMISSION_COOKIE_MAX_AGE_SECONDS = 2592000
+# Seconds a refused request's Retry-After header states.
+ADMISSION_RETRY_AFTER_SECONDS = 5
+# Seconds of the heavy per-user budget window.
+ADMISSION_WINDOW_SECONDS = 60
+# Load score
+# Seconds of one-second host CPU samples and of admitted light and heavy activity that the score
+# measures.
+ADMISSION_LOAD_WINDOW_SECONDS = 60
+# Score per unit of whole-host CPU utilisation over the window, from 0.
+ADMISSION_SCORE_CPU_WEIGHT = 1.0
+# Score per light request admitted in the window, from 0.
+ADMISSION_SCORE_LIGHT_WEIGHT = 0.012
+# Score per heavy request admitted or running in the window, from 0.
+ADMISSION_SCORE_HEAVY_WEIGHT = 0.004
+# Score at or below which the site is in the headroom regime, above 0.
+ADMISSION_SCORE_HEADROOM = 0.60
+# Score at or above which the site is in the saturated regime, above the headroom score.
+ADMISSION_SCORE_SATURATION = 1.05
+# Score below which a saturated site returns to the middle regime, from the headroom score and
+# below the saturation score.
+ADMISSION_SCORE_RELEASE = 0.90
+# Fraction of the headroom light limits that applies at saturation, above 0 and at most 1.
+ADMISSION_LIGHT_LOAD_FLOOR = 0.25
+# Light limits
+# Light operations per minute one identity may run at headroom, scaled by the load factor.
+ADMISSION_LIGHT_OPERATIONS_PER_MINUTE = 120
+# Light operations one identity may run back to back. The burst is not scaled.
+ADMISSION_LIGHT_BURST = 20
+# Light operations one identity may run at once at headroom, scaled by the load factor.
+ADMISSION_LIGHT_CONCURRENCY = 8
+# Heavy budget and queue
+# Heavy core-seconds one identity may spend per window at headroom.
+ADMISSION_HEAVY_BUDGET_CORE_SECONDS = 120
+# Heavy core-seconds one identity may spend per window at saturation. The budget falls linearly
+# between the two bounds.
+ADMISSION_HEAVY_BUDGET_SATURATED_CORE_SECONDS = 24
+# Heavy operations the site runs at once at headroom. The count falls to one at saturation and is
+# capped at WEB_WORKERS - 1.
+ADMISSION_HEAVY_SLOTS = 3
+# Heavy tickets that may wait for a slot at headroom, in the middle regime and at saturation. A
+# waiting ticket keeps its place when the cap drops.
+ADMISSION_HEAVY_QUEUE_HEADROOM_LIMIT = 64
+ADMISSION_HEAVY_QUEUE_MIDDLE_LIMIT = 32
+ADMISSION_HEAVY_QUEUE_SATURATED_LIMIT = 16
+# Heavy cutoffs
+# Basis size from which a recommendation with active courses only is heavy.
+ADMISSION_RECOMMENDATION_ACTIVE_HEAVY_BASIS = 5
+# Basis size from which a recommendation that includes inactive courses is heavy.
+ADMISSION_RECOMMENDATION_INACTIVE_HEAVY_BASIS = 5
+# Basis size from which a next-courses request with active courses only is heavy.
+ADMISSION_NEXT_COURSES_ACTIVE_HEAVY_BASIS = 63
+# Basis size from which a next-courses request that includes inactive courses is heavy.
+ADMISSION_NEXT_COURSES_INACTIVE_HEAVY_BASIS = 26
+# Measured elapsed seconds from which a prerequisite graph is heavy.
+ADMISSION_GRAPH_HEAVY_SECONDS = 1.0
+# Core-seconds charged for one search that includes inactive courses.
+ADMISSION_SEARCH_INACTIVE_COST_CORE_SECONDS = 2.5
+# Cost curves
+# Recommendation curve shared by both scopes. The origin is the basis size where the curve starts
+# and the knee is the basis size where its slope changes. Costs are core-seconds and slopes are
+# core-seconds per basis.
+ADMISSION_RECOMMENDATION_ORIGIN_BASIS = 3
+ADMISSION_RECOMMENDATION_KNEE_BASIS = 50
+# Active-only recommendation curve: origin cost, slope, tail cost and tail slope.
+ADMISSION_RECOMMENDATION_ACTIVE_ORIGIN_COST = 0.4658
+ADMISSION_RECOMMENDATION_ACTIVE_SLOPE = 0.29709
+ADMISSION_RECOMMENDATION_ACTIVE_TAIL_COST = 14.429
+ADMISSION_RECOMMENDATION_ACTIVE_TAIL_SLOPE = 0.13927
+# Recommendation curve that includes inactive courses, with the same four values.
+ADMISSION_RECOMMENDATION_INACTIVE_ORIGIN_COST = 0.7563
+ADMISSION_RECOMMENDATION_INACTIVE_SLOPE = 0.39118
+ADMISSION_RECOMMENDATION_INACTIVE_TAIL_COST = 19.142
+ADMISSION_RECOMMENDATION_INACTIVE_TAIL_SLOPE = 0.19679
+# Next-courses curve shared by both scopes, with the same key meanings as the recommendation curve.
+ADMISSION_NEXT_COURSES_ORIGIN_BASIS = 3
+ADMISSION_NEXT_COURSES_KNEE_BASIS = 50
+# Active-only next-courses curve.
+ADMISSION_NEXT_COURSES_ACTIVE_ORIGIN_COST = 0.19007
+ADMISSION_NEXT_COURSES_ACTIVE_SLOPE = 0.015076
+ADMISSION_NEXT_COURSES_ACTIVE_TAIL_COST = 0.89866
+ADMISSION_NEXT_COURSES_ACTIVE_TAIL_SLOPE = 0.0084145
+# Next-courses curve that includes inactive courses.
+ADMISSION_NEXT_COURSES_INACTIVE_ORIGIN_COST = 0.31199
+ADMISSION_NEXT_COURSES_INACTIVE_SLOPE = 0.031052
+ADMISSION_NEXT_COURSES_INACTIVE_TAIL_COST = 1.7715
+ADMISSION_NEXT_COURSES_INACTIVE_TAIL_SLOPE = 0.012779

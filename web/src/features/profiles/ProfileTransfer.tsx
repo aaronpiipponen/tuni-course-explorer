@@ -4,7 +4,8 @@
  * The picker and the drop area share one read and dispatch on the file's `type`. Every parsed file
  * waits in one pending import until its confirmation creates the profile, replaces the saved
  * envelope or imports the Sisu hierarchy, and the bottom row holds the help drawer, the script
- * copy and the export disclosure.
+ * copy and the export disclosure. The component also renders its import area alone, without that
+ * row, for the empty structure tab.
  */
 import {
   useEffect,
@@ -24,6 +25,7 @@ import { ErrorNotice } from "../../shared/ErrorNotice";
 import { HelpTip, type HelpSection } from "../../shared/HelpTip";
 import { useAction } from "../../shared/useAction";
 import { useWording } from "../../shared/useWording";
+import { usePhoneTabsOnClose } from "../../shared/usePhoneTabsOnClose";
 import { downloadBrowserFile } from "./files";
 import { PROFILE_NOTICE_MS, ProfileNotice } from "./ProfileNotice";
 
@@ -100,7 +102,7 @@ const SISU_SNIPPET = `// Paste this into the browser console on the Sisu "Struct
     }));
   }
 
-  // The plan tree markup; the importer reads the hierarchy out of it.
+  // The plan tree markup is read by the importer to recover its hierarchy.
   const markup = [...document.querySelectorAll("plan-module")]
     .filter((module) => module.parentElement.closest("plan-module") === null)
     .map((module) => module.outerHTML)
@@ -132,7 +134,15 @@ function itemLabel(item: SisuItem): string {
   return item.code ? `${item.code} ${item.name}` : item.name;
 }
 
-export function ProfileTransfer({ store }: { store: BrowserStore }) {
+/** Render the profile export, import and Sisu capture controls. */
+export function ProfileTransfer({
+  store,
+  importOnly = false,
+}: {
+  store: BrowserStore;
+  /** Render only the import area and its confirmations, without the export and copy controls. */
+  importOnly?: boolean;
+}) {
   const { profiles } = useCurrentProfile();
   const { language, t } = useWording();
   const { runAction, error: exportError } = useAction();
@@ -149,6 +159,7 @@ export function ProfileTransfer({ store }: { store: BrowserStore }) {
   );
   const [sisuName, setSisuName] = useState("");
   const [reading, setReading] = useState(false);
+  usePhoneTabsOnClose(pendingImport !== null);
   const importDisabled = reading || pendingImport !== null;
 
   // A pending notice timer never outlives the panel.
@@ -239,7 +250,7 @@ export function ProfileTransfer({ store }: { store: BrowserStore }) {
   const confirm = () => {
     if (!pendingImport) return;
     try {
-      if (pendingImport.type === "tuni-course-explorer/profile/2")
+      if (pendingImport.type === "tuni-course-explorer/profile/3")
         store.importProfile(pendingImport.profile);
       else if (pendingImport.type === "tuni-course-explorer/sisu/1")
         store.importProfile(
@@ -260,7 +271,7 @@ export function ProfileTransfer({ store }: { store: BrowserStore }) {
   };
 
   const pendingProfile =
-    pendingImport?.type === "tuni-course-explorer/profile/2"
+    pendingImport?.type === "tuni-course-explorer/profile/3"
       ? pendingImport.profile
       : null;
   const pendingSisu =
@@ -268,18 +279,7 @@ export function ProfileTransfer({ store }: { store: BrowserStore }) {
       ? pendingImport
       : null;
   const omitted = pendingSisu ? unresolvedItems(pendingSisu.programmes) : [];
-  const help: readonly HelpSection[] = [
-    {
-      heading: t("Export"),
-      items: [
-        {
-          term: t("Export"),
-          text: t(
-            "Export any listed profile or all saved data as one file. Select an entry to download it.",
-          ),
-        },
-      ],
-    },
+  const importHelp: readonly HelpSection[] = [
     {
       heading: t("Import"),
       items: [
@@ -303,9 +303,28 @@ export function ProfileTransfer({ store }: { store: BrowserStore }) {
       ],
     },
   ];
+  const help: readonly HelpSection[] = importOnly
+    ? importHelp
+    : [
+        {
+          heading: t("Export"),
+          items: [
+            {
+              term: t("Export"),
+              text: t(
+                "Export any listed profile or all saved data as one file. Select an entry to download it.",
+              ),
+            },
+          ],
+        },
+        ...importHelp,
+      ];
 
   return (
     <div className="profile-transfer">
+      {importOnly && (
+        <h3 className="profile-transfer-heading">{t("Import")}</h3>
+      )}
       <label
         className="profile-drop"
         onDrop={drop}
@@ -322,11 +341,12 @@ export function ProfileTransfer({ store }: { store: BrowserStore }) {
           onChange={pick}
         />
       </label>
-      {exportError && <ErrorNotice error={exportError} language={language} />}
+      {!importOnly && exportError && (
+        <ErrorNotice error={exportError} language={language} />
+      )}
       {fileError && <ErrorNotice error={fileError} language={language} />}
-      <div className="profile-transfer-actions">
-        <HelpTip sections={help} />
-        <div className="profile-transfer-controls">
+      {importOnly ? (
+        <div className="profile-transfer-actions profile-transfer-actions-import">
           <button
             className="profile-transfer-toggle"
             type="button"
@@ -335,17 +355,32 @@ export function ProfileTransfer({ store }: { store: BrowserStore }) {
           >
             {t("Copy Sisu import script")}
           </button>
-          <button
-            className="profile-transfer-toggle"
-            type="button"
-            aria-expanded={exportOpen}
-            aria-controls="profile-export-list"
-            onClick={() => setExportOpen((open) => !open)}
-          >
-            {t("Export")}
-          </button>
+          <HelpTip sections={help} />
         </div>
-      </div>
+      ) : (
+        <div className="profile-transfer-actions">
+          <HelpTip sections={help} />
+          <div className="profile-transfer-controls">
+            <button
+              className="profile-transfer-toggle"
+              type="button"
+              ref={copyButton}
+              onClick={copySnippet}
+            >
+              {t("Copy Sisu import script")}
+            </button>
+            <button
+              className="profile-transfer-toggle"
+              type="button"
+              aria-expanded={exportOpen}
+              aria-controls="profile-export-list"
+              onClick={() => setExportOpen((open) => !open)}
+            >
+              {t("Export")}
+            </button>
+          </div>
+        </div>
+      )}
       <AnimatePresence initial={false}>
         {copyStatus && (
           <ProfileNotice key="profile-copy-status">
@@ -356,31 +391,33 @@ export function ProfileTransfer({ store }: { store: BrowserStore }) {
         )}
       </AnimatePresence>
       {copyError && <ErrorNotice error={copyError} language={language} />}
-      <Disclosure open={exportOpen}>
-        <div className="profile-export" id="profile-export-list">
-          {Object.entries(profiles).map(([id, profile]) => (
+      {!importOnly && (
+        <Disclosure open={exportOpen}>
+          <div className="profile-export" id="profile-export-list">
+            {Object.entries(profiles).map(([id, profile]) => (
+              <button
+                className="profile-export-item"
+                key={id}
+                type="button"
+                onClick={() =>
+                  runAction(() => downloadBrowserFile(store.exportProfile(id)))
+                }
+              >
+                {profile.name}
+              </button>
+            ))}
             <button
               className="profile-export-item"
-              key={id}
               type="button"
               onClick={() =>
-                runAction(() => downloadBrowserFile(store.exportProfile(id)))
+                runAction(() => downloadBrowserFile(store.exportState()))
               }
             >
-              {profile.name}
+              {t("All saved data")}
             </button>
-          ))}
-          <button
-            className="profile-export-item"
-            type="button"
-            onClick={() =>
-              runAction(() => downloadBrowserFile(store.exportState()))
-            }
-          >
-            {t("All saved data")}
-          </button>
-        </div>
-      </Disclosure>
+          </div>
+        </Disclosure>
+      )}
       <Dialog.Root
         open={pendingImport !== null}
         onOpenChange={(open) => {

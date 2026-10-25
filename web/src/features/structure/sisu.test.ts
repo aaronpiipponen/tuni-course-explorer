@@ -7,7 +7,12 @@ import type {
   StructureRule,
   StudyStructureReport,
 } from "../../api/types";
-import { createBrowserStore, parseBrowserImport } from "../../state/store";
+import {
+  createBrowserStore,
+  parseBrowserImport,
+  BROWSER_STORAGE_KEY,
+} from "../../state/store";
+import type { BrowserState } from "../../state/types";
 import { applyStructure } from "./actions";
 import {
   buildProgrammeForest,
@@ -16,7 +21,7 @@ import {
   resolveStructure,
   type PlacedContent,
 } from "./model";
-import { prepareSisuProfile, resolveSisuImport } from "./sisu";
+import { prepareSisuProfile, resolveSisuImport, type SisuPlan } from "./sisu";
 
 const baseRule = (patch: Partial<StructureRule>): StructureRule => ({
   node_type: "CompositeRule",
@@ -28,6 +33,7 @@ const baseRule = (patch: Partial<StructureRule>): StructureRule => ({
   credits_max: null,
   count_min: null,
   count_max: null,
+  referenced_group_id: null,
   children: [],
   course: null,
   module: null,
@@ -476,5 +482,80 @@ describe("Sisu capture import", () => {
     expect(rendered.courseAt.get("c-kept")?.node.kind).toBe("unplaced");
     expect(rendered.courseAt.has("c-absent")).toBe(false);
     expect(rendered.courseAt.has("c-official")).toBe(false);
+  });
+
+  it("preserves restored edits and course sets when a Sisu capture is waiting", () => {
+    const programme = report(
+      structureModule(
+        moduleSummary("prog-p", "PROG-P", "DegreeProgramme"),
+        mandatory([courseChild("c-official", "C-OFFICIAL", 0)]),
+      ),
+    );
+    const capture: SisuPlan = {
+      programmes: [
+        {
+          kind: "module",
+          groupId: "prog-p",
+          versionId: "sisu-prog-p",
+          code: "PROG-P",
+          name: "Programme P",
+          children: [],
+        },
+      ],
+    };
+    // The prepared capture owns the programme list, its version and its pending hierarchy alone.
+    const prepared = prepareSisuProfile(capture, "Restored plan", "fi");
+    const state = prepared.state;
+    state.selectedCourseIds = ["c-unplaced", "c-completed"];
+    state.completedCourseIds = ["c-completed"];
+    state.search = { ...state.search, query: "restored query" };
+    state.structure.programmeGroupIds = ["prog-p"];
+    state.structure.choices = { "p:prog-p/1": ["p:prog-p/1/0"] };
+    state.structure.coursePlacements = { "c-official": null };
+    state.structure.modulePlacements = { "mod-removed": null };
+    state.structure.placedCourseIds = ["c-unplaced"];
+    const envelope: BrowserState = {
+      schemaVersion: 3,
+      currentProfileId: "default",
+      profiles: { default: { name: "Restored plan", state } },
+    };
+    const imported = parseBrowserImport(
+      JSON.stringify({
+        type: "tuni-course-explorer/state/3",
+        data: JSON.stringify(envelope),
+      }),
+    );
+    if (imported.type !== "tuni-course-explorer/state/3")
+      throw new Error("Expected a state import");
+    const store = createBrowserStore(localStorage);
+    store.restoreState(imported.state);
+    const restored = store.getSnapshot();
+    const raw = localStorage.getItem(BROWSER_STORAGE_KEY);
+    // Settled content makes the resolver reach its placement, so a lost edit is a real loss.
+    const content = contentOf(
+      [programme],
+      [
+        courseSummary("c-unplaced", "C-UNPLACED"),
+        courseSummary("c-completed", "C-COMPLETED"),
+      ],
+    );
+    for (const id of state.selectedCourseIds)
+      expect(content.courses.has(id)).toBe(true);
+    expect(content.reports["prog-p"]).toBe(programme);
+    applyStructure(
+      store,
+      (current) =>
+        resolveSisuImport(current, content, {
+          courseIds: [],
+          moduleIds: [],
+        })?.change ?? null,
+    );
+    expect(store.getSnapshot()).toEqual(restored);
+    expect(localStorage.getItem(BROWSER_STORAGE_KEY)).toBe(raw);
+    const reloaded = createBrowserStore(localStorage);
+    expect(reloaded.getSnapshot()).toEqual(restored);
+    const reloadedState = currentState(reloaded);
+    expect(reloadedState.pendingSisuImport).toEqual(capture);
+    expect(reloadedState.selectedCourseIds).toContain("c-unplaced");
   });
 });

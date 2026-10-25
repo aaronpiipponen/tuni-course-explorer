@@ -75,13 +75,15 @@ The **Rebuild** panel lists the four steps of an app rebuild in order:
 3. **Restart the site's web server**
 4. **Verify the web server's loopback bind**
 
+The restart step goes through the systemd manager that `ADMIN_SITE_WEB_SERVICE_SCOPE` names. With `user`, the step runs `systemctl --user restart` on the site's unit. With `system`, it runs `sudo -n /usr/bin/systemctl restart`, which needs the host's passwordless grant for that one unit and command. The unit read that the rebuild makes before its first step uses the same manager, and so does the web server status in **Dashboard**.
+
 **Rebuild app** asks for confirmation first. It runs the four steps and shows the steps it ran and the bind it verified.
 
 ![The Rebuild app confirmation dialog with the rebuild question, Cancel and Confirm over the Settings tab](/docs/screenshots/admin-console-settings-rebuild-dialog.png)
 
 **Rebuild admin panel** asks for confirmation first, and the dialog states that it signs all operators out. It builds the console, and the administration backend then restarts. The console returns to the sign-in screen with **The admin panel is restarting. Sign in again.**
 
-While either action runs, the panel shows **Running…** and disables both actions. A failed rebuild shows its failure in the panel. A completed administration rebuild ends every administration session, and a failed administration build queues no restart and leaves the console signed in.
+While either action runs, the panel shows **Running…** and disables both actions. A failed rebuild shows its failure in the panel. A restart step without the grant fails the rebuild, and the panel shows the failure. A completed administration rebuild ends every administration session, and a failed administration build queues no restart and leaves the console signed in.
 
 ## Worker provisioning
 

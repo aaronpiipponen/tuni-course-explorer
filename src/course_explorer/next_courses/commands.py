@@ -1,21 +1,23 @@
-"""Read-only composition for one machine-readable next-course command.
+"""Read-only composition for the machine-readable next-course command.
 
 This module owns the process-level orchestration behind `scripts/next_courses.py`. It validates
 caller input before any settings load or I/O, resolves the combined
 selected/completed inputs through the shared id-or-code lookup, projects a bounded candidate
 superset through the discovery reads, compiles only those candidates' direct options through the
 compiler, returns one transient JSON report, and lets every fail-loud service error propagate. It
-writes no stored data.
+writes no stored data. The validated request preparation and the report read are shared owners the
+recommendation command composes over one resolved database settings value.
 """
 
 from __future__ import annotations
 
 from collections.abc import Collection
+from dataclasses import dataclass
 from typing import get_args
 
 from pydantic import BaseModel, ConfigDict
 
-from course_explorer.config import load_database_settings, load_search_settings
+from course_explorer.config import DatabaseSettings, load_database_settings, load_search_settings
 from course_explorer.curriculum_repository import CurriculumRepository
 from course_explorer.db.session import database_context as _database_context
 from course_explorer.next_courses.service import (
@@ -32,6 +34,10 @@ from course_explorer.prerequisite.graph import (
     PrerequisiteGraphCompiler,
 )
 from course_explorer.prerequisite.repository import InferredPrerequisiteRepository
+from course_explorer.prerequisite.source_cache import (
+    PrerequisiteSourceFactCache,
+    ReusingCurriculumGraphRead,
+)
 from course_explorer.search.lookup import CourseLookupService, DisplayLanguage
 
 
@@ -63,14 +69,56 @@ def run_next_courses_command(
     display_language: DisplayLanguage,
     include_inferred: bool = False,
     active_only: bool = True,
+    database_settings: DatabaseSettings | None = None,
+    source_cache: PrerequisiteSourceFactCache | None = None,
 ) -> NextCoursesReport:
     """Compose one next-course discovery report from the caller's selected/completed sets.
 
     Inputs are resolved in one bulk id-or-code lookup and deduplicated to canonical sets. When no
     selected input is supplied the completed set is also the selected set. Otherwise completed must
     be a subset of selected. An empty chosen basis returns an empty report without any candidate or
-    compiler read.
+    compiler read. A supplied source cache answers the compiler's raw course and module reads with the
+    facts it retains for this dataset.
     """
+    inputs = _prepare_next_course_inputs(
+        selected_courses=selected_courses,
+        completed_courses=completed_courses,
+        basis=basis,
+        mode=mode,
+        display_language=display_language,
+        include_inferred=include_inferred,
+        active_only=active_only,
+    )
+    resolved_settings = (
+        database_settings if database_settings is not None else load_database_settings()
+    )
+    return _read_next_courses(inputs, resolved_settings, source_cache=source_cache)
+
+
+@dataclass(frozen=True)
+class _NextCourseInputs:
+    """One validated discovery request, independent of settings and database state."""
+
+    selected_inputs: tuple[str, ...]
+    completed_inputs: tuple[str, ...]
+    normalized_basis: PrerequisiteCalculationBasis
+    normalized_mode: NextCourseMode
+    display_language: DisplayLanguage
+    include_inferred: bool
+    active_only: bool
+
+
+def _prepare_next_course_inputs(
+    *,
+    selected_courses: Collection[str] = (),
+    completed_courses: Collection[str] = (),
+    basis: str = "completed",
+    mode: str = "all",
+    display_language: DisplayLanguage,
+    include_inferred: bool = False,
+    active_only: bool = True,
+) -> _NextCourseInputs:
+    """Validate and materialize one discovery request without loading settings or opening a database."""
     normalized_basis = PrerequisiteCalculationBasis(basis)
     normalized_mode = NextCourseMode(mode)
     if display_language not in get_args(DisplayLanguage):
@@ -80,8 +128,33 @@ def run_next_courses_command(
     for identifier in (*selected_inputs, *completed_inputs):
         if not identifier.strip():
             raise ValueError("course identities must not be blank")
+    return _NextCourseInputs(
+        selected_inputs=selected_inputs,
+        completed_inputs=completed_inputs,
+        normalized_basis=normalized_basis,
+        normalized_mode=normalized_mode,
+        display_language=display_language,
+        include_inferred=include_inferred,
+        active_only=active_only,
+    )
+
+
+def _read_next_courses(
+    inputs: _NextCourseInputs,
+    database_settings: DatabaseSettings,
+    *,
+    source_cache: PrerequisiteSourceFactCache | None = None,
+) -> NextCoursesReport:
+    """Read one discovery report over the supplied database settings under the validated inputs."""
+    selected_inputs = inputs.selected_inputs
+    completed_inputs = inputs.completed_inputs
+    normalized_basis = inputs.normalized_basis
+    normalized_mode = inputs.normalized_mode
+    display_language = inputs.display_language
+    include_inferred = inputs.include_inferred
+    active_only = inputs.active_only
     search_settings = load_search_settings()
-    with _database_context(load_database_settings()) as factory:
+    with _database_context(database_settings) as factory:
         curriculum = CurriculumRepository(factory)
         lookup = CourseLookupService(curriculum, search_settings)
         resolved = lookup.resolve_courses((*selected_inputs, *completed_inputs))
@@ -105,7 +178,12 @@ def run_next_courses_command(
         if chosen:
             inferred_sets = InferredPrerequisiteRepository(factory)
             equivalence_groups = InferredEquivalenceRepository(factory)
-            compiler = PrerequisiteGraphCompiler(curriculum, inferred_sets, equivalence_groups)
+            graph_read = (
+                ReusingCurriculumGraphRead(curriculum, source_cache)
+                if source_cache is not None
+                else curriculum
+            )
+            compiler = PrerequisiteGraphCompiler(graph_read, inferred_sets, equivalence_groups)
             read_context = DirectPrerequisiteReadContext()
             source_ids = set(chosen)
             if include_inferred:

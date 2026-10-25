@@ -12,19 +12,20 @@ ceiling, and the installed operational CE-only selection plus that bounded route
 complete-target call. It also owns immutable accepted-result proposal composition and its
 append-only repository: one completed validated completion becomes one versioned per-target proposal
 with the direct-official dedup and its option flags, plus the cohort
-publication adapter over the graph/path-owned repositories.
+publication adapter over the prerequisite package's inferred-set and equivalence-group repositories.
 
 Publication is owned by this package's `publication.py`: one explicitly scoped, caller-proven
 current cohort of accepted proposal pointers reads and validates the matching accepted proposals,
 materializes the exact target inferred sets and global equivalence groups only through the
-graph/path-owned repositories, withdraws inference-owned output the cohort stops supporting, and
-reports scoped coverage through `diagnostics.py`. The publisher runs no model, reranker,
-external route, or GPU work, never writes a final table directly, and is invoked only by the operator tool
-with a freshly selected cohort after the separate bounded real-result acceptance.
+prerequisite package's inferred-set and equivalence-group repositories, withdraws inference-owned
+output the cohort stops supporting, and reports scoped coverage through `diagnostics.py`. The
+publisher runs no model, reranker, external route, or GPU work, never writes a final table directly,
+validates the whole cohort before any write, and refuses a cohort that omits a target it already
+published inferred output for.
 
 Candidate context calls no inference model, targets no inactive course, excludes no inactive
-candidate source, writes no run/work/completion row, publishes no final graph/path-owned store, and
-adds no administrative lifecycle. Field-view score is canonical cosine on the all-field match.
+candidate source, writes no run/work/completion row, publishes no inferred set or equivalence group,
+and adds no administrative lifecycle. Field-view score is canonical cosine on the all-field match.
 The fused reciprocal-rank score is label-blind selection evidence and no production model, prompt, or
 routing policy is selected here. Model output is untrusted input: only a strict validated result is
 written as a completion, and a rejected answer is failed and retried rather than accepted.

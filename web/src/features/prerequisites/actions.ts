@@ -10,6 +10,7 @@ function update(
 ): void {
   store.updateCurrent(change);
 }
+/** Store the prerequisite root course in the current profile. */
 export const setPrerequisitesRoot = (
   store: BrowserStore,
   courseId: CourseId,
@@ -18,6 +19,7 @@ export const setPrerequisitesRoot = (
     ...state,
     prerequisites: { ...state.prerequisites, rootCourseId: courseId },
   }));
+/** Store the prerequisite root query in the current profile. */
 export const setPrerequisitesQuery = (
   store: BrowserStore,
   query: string,
@@ -26,6 +28,7 @@ export const setPrerequisitesQuery = (
     ...state,
     prerequisites: { ...state.prerequisites, courseQuery: query },
   }));
+/** Store the prerequisite activity scope in the current profile. */
 export const setPrerequisitesActiveOnly = (
   store: BrowserStore,
   activeOnly: boolean,
@@ -34,6 +37,7 @@ export const setPrerequisitesActiveOnly = (
     ...state,
     prerequisites: { ...state.prerequisites, activeOnly },
   }));
+/** Store the prerequisite route basis in the current profile. */
 export const setPrerequisitesBasis = (
   store: BrowserStore,
   basis: "completed" | "selected",
@@ -42,16 +46,19 @@ export const setPrerequisitesBasis = (
     ...state,
     prerequisites: { ...state.prerequisites, basis },
   }));
+/** Store whether recommended prerequisites are shown. */
 export const setIncludeRecommended = (store: BrowserStore, on: boolean): void =>
   update(store, (state) => ({
     ...state,
     prerequisites: { ...state.prerequisites, includeRecommended: on },
   }));
+/** Store whether inferred prerequisites are shown. */
 export const setIncludeInferred = (store: BrowserStore, on: boolean): void =>
   update(store, (state) => ({
     ...state,
     prerequisites: { ...state.prerequisites, includeInferred: on },
   }));
+/** Toggle one course's exclusion in the current profile. */
 export const toggleExcludedCourse = (
   store: BrowserStore,
   courseId: CourseId,
@@ -69,34 +76,35 @@ export const toggleExcludedCourse = (
   }));
 function toggleNode(
   store: BrowserStore,
-  actionKey: string,
+  nodeKey: string,
   source: "completedNodeKeys" | "excludedNodeKeys",
   opposite: "completedNodeKeys" | "excludedNodeKeys",
 ): void {
   update(store, (state) => {
     const keys = state.prerequisites[source];
-    const adding = !keys.includes(actionKey);
+    // A drawn box is one saved key. Marking it clears the opposite mark for that same box.
+    const adding = !keys.includes(nodeKey);
     return {
       ...state,
       prerequisites: {
         ...state.prerequisites,
         [source]: adding
-          ? [...keys, actionKey]
-          : keys.filter((key) => key !== actionKey),
+          ? [...keys, nodeKey]
+          : keys.filter((key) => key !== nodeKey),
         [opposite]: adding
-          ? state.prerequisites[opposite].filter((key) => key !== actionKey)
+          ? state.prerequisites[opposite].filter((key) => key !== nodeKey)
           : state.prerequisites[opposite],
       },
     };
   });
 }
+/** Toggle one drawn node's completion mark. */
 export const toggleNodeCompleted = (
   store: BrowserStore,
-  actionKey: string,
-): void =>
-  toggleNode(store, actionKey, "completedNodeKeys", "excludedNodeKeys");
+  nodeKey: string,
+): void => toggleNode(store, nodeKey, "completedNodeKeys", "excludedNodeKeys");
+/** Toggle one drawn node's exclusion mark. */
 export const toggleNodeExcluded = (
   store: BrowserStore,
-  actionKey: string,
-): void =>
-  toggleNode(store, actionKey, "excludedNodeKeys", "completedNodeKeys");
+  nodeKey: string,
+): void => toggleNode(store, nodeKey, "excludedNodeKeys", "completedNodeKeys");

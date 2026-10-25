@@ -1,7 +1,12 @@
 /** Browser-owned structure edits, selection migration and user notices. */
 import { useEffect, useRef, useState } from "react";
-import type { CourseSummary, ModuleSummary } from "../../api/types";
-import { readStudyStructure } from "../../api/study-structure";
+import type {
+  CatalogueModule,
+  CourseSummary,
+  ModuleSummary,
+} from "../../api/types";
+import { DATASET_CHANGED_MESSAGE } from "../../app/cachedRead";
+import { useReadCache } from "../../app/useReadCache";
 import { useProfileSelector } from "../../state/useProfileSelector";
 import { useAction } from "../../shared/useAction";
 import {
@@ -10,6 +15,7 @@ import {
   resetCompletionChange,
   resetUnplaced,
   sameIdList,
+  VERSION_CONFLICT,
   type StructureChange,
 } from "./actions";
 import {
@@ -46,9 +52,31 @@ import type {
   CourseMoveRequest,
 } from "./CourseMoveConfirmDialog";
 import { toggleCompleted } from "../../state/course-actions";
-import { displayContents, moduleSource } from "./display";
+import { displayContents, moduleSource, courseSource } from "./display";
 import type { DisplayLanguage } from "../../state/types";
 import { uiText } from "../../shared/wording";
+import {
+  forgetRemovedModuleVersions,
+  moduleVersionKey,
+} from "./moduleVersions";
+import type { ExtraContent } from "./usePlacedContent";
+import { readProspectiveStructure } from "./structureReads";
+
+/** One module operation source: rendered content, or a catalogue identity read before it applies. */
+export type ModuleOperationSource =
+  | { kind: "loaded"; module: ModuleSummary }
+  | {
+      kind: "read";
+      module: CatalogueModule;
+      prepare: (
+        signal: AbortSignal,
+        operationDatasetIdentity: string,
+      ) => Promise<{
+        module: ModuleSummary;
+        content: PlacedContent;
+        moduleVersions: Readonly<Record<string, string>>;
+      }>;
+    };
 
 const asEdits = (state: StructureState): StructureEdits => ({
   choices: state.choices,
@@ -80,6 +108,7 @@ const modulePlaceText =
       ? uiText(language, "the programme list")
       : resolvedNodeLabel(source, language);
 
+/** Return the structure editor operations and its pending selection state. */
 export function useStructureEditor({
   resolved,
   edits,
@@ -88,20 +117,24 @@ export function useStructureEditor({
   extend,
   notify,
   confirmMoves,
+  contentDatasetIdentity,
+  contentSelectionKey,
+  locked = false,
 }: {
   resolved: ResolvedNode;
   edits: StructureEdits;
   freeIds: readonly string[];
   content: PlacedContent;
-  extend(extra: {
-    courses?: readonly CourseSummary[];
-    reports?: Readonly<
-      Record<string, import("../../api/types").StudyStructureReport>
-    >;
-  }): PlacedContent;
+  extend(extra: ExtraContent): PlacedContent;
   notify(text: (language: DisplayLanguage) => string): void;
   confirmMoves(request: CourseMoveRequest): Promise<CourseMoveAnswer>;
+  contentDatasetIdentity: string;
+  /** The exact selections the supplied content answers. */
+  contentSelectionKey: string;
+  /** Whether a selection-required structure suspends every tree mutation. */
+  locked?: boolean;
 }) {
+  const cache = useReadCache();
   const { store, value: completedCourseIds } = useProfileSelector(
     (state) => state.completedCourseIds,
   );
@@ -142,9 +175,11 @@ export function useStructureEditor({
     ctx: PlacedContent,
     removed: readonly string[] = [],
     nextProgrammes?: (current: StructureState) => string[],
+    moduleVersions?: Readonly<Record<string, string>>,
   ) => {
     applyStructure(store, (state) => {
       const current = state.structure;
+      const before = resolveStructure(forestFor(current, ctx), current, ctx);
       const programmeGroupIds = nextProgrammes
         ? nextProgrammes(current)
         : [...current.programmeGroupIds];
@@ -155,6 +190,11 @@ export function useStructureEditor({
         next: {
           programmeGroupIds,
           ...next,
+          moduleVersions: forgetRemovedModuleVersions(
+            moduleVersions ?? current.moduleVersions,
+            before,
+            projection,
+          ),
           placedCourseIds: projection.subtree.map((course) => course.group_id),
         },
         removedCourseIds: removed,
@@ -163,6 +203,7 @@ export function useStructureEditor({
   };
   const choose = (node: StructureNode, optionKey: string) =>
     runAction(() => {
+      if (locked) return;
       if (nextChoices(edits.choices, node, optionKey) === edits.choices) return;
       commit((current) => {
         requireNode(current, content, node.key);
@@ -182,6 +223,7 @@ export function useStructureEditor({
     });
   const addCourse = (course: CourseSummary, node: StructureNode) =>
     runAction(() => {
+      if (locked) return;
       const id = course.group_id;
       const index = indexResolved(resolved);
       const placed = index.courseAt.get(id);
@@ -196,7 +238,10 @@ export function useStructureEditor({
         );
         return;
       }
-      const ctx = extend({ courses: [course] });
+      const ctx = extend({
+        datasetIdentity: contentDatasetIdentity,
+        courses: [course],
+      });
       commit((current) => {
         requireNode(current, ctx, node.key);
         const homes = officialHomes(forestFor(current, ctx), current, ctx);
@@ -297,20 +342,25 @@ export function useStructureEditor({
     };
   };
   /**
-   * Read the stored envelope and refuse a profile or ordered programme list that moved on.
+   * Read the stored envelope and refuse a profile, ordered programme list or selection that moved on.
    *
-   * A profile that differs returns null, and a different programme list raises the finite changed
-   * programmes failure.
+   * A profile that differs returns null. A different programme list raises the programmes message
+   * and a different selection key raises the version-selection message.
    */
   const refreshModuleOperation = (
     profileId: string,
     programmes: readonly string[],
+    baseSelectionKey: string,
   ): StructureState | null => {
     const latest = store.refreshFromStorage();
     if (latest.currentProfileId !== profileId) return null;
     const state = latest.profiles[profileId].state.structure;
     if (!sameIdList(state.programmeGroupIds, programmes))
       throw new Error("Structure programmes changed while adding a module");
+    if (moduleVersionKey(state.moduleVersions) !== baseSelectionKey)
+      throw new Error(
+        "Structure version selection changed while adding a module",
+      );
     return state;
   };
   /**
@@ -329,9 +379,19 @@ export function useStructureEditor({
     controller: AbortController,
     profileId: string,
     programmes: readonly string[],
+    operationDatasetIdentity: string,
+    moduleVersions: Readonly<Record<string, string>>,
+    baseSelectionKey: string,
   ): Promise<void> => {
-    const state = refreshModuleOperation(profileId, programmes);
+    const state = refreshModuleOperation(
+      profileId,
+      programmes,
+      baseSelectionKey,
+    );
     if (!state) return;
+    const stored = state.moduleVersions[module.group_id];
+    if (stored !== undefined && stored !== module.sisu_module_id)
+      throw new Error(VERSION_CONFLICT);
     if (item === null) {
       const target = projectionFor(state, ctx).byKey.get(targetKey);
       if (
@@ -364,8 +424,13 @@ export function useStructureEditor({
       pulls = answer !== "keep";
     }
     if (controller.signal.aborted) return;
-    if (!refreshModuleOperation(profileId, programmes)) return;
-    const latestContent = extend({});
+    if (!refreshModuleOperation(profileId, programmes, baseSelectionKey))
+      return;
+    const latestContent = extend({
+      datasetIdentity: operationDatasetIdentity,
+      reports: ctx.reports,
+      moduleVersions,
+    });
     let applied: readonly PulledCourse[] = [];
     commit(
       (current) => {
@@ -388,6 +453,7 @@ export function useStructureEditor({
       [],
       (current) =>
         withoutProgrammeGroupId(current.programmeGroupIds, module.group_id),
+      moduleVersions,
     );
     notify((messageLanguage) => {
       // A kept course stays where it is, so only a pulled one is reported as moved.
@@ -414,10 +480,9 @@ export function useStructureEditor({
    * placed content the operation reads into, and its failures reach the editor error state.
    */
   const runModuleOperation = (
-    module: ModuleSummary,
+    source: ModuleOperationSource,
     targetKey: string,
     item: StructureRuleItem | null,
-    prepare: ((signal: AbortSignal) => Promise<PlacedContent | null>) | null,
   ): Promise<void> => {
     moduleOperation.current?.abort();
     const controller = new AbortController();
@@ -426,12 +491,43 @@ export function useStructureEditor({
     const profileId = snapshot.currentProfileId;
     const programmes =
       snapshot.profiles[profileId].state.structure.programmeGroupIds;
-    setPendingModuleId(module.group_id);
+    const operationDatasetIdentity = cache.getDatasetIdentity();
+    const baseSelectionKey = contentSelectionKey;
+    setPendingModuleId(source.module.group_id);
     setError(null);
     return (async () => {
       try {
-        const ctx = prepare ? await prepare(controller.signal) : content;
-        if (ctx === null || controller.signal.aborted) return;
+        let module: ModuleSummary;
+        let ctx: PlacedContent;
+        let moduleVersions: Readonly<Record<string, string>>;
+        if (source.kind === "read") {
+          const prepared = await source.prepare(
+            controller.signal,
+            operationDatasetIdentity,
+          );
+          if (controller.signal.aborted) return;
+          module = prepared.module;
+          ctx = prepared.content;
+          moduleVersions = prepared.moduleVersions;
+        } else {
+          if (contentDatasetIdentity !== cache.getDatasetIdentity())
+            throw new Error(DATASET_CHANGED_MESSAGE);
+          const state = refreshModuleOperation(
+            profileId,
+            programmes,
+            baseSelectionKey,
+          );
+          if (!state) return;
+          const stored = state.moduleVersions[source.module.group_id];
+          if (stored !== undefined && stored !== source.module.sisu_module_id)
+            throw new Error(VERSION_CONFLICT);
+          module = source.module;
+          ctx = content;
+          moduleVersions = {
+            ...state.moduleVersions,
+            [source.module.group_id]: source.module.sisu_module_id,
+          };
+        }
         await finishModulePlacement(
           module,
           targetKey,
@@ -440,6 +536,9 @@ export function useStructureEditor({
           controller,
           profileId,
           programmes,
+          operationDatasetIdentity,
+          moduleVersions,
+          baseSelectionKey,
         );
       } catch (caught) {
         if (
@@ -459,18 +558,58 @@ export function useStructureEditor({
       }
     })();
   };
-  /** Add one searched module to a node, reading its official report into the placed content. */
-  const addModule = (module: ModuleSummary, node: StructureNode): void => {
-    void runModuleOperation(module, node.key, null, async (signal) => {
-      const report = await readStudyStructure(module.group_id, signal);
-      return extend({ reports: { [module.group_id]: report } });
-    });
+  /**
+   * Add one searched module to a node, reading every report its prospective request needs.
+   *
+   * The prospective module-version map holds the stored map plus the picked exact id. A different
+   * stored identity refuses the operation. The read covers every programme, placed module and
+   * candidate, so each root uses the selected nested version.
+   */
+  const addModule = (module: CatalogueModule, node: StructureNode): void => {
+    if (locked) return;
+    void runModuleOperation(
+      {
+        kind: "read",
+        module,
+        prepare: async (signal, operationDatasetIdentity) => {
+          const snapshot = store.refreshFromStorage();
+          const state = snapshot.profiles[snapshot.currentProfileId].state;
+          const stored = state.structure.moduleVersions[module.group_id];
+          if (stored !== undefined && stored !== module.sisu_module_id)
+            throw new Error(VERSION_CONFLICT);
+          const moduleVersions = {
+            ...state.structure.moduleVersions,
+            [module.group_id]: module.sisu_module_id,
+          };
+          const prospective = await readProspectiveStructure({
+            cache,
+            content,
+            contentDatasetIdentity,
+            contentSelectionKey,
+            extend,
+            state: state.structure,
+            groupId: module.group_id,
+            moduleVersions,
+            operationDatasetIdentity,
+            signal,
+          });
+          return {
+            module: prospective.report.root.module,
+            content: prospective.content,
+            moduleVersions,
+          };
+        },
+      },
+      node.key,
+      null,
+    );
   };
   const deselectRuleCourse = (
     course: CourseSummary,
     removeCompletion: boolean,
   ) =>
     runAction(() => {
+      if (locked) return;
       if (freeIds.includes(course.group_id)) {
         if (completedCourseIds.includes(course.group_id) && !removeCompletion)
           return;
@@ -507,13 +646,17 @@ export function useStructureEditor({
     }, content);
   };
   const selectRuleCourse = (course: CourseSummary, item: StructureRuleItem) =>
-    runAction(() => placeRuleCourse(course, item));
+    runAction(() => {
+      if (locked) return;
+      placeRuleCourse(course, item);
+    });
   // `item` is given only when the course must first be selected into this rule.
   const toggleRuleCourseCompleted = (
     course: CourseSummary,
     item: StructureRuleItem | null,
   ) =>
     runAction(() => {
+      if (locked) return;
       if (item) placeRuleCourse(course, item);
       toggleCompleted(store, course.group_id);
     });
@@ -523,8 +666,14 @@ export function useStructureEditor({
   const selectRuleModule = (
     module: ModuleSummary,
     item: StructureRuleItem,
-  ): Promise<void> =>
-    runModuleOperation(module, item.origin.ownerKey, item, null);
+  ): Promise<void> => {
+    if (locked) return Promise.resolve();
+    return runModuleOperation(
+      { kind: "loaded", module },
+      item.origin.ownerKey,
+      item,
+    );
+  };
   /**
    * Remove one module from the structure.
    *
@@ -536,7 +685,8 @@ export function useStructureEditor({
     module: ModuleSummary,
     removedCourseIds: readonly string[] = [],
   ) =>
-    runAction(() =>
+    runAction(() => {
+      if (locked) return;
       commit(
         (current) => {
           const forest = forestFor(current, content);
@@ -567,8 +717,8 @@ export function useStructureEditor({
         },
         content,
         removedCourseIds,
-      ),
-    );
+      );
+    });
   // Name of the other node a course is placed in, or null when the move needs no confirmation.
   // Unplaced studies holds unplaced items by definition, so leaving it is not a move between
   // official owners.
@@ -580,7 +730,9 @@ export function useStructureEditor({
     const at = indexResolved(resolved).courseAt.get(courseId);
     if (!at || at.node.key === targetKey || at.node.kind === "unplaced")
       return null;
-    return resolvedNodeLabel(at, language);
+    const holder = courseSource(resolved, courseId);
+    if (!holder) throw new Error("Structure target is unavailable");
+    return resolvedNodeLabel(holder, language);
   };
   /**
    * Whether one node's current contents differ from the contents its own place draws for it.
@@ -624,7 +776,8 @@ export function useStructureEditor({
    * completions the affected subtree held before the reset and reaches the completion owner in
    * every state, including a scope that holds no edit. `pull` is whether the reset returns the
    * courses `resetPulls` lists. A kept course holds its place. Unplaced studies clears
-   * the places it owns and offers no such choice.
+   * the places it owns and offers no such choice. The write forgets the version entries of the
+   * groups the reset removes, while the reset holder and every other rendered group keep theirs.
    */
   const resetNode = (
     node: StructureNode,
@@ -632,6 +785,7 @@ export function useStructureEditor({
     pull = true,
   ) =>
     runAction(() => {
+      if (locked) return;
       if (node.kind === "unplaced") {
         resetUnplaced(store, content);
         notify((messageLanguage) =>
@@ -643,6 +797,7 @@ export function useStructureEditor({
         const current = state.structure;
         const forest = forestFor(current, content);
         requireNode(current, content, node.key);
+        const before = resolveStructure(forest, current, content);
         const homes = officialHomes(forest, current, content);
         const cleared = resetScope(current, homes, node.key);
         const scoped = pull
@@ -652,9 +807,7 @@ export function useStructureEditor({
               current,
               scopePulls(forest, current, content, node.key),
             );
-        const affected = indexResolved(
-          resolveStructure(forest, current, content),
-        ).byKey.get(node.key);
+        const affected = indexResolved(before).byKey.get(node.key);
         if (!affected) throw new Error("Structure target is unavailable");
         // A course this node held through a placement does not fall back into another node.
         const kept = clearedScopePlacements(
@@ -676,6 +829,11 @@ export function useStructureEditor({
           next: {
             programmeGroupIds: [...current.programmeGroupIds],
             ...edits,
+            moduleVersions: forgetRemovedModuleVersions(
+              current.moduleVersions,
+              before,
+              projection,
+            ),
             placedCourseIds: projection.subtree.map(
               (course) => course.group_id,
             ),

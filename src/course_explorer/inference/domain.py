@@ -7,9 +7,9 @@ output. Required and recommended output form one
 indivisible result, so the target's direct option sets and its suppressed candidates are validated
 together, so a direct prerequisite excludes a broad or transitive foundation.
 
-Only the v2 schema is supported. Its emitted JSON Schema is fixed wire metadata that
-participates in request/run/work identity, so the class docstrings and the frozen root description
-below are identity-bearing rather than ordinary prose.
+Only the v2 schema is supported. Its emitted JSON Schema includes the model and enum descriptions
+and the explicit root description below, and that emitted text participates in request/run/work
+identity.
 """
 
 from __future__ import annotations
@@ -71,7 +71,7 @@ class DirectnessOutcome(StrEnum):
 
 
 class RoutingFlag(StrEnum):
-    """Closed target-level ambiguity flags that drive later routing decisions only."""
+    """Closed target-level ambiguity flags retained with each complete result."""
 
     DIRECTNESS_AMBIGUITY = "directness_ambiguity"
     ALTERNATIVE_PATH_AMBIGUITY = "alternative_path_ambiguity"
@@ -84,8 +84,8 @@ class OptionFlag(StrEnum):
     """Closed per-option uncertainty flags for the v2 complete-target schema.
 
     These are finding-level flags (zero or more per required/recommended option), distinct from the
-    target-level :class:`RoutingFlag` vocabulary. They exist so a later phase can calibrate a
-    drop/demote rule from the model's own stated uncertainty instead of confidence alone.
+    target-level :class:`RoutingFlag` vocabulary. Each flag records uncertainty the model states
+    about the finding, retained as evidence beside the finding's confidence.
     """
 
     REQUIREDNESS_UNCERTAIN = "requiredness_uncertain"
@@ -159,7 +159,7 @@ class InferenceRoutingMetadata(_InferenceModel):
 
 
 class InferenceCourseOptionV2(_InferenceModel):
-    """One v2 AND option carrying zero-or-more calibrated option-uncertainty flags."""
+    """One v2 AND option carrying zero-or-more option-uncertainty flags."""
 
     # `finding_flags` (not `flags`) keeps finding-level uncertainty distinct from the target-level
     # `routing.flags`. Required, not defaulted, so every option carries an explicit, possibly empty,
@@ -236,7 +236,7 @@ class InferenceRequirementSetV2(_InferenceModel):
 
 
 class InferenceEquivalenceProposalV2(_InferenceModel):
-    """One v2 equivalence group carrying calibrated equivalence-uncertainty flags."""
+    """One v2 equivalence group carrying zero-or-more equivalence-uncertainty flags."""
 
     members: tuple[str, ...]
     evidence: str
@@ -274,16 +274,15 @@ class InferenceEquivalenceProposalV2(_InferenceModel):
         return _unique_ids(value, "finding_flags")
 
 
-# The exact root JSON-Schema description emitted by the v2 model. Generated schema
-# descriptions/titles participate in request/run/work identity, so this frozen wire metadata is
-# pinned here rather than derived from the Python docstring.
+# The explicit root JSON-Schema description emitted by the v2 model. The generated schema text,
+# including the model and enum descriptions and this root description, participates in
+# request/run/work identity.
 _V2_RESULT_WIRE_DESCRIPTION = (
-    "One indivisible v2 complete target result: flags on each option and equivalence group.\n\n"
-    "It reuses the v1 requirement-set, routing, and completeness validation; only the per-finding\n"
-    "flag vocabulary differs. Flags are required but may be empty, so a v2 document always carries an\n"
-    "explicit ``finding_flags`` array on every option and equivalence group while the strict v1 model\n"
-    "still rejects any v2-only ``finding_flags`` key and keeps saved v1/v6 results parseable under\n"
-    "their own model."
+    "One indivisible v2 complete target result: required and recommended option sets, equivalence\n"
+    "groups, and routing metadata.\n\n"
+    "Every option and equivalence group carries an explicit ``finding_flags`` array, which may be\n"
+    "empty, and required, recommended, suppressed, and equivalence identities are validated as one\n"
+    "complete target result."
 )
 
 
@@ -293,8 +292,8 @@ class InferenceTargetResultV2(_InferenceModel):
     This is the only accepted complete-target-result contract. Required and recommended option
     sets carry per-finding ``finding_flags``. The model enforces category, duplicate, and
     direct-versus-suppressed completeness in one indivisible result. The class docstring is Python
-    documentation, while the pinned root JSON-Schema description above is frozen wire
-    metadata that keeps request/run/work identity byte-identical.
+    documentation, while the explicit root JSON-Schema description above is emitted schema text that
+    participates in request/run/work identity.
     """
 
     model_config = ConfigDict(

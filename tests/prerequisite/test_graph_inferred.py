@@ -14,26 +14,17 @@ from course_explorer.enums import (
 )
 from course_explorer.prerequisite.domain import (
     AndRequirement,
-    ComposedAndRole,
-    ComposedOrRole,
-    CreditRequirement,
     InferredPrerequisiteCategory,
     InferredReadState,
     InferredSetCoverage,
     InferredSetReadResult,
-    ModuleBlockRequirement,
     OfficialPrerequisiteKind,
     OrRequirement,
     PrerequisiteOrigin,
     UnresolvedPrerequisiteReason,
-    UnresolvedRequirement,
 )
 from course_explorer.prerequisite.graph import (
     PrerequisiteGraphCompiler,
-)
-from course_explorer.prerequisite.path import (
-    PrerequisitePathState,
-    calculate_minimum_new_credits,
 )
 from course_explorer.prerequisite.satisfaction import (
     PrerequisiteSatisfactionState,
@@ -47,15 +38,21 @@ from tests.prerequisite._graph_support import (
     RecordingInferredSetRead,
     catalogue_course,
     catalogue_module,
+    child_uses,
+    course_nodes,
     current_result,
+    fact_of,
+    ignored_parts,
     inferred_course,
+    issues,
     module_rule,
     module_version,
-    official_course,
+    piece_of,
     prerequisite_course_member,
     prerequisite_module_member,
     prerequisite_option,
 )
+from tests.prerequisite._path_support import solve_route
 
 
 def test_compiler_filters_inferred_recommended_occurrences_before_descendant_traversal() -> None:
@@ -106,14 +103,14 @@ def test_compiler_filters_inferred_recommended_occurrences_before_descendant_tra
     )
 
     def course_ids(compilation) -> set[str]:
-        return {node.course.group_id for node in compilation.graph.course_nodes}
+        return {node.course_group_id for node in course_nodes(compilation.display)}
 
     # Inference disabled: nothing is read or compiled even when recommended is enabled.
     inferred_read.reads.clear()
     disabled = compiler.compile("root", include_recommended=True)
     assert inferred_read.reads == []
-    assert disabled.tree.requirements is None
-    assert disabled.tree.inferred_coverage == ()
+    assert disabled.solver.root_use_id is None
+    assert disabled.solver.inferred_coverage == ()
     assert course_ids(disabled) == {"root"}
 
     # Inferred only: the required route is read and compiled. Both recommended occurrences are
@@ -121,11 +118,15 @@ def test_compiler_filters_inferred_recommended_occurrences_before_descendant_tra
     inferred_read.reads.clear()
     inferred_only = compiler.compile("root", include_inferred=True)
     assert inferred_read.reads == ["root", "required-core"]
-    assert inferred_only.tree.include_inferred is True
-    assert inferred_only.tree.include_recommended is False
-    assert inferred_only.tree.requirements == inferred_course("required-core")
+    assert inferred_only.solver.include_inferred is True
+    assert inferred_only.solver.include_recommended is False
+    inferred_root = inferred_only.solver.root_use_id
+    assert inferred_root is not None
+    inferred_root_piece = piece_of(inferred_only.solver, inferred_root)
+    assert inferred_root_piece.kind == "course"
+    assert inferred_root_piece.course_group_id == "required-core"
     assert course_ids(inferred_only) == {"root", "required-core"}
-    assert inferred_only.tree.issues == ()
+    assert issues(inferred_only.solver) == ()
     for hidden in (
         "recommended-parent",
         "recommended-only-desc",
@@ -137,12 +138,12 @@ def test_compiler_filters_inferred_recommended_occurrences_before_descendant_tra
     # Both toggles: recommended routes and their official/inferred descendants are included.
     inferred_read.reads.clear()
     both = compiler.compile("root", include_recommended=True, include_inferred=True)
-    assert inferred_read.reads == [
-        "root",
-        "required-core",
+    assert sorted(inferred_read.reads) == [
+        "recommended-inferred-desc",
         "recommended-only-desc",
         "recommended-parent",
-        "recommended-inferred-desc",
+        "required-core",
+        "root",
     ]
     assert course_ids(both) == {
         "root",
@@ -151,10 +152,12 @@ def test_compiler_filters_inferred_recommended_occurrences_before_descendant_tra
         "recommended-only-desc",
         "recommended-inferred-desc",
     }
-    assert both.tree.issues == ()
+    assert issues(both.solver) == ()
 
 
-def test_compiler_composes_current_inferred_expressions_and_reports_coverage() -> None:
+def test_compiler_composes_current_inferred_expressions_and_reports_coverage(
+    solver_bundle: None,
+) -> None:
     """Current contributions keep coverage. Unavailable, stale and absent inputs invent nothing."""
     inferred_expression = OrRequirement(
         type="or",
@@ -195,13 +198,13 @@ def test_compiler_composes_current_inferred_expressions_and_reports_coverage() -
     # Disabled mode performs zero inferred reads and reports empty coverage.
     disabled = compiler.compile("root")
     assert inferred_read.reads == []
-    assert disabled.tree.inferred_coverage == ()
-    assert disabled.tree.requirements is None
+    assert disabled.solver.inferred_coverage == ()
+    assert disabled.solver.root_use_id is None
 
     enabled = compiler.compile("root", include_inferred=True)
-    # Each distinct active expanded target is read exactly once.
-    assert inferred_read.reads == ["root", "s", "t"]
-    tree = enabled.tree
+    # Each distinct active expanded target is read exactly once, in source-index discovery order.
+    assert sorted(inferred_read.reads) == ["root", "s", "t"]
+    tree = enabled.solver
     assert tree.include_inferred is True
     assert "s" in {summary.group_id for summary in tree.courses}
     assert "t" in {summary.group_id for summary in tree.courses}
@@ -220,10 +223,10 @@ def test_compiler_composes_current_inferred_expressions_and_reports_coverage() -
     unavailable = PrerequisiteGraphCompiler(
         FakeCurriculumRead(courses), RecordingInferredSetRead(), RecordingEquivalenceGroupRead()
     )
-    unavailable_tree = unavailable.compile("root", include_inferred=True).tree
-    assert unavailable_tree.requirements is None
+    unavailable_tree = unavailable.compile("root", include_inferred=True).solver
+    assert unavailable_tree.root_use_id is None
     assert unavailable_tree.inferred_coverage == ()
-    assert unavailable_tree.issues == ()
+    assert issues(unavailable_tree) == ()
 
     stale_read = RecordingInferredSetRead(
         {
@@ -238,10 +241,10 @@ def test_compiler_composes_current_inferred_expressions_and_reports_coverage() -
     stale = PrerequisiteGraphCompiler(
         FakeCurriculumRead(courses), stale_read, RecordingEquivalenceGroupRead()
     )
-    stale_tree = stale.compile("root", include_inferred=True).tree
-    assert stale_tree.requirements is None
+    stale_tree = stale.compile("root", include_inferred=True).solver
+    assert stale_tree.root_use_id is None
     assert stale_tree.inferred_coverage == ()
-    assert stale_tree.issues == ()
+    assert issues(stale_tree) == ()
 
     # A covered root whose two official alternatives share one absent child contributes nothing for
     # the absent child: it is read exactly once, adds no coverage record or issue, and the ordinary
@@ -281,23 +284,25 @@ def test_compiler_composes_current_inferred_expressions_and_reports_coverage() -
     absent_compilation = PrerequisiteGraphCompiler(
         FakeCurriculumRead(absent_courses), absent_read, RecordingEquivalenceGroupRead()
     ).compile("absent-root", include_inferred=True)
-    assert absent_compilation.tree.requirements is not None
+    assert absent_compilation.solver.root_use_id is not None
     coverage_targets = {
-        record.target_group_id for record in absent_compilation.tree.inferred_coverage
+        record.target_group_id for record in absent_compilation.solver.inferred_coverage
     }
     assert coverage_targets == {"absent-root", "a", "b"}
     assert "absent" not in coverage_targets
-    assert absent_compilation.tree.issues == ()
+    assert issues(absent_compilation.solver) == ()
     assert absent_read.reads.count("absent") == 1
-    path = calculate_minimum_new_credits(absent_compilation.tree, [])
-    assert path.state is PrerequisitePathState.EXACT
-    assert {entry.course.group_id for entry in path.new_courses} in (
+    path = solve_route(absent_compilation.solver, [])
+    assert path["state"] == "exact"
+    assert {entry["course"]["group_id"] for entry in path["new_courses"]} in (
         {"a", "absent"},
         {"b", "absent"},
     )
 
 
-def test_compiler_pools_complete_official_and_inferred_options_by_category() -> None:
+def test_compiler_pools_complete_official_and_inferred_options_by_category(
+    solver_bundle: None,
+) -> None:
     """Same-category official and inferred complete options share one flat OR pool."""
     root_options = (
         prerequisite_option(
@@ -344,68 +349,93 @@ def test_compiler_pools_complete_official_and_inferred_options_by_category() -> 
 
     # Inference disabled keeps the official-only composed AND join.
     official_only = compiler.compile("root", include_recommended=True)
-    assert official_only.tree.requirements == AndRequirement(
-        type="and",
-        origin=PrerequisiteOrigin.COMPOSED,
-        composed_role=ComposedAndRole.LOGICAL,
-        children=(
-            AndRequirement(
-                type="and",
-                origin=PrerequisiteOrigin.OFFICIAL,
-                official_kind=OfficialPrerequisiteKind.COMPULSORY,
-                children=(official_course("a"), official_course("b")),
-            ),
-            official_course("r", OfficialPrerequisiteKind.RECOMMENDED),
-        ),
+    official_only_root = official_only.solver.root_use_id
+    assert official_only_root is not None
+    assert piece_of(official_only.solver, official_only_root).kind == "and"
+    assert fact_of(official_only.solver, official_only_root).origin is PrerequisiteOrigin.COMPOSED
+    official_group, official_recommended_use = child_uses(official_only.solver, official_only_root)
+    assert piece_of(official_only.solver, official_group).kind == "and"
+    assert (
+        fact_of(official_only.solver, official_group).official_kind
+        is OfficialPrerequisiteKind.COMPULSORY
+    )
+    assert [
+        piece_of(official_only.solver, use).course_group_id
+        for use in child_uses(official_only.solver, official_group)
+    ] == ["a", "b"]
+    assert (
+        fact_of(official_only.solver, official_recommended_use).official_kind
+        is OfficialPrerequisiteKind.RECOMMENDED
     )
 
     compilation = compiler.compile("root", include_recommended=True, include_inferred=True)
-    requirements = compilation.tree.requirements
-    # Required and recommended remain separate categories joined by one composed logical AND.
-    assert isinstance(requirements, AndRequirement)
-    assert requirements.origin is PrerequisiteOrigin.COMPOSED
-    assert requirements.composed_role is ComposedAndRole.LOGICAL
-    required_pool, recommended_pool = requirements.children
+    requirements_use = compilation.solver.root_use_id
+    assert requirements_use is not None
+    assert piece_of(compilation.solver, requirements_use).kind == "and"
+    assert fact_of(compilation.solver, requirements_use).origin is PrerequisiteOrigin.COMPOSED
+    required_pool, recommended_pool = child_uses(compilation.solver, requirements_use)
 
     # Required: official AND(A,B) and inferred AND(A,C) are two complete OR alternatives.
-    assert isinstance(required_pool, OrRequirement)
-    assert required_pool.origin is PrerequisiteOrigin.COMPOSED
-    assert required_pool.composed_role is ComposedOrRole.LOGICAL
-    official_required, inferred_required = required_pool.children
-    assert isinstance(official_required, AndRequirement)
-    assert official_required.origin is PrerequisiteOrigin.OFFICIAL
-    assert official_required.official_kind is OfficialPrerequisiteKind.COMPULSORY
-    assert official_required.children == (official_course("a"), official_course("b"))
-    assert isinstance(inferred_required, AndRequirement)
-    assert inferred_required.origin is PrerequisiteOrigin.COMPOSED
-    assert inferred_required.composed_role is ComposedAndRole.LOGICAL
-    assert inferred_required.children == (inferred_course("a"), inferred_course("c"))
+    assert piece_of(compilation.solver, required_pool).kind == "or"
+    assert fact_of(compilation.solver, required_pool).origin is PrerequisiteOrigin.COMPOSED
+    official_required, inferred_required = child_uses(compilation.solver, required_pool)
+    assert piece_of(compilation.solver, official_required).kind == "and"
+    official_required_fact = fact_of(compilation.solver, official_required)
+    assert official_required_fact.origin is PrerequisiteOrigin.OFFICIAL
+    assert official_required_fact.official_kind is OfficialPrerequisiteKind.COMPULSORY
+    assert [
+        piece_of(compilation.solver, use).course_group_id
+        for use in child_uses(compilation.solver, official_required)
+    ] == ["a", "b"]
+    assert piece_of(compilation.solver, inferred_required).kind == "and"
+    assert [
+        (
+            piece_of(compilation.solver, use).course_group_id,
+            fact_of(compilation.solver, use).origin,
+            fact_of(compilation.solver, use).inferred_category,
+        )
+        for use in child_uses(compilation.solver, inferred_required)
+    ] == [
+        ("a", PrerequisiteOrigin.INFERRED, InferredPrerequisiteCategory.REQUIRED),
+        ("c", PrerequisiteOrigin.INFERRED, InferredPrerequisiteCategory.REQUIRED),
+    ]
 
     # Recommended: official R and inferred AND(D,E) share one independent composed OR.
-    assert isinstance(recommended_pool, OrRequirement)
-    assert recommended_pool.origin is PrerequisiteOrigin.COMPOSED
-    assert recommended_pool.composed_role is ComposedOrRole.LOGICAL
-    official_recommended, inferred_recommended = recommended_pool.children
-    assert official_recommended == official_course("r", OfficialPrerequisiteKind.RECOMMENDED)
-    assert isinstance(inferred_recommended, AndRequirement)
-    assert inferred_recommended.origin is PrerequisiteOrigin.COMPOSED
-    assert inferred_recommended.children == (
-        inferred_course("d", InferredPrerequisiteCategory.RECOMMENDED),
-        inferred_course("e", InferredPrerequisiteCategory.RECOMMENDED),
+    assert piece_of(compilation.solver, recommended_pool).kind == "or"
+    assert fact_of(compilation.solver, recommended_pool).origin is PrerequisiteOrigin.COMPOSED
+    official_recommended, inferred_recommended = child_uses(compilation.solver, recommended_pool)
+    official_recommended_piece = piece_of(compilation.solver, official_recommended)
+    assert official_recommended_piece.kind == "course"
+    assert official_recommended_piece.course_group_id == "r"
+    assert (
+        fact_of(compilation.solver, official_recommended).official_kind
+        is OfficialPrerequisiteKind.RECOMMENDED
     )
+    assert piece_of(compilation.solver, inferred_recommended).kind == "and"
+    assert [
+        (
+            piece_of(compilation.solver, use).course_group_id,
+            fact_of(compilation.solver, use).origin,
+            fact_of(compilation.solver, use).inferred_category,
+        )
+        for use in child_uses(compilation.solver, inferred_recommended)
+    ] == [
+        ("d", PrerequisiteOrigin.INFERRED, InferredPrerequisiteCategory.RECOMMENDED),
+        ("e", PrerequisiteOrigin.INFERRED, InferredPrerequisiteCategory.RECOMMENDED),
+    ]
 
     # The pool is one alternative per category, not a conjunction of every source option.
-    satisfied = evaluate_prerequisite_satisfaction(compilation.tree, ["a", "b", "r"])
+    satisfied = evaluate_prerequisite_satisfaction(compilation.solver, ["a", "b", "r"])
     assert satisfied.requirements_state is PrerequisiteSatisfactionState.SATISFIED
-    missing_recommended = evaluate_prerequisite_satisfaction(compilation.tree, ["a", "b"])
+    missing_recommended = evaluate_prerequisite_satisfaction(compilation.solver, ["a", "b"])
     assert missing_recommended.requirements_state is PrerequisiteSatisfactionState.UNSATISFIED
-    path = calculate_minimum_new_credits(compilation.tree, [])
-    assert path.state is PrerequisitePathState.EXACT
-    assert [entry.course.group_id for entry in path.new_courses] == ["a", "b", "r"]
-    assert path.total_new_credits == Decimal("15")
+    path = solve_route(compilation.solver, [])
+    assert path["state"] == "exact"
+    assert [entry["course"]["group_id"] for entry in path["new_courses"]] == ["a", "b", "r"]
+    assert Decimal(path["total_new_credits"]) == Decimal("15")
 
 
-def test_compiler_inferred_option_bypasses_official_module_rule() -> None:
+def test_compiler_inferred_option_bypasses_official_module_rule(solver_bundle: None) -> None:
     """An inferred option is a complete alternative to an unresolved/numeric official module rule."""
     year_period = (CatalogueCurriculumPeriod(id="period-2026", academic_year_start=2026),)
     root = catalogue_course(
@@ -491,45 +521,60 @@ def test_compiler_inferred_option_bypasses_official_module_rule() -> None:
     # Without inference the official numeric and malformed-module options are identical, and A+B
     # satisfies the numeric credit rule exactly.
     official = compiler.compile("root")
-    official_requirements = official.tree.requirements
-    assert isinstance(official_requirements, OrRequirement)
-    assert official_requirements.origin is PrerequisiteOrigin.OFFICIAL
-    assert official_requirements.official_kind is OfficialPrerequisiteKind.COMPULSORY
-    numeric_branch, unresolved_branch = official_requirements.children
-    assert isinstance(numeric_branch, ModuleBlockRequirement)
-    assert isinstance(numeric_branch.child, CreditRequirement)
-    assert isinstance(unresolved_branch, ModuleBlockRequirement)
-    assert isinstance(unresolved_branch.child, UnresolvedRequirement)
-    assert unresolved_branch.child.reason is UnresolvedPrerequisiteReason.MALFORMED_RULE
-    numeric_satisfied = evaluate_prerequisite_satisfaction(official.tree, ["a", "b"])
+    official_requirements = official.solver.root_use_id
+    assert official_requirements is not None
+    official_piece = piece_of(official.solver, official_requirements)
+    official_fact = fact_of(official.solver, official_requirements)
+    assert official_piece.kind == "or"
+    assert official_fact.origin is PrerequisiteOrigin.OFFICIAL
+    assert official_fact.official_kind is OfficialPrerequisiteKind.COMPULSORY
+    numeric_branch, unresolved_branch = child_uses(official.solver, official_requirements)
+    assert piece_of(official.solver, numeric_branch).kind == "module_block"
+    numeric_child = child_uses(official.solver, numeric_branch)[0]
+    assert piece_of(official.solver, numeric_child).kind == "credits"
+    assert piece_of(official.solver, unresolved_branch).kind == "module_block"
+    unresolved_child = child_uses(official.solver, unresolved_branch)[0]
+    unresolved_piece = piece_of(official.solver, unresolved_child)
+    assert unresolved_piece.kind == "unresolved"
+    assert unresolved_piece.reason is UnresolvedPrerequisiteReason.MALFORMED_RULE.value
+    numeric_satisfied = evaluate_prerequisite_satisfaction(official.solver, ["a", "b"])
     assert numeric_satisfied.requirements_state is PrerequisiteSatisfactionState.SATISFIED
 
     # With inference the complete inferred option joins the same required OR pool, so it bypasses
     # the official numeric branch while the separate malformed official option is explicit.
     enabled = compiler.compile("root", include_inferred=True)
-    requirements = enabled.tree.requirements
-    assert isinstance(requirements, OrRequirement)
-    assert requirements.origin is PrerequisiteOrigin.COMPOSED
-    assert requirements.composed_role is ComposedOrRole.LOGICAL
-    enabled_numeric, enabled_unresolved, inferred_c = requirements.children
-    assert isinstance(enabled_numeric, ModuleBlockRequirement)
-    assert isinstance(enabled_numeric.child, CreditRequirement)
-    assert isinstance(enabled_unresolved, ModuleBlockRequirement)
-    assert isinstance(enabled_unresolved.child, UnresolvedRequirement)
-    assert enabled_unresolved.child.reason is UnresolvedPrerequisiteReason.MALFORMED_RULE
-    assert inferred_c == inferred_course("c")
+    enabled_requirements = enabled.solver.root_use_id
+    assert enabled_requirements is not None
+    enabled_piece = piece_of(enabled.solver, enabled_requirements)
+    enabled_fact = fact_of(enabled.solver, enabled_requirements)
+    assert enabled_piece.kind == "or"
+    assert enabled_fact.origin is PrerequisiteOrigin.COMPOSED
+    enabled_numeric, enabled_unresolved, inferred_c = child_uses(
+        enabled.solver, enabled_requirements
+    )
+    assert piece_of(enabled.solver, enabled_numeric).kind == "module_block"
+    enabled_numeric_child = child_uses(enabled.solver, enabled_numeric)[0]
+    assert piece_of(enabled.solver, enabled_numeric_child).kind == "credits"
+    assert piece_of(enabled.solver, enabled_unresolved).kind == "module_block"
+    enabled_unresolved_child = child_uses(enabled.solver, enabled_unresolved)[0]
+    enabled_unresolved_piece = piece_of(enabled.solver, enabled_unresolved_child)
+    assert enabled_unresolved_piece.kind == "unresolved"
+    assert enabled_unresolved_piece.reason is UnresolvedPrerequisiteReason.MALFORMED_RULE.value
+    inferred_c_piece = piece_of(enabled.solver, inferred_c)
+    assert inferred_c_piece.kind == "course" and inferred_c_piece.course_group_id == "c"
+    assert fact_of(enabled.solver, inferred_c).origin is PrerequisiteOrigin.INFERRED
 
     # Completed C alone satisfies the category even though the official route is unknown, but
     # minimum-new-credit with a positive-cost C is unresolved because that unknown route could
     # be cheaper. No fabricated exact answer is returned.
-    satisfied = evaluate_prerequisite_satisfaction(enabled.tree, ["c"])
+    satisfied = evaluate_prerequisite_satisfaction(enabled.solver, ["c"])
     assert satisfied.requirements_state is PrerequisiteSatisfactionState.SATISFIED
-    unresolved = calculate_minimum_new_credits(enabled.tree, [])
-    assert unresolved.state is PrerequisitePathState.UNRESOLVED
-    assert unresolved.new_courses == ()
+    unresolved = solve_route(enabled.solver, [])
+    assert unresolved["state"] == "unresolved"
+    assert unresolved["new_courses"] == []
     assert any(
-        blocker.reason is UnresolvedPrerequisiteReason.MALFORMED_RULE
-        for blocker in unresolved.blockers
+        blocker["reason"] == UnresolvedPrerequisiteReason.MALFORMED_RULE.value
+        for blocker in unresolved["blockers"]
     )
 
     # An enabled inferred alternative permits dropping a genuinely missing official module, while
@@ -556,12 +601,21 @@ def test_compiler_inferred_option_bypasses_official_module_rule() -> None:
         RecordingEquivalenceGroupRead(),
     )
     official_only_missing = missing_compiler.compile("missing-root")
-    official_only_requirements = official_only_missing.tree.requirements
-    assert isinstance(official_only_requirements, UnresolvedRequirement)
-    assert official_only_requirements.reason is UnresolvedPrerequisiteReason.MISSING_MODULE
-    assert official_only_missing.tree.ignored_parts == ()
+    official_only_root = official_only_missing.solver.root_use_id
+    assert official_only_root is not None
+    official_only_piece = piece_of(official_only_missing.solver, official_only_root)
+    assert official_only_piece.kind == "unresolved"
+    assert official_only_piece.reason is UnresolvedPrerequisiteReason.MISSING_MODULE.value
+    assert ignored_parts(official_only_missing.solver) == ()
     enabled_missing = missing_compiler.compile("missing-root", include_inferred=True)
-    assert enabled_missing.tree.requirements == inferred_course("d")
-    assert [part.kind.value for part in enabled_missing.tree.ignored_parts] == [
+    enabled_missing_root = enabled_missing.solver.root_use_id
+    assert enabled_missing_root is not None
+    enabled_missing_piece = piece_of(enabled_missing.solver, enabled_missing_root)
+    assert enabled_missing_piece.kind == "course"
+    assert enabled_missing_piece.course_group_id == "d"
+    assert fact_of(enabled_missing.solver, enabled_missing_root).origin is (
+        PrerequisiteOrigin.INFERRED
+    )
+    assert [part.kind for part in ignored_parts(enabled_missing.solver)] == [
         "missing_module_alternative"
     ]

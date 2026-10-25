@@ -9,17 +9,24 @@ import type {
   StructureRule,
   StudyStructureReport,
 } from "../../api/types";
-import { createBrowserStore } from "../../state/store";
+import { READ_CACHE_CAPACITY, ReadCache } from "../../app/readCache";
+import { ReadCacheContext } from "../../app/readCacheContext";
+import { createBrowserStore, BROWSER_STORAGE_KEY } from "../../state/store";
 import { StoreContext } from "../../state/context";
-import type { CourseMoveRequest } from "./CourseMoveConfirmDialog";
+import type {
+  CourseMoveAnswer,
+  CourseMoveRequest,
+} from "./CourseMoveConfirmDialog";
 import {
   buildProgrammeForest,
   indexResolved,
   programmeKey,
   resolveStructure,
   type PlacedContent,
+  type ResolvedNode,
 } from "./model";
-import { emptyEdits } from "./state";
+import { emptyEdits, type StructureEdits } from "./state";
+import { moduleName } from "./presentation";
 import { useStructureEditor } from "./useStructureEditor";
 
 const baseRule = (patch: Partial<StructureRule>): StructureRule => ({
@@ -32,6 +39,7 @@ const baseRule = (patch: Partial<StructureRule>): StructureRule => ({
   credits_max: null,
   count_min: null,
   count_max: null,
+  referenced_group_id: null,
   children: [],
   course: null,
   module: null,
@@ -138,6 +146,108 @@ const until = async (check: () => boolean, label: string) => {
   throw new Error(`Timed out waiting for ${label}`);
 };
 
+/** Mount one editor hook over the real store, read cache and supplied edits. */
+function mountEditor({
+  store,
+  resolved,
+  edits,
+  content,
+  confirmMoves,
+}: {
+  store: ReturnType<typeof createBrowserStore>;
+  resolved: ResolvedNode;
+  edits: StructureEdits;
+  content: PlacedContent;
+  confirmMoves: (request: CourseMoveRequest) => Promise<CourseMoveAnswer>;
+}) {
+  let editor: ReturnType<typeof useStructureEditor> | null = null;
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  const cache = new ReadCache("dataset-one", READ_CACHE_CAPACITY);
+  const Harness = () => {
+    editor = useStructureEditor({
+      resolved,
+      edits,
+      freeIds: [],
+      content,
+      extend: () => content,
+      notify: () => undefined,
+      contentDatasetIdentity: "dataset-one",
+      contentSelectionKey: "[]",
+      confirmMoves,
+    });
+    return null;
+  };
+  return {
+    render: () =>
+      act(async () =>
+        root.render(
+          createElement(
+            StoreContext.Provider,
+            { value: store },
+            createElement(
+              ReadCacheContext.Provider,
+              { value: cache },
+              createElement(Harness),
+            ),
+          ),
+        ),
+      ),
+    editor: () => editor,
+    unmount: async () => {
+      await act(async () => root.unmount());
+      host.remove();
+    },
+  };
+}
+
+/**
+ * Build one programme holding a bare module whose root rule is a choice of two courses.
+ *
+ * The first option is chosen, so the course renders through the choice node and its containing
+ * module is the only displayed holder.
+ */
+function chosenCourseFixture() {
+  const labReport = report(moduleSummary("mod-lab", "LAB"), [
+    baseRule({
+      require_min: 0,
+      require_max: null,
+      all_mandatory: false,
+      children: [
+        courseChild("c-chosen", "C-CHOSEN", 0),
+        courseChild("c-alt", "C-ALT", 1),
+      ],
+    }),
+  ]);
+  const programme = report(degreeSummary("prog-a", "PROG-A"), [
+    baseRule({
+      node_type: "ModuleRule",
+      sibling_position: 0,
+      module: labReport.root,
+    }),
+  ]);
+  const content = contentOf([labReport, programme]);
+  const tree = buildProgrammeForest([programme]);
+  const empty = resolveStructure(tree, emptyEdits(), content);
+  const choice = [...indexResolved(empty).byKey.values()].find(
+    (node) => node.node.kind === "choice",
+  );
+  if (!choice) throw new Error("The fixture choice is missing");
+  const edits: StructureEdits = {
+    ...emptyEdits(),
+    choices: { [choice.node.key]: [choice.node.options[0].key] },
+  };
+  return {
+    labModule: labReport.root.module,
+    programme,
+    content,
+    tree,
+    edits,
+    resolved: resolveStructure(tree, edits, content),
+  };
+}
+
 describe("structure editor module confirmation", () => {
   beforeEach(() => localStorage.clear());
 
@@ -169,6 +279,7 @@ describe("structure editor module confirmation", () => {
       selectedCourseIds: placed,
       structure: {
         programmeGroupIds: ["prog-a"],
+        moduleVersions: {},
         ...edits,
         placedCourseIds: placed,
       },
@@ -179,6 +290,7 @@ describe("structure editor module confirmation", () => {
     const host = document.createElement("div");
     document.body.append(host);
     const root = createRoot(host);
+    const cache = new ReadCache("dataset-one", READ_CACHE_CAPACITY);
     const Harness = () => {
       editor = useStructureEditor({
         resolved,
@@ -187,6 +299,8 @@ describe("structure editor module confirmation", () => {
         content,
         extend: () => content,
         notify: () => undefined,
+        contentDatasetIdentity: "dataset-one",
+        contentSelectionKey: "[]",
         confirmMoves: (request) => {
           requested = request;
           return new Promise<boolean>((resolve) => {
@@ -202,7 +316,11 @@ describe("structure editor module confirmation", () => {
           createElement(
             StoreContext.Provider,
             { value: store },
-            createElement(Harness),
+            createElement(
+              ReadCacheContext.Provider,
+              { value: cache },
+              createElement(Harness),
+            ),
           ),
         ),
       );
@@ -274,7 +392,16 @@ describe("structure editor module confirmation", () => {
       globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
     ).IS_REACT_ACT_ENVIRONMENT = true;
     const holderKey = `${programmeKey("prog-a")}/1`;
-    // The nested holder carries degree metadata and holds a completion of each kind.
+    // The nested holder carries degree metadata, an optional module and a completion of each kind.
+    const optionalHolder = {
+      module: degreeSummary("mod-optional", "MOD-OPTIONAL"),
+      target_credits_min: null,
+      target_credits_max: null,
+      rule: baseRule({
+        all_mandatory: true,
+        children: [courseChild("o-required", "O-REQUIRED", 0)],
+      }),
+    };
     const holder = {
       module: degreeSummary("mod-nested", "NESTED"),
       target_credits_min: null,
@@ -285,6 +412,19 @@ describe("structure editor module confirmation", () => {
           courseChild("n-required", "N-REQUIRED", 0),
           courseChild("n-outside", "N-OUTSIDE", 1),
           optionalCourse("n-optional", "N-OPTIONAL", 2),
+          baseRule({
+            sibling_position: 3,
+            require_min: 0,
+            require_max: 1,
+            all_mandatory: false,
+            children: [
+              baseRule({
+                node_type: "ModuleRule",
+                sibling_position: 0,
+                module: optionalHolder,
+              }),
+            ],
+          }),
         ],
       }),
     };
@@ -310,10 +450,12 @@ describe("structure editor module confirmation", () => {
       ],
     );
     const nOptionalChoice = `${holderKey}/0/2`;
+    const optionalModuleChoice = `${holderKey}/0/3`;
     const bChoice = `${programmeKey("prog-b")}/1`;
     const baseEdits = {
       choices: {
         [nOptionalChoice]: [`${nOptionalChoice}/0`],
+        [optionalModuleChoice]: [`${optionalModuleChoice}/0`],
         [bChoice]: [`${bChoice}/0`],
       },
       coursePlacements: {
@@ -341,6 +483,11 @@ describe("structure editor module confirmation", () => {
         ],
         structure: {
           programmeGroupIds: ["prog-a", "prog-b"],
+          moduleVersions: {
+            "mod-nested": "sisu-mod-nested",
+            "mod-optional": "sisu-mod-optional",
+            "prog-b": "sisu-prog-b",
+          },
           ...baseEdits,
           placedCourseIds: placed,
         },
@@ -349,6 +496,7 @@ describe("structure editor module confirmation", () => {
       const host = document.createElement("div");
       document.body.append(host);
       const root = createRoot(host);
+      const cache = new ReadCache("dataset-one", READ_CACHE_CAPACITY);
       const Harness = () => {
         editor = useStructureEditor({
           resolved,
@@ -357,6 +505,8 @@ describe("structure editor module confirmation", () => {
           content,
           extend: () => content,
           notify: () => undefined,
+          contentDatasetIdentity: "dataset-one",
+          contentSelectionKey: "[]",
           confirmMoves: () => Promise.resolve(true),
         });
         return null;
@@ -367,12 +517,20 @@ describe("structure editor module confirmation", () => {
             createElement(
               StoreContext.Provider,
               { value: store },
-              createElement(Harness),
+              createElement(
+                ReadCacheContext.Provider,
+                { value: cache },
+                createElement(Harness),
+              ),
             ),
           ),
         );
         const node = indexResolved(resolved).moduleAt.get("mod-nested")?.node;
         if (!node) throw new Error("The fixture holder is missing");
+        // The optional module renders below the holder before the reset removes it.
+        expect(
+          indexResolved(resolved).moduleAt.get("mod-optional")?.node.key,
+        ).toBe(`${optionalModuleChoice}/0`);
         // Both outcomes use the callback captured at mount. The first store is never refreshed.
         const reset = editor!.resetNode;
         const otherTab = createBrowserStore(localStorage);
@@ -430,6 +588,13 @@ describe("structure editor module confirmation", () => {
         expect(reloaded.completedCourseIds).toContain("n-outside");
         expect(reloaded.selectedCourseIds).toContain("n-outside");
         expect(after.courseAt.get("n-required")?.node.key).toBe(holderKey);
+        // The reset removes the optional module below the surviving holder, so that group's
+        // version entry goes while the holder's and programme B's selections stay.
+        expect(after.moduleAt.get("mod-optional")).toBeUndefined();
+        expect(reloaded.structure.moduleVersions).toEqual({
+          "mod-nested": "sisu-mod-nested",
+          "prog-b": "sisu-prog-b",
+        });
         if (removeCompletedCourses) {
           expect(reloaded.completedCourseIds).not.toContain("n-required");
           expect(reloaded.selectedCourseIds).toContain("n-required");
@@ -451,6 +616,109 @@ describe("structure editor module confirmation", () => {
         await act(async () => root.unmount());
         host.remove();
       }
+    }
+  });
+
+  it("names the containing module when a chosen course moves", async () => {
+    (
+      globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
+    ).IS_REACT_ACT_ENVIRONMENT = true;
+    const fixture = chosenCourseFixture();
+    expect(
+      indexResolved(fixture.resolved).courseAt.get("c-chosen")?.node.kind,
+    ).toBe("choice");
+    const store = createBrowserStore(localStorage);
+    const editor = mountEditor({
+      store,
+      resolved: fixture.resolved,
+      edits: fixture.edits,
+      content: fixture.content,
+      confirmMoves: () => Promise.resolve(true),
+    });
+    try {
+      await editor.render();
+      const home = editor
+        .editor()!
+        .courseHome("c-chosen", programmeKey("prog-a"), "en");
+      expect(home).toBe(moduleName(fixture.labModule, "en"));
+    } finally {
+      await editor.unmount();
+    }
+  });
+
+  it("names containing modules in pulled-course confirmations", async () => {
+    (
+      globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
+    ).IS_REACT_ACT_ENVIRONMENT = true;
+    const fixture = chosenCourseFixture();
+    const targetModule = moduleSummary("mod-target", "TARGET");
+    const targetReport = report(targetModule, [
+      baseRule({
+        all_mandatory: true,
+        children: [courseChild("c-chosen", "C-CHOSEN", 0)],
+      }),
+    ]);
+    const progB = report(degreeSummary("prog-b", "PROG-B"), [
+      optionalModule(targetReport.root),
+    ]);
+    const content = contentOf([targetReport, fixture.programme, progB]);
+    const tree = buildProgrammeForest([fixture.programme, progB]);
+    const resolved = resolveStructure(tree, fixture.edits, content);
+    const progBNode = resolved.children.find(
+      (child) => child.node.module?.group_id === "prog-b",
+    );
+    const group = progBNode?.node.ruleGroups.find((item) => !item.required);
+    const entry = group?.options[0].entries[0];
+    if (!entry || entry.kind !== "node" || !entry.node.module)
+      throw new Error("The fixture optional module is missing");
+    const store = createBrowserStore(localStorage);
+    const placed = resolved.subtree.map((course) => course.group_id);
+    store.updateCurrent((state) => ({
+      ...state,
+      selectedCourseIds: ["c-chosen", "c-kept"],
+      completedCourseIds: ["c-kept"],
+      structure: {
+        programmeGroupIds: ["prog-a", "prog-b"],
+        moduleVersions: {},
+        ...fixture.edits,
+        placedCourseIds: placed,
+      },
+    }));
+    let requested: CourseMoveRequest | null = null;
+    let answer: ((value: CourseMoveAnswer) => void) | null = null;
+    const editor = mountEditor({
+      store,
+      resolved,
+      edits: fixture.edits,
+      content,
+      confirmMoves: (request) => {
+        requested = request;
+        return new Promise<CourseMoveAnswer>((resolve) => {
+          answer = resolve;
+        });
+      },
+    });
+    try {
+      await editor.render();
+      const operation = editor
+        .editor()!
+        .selectRuleModule(entry.node.module, { entry, origin: entry.origin! });
+      await until(() => requested !== null, "the module confirmation");
+      const source = (requested as CourseMoveRequest | null)?.moves[0];
+      expect(source?.from("en")).toBe(moduleName(fixture.labModule, "en"));
+      expect(source?.from("fi")).toBe(moduleName(fixture.labModule, "fi"));
+      const saved = localStorage.getItem(BROWSER_STORAGE_KEY);
+      await act(async () => {
+        answer?.(false);
+        await operation;
+      });
+      expect(localStorage.getItem(BROWSER_STORAGE_KEY)).toBe(saved);
+      const reloaded = currentState(createBrowserStore(localStorage));
+      expect(reloaded.selectedCourseIds).toEqual(["c-chosen", "c-kept"]);
+      expect(reloaded.completedCourseIds).toEqual(["c-kept"]);
+      expect(editor.editor()!.error).toBeNull();
+    } finally {
+      await editor.unmount();
     }
   });
 });

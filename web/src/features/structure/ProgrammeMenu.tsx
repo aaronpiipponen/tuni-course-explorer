@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { useWording } from "../../shared/useWording";
 
+/** Render one programme's replace, reset and delete menu. */
 export function ProgrammeMenu({
   name,
   onReplace,

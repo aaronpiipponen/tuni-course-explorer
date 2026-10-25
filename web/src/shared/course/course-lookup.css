@@ -1,8 +1,8 @@
-/** Shared narrowing-box rows and states reused by Compare and Prerequisites. */
+/** Shared narrowing-box rows and states reused by Compare, Prerequisites and Structure. */
 .course-lookup-controls {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   padding: 3px 8px 3px 16px;
   border: 1px solid rgb(255 255 255 / 25%);
   border-radius: 12px;
@@ -10,6 +10,14 @@
 }
 .course-lookup-controls:focus-within {
   border-color: #b07be8;
+}
+.course-lookup-controls > svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  fill: none;
+  stroke: rgb(255 255 255 / 45%);
+  stroke-width: 1.6;
 }
 .course-lookup-controls > input {
   flex: 1;
@@ -23,29 +31,91 @@
     15px Inter,
     sans-serif;
 }
-.course-lookup-controls .toggle-chip {
-  padding: 5px 11px;
+.course-lookup-filters {
+  margin-top: 8px;
 }
 .course-lookup-list {
+  position: relative;
   max-height: 300px;
   overflow-y: auto;
-  margin-top: 12px;
+  margin-top: 10px;
+  padding-bottom: 8px;
+  overscroll-behavior: contain;
+}
+.lookup-virtual-list {
+  position: relative;
+}
+.lookup-virtual-spacer {
+  position: relative;
+}
+.lookup-virtual-row {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  padding-bottom: 6px;
+}
+.lookup-virtual-row > .prow {
+  width: 100%;
+}
+.course-lookup-list .lookup-virtual-row > .prow {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 100px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 38px;
+  padding: 0 14px;
   border: 1px solid rgb(255 255 255 / 12%);
-  border-radius: 12px;
+  border-radius: 10px;
+  color: #fff;
   background: #0a0a0f;
+  text-align: left;
+  font-size: 13px;
+  cursor: pointer;
 }
-.course-lookup-list .course-card-shell {
-  --course-row-height: 38px;
+.course-lookup-list
+  .lookup-virtual-spacer
+  > .lookup-virtual-row:first-child
+  > .prow {
+  border-top: 0;
 }
-.course-lookup-list .course-card {
-  grid-template-columns: 62px 112px minmax(0, 1fr) 150px 90px 64px;
-}
-.course-lookup-list .course-pick-text {
-  grid-column: 6;
-}
-.course-lookup-list .course-card-shell:focus-within,
-.course-lookup-list .course-card-shell:hover {
+.course-lookup-list .lookup-virtual-row > .prow:hover {
   background: rgb(255 255 255 / 4%);
+}
+.course-lookup-list .lookup-virtual-row > .prow > .code {
+  overflow: hidden;
+  color: #b07be8;
+  font:
+    11px "JetBrains Mono",
+    ui-monospace,
+    monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.course-lookup-list .lookup-virtual-row > .prow > .pn {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 500;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.course-lookup-list .lookup-virtual-row > .prow > .cr {
+  color: rgb(255 255 255 / 55%);
+  font:
+    11px "JetBrains Mono",
+    ui-monospace,
+    monospace;
+  white-space: nowrap;
+}
+.course-lookup-list .lookup-virtual-row > .prow > .add {
+  color: #b07be8;
+  text-align: right;
+  font:
+    12px "JetBrains Mono",
+    ui-monospace,
+    monospace;
 }
 .course-lookup-skeletons {
   margin-top: 12px;
@@ -73,11 +143,37 @@
     ui-monospace,
     monospace;
 }
-@media (max-width: 600px) {
-  .course-lookup-controls {
-    flex-wrap: wrap;
-  }
+@media (max-width: 680px) {
   .course-lookup-controls > input {
-    flex-basis: 100%;
+    font-size: 16px;
+  }
+  .course-lookup-list .lookup-virtual-row > .prow {
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: 3px;
+    padding: 8px 10px;
+  }
+  .course-lookup-list .lookup-virtual-row > .prow > .code {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .course-lookup-list .lookup-virtual-row > .prow > .cr {
+    display: none;
+  }
+  .course-lookup-list .lookup-virtual-row > .prow > .add {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+  }
+  .course-lookup-list .lookup-virtual-row > .prow > .pn {
+    display: -webkit-box;
+    grid-column: 1 / -1;
+    grid-row: 2;
+    overflow: hidden;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
   }
 }

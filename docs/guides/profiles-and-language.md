@@ -15,7 +15,7 @@ A profile holds the language, the [shared course sets](/docs/guides/README.md#sh
 | Compare | The two comparison slots. |
 | Prerequisites | The open course, the search field, the **Recommended**, **Inferred** and **Active only** settings, the [route basis](/docs/guides/prerequisites.md#graph-options), the excluded courses, and the completed and excluded marks on module and requirement nodes. |
 | Discover | The chosen list, the mode, the basis, and the **Active only** setting. |
-| Structure of studies | The ordered [programmes](/docs/guides/structure-of-studies.md#adding-a-programme), the choices, the places of the courses and modules, and a captured Sisu plan that the tab has not placed yet. |
+| Structure of studies | The ordered [programmes](/docs/guides/structure-of-studies.md#adding-a-programme), the choices, the places of the courses and modules, and a captured Sisu plan that the tab has not placed. |
 
 A browser with no saved state starts with one profile named My plan. Each profile holds its own copy, so the courses and the settings of one profile do not appear in another.
 
@@ -25,7 +25,7 @@ The profiles belong to this browser. They are held in the local storage of the b
 
 ## The profile control
 
-The control in the top bar carries the name of the open profile. Select it to open **Profiles**, which lists every profile of this browser. The panel holds the profile list, the **New profile** form, the **Import** area, and a bottom row with a **?** help control, **Copy Sisu import script**, and **Export**.
+On desktop the control in the top bar carries the name of the open profile, and on a phone it is the first row of the **More** sheet at the bottom of the window. On a phone the profile rows and controls are large enough to tap, and a profile name wraps in full. Opening **My plan** hides the language/Docs row and footer and grows the sheet upward with the profile panel, leaving no empty space below it. Select it to open **Profiles**, which lists every profile of this browser. The panel holds the profile list, the **New profile** form, the **Import** area, and a bottom row with a **?** help control, **Copy Sisu import script**, and **Export**. [Using the app on a phone](/docs/guides/phone.md) describes the **More** sheet that holds the control.
 
 Every tab of the same browser opens the same saved state, so a change made in one open tab appears in the other open tabs, and a profile switch reaches them as well.
 
@@ -74,14 +74,14 @@ Exporting a profile leaves the profiles as they are, and it does not open the ex
 
 The **?** control at the left of the bottom row opens a drawer that explains export, import and Sisu plan import in three sections.
 
-A profile downloads as `course-explorer-profile-<profile name>.json`. Every character that a file name cannot hold is replaced by `_`, and the spaces, the letters outside the plain Latin alphabet and the other characters of the name are kept. The whole saved data downloads as `course-explorer-saved-data.json`.
+A profile downloads as `course-explorer-profile-<profile name>.json`. Every character that a file name cannot hold becomes `_`, and the spaces, the letters outside the plain Latin alphabet and the other characters of the name are kept. The whole saved data downloads as `course-explorer-saved-data.json`.
 
 ## Importing a file
 
 1. Select the profile control to open **Profiles**.
 2. Select **Choose file** in the **Import** area and pick one file, or drop one file onto the area.
 
-The control reads **Choose file** and **or drop a .json file**, and it reads the three kinds of file: a profile, the whole saved data, or a capture of a Sisu plan. The file's own `type` decides which one it is, and the **?** help drawer of the bottom row explains the three kinds.
+The control reads **Choose file** and **or drop a .json file**, and it reads the three kinds of file: a profile, the whole saved data, or a capture of a Sisu plan. The kind the file declares decides which one it is, and the **?** help drawer of the bottom row explains the three kinds. While the **Structure of studies** tab holds no programme, the same **Import** area sits below **Add programme** and accepts the same three kinds through the same confirmations. That area also carries **Copy Sisu import script** and a **?** help drawer for the import and the Sisu plan, without the export list.
 
 A file that holds a profile opens the dialog **Import profile “My plan”?**, with the name of the imported profile in place of My plan. Select **Import** to create a profile from the file and open it, or **Cancel**, Escape or a click outside the dialog to leave the profiles as they are. The created profile carries the name and everything the file holds, and it is a separate profile from the one that is open.
 
@@ -89,7 +89,7 @@ A file that holds a profile opens the dialog **Import profile “My plan”?**, 
 
 An imported profile whose name another profile already holds is refused when **Import** is selected, and the message is **A profile with that name already exists**. The dialog is left open and nothing is written. A profile file whose name carries spaces at either end is refused with a message before anything is written.
 
-A file that holds the whole saved data opens the dialog **Replace all saved data?**, which states that every profile in this browser is replaced by the imported saved data. Select **Replace** to replace the saved data and reload the app, or **Cancel** to leave the saved data as it is.
+A file that holds the whole saved data opens the dialog **Replace all saved data?**, which states that the imported saved data takes the place of every profile in this browser. Select **Replace** to replace the saved data and reload the app, or **Cancel** to leave the saved data as it is.
 
 A file that holds a Sisu plan capture opens the dialog **Import Sisu plan**. It names the captured programmes in the order Sisu shows them, and it names every item whose identity the capture could not resolve. Type a name in **Profile name** and select **Import** to create the profile, or **Cancel**, Escape or a click outside the dialog to leave the profiles as they are. **Import** is available once the name holds something. [Sisu import script](/docs/guides/sisu-import.md) covers the capture and what the import places.
 
@@ -101,7 +101,7 @@ A file of another kind, or a file whose content is not valid, is refused with a 
 
 ## The language control
 
-The **FI** and **EN** control in the top bar sets the app language of the open profile. The pressed side is the language in use, and the control reports it.
+On desktop the **FI** and **EN** control in the top bar sets the app language of the open profile, and on a phone the same control shares one row of the **More** sheet with the **Docs** button. The pressed side is the language in use, and the control reports it.
 
 ![The Profiles panel lists My plan with four selected and two completed courses and Alternative plan with two selected and one completed course. Alternative plan is current, FI is pressed in the language control, and the top bar and the panel read in Finnish.](/docs/screenshots/profile-language.png)
 
@@ -116,7 +116,7 @@ Where the catalogue holds no name in the chosen language, the app shows the name
 
 ## When the saved profiles cannot be read
 
-The app reads the stored state when it starts. If the stored value cannot be read, the app shows a notice in place of the interface, and the stored value is left as it is. That screen is in English, because no profile language can be read there. Stored state of another version is not converted, so it reads as unreadable and is kept until it is reset.
+The app reads the stored state when it starts. If the stored value cannot be read, the app shows a notice in place of the interface, and the stored value is left as it is. That screen is in English, because no profile language can be read there. A stored value of another shape reads as unreadable, and the app keeps it in place until it is reset with **Reset saved data**. A file of another type or shape is refused in the **Import** area, and it changes no saved data.
 
 The notice names what could not be read: stored state that is not a valid envelope, a version of the stored state that the app does not support, a state that names no open profile, a profile that is not valid, or the saved state of one tab that is not valid.
 

@@ -197,7 +197,7 @@
   stroke: var(--edge-color);
   stroke-width: 1.6;
 }
-.react-flow__edge.prereq-edge.rec .react-flow__edge-path.line {
+.react-flow__edge-path.prereq-edge.inferred.line {
   stroke-dasharray: 5 5;
 }
 .react-flow__edge.hot .react-flow__edge-path.line {
@@ -273,5 +273,102 @@
   .graph-panel {
     height: calc(100vh - 295px);
     min-height: 440px;
+  }
+}
+.graph-float-controls {
+  display: none;
+}
+@media (max-width: 680px) {
+  .graph-stage {
+    display: flex;
+    height: 100%;
+    min-height: 0;
+    flex-direction: column;
+    gap: 0;
+  }
+  .graph-panel {
+    height: auto;
+    min-height: 0;
+    flex: 1;
+    border: 0;
+    border-radius: 0;
+  }
+  .graph-float-controls {
+    position: absolute;
+    top: 64px;
+    right: 12px;
+    z-index: 7;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .graph-float-controls button {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 1px solid rgb(255 255 255 / 25%);
+    border-radius: 999px;
+    color: #fff;
+    background: rgb(10 10 15 / 85%);
+    font:
+      18px/1 "JetBrains Mono",
+      ui-monospace,
+      monospace;
+  }
+  .graph-float-controls svg {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+  }
+  .graph-course .tile-actions button,
+  .graph-module .tile-actions button {
+    min-height: 44px;
+    padding: 0 12px;
+  }
+  .graph-refusal-panel {
+    overflow-y: auto;
+    touch-action: pan-y pinch-zoom;
+  }
+  .graph-refusal-body {
+    width: 100%;
+    padding: 12px;
+  }
+  .graph-course,
+  .graph-module {
+    height: auto;
+    min-height: var(--graph-node-min-height);
+  }
+  .graph-course > .tile {
+    height: auto;
+    min-height: var(--graph-node-min-height);
+    gap: 8px;
+  }
+  .graph-course .tile-facts {
+    margin-block: 0;
+    flex-wrap: wrap;
+  }
+  .graph-course .tile-actions {
+    flex-wrap: wrap;
+  }
+  .graph-course .tile-name,
+  .graph-module-body b {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .graph-module-body {
+    flex: none;
+  }
+  .graph-module-facts {
+    flex-wrap: wrap;
+  }
+  .graph-module .tile-actions {
+    margin-top: 8px;
+    flex-wrap: wrap;
   }
 }

@@ -134,7 +134,7 @@ The [Command log panel](/docs/operations/admin-console/logs.md#command-log) read
 
 ## Request records and the usage report
 
-Each course-exploration web server process appends one request record to `data/usage/requests` for every HTTP request it answers. The file is mode 0600, and one record is one JSON line. It holds the request-start UTC hour rounded down, a fixed route label, the response status and the elapsed seconds. The route label is the matched route's own path, `/assets` for a served or a missing asset, and `unmatched` for every other request. The record holds no requested path, query, header, user agent, network address or course data.
+The course-exploration web server's front router appends one request record to `data/usage/requests` for every HTTP request it answers. The file is mode 0600, and one record is one JSON line. It holds the request-start UTC hour rounded down, a fixed route label, the response status and the elapsed seconds. The route label comes from the request path: `/` and `/docs` report themselves, one of the nine fixed API paths reports that path, `/assets` covers a served or a missing asset, and every other path reports `unmatched`. The record holds no requested path, query, header, user agent, network address or course data.
 
 The status is the response's own status, or `500` when a handler fails before it starts a response. The administration backend appends no request record. The usage file counts course-exploration requests alone.
 

@@ -7,7 +7,9 @@
  */
 import * as Dialog from "@radix-ui/react-dialog";
 import { useWording } from "../../shared/useWording";
+import { usePhoneTabsOnClose } from "../../shared/usePhoneTabsOnClose";
 
+/** Render one choice for a completed course deselected from Structure. */
 export function CompletedCourseDeselectDialog({
   open,
   courseCode,
@@ -27,6 +29,7 @@ export function CompletedCourseDeselectDialog({
   returnFocus(): void;
 }) {
   const { t } = useWording();
+  usePhoneTabsOnClose(open);
   return (
     <Dialog.Root
       open={open}

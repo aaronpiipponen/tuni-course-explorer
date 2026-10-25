@@ -65,11 +65,14 @@ A remote stage leaves the selected dataset as it is while it runs, and the selec
 
 [Worker sessions](/docs/operations/worker-sessions.md) describes the session and its return, and [Datasets](/docs/operations/datasets.md) describes the retained datasets and their reports.
 
-## Derived files and the web restart
+## Derived files, served data and the web restart
 
 Search and comparison subtract an [embedding hub](/docs/reference/glossary.md#capture-and-data-preparation) from every vector before measuring similarity, so the two hub files are computed from the selected dataset and change when its chunk vectors change. The administration command computes both hub means from the current chunk vectors and writes the two files that `EMBEDDING_HUB_VECTOR` and `EMBEDDING_OUTCOMES_HUB_VECTOR` in `config/search.toml` name.
+
+The feature web server also bounds its reported dataset identity by the generation value it creates at start. The browser scopes its cached reads to that identity, so a restarted feature web server changes the identity a browser reads next. The restart notifies no idle tab: an in-place change to the served data reaches the browser on its next uncached read or reload. This holds in both database modes, and it covers an import into the configured database that the selected-dataset switch does not route. A change of the selected dataset, such as a dataset return, changes the identity on the next uncached read without a restart.
+
 > [!IMPORTANT]
-> A web server whose site serves embedding features reads both hub files when its process starts and holds those values while it runs. Restart a serving copy after the files are written.
+> A web server whose site serves embedding features reads both hub files when its process starts and holds those values while it runs. Restart a serving copy after the files are written. Refreshed served data then reaches a browser that holds cached reads on its next uncached read or reload.
 
 [Embeddings](/docs/backend/text-and-vectors/embeddings.md#the-hubs) describes the hubs and the files, and the [Operator menu](/docs/operations/operator-menu.md#writing-the-hubs) describes the write.
 

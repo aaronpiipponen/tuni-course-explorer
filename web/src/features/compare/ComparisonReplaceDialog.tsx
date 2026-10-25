@@ -8,7 +8,9 @@ import { useCourseSummaries } from "../../shared/course/useCourseSummaries";
 import { ErrorNotice } from "../../shared/ErrorNotice";
 import { useAction } from "../../shared/useAction";
 import { useWording } from "../../shared/useWording";
+import { usePhoneTabsOnClose } from "../../shared/usePhoneTabsOnClose";
 
+/** Render the dialog that chooses which comparison slot to replace. */
 export function ComparisonReplaceDialog({
   course,
   open,
@@ -24,12 +26,13 @@ export function ComparisonReplaceDialog({
     (state) => state.compare.slots,
   );
   const { language, t } = useWording();
-  const ids = slots.filter((id): id is string => id !== null);
-  const {
-    courses,
-    loading,
-    error: requestError,
-  } = useCourseSummaries(open ? ids : []);
+  usePhoneTabsOnClose(open);
+  const slotA = open ? slots[0] : null;
+  const slotB = open ? slots[1] : null;
+  const summaryA = useCourseSummaries(slotA ? [slotA] : []);
+  const summaryB = useCourseSummaries(slotB ? [slotB] : []);
+  const loading = summaryA.loading || summaryB.loading;
+  const requestError = summaryA.error ?? summaryB.error;
   const { runAction, error: actionError } = useAction();
   const choose = (slot: 0 | 1) =>
     runAction(() => {
@@ -72,7 +75,10 @@ export function ComparisonReplaceDialog({
           {!loading &&
             !requestError &&
             slots.map((id, index) => {
-              const found = courses.find((item) => item.group_id === id);
+              const summary = index === 0 ? summaryA : summaryB;
+              const found = summary.courses.find(
+                (item) => item.group_id === id,
+              );
               const letter = index === 0 ? "A" : "B";
               return (
                 <button

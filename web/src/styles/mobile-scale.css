@@ -1,0 +1,398 @@
+/** Compact phone type, control and spacing scale. */
+@media (max-width: 760px) {
+  .phone-tab {
+    gap: 1px;
+    padding: 3px 2px;
+    font-size: 9px;
+    line-height: 1.1;
+  }
+  .phone-tab svg {
+    width: 20px;
+    height: 20px;
+  }
+  .phone-options-trigger {
+    min-height: 40px;
+    padding: 0 12px;
+    font-size: 11.5px;
+  }
+  .phone-options-trigger svg {
+    width: 16px;
+    height: 16px;
+  }
+  .phone-more-row {
+    min-height: 44px;
+  }
+  .phone-more-sheet .profile-trigger {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 680px) {
+  body {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .toggle-chip {
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+  .pill-btn {
+    padding: 4px 10px;
+    font-size: 11px;
+  }
+  .search-row {
+    margin: 6px 10px 8px;
+    padding: 0;
+  }
+  .search-pane .search-bar {
+    gap: 6px 8px;
+  }
+  .search-pane .search-bar > svg {
+    width: 18px;
+    height: 18px;
+  }
+  .search-pane .search-bar textarea {
+    padding: 8px 0;
+  }
+  .search-results-scroll {
+    padding: 4px 10px 0;
+  }
+  .search-results .head {
+    padding: 6px 0 8px;
+  }
+  .search-results .eyebrow {
+    font-size: 11px;
+  }
+  .search-results .tier {
+    gap: 10px;
+    margin: 18px 0 6px;
+  }
+  .course-card {
+    min-height: var(--course-row-height);
+    grid-template-rows:
+      16px minmax(18px, auto) minmax(16px, auto) minmax(18px, auto)
+      28px;
+    gap: 1px 6px;
+    padding: 3px 7px;
+    font-size: 11px;
+  }
+  .course-code {
+    font-size: 11px;
+  }
+  .course-name-cell {
+    font-size: 13px;
+    line-height: 1.3;
+  }
+  .course-meta-cell {
+    gap: 3px 8px;
+    font-size: 10px;
+  }
+  .course-badge {
+    padding: 1px 5px;
+    font-size: 9px;
+  }
+  .course-source-cell {
+    right: 7px;
+    left: 7px;
+    height: 26px;
+  }
+  .course-card.compact-result-card {
+    padding: 7px 9px;
+    font-size: 11px;
+  }
+  .course-card.compact-result-card .course-name-cell {
+    font-size: 13px;
+    line-height: 1.3;
+  }
+  .compact-result-card .course-meta-cell {
+    font-size: 10px;
+  }
+  .compare-main {
+    padding: 8px 0 40px;
+  }
+  .compare-slot-empty {
+    min-height: 72px;
+    font-size: 12px;
+  }
+  .compare-slot-actions .pill-btn {
+    min-height: 36px;
+    padding-inline: 12px;
+  }
+  .compare-slot-letter {
+    width: 28px;
+    height: 28px;
+    font-size: 11px;
+  }
+  .compare-slot-card > .course-card-shell .course-name-cell {
+    font-size: 15px;
+  }
+  .compare-verdict strong {
+    font-size: 15px;
+  }
+  .compare-analysis {
+    font-size: 11px;
+  }
+  .comparison-meter {
+    gap: 4px 10px;
+    padding: 9px 12px;
+  }
+  .comparison-meter label {
+    font-size: 12.5px;
+  }
+  .comparison-meter label small {
+    font-size: 10px;
+  }
+  .comparison-meter > b {
+    font-size: 12px;
+  }
+  .comparison-track {
+    height: 5px;
+  }
+  .discover-phone-body {
+    padding: 0 10px 36px;
+  }
+  .discover-phone-head {
+    padding: 8px 10px;
+  }
+  .discover-result-row {
+    gap: 8px;
+    padding: 6px;
+  }
+  .discover-result-list {
+    gap: 6px;
+  }
+  .discover-result-meters {
+    padding: 6px 10px 2px;
+  }
+  .discover-meter {
+    grid-template-columns: 78px minmax(30px, 1fr) 34px;
+    font-size: 9px;
+  }
+  .discover-meter-track {
+    height: 4px;
+  }
+  .discover-basis-list .course-list-row {
+    font-size: 12px;
+  }
+  .structure-pane {
+    padding: 12px 10px 24px;
+  }
+  .add-programme {
+    min-height: 36px;
+    padding: 4px 10px;
+  }
+  .shead-open {
+    min-height: 36px;
+  }
+  .sname {
+    font-size: 14px;
+  }
+  .dh {
+    padding: 14px 16px;
+  }
+  .dt {
+    font-size: 15px;
+  }
+  .db {
+    padding: 14px 16px 30px;
+  }
+  .tile {
+    padding: 7px 9px;
+    border-radius: 12px;
+  }
+  .tile-code {
+    height: 14px;
+    font-size: 10px;
+  }
+  .tile-name {
+    font-size: 12px;
+  }
+  .tile-facts {
+    font-size: 9.5px;
+  }
+  .graph-float-controls button {
+    width: 38px;
+    height: 38px;
+  }
+  .graph-float-controls svg {
+    width: 18px;
+    height: 18px;
+  }
+  .graph-course .tile-actions button,
+  .graph-module .tile-actions button {
+    min-height: 36px;
+    padding: 0 10px;
+  }
+  .help-body {
+    padding: 6px 16px 22px;
+  }
+  .help-body h3 {
+    margin: 18px 0 3px;
+    font-size: 10px;
+  }
+  .help-body dt {
+    font-size: 13px;
+  }
+  .help-body dd {
+    font-size: 12px;
+  }
+  .course-menu {
+    padding: 6px;
+  }
+  .course-menu [role="menuitem"] {
+    gap: 8px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+  }
+  .course-menu [role="menuitem"] > span {
+    font-size: 10px;
+  }
+  .course-menu .course-menu-title {
+    padding: 8px 10px;
+  }
+  .course-menu .course-menu-name {
+    font-size: 13px;
+  }
+  .course-menu .course-menu-facts {
+    gap: 10px;
+    font-size: 11px;
+  }
+  .course-menu .course-menu-code {
+    font-size: 11px;
+  }
+  .search-pane .search-bar {
+    grid-template-columns: 18px minmax(0, 1fr) 35px;
+  }
+  .search-pane .search-submit {
+    width: 35px;
+    height: 35px;
+  }
+  .search-pane .search-submit svg {
+    width: 17px;
+    height: 17px;
+  }
+  .search-secondary .toggle-chip {
+    min-height: 24px;
+    padding: 3px 8px;
+  }
+  .search-secondary .help-tip {
+    width: 28px;
+    height: 28px;
+  }
+  .help-drawer .dh .pill-btn,
+  .compare-picker-top .pill-btn,
+  .phone-sheet-head .pill-btn,
+  .root-picker-top .pill-btn,
+  .structure-root-overlay .root-picker-card .pill-btn,
+  .sdrawer .dh .pill-btn,
+  .phone-more-head .pill-btn {
+    min-height: 0;
+    padding: 5px 12px;
+    font-size: 11.5px;
+  }
+  .sdrawer .dfoot .pill-btn {
+    min-height: 0;
+    padding: 4px 10px;
+  }
+  .phone-sheet .toggle-chip,
+  .phone-sheet .help-tip,
+  .phone-sheet .discover-controls .toggle-chip {
+    min-height: 26px;
+  }
+  .phone-sheet .help-tip,
+  .phone-sheet .discover-controls .help-tip {
+    width: 26px;
+    height: 26px;
+  }
+  .phone-sheet .activity-switch > button,
+  .phone-sheet .discover-controls > .activity-switch > button {
+    min-height: 26px;
+    padding: 4px 10px;
+  }
+  .rbtn,
+  .routebox .rbtn {
+    min-height: 44px;
+    gap: 7px;
+    padding: 7px 12px;
+    border-radius: 10px;
+  }
+  .rbtn svg {
+    width: 18px;
+    height: 18px;
+  }
+  .rbtn > span {
+    font-size: 11.5px;
+  }
+  .rbtn small {
+    font-size: 9.5px;
+  }
+  .route-clear {
+    width: auto;
+    height: auto;
+    min-height: 0;
+    padding: 4px 10px;
+  }
+  .sdrawer .drawer-selection-toggle,
+  .sdrawer .dseg button {
+    min-height: 26px;
+  }
+  .sdrawer .dseg button {
+    padding: 0 10px;
+  }
+  .sdrawer .dsrch .bar {
+    min-height: 32px;
+  }
+  .structure-tree .chev {
+    width: 28px;
+    height: 28px;
+  }
+  .structure-tree .chev svg {
+    width: 14px;
+    height: 14px;
+  }
+  .structure-tree .programme-menu-trigger {
+    width: 28px;
+    height: 28px;
+    font-size: 13px;
+  }
+  .structure-tree .tile-actions button {
+    min-height: 24px;
+    padding: 2px 8px;
+    font-size: 10px;
+  }
+  .phone-more-sheet .language-switch {
+    min-height: 24px;
+  }
+  .phone-more-sheet .language-switch > span {
+    min-height: 20px;
+    padding-inline: 10px;
+  }
+  .phone-more-sheet .profile-icon {
+    width: 26px;
+    height: 26px;
+  }
+  .phone-more-sheet .profile-save input {
+    min-height: 32px;
+  }
+  .phone-more-sheet .profile-save button {
+    min-height: 24px;
+    padding-inline: 10px;
+  }
+  .phone-more-sheet .profile-transfer-toggle {
+    min-height: 24px;
+    font-size: 12px;
+  }
+  .phone-more-sheet .profile-transfer-actions .help-tip {
+    width: 26px;
+    height: 26px;
+  }
+  .phone-more-sheet .profile-export-item {
+    min-height: 32px;
+    padding: 6px 10px;
+  }
+  .phone-more-docs {
+    min-width: 75px;
+    min-height: 28px;
+    padding: 0 12px;
+  }
+}

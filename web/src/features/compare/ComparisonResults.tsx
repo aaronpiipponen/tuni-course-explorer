@@ -15,6 +15,7 @@ const VERDICT_KEYS: Record<ComparisonVerdict, UiTextKey> = {
   unrelated: "Unrelated",
 };
 
+/** Render backend-ordered comparison measurements and the verdict. */
 export function ComparisonResults({
   report,
   loading,
@@ -81,6 +82,7 @@ export function ComparisonResults({
             description={description}
             value={value}
             pending={!report}
+            loading={loading}
           />
         ))}
       </div>

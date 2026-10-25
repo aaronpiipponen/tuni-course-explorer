@@ -25,6 +25,7 @@ from tests.support import settings_factory
 
 DEFAULT_PRIORITY = ("exact_code", "substring", "fuzzy_name", "semantic")
 HASH_A = "a" * 64
+SENTINEL_ROWS = ("sentinel-row",)
 
 
 def search_settings(priority: tuple[str, ...] = DEFAULT_PRIORITY) -> SearchSettings:
@@ -83,25 +84,28 @@ class FakeLookup:
         self._substring = substring
         self._fuzzy = fuzzy
         self.calls: list[tuple] = []
-        self.represented: list[object] = []
+        self.rows: list[object] = []
+        self.row_requests: list[tuple[bool, object]] = []
 
-    def exact_code_search(
-        self, query, *, display_language, include_inactive=True, represented=None
-    ):
+    def lookup_rows(self, *, include_inactive, represented=None):
+        self.row_requests.append((include_inactive, represented))
+        return SENTINEL_ROWS
+
+    def exact_code_search(self, query, *, display_language, include_inactive=True, rows=None):
         self.calls.append(("exact_code", query, display_language, include_inactive))
-        self.represented.append(represented)
+        self.rows.append(rows)
         return self._exact
 
-    def substring_search(self, query, *, display_language, include_inactive=True, represented=None):
+    def substring_search(self, query, *, display_language, include_inactive=True, rows=None):
         self.calls.append(("substring", query, display_language, include_inactive))
-        self.represented.append(represented)
+        self.rows.append(rows)
         return self._substring
 
     def fuzzy_name_search(
-        self, query, *, display_language, min_score=None, include_inactive=True, represented=None
+        self, query, *, display_language, min_score=None, include_inactive=True, rows=None
     ):
         self.calls.append(("fuzzy_name", query, display_language, min_score, include_inactive))
-        self.represented.append(represented)
+        self.rows.append(rows)
         return self._fuzzy
 
 
@@ -175,12 +179,15 @@ def test_unified_search_dispatches_every_method_merges_sources_and_preserves_sco
     ]
     assert semantic.calls == [("semantic", "comp.cs", 0.25, False)]
 
-    # Exactly one represented-summary read, performed once and shared with all four methods.
+    # Exactly one represented-summary read, performed once and shared with the semantic pairing.
     assert curriculum.calls == [True]
-    assert len(lookup.represented) == 3
+    assert len(lookup.row_requests) == 1
+    assert lookup.row_requests[0][0] is False
+    assert lookup.row_requests[0][1] is semantic.represented[0]
+    # One row set serves the three lexical methods.
+    assert len(lookup.rows) == 3
+    assert all(entry is SENTINEL_ROWS for entry in lookup.rows)
     assert len(semantic.represented) == 1
-    assert all(entry is lookup.represented[0] for entry in lookup.represented)
-    assert semantic.represented[0] is lookup.represented[0]
 
     assert [result.course.group_id for result in results] == ["group-shared", "group-exact"]
     merged = results[0]

@@ -13,10 +13,12 @@ Usage:
 
 Inputs may be canonical group IDs (which take precedence) or exact official course codes. The script
 is an adapter over `course_explorer.prerequisite.commands` and prints exactly one JSON result
-line for the one operation it dispatches. By default it prints the graph report with the authoritative
-calculation tree and the minimized drawing graph. `--route` prints the minimum-new-credit result
-instead: the exact-default route, or an explicitly marked approximate route, or
-`approximation_failed` with a `search_too_large` root problem, and no drawing graph. Defaults are
+line for the one operation it dispatches. By default it prints the graph report with the native
+solver structure and the minimized drawing graph. `--route` prints the minimum-new-credit result
+instead from the shared TypeScript solver run through Node: the exact-default route, or an
+explicitly marked approximate route, or `approximation_failed` with a `search_too_large` root
+problem, and no drawing graph. The Node run needs the bundle from
+`npm --prefix web run solver:build`. Defaults are
 required official prerequisites only. `--include-recommended` and `--include-inferred` independently
 add their category to both the graph and the calculation. An inlined official module or degree
 prerequisite is reported as one graph node identified by its canonical `group_id` and selected
@@ -30,10 +32,12 @@ blocks the calculation from routing through or charging it, even when it is comp
 selected: a required branch with no other usable route yields `no_solution` and reports the excluded
 courses that blocked it. Excluding the opened root blocks the whole request with a located
 `no_solution`. Graph-only completion and exclusion flags also apply to non-course nodes, without
-changing shared course completion state. It is read-only and runs in-process.
+changing shared course completion state. It is read-only, and the route operation runs the bundled
+TypeScript solver in a child process.
 """
 
 import argparse
+import json
 from collections.abc import Sequence
 
 from course_explorer.prerequisite.commands import (
@@ -73,7 +77,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "excluded_node_keys": args.excluded_node,
     }
     if args.route:
-        print(run_minimum_route_command(args.course_code, **options).model_dump_json())
+        print(json.dumps(run_minimum_route_command(args.course_code, **options)))
     else:
         print(run_prerequisite_command(args.course_code, **options).model_dump_json())
     return 0

@@ -13,6 +13,48 @@
 .prereq-stage {
   position: relative;
 }
+.root-choice {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 100%;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 10px;
+  color: #fff;
+  text-align: left;
+  background: #0a0a0f;
+  cursor: pointer;
+}
+.root-choice:hover {
+  border-color: #b07be8;
+}
+.root-choice-code {
+  flex: none;
+  color: #b07be8;
+  font:
+    500 12px "JetBrains Mono",
+    ui-monospace,
+    monospace;
+}
+.root-choice-name {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.root-choice svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  fill: none;
+  stroke: #b07be8;
+  stroke-width: 1.6;
+}
 .root-chip {
   display: flex;
   align-items: center;
@@ -78,5 +120,78 @@
   }
   .graph-skeleton {
     grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 680px) {
+  .prereq-pane {
+    display: flex;
+    height: 100%;
+    min-height: 0;
+    flex-direction: column;
+    padding: 0;
+  }
+  .prereq-stage {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+  }
+  .graph-skeleton {
+    height: 100%;
+    min-height: 0;
+    gap: 12px;
+  }
+  .graph-skeleton i {
+    width: min(100%, 180px);
+    height: 48px;
+  }
+  .prereq-empty {
+    min-height: 100%;
+  }
+  .phone-sheet .prereq-controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 0;
+  }
+  .phone-sheet .prereq-controls > span {
+    grid-column: 1 / -1;
+  }
+  .phone-sheet .activity-switch {
+    width: 100%;
+  }
+  .phone-sheet .activity-switch > button {
+    flex: 1;
+    justify-content: center;
+    min-height: 44px;
+  }
+  .phone-sheet .toggle-chip,
+  .phone-sheet .help-tip {
+    min-height: 44px;
+  }
+  .phone-sheet .help-tip {
+    width: 44px;
+  }
+  .phone-sheet .prereq-controls > .help-tip {
+    grid-column: 2;
+    justify-self: end;
+  }
+  .phone-sheet .root-choice {
+    grid-column: 1 / -1;
+  }
+  .prereq-phone-head {
+    position: absolute;
+    z-index: 6;
+    top: 0;
+    right: 0;
+    left: 0;
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-bottom: 1px solid rgb(255 255 255 / 14%);
+    background: #0a0a0f;
+  }
+  .tab-pane[data-tab="prerequisites"] {
+    padding: 0;
+    overflow: hidden;
   }
 }

@@ -6,6 +6,7 @@ import { useCourseSummaries } from "../../shared/course/useCourseSummaries";
 import { courseCredits, courseName } from "../../shared/course/presentation";
 import { useWording } from "../../shared/useWording";
 
+/** Render the selected or completed course basis and its expandable details. */
 export function DiscoverBasis({
   basis,
   courseIds,
@@ -40,7 +41,7 @@ export function DiscoverBasis({
   return (
     <section
       className="discover-basis"
-      aria-label={t("{basis} course basis", { basis: basisLabel })}
+      aria-label={t("Basis: {basis}", { basis: basisLabel })}
     >
       <div className="discover-basis-summary">
         <span className="eyebrow">
@@ -76,7 +77,7 @@ export function DiscoverBasis({
       <PickerOverlay
         open={expanded}
         onClose={() => onExpandedChange(false)}
-        eyebrow={`// ${t("basis {basis}", { basis: basisLabel })}`}
+        eyebrow={`// ${t("Basis · {basis}", { basis: basisLabel })}`}
       >
         <p className="discover-total">
           {t(
@@ -91,6 +92,7 @@ export function DiscoverBasis({
             <CourseListRow
               course={course}
               trailing={courseCredits(course, language)}
+              reveal
               key={course.group_id}
             />
           ))}

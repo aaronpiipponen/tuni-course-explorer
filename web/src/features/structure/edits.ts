@@ -14,6 +14,7 @@ import {
   type StructureEdits,
 } from "./state";
 import { resolvedNodeLabel } from "./presentation";
+import { courseSource } from "./display";
 import type { DisplayLanguage } from "../../state/types";
 
 /** The node keys where the official structure names one course or module identity. */
@@ -22,7 +23,7 @@ export type Homes = ReadonlyMap<string, readonly string[]>;
 /** One course a later-addition operation pulls into the node it adds. */
 export type PulledCourse = {
   course: import("../../api/types").CourseSummary;
-  /** Localized name of the node the course renders in now. */
+  /** Localized name of the containing programme or module the course renders in now. */
   from: (language: DisplayLanguage) => string;
 };
 
@@ -39,6 +40,7 @@ function place(
   return { ...edits, [field]: placements };
 }
 
+/** Return the edits with one course placed at the target, where null records its official home. */
 export const placeCourse = (
   edits: StructureEdits,
   homes: Homes,
@@ -46,6 +48,7 @@ export const placeCourse = (
   target: string | null,
 ) => place(edits, "coursePlacements", homes, id, target);
 
+/** Return the edits with one module placed at the target, where null records its official home. */
 export const placeModule = (
   edits: StructureEdits,
   homes: Homes,
@@ -250,9 +253,8 @@ export function holderPulls(
   if (present) return { edits: afterEdits, moves: [] };
   const holderTree = resolveStructure(holderNode, emptyEdits(), NO_CONTENT);
   const holder = indexResolved(holderTree);
-  const projected = indexResolved(
-    resolveStructure(afterTree, afterEdits, content),
-  );
+  const projectedTree = resolveStructure(afterTree, afterEdits, content);
+  const projected = indexResolved(projectedTree);
   // The courses the holder's own rule renders in another node today, with the node that renders
   // each one: the move list reads the tree before this scope's records are cleared, so a course
   // another programme or module renders is asked about rather than silently reclaimed.
@@ -266,9 +268,11 @@ export function holderPulls(
         insideScope(holderNode.key, at.node.key)
       )
         continue;
+      const displayed = courseSource(projectedTree, course.group_id);
+      if (!displayed) throw new Error("Structure target is unavailable");
       moves.push({
         course,
-        from: (language) => resolvedNodeLabel(at, language),
+        from: (language) => resolvedNodeLabel(displayed, language),
       });
     }
   let base = clearScope(afterEdits, holderNode.key);
@@ -352,7 +356,8 @@ export function scopePulls(
   content: PlacedContent,
   scopeKey: string,
 ): readonly PulledCourse[] {
-  const before = indexResolved(resolveStructure(root, edits, content));
+  const beforeTree = resolveStructure(root, edits, content);
+  const before = indexResolved(beforeTree);
   const cleared = indexResolved(
     resolveStructure(
       root,
@@ -368,9 +373,11 @@ export function scopePulls(
         continue;
       const restored = cleared.courseAt.get(id);
       if (!restored || !insideScope(scopeKey, restored.node.key)) continue;
+      const displayed = courseSource(beforeTree, id);
+      if (!displayed) throw new Error("Structure target is unavailable");
       pulls.push({
         course,
-        from: (language) => resolvedNodeLabel(node, language),
+        from: (language) => resolvedNodeLabel(displayed, language),
       });
     }
   return pulls;
@@ -497,6 +504,7 @@ function clearScope(edits: StructureEdits, scopeKey: string): StructureEdits {
   };
 }
 
+/** Return the edits with one scope's records cleared and its official homes restored. */
 export function resetScope(
   edits: StructureEdits,
   homes: Homes,

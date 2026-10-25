@@ -25,7 +25,7 @@ The pointer and the receipt are the authority for every read. A missing pointer 
 uv run python scripts/admin.py setup datasets
 ```
 
-The command migrates the configured database to the migration head of the checkout, verifies it, writes the initial receipt, and selects it. A first enrollment requires a clean prepared checkout, and it starts the server database service when the service is not running.
+The command migrates the configured database to the migration head of the checkout, verifies it, records the checkout revision, writes the initial receipt, and selects it. It starts the server database service when the service is not running.
 
 Enrollment is idempotent. With a dataset already selected it returns the receipt it holds and writes nothing, and an enrollment interrupted between the receipt and the pointer publishes the pointer from the retained receipt alone, without repeating the migration or the verification. Enrollment compares the dataset identity, so a change of checkout revision alone is not a mismatch.
 

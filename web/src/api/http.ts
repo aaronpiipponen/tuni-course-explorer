@@ -1,4 +1,6 @@
 /** Same-origin JSON POST transport with explicit HTTP errors. */
+
+/** One failed same-origin request with its HTTP status. */
 export class ApiError extends Error {
   status: number;
 
@@ -9,6 +11,7 @@ export class ApiError extends Error {
   }
 }
 
+/** Post JSON to a same-origin endpoint and return its typed JSON response. */
 export async function postJson<T>(
   path: string,
   body: unknown,

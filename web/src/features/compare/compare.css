@@ -131,6 +131,9 @@
   display: flex;
   gap: 6px;
 }
+.compare-slot-letter {
+  display: none;
+}
 .compare-slot-empty {
   width: 100%;
   display: flex;
@@ -285,6 +288,7 @@
   opacity: 0;
   pointer-events: none;
   transform: translateY(-14px);
+  overscroll-behavior: contain;
   transition:
     opacity 0.3s,
     transform 0.4s cubic-bezier(0.22, 0.8, 0.2, 1);
@@ -309,7 +313,6 @@
   align-items: center;
   margin-bottom: 10px;
 }
-.course-lookup-list .course-card-shell:focus-within,
 .compare-main[data-picker-open="true"] .comparison-meters,
 .compare-main[data-picker-open="true"] .compare-verdict {
   opacity: 0.12;
@@ -340,7 +343,10 @@
     padding: 14px 16px;
   }
 }
-@media (max-width: 600px) {
+@media (max-width: 680px) {
+  .compare-main {
+    padding: 12px 0 48px;
+  }
   .compare-verdict {
     flex-wrap: wrap;
   }
@@ -351,6 +357,38 @@
   .compare-slots {
     grid-template-columns: minmax(0, 1fr);
   }
+  .compare-slot-card {
+    min-height: 0;
+  }
+  .compare-slot-actions {
+    position: static;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 8px 0;
+  }
+  .compare-slot-actions .pill-btn {
+    min-height: 44px;
+    padding-inline: 16px;
+  }
+  .compare-slot-letter {
+    display: inline-grid;
+    width: 32px;
+    height: 32px;
+    margin-right: auto;
+    place-items: center;
+    border-radius: 8px;
+    color: #fff;
+    background: #4e008e;
+    font:
+      500 12px "JetBrains Mono",
+      ui-monospace,
+      monospace;
+  }
+  .compare-slot-empty {
+    min-height: 96px;
+    font-size: 13px;
+  }
   .compare-picker-anchor {
     margin: 0 -8px;
   }
@@ -359,12 +397,87 @@
   }
   .comparison-meter {
     grid-template-columns: minmax(0, 1fr) auto;
-    gap: 8px 12px;
+    gap: 6px 12px;
+    padding: 12px 14px;
   }
   .comparison-meter label {
-    grid-column: 1 / -1;
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .comparison-meter > b {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: start;
+    font-size: 13px;
   }
   .comparison-track {
-    grid-column: 1;
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .compare-slot-card > .course-card-shell .course-card {
+    min-height: 0;
+    padding: 8px 16px 16px;
+  }
+  .compare-slot-card > .course-card-shell .course-code {
+    height: auto;
+    min-height: 20px;
+  }
+  .compare-slot-card > .course-card-shell .course-name-cell {
+    overflow-wrap: anywhere;
+    font-size: 17px;
+  }
+  .compare-slot-card > .course-card-shell .course-meta-cell {
+    height: auto;
+    flex-wrap: wrap;
+    margin-top: 12px;
+    padding-top: 0;
+  }
+  .compare-slot-card > .course-card-shell .course-state-cell {
+    position: static;
+    justify-content: flex-start;
+    margin-top: 8px;
+  }
+  .compare-picker-overlay {
+    position: fixed;
+    top: calc(env(safe-area-inset-top, 0px) + 8px);
+    right: 8px;
+    bottom: calc(var(--phone-tabbar-space) + 8px);
+    left: 8px;
+    max-height: none;
+    overflow: hidden;
+    transition:
+      bottom 0.24s cubic-bezier(0.22, 0.8, 0.2, 1),
+      opacity 0.3s,
+      transform 0.4s cubic-bezier(0.22, 0.8, 0.2, 1);
+  }
+  .compare-picker-panel {
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 12px;
+  }
+  .compare-picker-top {
+    flex: none;
+  }
+  .compare-picker-top .pill-btn {
+    min-height: 44px;
+  }
+  .compare-picker-panel > .course-lookup-controls {
+    flex: none;
+    min-height: 48px;
+  }
+  .compare-picker-panel > .course-lookup-list {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
+  }
+  .compare-picker-panel > .error-notice,
+  .compare-picker-panel > .course-lookup-empty {
+    flex: none;
+  }
+  .compare-picker-panel .course-lookup-controls > input {
+    font-size: 16px;
   }
 }

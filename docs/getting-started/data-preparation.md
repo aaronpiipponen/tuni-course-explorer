@@ -108,7 +108,7 @@ Run the action when the fixture or its stored vectors changed and the bundled fi
 
 The action needs complete embedding coverage of the configured database: every desired chunk of a represented course must hold a completed compatible vector, and at least one learning-outcomes chunk must exist. Both hub means are computed and both temporary files are staged before either hub destination changes, so a dataset that is not ready leaves the bundled file and both hub files as they are. The bundled file is written before the hub files are staged, and the staged hub files then replace their destinations in sequence. A failure during that sequence can leave the two hub destinations in different states, with the catalogue hub updated and the outcomes hub holding its earlier content. A database that holds curriculum outside the fixture is refused before any file is touched, with the same message as the loader.
 
-The values in the hub files reach a running site when its process starts. Restart the web server after a hub write, as [the operations overview](/docs/operations/README.md#derived-files-and-the-web-restart) describes. [Embeddings](/docs/backend/text-and-vectors/embeddings.md#the-hubs) describes what the two hubs are.
+The values in the hub files reach a running site when its process starts. Restart the web server after a hub write, as [the operations overview](/docs/operations/README.md#derived-files-served-data-and-the-web-restart) describes. The same restart changes the serving dataset identity that the feature read reports, and a browser reads data that an import or a stage changed in place on its next uncached read or reload after that restart. [Embeddings](/docs/backend/text-and-vectors/embeddings.md#the-hubs) describes what the two hubs are.
 
 ## A prepared dataset from the public curriculum source
 
@@ -127,7 +127,7 @@ uv run python scripts/admin.py coverage teaching-text
 uv run python scripts/admin.py summary catalogue
 ```
 
-Each command prints one JSON report. A run can also be paused with `pause` and continued with `resume` in place of `stop`, as [Stage lifecycle](/docs/operations/stage-lifecycle.md) describes. The same operations are entries of the numbered [operator menu](/docs/operations/operator-menu.md), which `uv run python scripts/admin.py` with no argument opens. A failure prints one JSON line holding the exception class name, plus one fixed line of guidance, and returns 1.
+Each command prints one JSON report. A run can also be paused with `pause` and continued with `resume` in place of `stop`, as [Stage lifecycle](/docs/operations/stage-lifecycle.md) describes. After a stage has filled the selected dataset, an in-place change reaches a browser holding cached reads on its next uncached read or reload after the feature web server restarts. A dataset promotion changes the reported identity on the next uncached read without a restart. The same operations are entries of the numbered [operator menu](/docs/operations/operator-menu.md), which `uv run python scripts/admin.py` with no argument opens. A failure prints one JSON line holding the exception class name, plus one fixed line of guidance, and returns 1.
 
 ### The settings to change
 
@@ -224,7 +224,7 @@ uv run python scripts/admin.py hubs
 The command computes both embedding hub means from the stored chunk vectors of the selected dataset and writes the two files that the hub keys in `config/search.toml` name. Its report holds `catalogue_path`, `outcomes_path`, `chunk_count`, and `outcomes_chunk_count`. Both means are computed before the first write, so incomplete coverage writes neither file.
 
 > [!IMPORTANT]
-> Restart the web server after the hub write. A serving process of a site that serves embedding features reads both hub files when it starts and holds those values while it runs, so the written values reach the site at the next start. A copy under systemd restarts with `systemctl --user restart tuni-course-explorer-web.service`, and a foreground copy is stopped and started again. [Self-hosting](/docs/getting-started/self-hosting.md) gives the unit commands.
+> Restart the web server after the hub write. A serving process of a site that serves embedding features reads both hub files when it starts and holds those values while it runs, so the written values reach the site at the next start. A web unit under the user manager restarts with `systemctl --user restart tuni-course-explorer-web.service`, one under the system manager with `sudo systemctl restart tuni-course-explorer-web.service`, and a foreground copy is stopped and started again. [The site web unit](/docs/getting-started/self-hosting.md#the-site-web-unit) gives both unit procedures.
 
 ### Coverage and summaries
 

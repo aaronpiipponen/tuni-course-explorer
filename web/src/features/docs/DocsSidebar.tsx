@@ -12,15 +12,62 @@ function SidebarBranch({
   pageId,
   ancestors,
   depth,
+  mobile,
 }: {
   id: DocsPageId;
   pageId: DocsPageId | null;
   ancestors: ReadonlySet<DocsPageId>;
   depth: number;
+  mobile: boolean;
 }) {
   const page = DOCS_PAGES[id];
   const open = pageId === id || ancestors.has(id);
+  const [mobileOpen, setMobileOpen] = useState(open);
+  useEffect(() => {
+    if (open) setMobileOpen(true);
+  }, [open]);
   const hasChildren = page.children.length > 0;
+  const expanded = mobile ? mobileOpen : open;
+  if (mobile && hasChildren)
+    return (
+      <div>
+        <button
+          type="button"
+          className={`docs-branch-title${depth > 1 ? " sub" : ""}${expanded ? " open" : ""}`}
+          data-depth={depth}
+          aria-expanded={expanded}
+          onClick={() => setMobileOpen((value) => !value)}
+        >
+          <span>{page.nav}</span>
+          <i aria-hidden="true">›</i>
+        </button>
+        <div
+          className={`docs-subs${expanded ? " open" : ""}`}
+          inert={!expanded}
+        >
+          <div>
+            <a
+              className={`sub${pageId === id ? " on" : ""}`}
+              data-depth={depth + 1}
+              href={`/docs#${id}`}
+              aria-current={pageId === id ? "page" : undefined}
+            >
+              Overview
+            </a>
+            {page.children.map((child) => (
+              <SidebarBranch
+                key={child}
+                id={child}
+                pageId={pageId}
+                ancestors={ancestors}
+                depth={depth + 1}
+                mobile={mobile}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
   return (
     <div>
       <a
@@ -43,6 +90,7 @@ function SidebarBranch({
                 pageId={pageId}
                 ancestors={ancestors}
                 depth={depth + 1}
+                mobile={mobile}
               />
             ))}
           </div>
@@ -52,7 +100,14 @@ function SidebarBranch({
   );
 }
 
-export function DocsSidebar({ pageId }: { pageId: DocsPageId | null }) {
+/** Render the configured page tree and reveal the selected page's ancestors. */
+export function DocsSidebar({
+  pageId,
+  mobile = false,
+}: {
+  pageId: DocsPageId | null;
+  mobile?: boolean;
+}) {
   const navigation = useRef<HTMLElement>(null);
   const ancestors = new Set(pageId ? getDocsAncestors(pageId) : []);
   const currentSection = pageId ? DOCS_PAGES[pageId].section : null;
@@ -105,29 +160,52 @@ export function DocsSidebar({ pageId }: { pageId: DocsPageId | null }) {
         return (
           <div className="docs-nav-section" key={section.title}>
             <h6 className={pageId === section.page ? "on" : undefined}>
-              <button
-                type="button"
-                aria-expanded={open}
-                aria-label={section.title}
-                onClick={() => toggle(section.title)}
-              >
-                <i aria-hidden="true">›</i>
-              </button>
-              <a
-                href={`/docs#${section.page}`}
-                aria-current={pageId === section.page ? "page" : undefined}
-                onClick={(event) => {
-                  if (open && pageId === section.page) {
-                    event.preventDefault();
-                    toggle(section.title);
-                  } else if (!open) toggle(section.title);
-                }}
-              >
-                {section.title}
-              </a>
+              {mobile ? (
+                <button
+                  className="docs-section-title"
+                  type="button"
+                  aria-expanded={open}
+                  onClick={() => toggle(section.title)}
+                >
+                  <span>{section.title}</span>
+                  <i aria-hidden="true">›</i>
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    aria-expanded={open}
+                    aria-label={section.title}
+                    onClick={() => toggle(section.title)}
+                  >
+                    <i aria-hidden="true">›</i>
+                  </button>
+                  <a
+                    href={`/docs#${section.page}`}
+                    aria-current={pageId === section.page ? "page" : undefined}
+                    onClick={(event) => {
+                      if (open && pageId === section.page) {
+                        event.preventDefault();
+                        toggle(section.title);
+                      } else if (!open) toggle(section.title);
+                    }}
+                  >
+                    {section.title}
+                  </a>
+                </>
+              )}
             </h6>
             <div className={`docs-subs${open ? " open" : ""}`} inert={!open}>
               <div>
+                {mobile && root.children.length > 0 && (
+                  <a
+                    className={`overview${pageId === section.page ? " on" : ""}`}
+                    href={`/docs#${section.page}`}
+                    aria-current={pageId === section.page ? "page" : undefined}
+                  >
+                    Overview
+                  </a>
+                )}
                 {root.children.map((id) => (
                   <SidebarBranch
                     key={id}
@@ -135,6 +213,7 @@ export function DocsSidebar({ pageId }: { pageId: DocsPageId | null }) {
                     pageId={pageId}
                     ancestors={ancestors}
                     depth={1}
+                    mobile={mobile}
                   />
                 ))}
               </div>

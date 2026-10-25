@@ -10,6 +10,7 @@ import {
   useSelectionGeometry,
 } from "./selectionGeometry";
 
+/** Render the Finnish and English switch for the current profile's app language. */
 export function LanguageSwitch() {
   const { store, profile } = useCurrentProfile();
   const { runAction, error } = useAction();

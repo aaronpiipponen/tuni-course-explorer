@@ -1,40 +1,45 @@
-/** Pure mapping from the authoritative graph report DTOs to renderer-owned node data. */
+/** Pure mapping from the native graph report to renderer-owned node data. */
 import type { DisplayLanguage } from "../../../state/types";
 import type {
-  GraphEdgeRelationship,
+  CourseSummary,
+  GraphDisplayNode,
   GraphNodeState,
+  ModuleSummary,
   PrerequisiteGraphReport,
 } from "../../../api/types";
 import { NODE_SIZES } from "./sizes";
 import { localizedName } from "../../../shared/course/presentation";
 import { diagnosticText, reasonText, uiText } from "../../../shared/wording";
 
+/** One renderer-owned node of the prerequisite drawing. */
 export type ModelNode = {
   id: string;
   kind: "course" | "module" | "connector" | "ignored";
   size: { width: number; height: number };
-  actionKey: string;
+  markKey: string | null;
   markable: boolean;
   state: GraphNodeState | null;
   title: string;
   subtitle: string;
-  course?: PrerequisiteGraphReport["compilation"]["tree"]["root"];
-  module?: PrerequisiteGraphReport["compilation"]["graph"]["module_nodes"][number];
-  members?: readonly PrerequisiteGraphReport["compilation"]["tree"]["courses"][number][];
+  course?: CourseSummary;
+  module?: ModuleSummary;
+  members?: readonly CourseSummary[];
   label?: string;
   inferred?: boolean;
   root?: boolean;
   active?: boolean;
   subtype?: string;
 };
+/** One renderer-owned connection between two drawn nodes. */
 export type ModelEdge = {
   id: string;
   source: string;
   target: string;
-  recommended: boolean;
+  inferred: boolean;
   parentIndex: number;
-  relationships: readonly GraphEdgeRelationship[];
+  memberIds: readonly string[];
 };
+/** The renderer model of one drawing: its nodes, edges and root. */
 export type GraphModel = {
   nodes: ModelNode[];
   edges: ModelEdge[];
@@ -51,8 +56,9 @@ const range = (
     b = Number(max);
   return a === b ? `${a}` : `${a}–${b}`;
 };
+/** Return the display label of one logical, numeric or unresolved node. */
 export function connectorLabel(
-  node: PrerequisiteGraphReport["compilation"]["graph"]["connector_nodes"][number],
+  node: GraphDisplayNode,
   language: DisplayLanguage,
 ): string {
   switch (node.kind) {
@@ -87,62 +93,111 @@ export function connectorLabel(
         { count: node.member_group_ids.length },
       );
     case "unresolved":
-      return reasonText(node.unresolved_reason ?? node.kind, language);
+      return reasonText(node.reason ?? node.kind, language);
+    default:
+      return "";
   }
 }
+/** Return the renderer model of one report under the given language and node states. */
 export function buildGraphModel(
   report: PrerequisiteGraphReport,
   language: DisplayLanguage,
+  nodeStates: readonly GraphNodeState[],
 ): GraphModel {
-  const graph = report.compilation.graph,
-    tree = report.compilation.tree;
-  const states = new Map(
-    graph.node_states.map((state) => [state.action_key, state]),
+  const display = report.display;
+  if (display === null) throw new Error("graph report has no display");
+  const states = new Map(nodeStates.map((state) => [state.node_id, state]));
+  const courses = new Map(
+    report.solver.courses.map((course) => [course.group_id, course]),
+  );
+  const modules = new Map(
+    report.solver.modules.map((module) => [module.group_id, module]),
   );
   const nodes: ModelNode[] = [];
-  for (const item of graph.course_nodes)
-    nodes.push({
-      id: item.node_id,
-      kind: "course",
-      size: NODE_SIZES.course,
-      actionKey: item.action_key,
-      markable: false,
-      state: states.get(item.action_key) ?? null,
-      title: item.course.code,
-      subtitle: localizedName(
-        language,
-        item.course.name_fi,
-        item.course.name_en,
-        "",
-      ),
-      course: item.course,
-      inferred: item.display_as_inferred,
-      root: item.is_root,
-      active: item.course.is_active,
+  const resolvedMembers = (item: GraphDisplayNode): CourseSummary[] =>
+    item.member_group_ids.map((group_id) => {
+      const course = courses.get(group_id);
+      if (course === undefined) {
+        throw new Error(
+          `graph node ${item.node_id} references missing member ${group_id}`,
+        );
+      }
+      return course;
     });
-  for (const item of graph.module_nodes)
-    nodes.push({
-      id: item.node_id,
-      kind: "module",
-      size: NODE_SIZES.module,
-      actionKey: item.action_key,
-      markable: true,
-      state: states.get(item.action_key) ?? null,
-      title: localizedName(
-        language,
-        item.module.name_fi,
-        item.module.name_en,
-        item.module.code ?? uiText(language, "module"),
-      ),
-      subtitle: uiText(
-        language,
-        item.member_courses.length === 1 ? "{count} course" : "{count} courses",
-        { count: item.member_courses.length },
-      ),
-      module: item,
-      members: item.member_courses,
-    });
-  for (const item of graph.connector_nodes) {
+  for (const item of display.nodes) {
+    const state = states.get(item.node_id) ?? null;
+    if (item.kind === "course") {
+      const course = courses.get(String(item.course_group_id));
+      if (course === undefined) {
+        throw new Error(
+          `graph node ${item.node_id} references missing course ${String(item.course_group_id)}`,
+        );
+      }
+      nodes.push({
+        id: item.node_id,
+        kind: "course",
+        size: NODE_SIZES.course,
+        markKey: null,
+        markable: false,
+        state,
+        title: course.code,
+        subtitle: localizedName(language, course.name_fi, course.name_en, ""),
+        course,
+        inferred: item.display_as_inferred,
+        root: item.is_root,
+        active: course.is_active,
+      });
+      continue;
+    }
+    if (item.kind === "module") {
+      const module = modules.get(String(item.module_group_id));
+      if (module === undefined) {
+        throw new Error(
+          `graph node ${item.node_id} references missing module ${String(item.module_group_id)}`,
+        );
+      }
+      const members = resolvedMembers(item);
+      nodes.push({
+        id: item.node_id,
+        kind: "module",
+        size: NODE_SIZES.module,
+        markKey: item.markable ? item.node_id : null,
+        markable: item.markable,
+        state,
+        title: localizedName(
+          language,
+          module.name_fi,
+          module.name_en,
+          module.code ?? uiText(language, "module"),
+        ),
+        subtitle: uiText(
+          language,
+          members.length === 1 ? "{count} course" : "{count} courses",
+          { count: members.length },
+        ),
+        module,
+        members,
+        label: connectorLabel(item, language),
+        subtype: item.kind,
+      });
+      continue;
+    }
+    if (item.kind === "ignored") {
+      nodes.push({
+        id: item.node_id,
+        kind: "ignored",
+        size: NODE_SIZES.label,
+        markKey: null,
+        markable: false,
+        state,
+        title: reasonText(item.reason ?? "ignored", language),
+        subtitle:
+          item.detail === null
+            ? ""
+            : diagnosticText(item.reason ?? "ignored", item.detail, language),
+      });
+      continue;
+    }
     const numeric = [
       "cardinality",
       "credits",
@@ -151,11 +206,7 @@ export function buildGraphModel(
     ].includes(item.kind);
     const junction = ["and", "or"].includes(item.kind);
     const members =
-      item.kind === "internal_requirement"
-        ? tree.courses.filter((course) =>
-            item.member_group_ids.includes(course.group_id),
-          )
-        : undefined;
+      item.kind === "internal_requirement" ? resolvedMembers(item) : undefined;
     nodes.push({
       id: item.node_id,
       kind: "connector",
@@ -164,92 +215,85 @@ export function buildGraphModel(
         : junction
           ? NODE_SIZES.junction
           : NODE_SIZES.label,
-      actionKey: item.action_key,
-      markable: numeric,
-      state: states.get(item.action_key) ?? null,
+      markKey: item.markable ? item.node_id : null,
+      markable: item.markable,
+      state,
       title: connectorLabel(item, language),
       subtitle:
         item.detail !== null
-          ? diagnosticText(
-              item.unresolved_reason ?? item.kind,
-              item.detail,
-              language,
-            )
-          : item.unresolved_reason !== null
-            ? reasonText(item.unresolved_reason, language)
+          ? diagnosticText(item.reason ?? item.kind, item.detail, language)
+          : item.reason !== null
+            ? reasonText(item.reason, language)
             : "",
       members,
       label: connectorLabel(item, language),
       subtype: item.kind,
     });
   }
-  for (const item of graph.ignored_nodes) {
-    const part = tree.ignored_parts.find(
-      (candidate) => candidate.part_id === item.part_id,
-    );
-    nodes.push({
-      id: item.node_id,
-      kind: "ignored",
-      size: NODE_SIZES.label,
-      actionKey: item.action_key,
-      markable: false,
-      state: states.get(item.action_key) ?? null,
-      title: part
-        ? reasonText(part.kind, language)
-        : reasonText("ignored", language),
-      subtitle: part ? diagnosticText(part.kind, part.detail, language) : "",
-    });
-  }
   const order = new Map<string, number>();
-  const edges = graph.edges.map((edge, index) => {
+  const edges = display.edges.map((edge) => {
     if (!order.has(edge.source_node_id))
       order.set(edge.source_node_id, order.size);
     return {
-      // One renderer edge per server-supplied connection: the backend already grouped equal endpoints
-      // and provenance class, so the exact report order supplies the deterministic renderer suffix.
-      id: `${edge.source_node_id}>${edge.target_node_id}-${index}`,
+      id: edge.edge_id,
       source: edge.source_node_id,
       target: edge.target_node_id,
-      recommended:
-        edge.relationships[0].official_kind === "recommended" ||
-        edge.relationships[0].inferred_category === "recommended",
+      inferred: edge.inferred_only,
       parentIndex: order.get(edge.source_node_id)!,
-      relationships: edge.relationships,
+      memberIds: edge.member_ids,
     };
   });
+  const root = nodes.find((node) => node.kind === "course" && node.root);
+  if (root === undefined) {
+    throw new Error(
+      `graph report has no root course node for ${report.solver.root_group_id}`,
+    );
+  }
   return {
     nodes,
     edges,
-    rootId:
-      graph.course_nodes.find((node) => node.is_root)?.node_id ??
-      `course:${tree.root.group_id}`,
+    rootId: root.id,
   };
 }
+/**
+ * Return the nodes and connections a hover or an open panel highlights.
+ *
+ * Two independent walks start at the requested node. The parent walk follows a connection only
+ * into its source, and the child walk follows it only into its target. Each walk continues
+ * through every non-course box and stops at a course, so only the nearest course boundary is
+ * reached and a sibling behind a shared parent is not lit.
+ */
 export function connectionChain(
   model: GraphModel,
   nodeId: string,
 ): { nodes: Set<string>; edges: Set<string> } {
-  const nodes = new Set([nodeId]),
-    edges = new Set<string>(),
-    queue = [nodeId];
+  const nodes = new Set<string>([nodeId]);
+  const edges = new Set<string>();
   const kinds = new Map(model.nodes.map((node) => [node.id, node.kind]));
-  while (queue.length) {
-    const current = queue.shift()!;
-    for (const edge of model.edges) {
-      const next =
-        edge.source === current
-          ? edge.target
-          : edge.target === current
-            ? edge.source
-            : null;
-      if (next !== null) {
+  const walk = (toward: "source" | "target"): void => {
+    const visited = new Set<string>([nodeId]);
+    const queue = [nodeId];
+    while (queue.length) {
+      const current = queue.shift()!;
+      for (const edge of model.edges) {
+        const next =
+          toward === "source"
+            ? edge.target === current
+              ? edge.source
+              : null
+            : edge.source === current
+              ? edge.target
+              : null;
+        if (next === null) continue;
         edges.add(edge.id);
-        if (!nodes.has(next)) {
-          nodes.add(next);
-          if (kinds.get(next) === "connector") queue.push(next);
-        }
+        nodes.add(next);
+        if (visited.has(next)) continue;
+        visited.add(next);
+        if (kinds.get(next) !== "course") queue.push(next);
       }
     }
-  }
+  };
+  walk("source");
+  walk("target");
   return { nodes, edges };
 }

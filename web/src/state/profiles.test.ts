@@ -9,6 +9,11 @@ import { initialProfileState } from "./defaults";
 import { initialPrerequisitesState } from "../features/prerequisites/state";
 import { setLanguage } from "../app/actions";
 
+const markA = `s:root:d:${"a".repeat(24)}`;
+const markB = `s:root:d:${"b".repeat(24)}`;
+const orphan = `s:root:d:${"c".repeat(24)}`;
+const legacyMark = "module:legacy";
+
 describe("browser profiles", () => {
   beforeEach(() => localStorage.clear());
 
@@ -26,11 +31,12 @@ describe("browser profiles", () => {
         includeRecommended: true,
         basis: "selected",
         excludedCourseIds: ["canonical-a"],
-        completedNodeKeys: ["module:marked"],
+        completedNodeKeys: [markA],
       },
       structure: {
         ...state.structure,
         programmeGroupIds: ["root-a", "root-b"],
+        moduleVersions: { "root-a": "root-a-v1", "root-b": "root-b-v1" },
         choices: { "p:root-a/2": ["choice-a"] },
         coursePlacements: { "canonical-a": "p:root-a" },
       },
@@ -43,15 +49,26 @@ describe("browser profiles", () => {
       ...state,
       selectedCourseIds: ["canonical-b"],
       completedCourseIds: ["canonical-b"],
-      structure: { ...state.structure, programmeGroupIds: ["root-b"] },
+      structure: {
+        ...state.structure,
+        programmeGroupIds: ["root-b"],
+        moduleVersions: { "root-b": "root-b-v2" },
+      },
       discover: { ...state.discover, mode: "at_least_one" },
     }));
     const second = store.getSnapshot().profiles[secondId].state;
     expect(second.language).toBe("en");
+    expect(second.structure.moduleVersions).toEqual({
+      "root-b": "root-b-v2",
+    });
     store.switchProfile("default");
     const first = store.getSnapshot().profiles.default.state;
     expect(first.language).toBe("fi");
     expect(first.structure.programmeGroupIds).toEqual(["root-a", "root-b"]);
+    expect(first.structure.moduleVersions).toEqual({
+      "root-a": "root-a-v1",
+      "root-b": "root-b-v1",
+    });
     expect(first.compare.slots).toEqual(["canonical-a", null]);
     expect(first.search.query).toBe("profile A");
     expect(first.completedCourseIds).toEqual(first.selectedCourseIds);
@@ -69,7 +86,7 @@ describe("browser profiles", () => {
       includeRecommended: true,
       basis: "selected",
       excludedCourseIds: ["canonical-a"],
-      completedNodeKeys: ["module:marked"],
+      completedNodeKeys: [markA],
     });
     expect(Object.keys(reloaded.profiles.default.state.prerequisites)).toEqual(
       Object.keys(initialPrerequisitesState()),
@@ -191,6 +208,7 @@ describe("browser profiles", () => {
       structure: {
         ...state.structure,
         programmeGroupIds: ["root-a", "root-b"],
+        moduleVersions: { "root-a": "root-a-v2", "root-b": "root-b-v1" },
         choices: { "p:root-b/2": ["choice-a"] },
         coursePlacements: { "canonical-a": "p:root-b" },
       },
@@ -201,7 +219,7 @@ describe("browser profiles", () => {
     const parsed = parseBrowserImport(
       JSON.stringify(store.exportProfile(exportedId)),
     );
-    if (parsed.type !== "tuni-course-explorer/profile/2")
+    if (parsed.type !== "tuni-course-explorer/profile/3")
       throw new Error("Expected a profile file");
     store.resetSavedData();
     store.importProfile(parsed.profile);
@@ -212,6 +230,9 @@ describe("browser profiles", () => {
       store.getSnapshot().profiles[importedId].state.structure
         .programmeGroupIds,
     ).toEqual(["root-a", "root-b"]);
+    expect(
+      store.getSnapshot().profiles[importedId].state.structure.moduleVersions,
+    ).toEqual({ "root-a": "root-a-v2", "root-b": "root-b-v1" });
     store.updateCurrent((state) => ({
       ...state,
       selectedCourseIds: ["canonical-c"],
@@ -237,12 +258,13 @@ describe("browser profiles", () => {
         rootCourseId: "root-a",
         includeRecommended: true,
         basis: "selected",
-        completedNodeKeys: ["module:marked"],
-        excludedNodeKeys: ["module:blocked"],
+        completedNodeKeys: [markA],
+        excludedNodeKeys: [markB],
       },
       structure: {
         ...state.structure,
         programmeGroupIds: ["root-a", "root-b"],
+        moduleVersions: { "root-a": "root-a-v3", "module-a": "module-a-v2" },
         choices: { "p:root-a/2": ["choice-a"] },
         coursePlacements: { "canonical-a": "p:root-a" },
         modulePlacements: { "module-a": null },
@@ -257,7 +279,7 @@ describe("browser profiles", () => {
     }));
     const before = structuredClone(store.getSnapshot());
     const parsed = parseBrowserImport(JSON.stringify(store.exportState()));
-    if (parsed.type !== "tuni-course-explorer/state/2")
+    if (parsed.type !== "tuni-course-explorer/state/3")
       throw new Error("Expected a state file");
     store.resetSavedData();
     expect(store.getSnapshot().currentProfileId).toBe("default");
@@ -266,4 +288,142 @@ describe("browser profiles", () => {
     expect(store.getSnapshot().currentProfileId).toBe(secondId);
     expect(createBrowserStore(localStorage).getSnapshot()).toEqual(before);
   });
+
+  it.each(["load", "refresh", "profile import", "state import"] as const)(
+    "resets incompatible graph-box marks while preserving profile data and orphan keys (%s)",
+    (boundary) => {
+      const store = createBrowserStore(localStorage);
+      store.updateCurrent((state) => ({
+        ...state,
+        language: "fi",
+        selectedCourseIds: ["canonical-a", "canonical-b"],
+        completedCourseIds: ["canonical-a"],
+        prerequisites: {
+          ...state.prerequisites,
+          rootCourseId: "root-a",
+          includeRecommended: true,
+          basis: "selected",
+          excludedCourseIds: ["canonical-b"],
+          completedNodeKeys: [markA],
+          excludedNodeKeys: [markB, orphan],
+        },
+        structure: {
+          ...state.structure,
+          programmeGroupIds: ["root-a", "root-b"],
+          choices: { "p:root-a/2": ["choice-a"] },
+          coursePlacements: { "canonical-a": "p:root-a" },
+          placedCourseIds: ["canonical-a"],
+        },
+        search: { ...state.search, query: "kept" },
+      }));
+      store.saveAsProfile("Second");
+      const expected = structuredClone(store.getSnapshot());
+      const exportedProfile = store.exportProfile("default");
+      const exportedState = store.exportState();
+      const injectMarks = (target: {
+        prerequisites: {
+          completedNodeKeys: string[];
+          excludedNodeKeys: string[];
+        };
+      }): void => {
+        target.prerequisites.completedNodeKeys.push(legacyMark);
+        target.prerequisites.excludedNodeKeys.push("module:blocked");
+      };
+      localStorage.clear();
+      if (boundary === "load") {
+        const envelope = JSON.parse(exportedState.data) as {
+          profiles: Record<
+            string,
+            { state: { prerequisites: Record<string, unknown> } }
+          >;
+        };
+        for (const profile of Object.values(envelope.profiles))
+          injectMarks(
+            profile.state as unknown as {
+              prerequisites: {
+                completedNodeKeys: string[];
+                excludedNodeKeys: string[];
+              };
+            },
+          );
+        localStorage.setItem(BROWSER_STORAGE_KEY, JSON.stringify(envelope));
+        createBrowserStore(localStorage);
+      } else if (boundary === "refresh") {
+        const fresh = createBrowserStore(localStorage);
+        fresh.restoreState(expected);
+        const envelope = JSON.parse(exportedState.data) as {
+          profiles: Record<
+            string,
+            { state: { prerequisites: Record<string, unknown> } }
+          >;
+        };
+        for (const profile of Object.values(envelope.profiles))
+          injectMarks(
+            profile.state as unknown as {
+              prerequisites: {
+                completedNodeKeys: string[];
+                excludedNodeKeys: string[];
+              };
+            },
+          );
+        localStorage.setItem(BROWSER_STORAGE_KEY, JSON.stringify(envelope));
+        fresh.refreshFromStorage();
+      } else if (boundary === "profile import") {
+        const cloned = structuredClone(exportedProfile);
+        cloned.profile.name = "Imported";
+        injectMarks(
+          cloned.profile.state as unknown as {
+            prerequisites: {
+              completedNodeKeys: string[];
+              excludedNodeKeys: string[];
+            };
+          },
+        );
+        const parsed = parseBrowserImport(JSON.stringify(cloned));
+        if (parsed.type !== "tuni-course-explorer/profile/3")
+          throw new Error("Expected a profile file");
+        createBrowserStore(localStorage).importProfile(parsed.profile);
+      } else {
+        const envelope = JSON.parse(exportedState.data) as {
+          profiles: Record<string, { state: unknown }>;
+        };
+        for (const profile of Object.values(envelope.profiles))
+          injectMarks(
+            profile.state as {
+              prerequisites: {
+                completedNodeKeys: string[];
+                excludedNodeKeys: string[];
+              };
+            },
+          );
+        const parsed = parseBrowserImport(
+          JSON.stringify({ ...exportedState, data: JSON.stringify(envelope) }),
+        );
+        if (parsed.type !== "tuni-course-explorer/state/3")
+          throw new Error("Expected a state file");
+        createBrowserStore(localStorage).restoreState(parsed.state);
+      }
+      const reloaded = createBrowserStore(localStorage).getSnapshot();
+      const state =
+        boundary === "profile import"
+          ? reloaded.profiles[reloaded.currentProfileId].state
+          : reloaded.profiles.default.state;
+      expect(state.prerequisites.completedNodeKeys).toEqual([markA]);
+      expect(state.prerequisites.excludedNodeKeys).toEqual([markB, orphan]);
+      expect(state.language).toBe(expected.profiles.default.state.language);
+      expect(state.selectedCourseIds).toEqual(
+        expected.profiles.default.state.selectedCourseIds,
+      );
+      expect(state.completedCourseIds).toEqual(
+        expected.profiles.default.state.completedCourseIds,
+      );
+      expect(state.prerequisites.excludedCourseIds).toEqual(["canonical-b"]);
+      expect(state.prerequisites.rootCourseId).toBe("root-a");
+      expect(state.prerequisites.basis).toBe("selected");
+      expect(state.structure).toEqual(
+        expected.profiles.default.state.structure,
+      );
+      expect(state.search.query).toBe("kept");
+    },
+  );
 });

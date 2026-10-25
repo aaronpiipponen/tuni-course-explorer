@@ -50,7 +50,7 @@ def test_unified_search_command_wires_the_services_disposes_engine_and_returns_t
     calls: list[tuple] = []
 
     class Lookup:
-        def __init__(self, curriculum, search_settings):
+        def __init__(self, curriculum, search_settings, *, projection_cache=None):
             calls.append(("lookup", curriculum, search_settings))
 
     class Semantic:

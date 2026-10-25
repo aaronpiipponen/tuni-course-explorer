@@ -26,13 +26,14 @@
 .help-drawer {
   position: fixed;
   z-index: 35;
-  top: 60px;
+  top: var(--app-header-height, 60px);
   right: 0;
   bottom: 0;
   display: flex;
   width: min(420px, 100vw);
   flex-direction: column;
-  overflow-y: auto;
+  overflow: hidden;
+  overscroll-behavior: contain;
   border-left: 1px solid #b07be8;
   background: #08080c;
   box-shadow: -30px 0 80px rgb(0 0 0 / 70%);
@@ -44,6 +45,10 @@
   animation: help-out 0.45s cubic-bezier(0.22, 0.8, 0.2, 1) both;
 }
 .help-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 8px 20px 28px;
 }
 .help-body h3 {
@@ -86,6 +91,21 @@
   color: rgb(255 255 255 / 60%);
   font-size: 13px;
   line-height: 1.5;
+}
+.help-body .help-guide {
+  display: inline-block;
+  margin-top: 18px;
+  color: #b07be8;
+  font-size: 13px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.help-body .help-guide:hover {
+  color: #d9c6f5;
+}
+.help-body .help-guide:focus-visible {
+  outline: 2px solid #b07be8;
+  outline-offset: 3px;
 }
 @keyframes help-in {
   from {

@@ -225,11 +225,18 @@ class ServerStatusReport(_ServerModel):
     hubs: tuple[HubStatus, ...]
 
 
-def _unit_properties(runner: mechanics.ProcessRunner, unit: str, *, root: Path) -> dict[str, str]:
-    """Read the requested properties of one systemd user unit as a parsed mapping."""
+def _unit_properties(
+    runner: mechanics.ProcessRunner,
+    unit: str,
+    *,
+    root: Path,
+    scope: Literal["user", "system"] = "user",
+) -> dict[str, str]:
+    """Read the requested properties of one systemd unit from its manager."""
+    manager = ("--user",) if scope == "user" else ()
     argv = (
         "systemctl",
-        "--user",
+        *manager,
         "show",
         unit,
         "--no-pager",
@@ -248,15 +255,21 @@ def _unit_properties(runner: mechanics.ProcessRunner, unit: str, *, root: Path) 
 
 
 def read_owned_site_unit(
-    runner: mechanics.ProcessRunner, unit: str, *, root: Path, entry_point: str
+    runner: mechanics.ProcessRunner,
+    unit: str,
+    *,
+    root: Path,
+    entry_point: str,
+    scope: Literal["user", "system"] = "user",
 ) -> dict[str, str]:
     """Read one loaded systemd unit of this checkout and refuse a unit of another site.
 
     The unit must be loaded, must run from this checkout, and its command line must carry the exact
     ``<checkout>/<entry_point>`` token. Every owner that reports or mutates a site unit shares this
-    one check, so no owner reads or restarts another application's unit.
+    one check, so no owner reads or restarts another application's unit. The scope selects the
+    manager that owns the unit.
     """
-    properties = _unit_properties(runner, unit, root=root)
+    properties = _unit_properties(runner, unit, root=root, scope=scope)
     if properties["LoadState"] != "loaded":
         raise ValueError("the configured site unit must be loaded")
     if Path(properties["WorkingDirectory"]) != root:
@@ -270,14 +283,18 @@ def read_web_service(*, runner: mechanics.ProcessRunner) -> WebsiteStatus:
     """Read this checkout's web unit and refuse a unit that belongs to another site.
 
     The unit must be loaded, must run from this checkout, and its command line must carry the exact
-    ``<checkout>/scripts/run_web.sh`` token. A status read and the rebuild precondition share this
-    one check, so neither reports nor restarts another application's or the administration
-    service.
+    ``<checkout>/scripts/run_web.sh`` token. The unit's configured manager scope selects the
+    systemd manager the read addresses. A status read and the rebuild precondition share this one
+    check, so neither reports nor restarts another application's or the administration service.
     """
     root = repository_root()
     settings = load_administrative_site_settings()
     properties = read_owned_site_unit(
-        runner, settings.web_service_unit, root=root, entry_point=_WEB_ENTRY_POINT
+        runner,
+        settings.web_service_unit,
+        root=root,
+        entry_point=_WEB_ENTRY_POINT,
+        scope=settings.web_service_scope,
     )
 
     started_at: datetime | None = None

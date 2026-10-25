@@ -4,7 +4,13 @@ The frontend is the browser app over the tabs a site serves, the state it holds 
 
 ## The app and its tabs
 
-The app is one shell with a top bar, a tab area and a footer. The top bar carries a button for each tab the site serves, the profile control, the language control and **Docs**, and the app runs in Finnish and English. The site's two feature switches decide which tabs and controls it serves, and the app reads them once before the shell mounts. Each tab joins two sources: the reports it reads from the server, which describe the official catalogue, and the state the open profile holds in the browser, which is its language, its course selection and completion, its exclusions, and the choices and places of the structure tab. A list of course cards is a report, while the mark that says a course is completed is browser state.
+The app is one shell with a header, a tab area and a bottom row. On desktop the header is a top bar that carries a button for each tab the site serves, the profile control, the language control and **Docs**, and the footer holds the independent-project notice and the source link.
+
+On a phone the header is an empty safe-area strip and one bottom bar carries the served tabs plus **More**, whose sheet holds the profile control, the language control and **Docs**. The app runs in Finnish and English.
+
+The site's two feature switches decide which tabs and controls it serves, and the app reads them once before the shell mounts, together with the serving dataset identity that bounds the app-level read cache above the tab panes.
+
+Each tab joins two sources: the reports it reads from the server, which describe the official catalogue, and the state the open profile holds in the browser, which is its language, its course selection and completion, its exclusions, and the choices and places of the structure tab. A list of course cards is a report, while the mark that says a course is completed is browser state. The narrowing boxes filter one cached minimal official catalogue locally, so a keystroke sends no request.
 
 [Browser app](/docs/frontend/browser-app.md) describes the shell, its navigation and scrolling, the shared course state, the language and the labeled analysis, and the search, comparison and discovery reads.
 
@@ -16,15 +22,15 @@ The selection and the completion are shared rather than owned by a tab. A course
 
 ## The structure editor and the structure model
 
-The **Structure of studies** tab reads one official structure report for each of its ordered programmes and lays the profile's own choices and places over that content. Selecting a course there adds it to the shared selection, and each course shows on one card.
+The **Structure of studies** tab reads the official structure reports of its ordered programmes, placed modules and exact version selections in one batch, keeps them in memory and in a derived IndexedDB store keyed by the serving dataset identity, the root and the selection identity, and lays the profile's own choices and places over that content. A canonical module with several eligible versions is chosen explicitly, and a group that still needs one shows its own candidate picker. Selecting a course there adds it to the shared selection, and each course shows on one card.
 
 [Structure editor](/docs/frontend/structure-editor.md) states the behaviour a reader can rely on, including the confirmations and the resets, and [Structure model](/docs/frontend/structure-model.md) describes the projection and the resolution behind it. [Structure of studies in the catalogue](/docs/backend/catalogue/study-structure.md) describes the official report itself.
 
 ## The prerequisite graph
 
-The **Prerequisites** tab opens one course as the graph root and draws its prerequisite expression. Its controls choose the basis, whether recommended prerequisites take part, whether inferred prerequisites take part, and the activity scope. The **Inferred** control appears on a site that serves inference features, and on a site that serves none the tab draws official prerequisites alone. When the tree is too large to draw, the tab states the element count against the configured limit and points at the controls that shrink it. **Find minimum route** is a separate request whose result is held only while its inputs match.
+The **Prerequisites** tab opens one course as the graph root and draws its prerequisite expression. Its controls choose the basis, whether recommended prerequisites take part, whether inferred prerequisites take part, and the activity scope. The **Inferred** control appears on a site that serves inference features, and on a site that serves none the tab draws official prerequisites alone. When the tree is too large to draw, the tab states the element count against the configured limit and points at the controls that shrink it. **Find minimum route** is a local calculation in a browser worker whose result is held only while its inputs match.
 
-[Prerequisite graph](/docs/backend/prerequisites/prerequisite-graph.md) and [Minimum route](/docs/backend/prerequisites/minimum-route.md) state what those reads compile and return. [Prerequisite graph view](/docs/frontend/prerequisite-graph-view.md) describes the drawing, the node marks, and the temporary route panel.
+[Prerequisite graph](/docs/backend/prerequisites/prerequisite-graph.md) and [Minimum route](/docs/backend/prerequisites/minimum-route.md) state what the graph read compiles and returns and what the route calculation produces. [Prerequisite graph view](/docs/frontend/prerequisite-graph-view.md) describes the drawing, the node marks, and the temporary route panel. [Graph layout](/docs/frontend/graph-layout.md) describes the graph model and the solver modules behind the local calculation.
 
 ## The administration console
 

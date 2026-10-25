@@ -11,6 +11,7 @@ import {
   setPrerequisitesRoot,
 } from "./actions";
 
+/** Render the animated prerequisite root picker. */
 export function RootBox({
   open,
   onClose,

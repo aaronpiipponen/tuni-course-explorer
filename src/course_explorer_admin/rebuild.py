@@ -121,9 +121,11 @@ def rebuild_site(*, runner: mechanics.ProcessRunner) -> RebuildReport:
 
     Every step is checked. The frontend build runs from the checkout with its installed
     dependencies, the containers are recreated from their prepared images without a build or a
-    download, and the restarted unit must answer on the configured loopback bind.
+    download, the unit restarts through its configured manager, and the restarted unit must answer
+    on the configured loopback bind.
     """
     root = repository_root()
+    site = load_administrative_site_settings()
     website = server.read_web_service(runner=runner)
     settings = load_local_lifecycle_settings()
     timeout = settings.stop_timeout_seconds
@@ -144,7 +146,12 @@ def rebuild_site(*, runner: mechanics.ProcessRunner) -> RebuildReport:
         cwd=root,
         timeout=timeout,
     )
-    runner.run(("systemctl", "--user", "restart", website.unit), cwd=root, timeout=timeout)
+    restart = (
+        ("sudo", "-n", "/usr/bin/systemctl", "restart", website.unit)
+        if site.web_service_scope == "system"
+        else ("systemctl", "--user", "restart", website.unit)
+    )
+    runner.run(restart, cwd=root, timeout=timeout)
 
     restarted = server.read_web_service(runner=runner)
     mechanics.await_state(

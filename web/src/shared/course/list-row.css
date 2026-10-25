@@ -7,7 +7,6 @@
   gap: 10px;
   padding: 9px 10px;
   border: 0;
-  border: 0;
   border-radius: 8px;
   color: #fff;
   text-align: left;
@@ -18,6 +17,21 @@
 .course-list-row:hover,
 .course-list-row.open {
   background: rgb(78 0 142 / 35%);
+}
+.course-list-row.has-markers {
+  grid-template-columns: 96px minmax(0, 1fr) auto auto;
+}
+.course-list-markers {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-self: end;
+}
+.course-list-markers .course-badge {
+  margin: 0;
+}
+.course-list-markers .course-activity {
+  white-space: nowrap;
 }
 .course-list-code {
   overflow: hidden;
@@ -32,6 +46,8 @@
   min-width: 0;
   overflow: hidden;
   line-height: inherit;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .course-list-credit {
   color: rgb(255 255 255 / 55%);

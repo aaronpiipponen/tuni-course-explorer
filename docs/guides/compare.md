@@ -19,6 +19,8 @@ To see what one of the two courses expects before it is taken, open its [prerequ
 
 The picker carries its own **Active only** option and a **Close** button, and it closes when you choose a course, when you select outside it, and when you press Escape. While the picker is open the rest of the tab fades back.
 
+On a phone the two slots stack one above the other. Each filled slot shows A or B beside **Replace** and **Remove** in a head row above the code, the name wraps in full, and the five meters put each label and its value on one line with the bar below. The picker opens above the tab bar and below the top of the tab with a small margin on each side, scrolls inside that box, and carries the same **Close** button, filter field, **Active only** option and **+ add** rows. [Using the app on a phone](/docs/guides/phone.md) describes the phone shell and the sheets of each tab.
+
 ## When both slots are full
 
 Adding a course from a course menu while both slots are full opens the dialog **Replace which course?**, which lists the two courses that hold the slots with a **Replace** button on each, above a **Cancel** button at the left of the dialog. The course behind the button you select leaves the comparison, and the course you chose takes its slot.
@@ -31,7 +33,7 @@ The two slots never hold the same course, so choosing the course that holds the 
 
 ## Changing or clearing a slot
 
-Each filled slot carries **Replace** and **Remove**. **Replace** opens the picker for that slot, and the course you choose takes the place of the one that is there. **Remove** empties the slot. With fewer than two courses in the slots the tab reads **Select two courses to compare** in the place of a verdict.
+Each filled slot carries **Replace** and **Remove**. On a phone both controls sit at the right of the slot's head row, beside the slot letter. **Replace** opens the picker for that slot, and the course you choose takes the place of the one that is there. The other course holds its slot while the comparison loads. **Remove** empties the slot and the meters with it. With fewer than two courses in the slots the tab reads **Select two courses to compare** in the place of a verdict.
 
 ## The five meters
 
@@ -42,8 +44,8 @@ A comparison reports five percentages. Each one carries an amount on a bar and a
 | **Overall relatedness** | The whole teaching text of the two courses together, the name, the content, and the learning outcomes. |
 | **Content similarity** | The content text of the two courses. |
 | **Learning-outcome similarity** | The learning outcomes of the two courses. |
-| **Overlap** from the slot A course into the slot B course | The share of the first course's content and learning-outcome text that has a close match in the second course. |
-| **Overlap** from the slot B course into the slot A course | The share of the second course's content and learning-outcome text that has a close match in the first course. |
+| **Overlap**, with the slot A course named first | The share of the first course's content and learning-outcome text that has a close match in the second course. |
+| **Overlap**, with the slot B course named first | The share of the second course's content and learning-outcome text that has a close match in the first course. |
 
 Each of the two overlap meters names both course codes and the direction it measures. The sublabels read **whole course**, **content vs content**, **outcomes vs outcomes**, **how much of A has a match in B**, and **how much of B has a match in A**.
 
@@ -65,7 +67,7 @@ One label summarizes the whole comparison.
 
 The verdict follows the stronger of the two overlap meters first. A large enough overlap in either direction gives **Heavily overlapping** or **Partly overlapping** on its own. Otherwise the **Overall relatedness** figure decides between **Same area, different content**, **Loosely related**, and **Unrelated**.
 
-Before both slots hold a course the tab reads **Select two courses to compare**, and while the analysis runs it reads **Comparing courses…**, and each meter shows a dash until the report arrives. A pair the app cannot analyze reads **not available** in place of a verdict.
+Before both slots hold a course the tab reads **Select two courses to compare**, and each meter bar starts at zero. While the analysis runs the tab reads **Comparing courses…** and each meter shows a dash in place of a percentage. A course that replaces one of a loaded pair holds the meters at their positions while the changed pair is read, and the bars move to the returned values without a step through zero. A pair the app cannot analyze reads **not available** in place of a verdict.
 
 > [!IMPORTANT]
 > The five meters and the verdict are analysis of the teaching text, labeled apart from the official data that the university publishes.

@@ -1,20 +1,35 @@
-/** Pure scoped customization reset and placement normalization behavior. */
+/** Scoped customization reset, placement normalization and rendered placement behavior. */
+import { act, createElement } from "react";
+import { createRoot, type Root } from "react-dom/client";
 import { describe, expect, it } from "vitest";
 import { emptyEdits } from "./state";
 import { placeCourse, placeModuleWithCourses, resetScope } from "./edits";
 import { applyStructure } from "./actions";
 import {
-  buildStructure,
+  buildProgrammeForest,
   indexResolved,
+  programmeKey,
   resolveStructure,
   type PlacedContent,
 } from "./model";
+import { StructurePane } from "./StructurePane";
+import { READ_CACHE_CAPACITY, ReadCache } from "../../app/readCache";
+import { ReadCacheContext } from "../../app/readCacheContext";
+import { WebFeaturesContext } from "../../app/webFeaturesContext";
+import { NoticeProvider } from "../../shared/NoticeProvider";
+import { StoreContext } from "../../state/context";
+import { toggleCompleted } from "../../state/course-actions";
 import { createBrowserStore } from "../../state/store";
+import type { ProfileState } from "../../state/types";
 import type {
   CourseSummary,
   StructureRule,
   StudyStructureReport,
 } from "../../api/types";
+
+(
+  globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
+).IS_REACT_ACT_ENVIRONMENT = true;
 
 describe("structure edits", () => {
   it("resetScope discards only placements and choices scoped to the node, and Remove of a homeless id leaves no entry", () => {
@@ -46,7 +61,7 @@ describe("structure edits", () => {
     ).toEqual({});
   });
 
-  it("module additions use resolved destination keys and preserve selected courses", () => {
+  it("module additions use resolved destination keys and preserve selected courses", async () => {
     localStorage.clear();
     const course: CourseSummary = {
       group_id: "course-a",
@@ -88,6 +103,7 @@ describe("structure edits", () => {
       credits_max: null,
       count_min: null,
       count_max: null,
+      referenced_group_id: null,
       children: [],
       course: null,
       module: null,
@@ -149,9 +165,10 @@ describe("structure edits", () => {
         }),
       },
     };
-    const root = buildStructure(rootReport);
+    const root = buildProgrammeForest([rootReport]);
+    const ownerKey = programmeKey("root");
     const content: PlacedContent = {
-      reports: { "module-a": addedReport },
+      reports: { root: rootReport, "module-a": addedReport },
       courses: new Map([[course.group_id, course]]),
     };
     let store = createBrowserStore(localStorage);
@@ -159,6 +176,7 @@ describe("structure edits", () => {
     applyStructure(store, () => ({
       next: {
         programmeGroupIds: ["root"],
+        moduleVersions: {},
         ...emptyEdits(),
         placedCourseIds: initial.subtree.map((item) => item.group_id),
       },
@@ -169,14 +187,17 @@ describe("structure edits", () => {
       emptyEdits(),
       content,
       "module-a",
-      "r/2",
+      `${ownerKey}/2`,
     );
     // The course follows its module, so nothing needs a move confirmation.
     expect(first.moves).toEqual([]);
+    // The placement record names the containing node, not the module identity it places.
+    expect(first.edits.modulePlacements["module-a"]).toBe(`${ownerKey}/2`);
     let resolved = resolveStructure(root, first.edits, content);
     applyStructure(store, () => ({
       next: {
         programmeGroupIds: ["root"],
+        moduleVersions: {},
         ...first.edits,
         placedCourseIds: resolved.subtree.map((item) => item.group_id),
       },
@@ -185,39 +206,172 @@ describe("structure edits", () => {
     expect(
       store.getSnapshot().profiles.default.state.selectedCourseIds,
     ).toEqual(["course-a"]);
-    const owner = indexResolved(resolved).byKey.get("r")!;
-    const removedModule = owner.removed.find(
-      (entry) =>
-        entry.kind === "module" && entry.module.group_id === "module-a",
-    );
-    if (!removedModule)
-      throw new Error("Moved module missing from removed content");
-    const second = placeModuleWithCourses(
-      root,
-      first.edits,
-      content,
-      "module-a",
-      owner.node.key,
-    );
-    expect(second.moves).toEqual([]);
-    resolved = resolveStructure(root, second.edits, content);
-    applyStructure(store, () => ({
-      next: {
-        programmeGroupIds: ["root"],
-        ...second.edits,
-        placedCourseIds: resolved.subtree.map((item) => item.group_id),
-      },
-    }));
-    store = createBrowserStore(localStorage);
-    expect(
-      store.getSnapshot().profiles.default.state.selectedCourseIds,
-    ).toEqual(["course-a"]);
-    expect(resolved.subtree.map((item) => item.group_id)).toEqual(["course-a"]);
-    expect(indexResolved(resolved).courseAt.get("course-a")?.node.key).toBe(
-      indexResolved(resolved).moduleAt.get("module-a")?.node.key,
+    toggleCompleted(store, "course-a");
+    const baseline = structuredClone(
+      store.getSnapshot().profiles.default.state,
     );
     expect(indexResolved(resolved).moduleAt.get("module-a")?.node.key).toBe(
-      "r/1",
+      `${ownerKey}/2/m:module-a`,
     );
+
+    const identity = "synthetic-structure-dataset";
+    const cache = new ReadCache(identity, READ_CACHE_CAPACITY);
+    cache.put(
+      identity,
+      JSON.stringify(["study-structure", "root", "[]"]),
+      rootReport,
+    );
+    cache.put(
+      identity,
+      JSON.stringify(["study-structure", "module-a", "[]"]),
+      addedReport,
+    );
+    cache.put(identity, JSON.stringify(["course-summaries", ["course-a"]]), {
+      dataset_identity: identity,
+      results: [course],
+    });
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      matches: true,
+      media: query,
+      onchange: null,
+      addListener() {},
+      removeListener() {},
+      addEventListener() {},
+      removeEventListener() {},
+      dispatchEvent: () => false,
+    })) as typeof window.matchMedia;
+    const host = document.createElement("div");
+    document.body.append(host);
+    let reactRoot: Root | null = null;
+    const expectSavedState = (state: ProfileState) => {
+      expect(state.structure.programmeGroupIds).toEqual(
+        baseline.structure.programmeGroupIds,
+      );
+      expect(state.structure.choices).toEqual(baseline.structure.choices);
+      expect(state.structure.coursePlacements).toEqual(
+        baseline.structure.coursePlacements,
+      );
+      expect(state.structure.modulePlacements).toEqual(
+        baseline.structure.modulePlacements,
+      );
+      expect(state.structure.placedCourseIds).toEqual(
+        baseline.structure.placedCourseIds,
+      );
+      expect(state.selectedCourseIds).toEqual(baseline.selectedCourseIds);
+      expect(state.completedCourseIds).toEqual(baseline.completedCourseIds);
+    };
+    const expectRenderedPlacement = () => {
+      const moduleARow = [...host.querySelectorAll(".shead-open .sname")]
+        .find((name) => name.textContent === "Module A")
+        ?.closest(".snode");
+      const moduleBRow = [...host.querySelectorAll(".shead-open .sname")]
+        .find((name) => name.textContent === "Module B")
+        ?.closest(".snode");
+      expect(moduleARow).toBeTruthy();
+      expect(moduleBRow).toBeTruthy();
+      if (!moduleARow || !moduleBRow)
+        throw new Error("The placed module rows are missing");
+      expect(moduleBRow.contains(moduleARow)).toBe(true);
+      expect(moduleARow.querySelectorAll(".structure-card")).toHaveLength(1);
+      expect(host.querySelectorAll(".structure-card")).toHaveLength(1);
+      const unplacedRow = [...host.querySelectorAll(".shead-open .sname")]
+        .find((name) => name.textContent === "Unplaced studies")
+        ?.closest(".snode");
+      expect(unplacedRow).toBeTruthy();
+      if (!unplacedRow) throw new Error("The Unplaced studies row is missing");
+      expect(unplacedRow.querySelector(".structure-card")).toBeNull();
+    };
+    const renderPane = async () => {
+      const mounted = createRoot(host);
+      reactRoot = mounted;
+      await act(async () => {
+        mounted.render(
+          createElement(
+            StoreContext.Provider,
+            { value: store },
+            createElement(
+              ReadCacheContext.Provider,
+              { value: cache },
+              createElement(
+                WebFeaturesContext.Provider,
+                {
+                  value: {
+                    embeddings_enabled: false,
+                    inference_enabled: false,
+                    dataset_identity: identity,
+                  },
+                },
+                createElement(
+                  NoticeProvider,
+                  null,
+                  createElement(StructurePane),
+                ),
+              ),
+            ),
+          ),
+        );
+      });
+      await act(async () => {});
+      await act(async () => {});
+    };
+    try {
+      await renderPane();
+      expectRenderedPlacement();
+      expectSavedState(store.getSnapshot().profiles.default.state);
+      await act(async () => reactRoot?.unmount());
+      reactRoot = null;
+      store = createBrowserStore(localStorage);
+      await renderPane();
+      expectRenderedPlacement();
+      expectSavedState(store.getSnapshot().profiles.default.state);
+      await act(async () => reactRoot?.unmount());
+      reactRoot = null;
+
+      const owner = indexResolved(resolved).byKey.get(ownerKey)!;
+      const removedModule = owner.removed.find(
+        (entry) =>
+          entry.kind === "module" && entry.module.group_id === "module-a",
+      );
+      if (!removedModule)
+        throw new Error("Moved module missing from removed content");
+      const second = placeModuleWithCourses(
+        root,
+        first.edits,
+        content,
+        "module-a",
+        owner.node.key,
+      );
+      expect(second.moves).toEqual([]);
+      resolved = resolveStructure(root, second.edits, content);
+      applyStructure(store, () => ({
+        next: {
+          programmeGroupIds: ["root"],
+          moduleVersions: {},
+          ...second.edits,
+          placedCourseIds: resolved.subtree.map((item) => item.group_id),
+        },
+      }));
+      store = createBrowserStore(localStorage);
+      expect(
+        store.getSnapshot().profiles.default.state.selectedCourseIds,
+      ).toEqual(["course-a"]);
+      expect(
+        store.getSnapshot().profiles.default.state.completedCourseIds,
+      ).toEqual(["course-a"]);
+      expect(resolved.subtree.map((item) => item.group_id)).toEqual([
+        "course-a",
+      ]);
+      expect(indexResolved(resolved).courseAt.get("course-a")?.node.key).toBe(
+        indexResolved(resolved).moduleAt.get("module-a")?.node.key,
+      );
+      expect(indexResolved(resolved).moduleAt.get("module-a")?.node.key).toBe(
+        `${ownerKey}/1`,
+      );
+    } finally {
+      if (reactRoot) await act(async () => reactRoot!.unmount());
+      host.remove();
+      window.matchMedia = originalMatchMedia;
+    }
   });
 });

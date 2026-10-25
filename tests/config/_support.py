@@ -14,6 +14,7 @@ from pydantic_settings import BaseSettings
 from course_explorer.config import (
     AdministrativeDatasetSettings,
     AdminWebSettings,
+    AdmissionSettings,
     CaptureSettings,
     DatabaseSettings,
     EmbeddingSettings,
@@ -48,6 +49,7 @@ MACHINE_LOCAL_KEYS = {
     "TRANSLATION_CONTROLLER_WORKER_PROJECT_ROOT",
     "ADMIN_SITE_WEB_SERVICE_UNIT",
     "ADMIN_SITE_ADMIN_SERVICE_UNIT",
+    "ADMIN_SITE_WEB_SERVICE_SCOPE",
 }
 MACHINE_TEMPLATE_VALUES = {
     "TRANSLATION_CONTROLLER_SSH_TARGET": "replace-with-ssh-target",
@@ -55,6 +57,7 @@ MACHINE_TEMPLATE_VALUES = {
     "TRANSLATION_CONTROLLER_WORKER_PROJECT_ROOT": "/home/replace-with-user/tuni-course-explorer",
     "ADMIN_SITE_WEB_SERVICE_UNIT": "replace-with-web.service",
     "ADMIN_SITE_ADMIN_SERVICE_UNIT": "replace-with-admin.service",
+    "ADMIN_SITE_WEB_SERVICE_SCOPE": "user",
 }
 LOCAL_TEMPLATE_KEYS = {"POSTGRES_PASSWORD"} | MACHINE_LOCAL_KEYS
 
@@ -98,6 +101,7 @@ WORKER_SETUP_KEYS = _keys(WorkerSetupSettings)
 WORKER_RUNTIME_KEYS = _keys(WorkerRuntimeSettings)
 WORKER_GPU_REBOOT_KEYS = _keys(WorkerGpuRebootSettings)
 WEB_KEYS = _keys(WebSettings)
+ADMISSION_KEYS = _keys(AdmissionSettings)
 ADMIN_WEB_KEYS = _keys(AdminWebSettings)
 TRANSLATION_CONTROLLER_KEYS = {
     **_keys(TranslationControllerSettings),
@@ -149,6 +153,7 @@ FIXTURE_VALUES: dict[str, str] = {
     **WORKER_RUNTIME_KEYS,
     **INFERENCE_CONTROLLER_KEYS,
     **WEB_KEYS,
+    **ADMISSION_KEYS,
     **ADMIN_WEB_KEYS,
 }
 PUBLIC_ALIASES = FIXTURE_VALUES.keys() - LOCAL_TEMPLATE_KEYS

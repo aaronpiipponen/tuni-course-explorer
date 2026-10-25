@@ -28,17 +28,33 @@ describe("course actions", () => {
   it("adds missing module courses to Unplaced studies once and preserves completion", () => {
     const store = createBrowserStore(localStorage);
     toggleCompleted(store, "already-completed");
-    addCoursesToFreeChoice(store, [
-      "already-completed",
-      "module-course",
-      "module-course",
-    ]);
-    addCoursesToFreeChoice(store, ["already-completed", "module-course"]);
+    expect(
+      addCoursesToFreeChoice(store, [
+        "already-completed",
+        "module-course",
+        "module-course",
+      ]),
+    ).toBe(1);
+    // A repeated request adds nothing and reports zero.
+    expect(
+      addCoursesToFreeChoice(store, ["already-completed", "module-course"]),
+    ).toBe(0);
+    // Another store selects an identity before this store asks for it.
+    const otherTab = createBrowserStore(localStorage);
+    otherTab.updateCurrent((state) => ({
+      ...state,
+      selectedCourseIds: [...state.selectedCourseIds, "other-tab-course"],
+    }));
+    expect(
+      addCoursesToFreeChoice(store, ["other-tab-course", "module-course-two"]),
+    ).toBe(1);
     const state =
       createBrowserStore(localStorage).getSnapshot().profiles.default.state;
     expect(state.selectedCourseIds).toEqual([
       "already-completed",
       "module-course",
+      "other-tab-course",
+      "module-course-two",
     ]);
     expect(state.completedCourseIds).toEqual(["already-completed"]);
   });

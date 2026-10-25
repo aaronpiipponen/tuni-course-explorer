@@ -1,11 +1,12 @@
-/** Floating official substring picker using the shared course-card selection path. */
-import type { CourseSummary } from "../../api/types";
+/** Floating official substring picker using the shared plain lookup rows. */
+import type { CatalogueCourse } from "../../api/types";
 import { useProfileSelector } from "../../state/useProfileSelector";
 import { setComparePickerActiveOnly, setComparePickerQuery } from "./actions";
 import { CourseLookupBox } from "../../shared/course/CourseLookupBox";
 import { courseName } from "../../shared/course/presentation";
 import { useWording } from "../../shared/useWording";
 
+/** Render the comparison course picker for one target slot. */
 export function ComparePicker({
   target,
   onClose,
@@ -13,7 +14,7 @@ export function ComparePicker({
 }: {
   target: 0 | 1 | null;
   onClose: () => void;
-  onPick: (course: CourseSummary) => void;
+  onPick: (course: CatalogueCourse) => void;
 }) {
   const open = target !== null;
   const { store, value: query } = useProfileSelector(

@@ -9,6 +9,7 @@ from pydantic import SecretStr
 from course_explorer.config import (
     ENVIRONMENT_ONLY_SETTINGS_SOURCE,
     SETTINGS_SOURCE_MARKER,
+    AdmissionSettings,
     EmbeddingSettings,
     NormalizationSettings,
     SearchSettings,
@@ -22,10 +23,10 @@ def main() -> NoReturn:
     """Exec the web app with only its runtime settings and a file-free process environment.
 
     The required settings families are composed here through the shared automatic file
-    sources and serialized to their aliases. A site whose web settings disable embedding features
-    composes no embedding family, so its child needs no embedding hub artifact. The child carries
-    the environment-only marker so the long-lived process reads no local file and forwards no
-    admin/worker value.
+    sources and serialized to their aliases. The families are the raw database,
+    normalization, search, web and admission settings, plus the embedding settings when the web
+    settings serve the embedding features. The child carries the environment-only marker so the
+    long-lived process reads no local file and forwards no admin/worker value.
     """
     web_settings = WebSettings()
     families = (
@@ -34,6 +35,7 @@ def main() -> NoReturn:
         *((EmbeddingSettings(),) if web_settings.embeddings_enabled else ()),
         SearchSettings(),
         web_settings,
+        AdmissionSettings(),
     )
     environment = {
         name: value for name, value in os.environ.items() if name in {"HOME", "PATH", "LANG"}

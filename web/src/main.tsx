@@ -15,6 +15,9 @@ import { App } from "./app/App";
 import { WebFeatures } from "./app/WebFeatures";
 import { StorageRecovery } from "./features/profiles/StorageRecovery";
 import { downloadBrowserFile } from "./features/profiles/files";
+
+// The App dependency graph evaluates phone-sheet.css, graph.css and prerequisites.css before this
+// list, which repeats the two prerequisite files and ends with mobile-scale.css.
 import "./styles/theme.css";
 import "./app/shell.css";
 import "./shared/course/course.css";
@@ -37,6 +40,7 @@ import "./features/prerequisites/route/route.css";
 import "./features/structure/structure.css";
 import "./features/discover/discover.css";
 import "./features/profiles/profiles.css";
+import "./styles/mobile-scale.css";
 
 const root = createRoot(document.getElementById("root")!);
 // The live store, or null while the recovery screen is shown.

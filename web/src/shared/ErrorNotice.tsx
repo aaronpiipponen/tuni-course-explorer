@@ -10,6 +10,7 @@ import type { DisplayLanguage } from "../state/types";
 import { errorPresentation } from "./errorPresentation";
 import { uiText } from "./wording";
 
+/** Render one error summary with its technical detail, localized or in both languages. */
 export function ErrorNotice({
   error,
   language,

@@ -32,7 +32,7 @@ The selection rules the operator relies on are described in [Representative vers
 
 | Protocol | Methods | Consumers |
 |---|---|---|
-| `CurriculumRead` | `list_courses`, `list_teaching_courses`, `list_teaching_text_inputs`, `list_modules`, `list_module_lookup`, `list_represented_summaries`, `get_represented_summaries`, `list_course_code_identities`, `summary` | `CourseSearchService` and `UnifiedCourseSearchService` (`search/service.py`, `search/unified.py`), `CourseLookupService` and `ModuleLookupService` (`search/lookup.py`), `TeachingTextService` (`teaching_text/service.py`), the translation selection (`translation/service.py`), the inference operational read (`inference/operational.py`) |
+| `CurriculumRead` | `list_courses`, `list_teaching_courses`, `list_teaching_text_inputs`, `list_modules`, `list_module_lookup`, `list_represented_summaries`, `get_represented_summaries`, `list_course_code_identities`, `summary` | `CourseSearchService` and `UnifiedCourseSearchService` (`search/service.py`, `search/unified.py`), `CourseLookupService` (`search/lookup.py`), `run_catalogue_command` (`search/lookup_commands.py`), `TeachingTextService` (`teaching_text/service.py`), the translation selection (`translation/service.py`), the inference operational read (`inference/operational.py`) |
 | `CurriculumGraphRead` | `get_courses`, `get_modules` | `PrerequisiteGraphCompiler` (`prerequisite/graph.py`), which requests exactly the identities its traversal discovers |
 | `CurriculumStructureRead` | `get_modules`, `get_course_summaries` | `StudyStructureService` (`study_structure/service.py`), which requests the modules and course cards one selected rule tree references |
 | `CurriculumDiscoveryRead` | `get_substitution_source_group_ids`, `get_prerequisite_candidate_group_ids` | the next-course command (`next_courses/commands.py`), which then compiles the candidates through the same graph compiler |
@@ -49,15 +49,17 @@ The remaining repository methods are used directly where a consumer needs one na
 
 | Caller | Call |
 |---|---|
-| `StudyStructureService._select_version` | strict call, then `no_current_version` or `ambiguous_version` when the set is empty or holds more than one version |
-| `ModuleLookupService.substring_search` | strict call, skipping a module with no candidate and failing when the query matches a module that holds more than one candidate version for the academic year |
+| `StudyStructureService._select_version` | strict call, then `no_current_version` or `ambiguous_version` when the set is empty or holds more than one version. An explicit selection outside that set raises `ValueError` and aborts the whole batch |
+| `run_catalogue_command` | strict call, omitting a module with no candidate and keeping every eligible candidate of a group with its exact identity, validity bounds and period memberships for the browser's local version selector |
 | `PrerequisiteGraphCompiler` | strict call first, then a disclosing `allow_nearest=True` call that records a `MODULE_VERSION_FALLBACK` ignored part |
 
 ## The shared course summary
 
 `CourseSummary` is the one official summary every course-returning read reuses, carrying `group_id`, both official names, the representative's official code, the credit range, the active flag, and the official URL. `course_summary(course)` maps it from a full `CatalogueCourse` and raises `ValueError` when the course has no representative. `course_summary_from_fields` is the one mapping used by `_load_course_summaries`, so the projected read and the full read produce the identical DTO. `RepresentedCourseSummary` pairs the summary with the representative's `sisu_course_unit_id` and `source_hash` for consumers that must match durable semantic scores to the current representative.
 
-`PrerequisiteGraphCompiler` calls `course_summary` on full courses, while `StudyStructureService` and the administrative reads use the scoped `get_course_summaries` projection.
+`PrerequisiteGraphCompiler` calls `course_summary` on full courses, while `StudyStructureService` and the administrative reads use the scoped `get_course_summaries` projection. The catalogue command maps only the narrowing fields from `list_represented_summaries` and `list_module_lookup`, so its report carries no official URL, source hash, rule tree or teaching text. Its module candidates copy the already-projected version identity, validity bounds and period memberships, because the browser must distinguish several eligible versions of one group.
+
+`src/course_explorer/search/projection.py` builds `LookupProjection` from one `list_represented_summaries(active_only=None)` read and one `list_module_lookup` read. The projection retains each official summary with the normalized code and name keys the lexical matchers compare, and it holds no title tokens. `CourseLookupService` consumes its rows for fuzzy, exact-code and substring matching, and `run_catalogue_command` maps the same rows and module identities into the narrowing report.
 
 ## Tests
 

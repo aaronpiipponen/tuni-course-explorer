@@ -9,7 +9,7 @@ export const wording = {
   brand: "TUNI Course Explorer",
   admin: "Admin",
   app: "App",
-  wiki: "Wiki",
+  docs: "Docs",
   github: "GitHub",
   signOut: "Sign out",
   auto: "auto",

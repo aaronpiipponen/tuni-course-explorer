@@ -9,6 +9,7 @@
     "dev": "vite --host 127.0.0.1",
     "typecheck": "tsc --noEmit",
     "build": "vite build",
+    "solver:build": "vite build --ssr src/solver/cli.ts --outDir .solver-cli --emptyOutDir",
     "test": "vitest run && node --test tools/wiki/build.test.mjs",
     "format:check": "prettier --check ."
   },

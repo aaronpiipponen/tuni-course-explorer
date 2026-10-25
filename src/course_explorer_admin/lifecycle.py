@@ -715,11 +715,6 @@ def _prepare(
     stage.require_database()
 
 
-def _current_revision(runner: mechanics.ProcessRunner) -> str:
-    """Record fresh ``git rev-parse HEAD`` provenance without a checkout-cleanliness barrier."""
-    return runner.run(("git", "rev-parse", "HEAD"), cwd=repository_root()).stdout.decode().strip()
-
-
 def require_retained_ingestion_manifest(path_text: str, expected_sha256: str | None) -> None:
     """Require the retained ingestion manifest to be a regular non-symlink file with exact bytes.
 
@@ -893,7 +888,7 @@ def _create_fresh_session(
 ) -> LifecycleStatus:
     options = stage.select_options()
     identity = stage.identity_sha256(options)
-    revision = _current_revision(runner)
+    revision = mechanics.current_revision(runner, repository_root())
     session = LifecycleSession(
         schema_version=1,
         session_id=session_id_factory(),

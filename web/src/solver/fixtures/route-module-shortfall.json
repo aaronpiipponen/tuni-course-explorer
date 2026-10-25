@@ -1,0 +1,3043 @@
+{
+  "active_module_shortfall_returns_maximum_for_all_rule_families.all_mandatory": {
+    "display": null,
+    "solver": {
+      "academic_year_start": 2026,
+      "active_only": true,
+      "bindings": [
+        {
+          "mark_node_ids": [],
+          "node_ids": ["s:root:d:87a023ef909d374278b9eabc"],
+          "owner_group_id": "root",
+          "piece_id": "p:16568de656b2115822f92016",
+          "support_id": "s:root:p:16568de656b2115822f92016",
+          "use_ids": ["u:b6e38f920d9bf9986394b442"]
+        },
+        {
+          "mark_node_ids": [],
+          "node_ids": ["course:inactive-b"],
+          "owner_group_id": "root",
+          "piece_id": "p:3907765dca790cfe6ad15032",
+          "support_id": "s:root:p:3907765dca790cfe6ad15032",
+          "use_ids": ["u:9b9b4f9af9fdda9092716510"]
+        },
+        {
+          "mark_node_ids": [],
+          "node_ids": ["course:active-a"],
+          "owner_group_id": "root",
+          "piece_id": "p:7fa1a3cd6277e556ab232b19",
+          "support_id": "s:root:p:7fa1a3cd6277e556ab232b19",
+          "use_ids": ["u:df4c084224cfa955b4ed4e8a"]
+        }
+      ],
+      "completed_node_keys": [],
+      "courses": [
+        {
+          "code": "ACTIVE-A",
+          "credits_max": null,
+          "credits_min": "3",
+          "group_id": "active-a",
+          "is_active": true,
+          "name_en": "Course active-a",
+          "name_fi": null,
+          "official_url": "https://example.invalid/active-a"
+        },
+        {
+          "code": "INACTIVE-B",
+          "credits_max": null,
+          "credits_min": "9",
+          "group_id": "inactive-b",
+          "is_active": false,
+          "name_en": "Course inactive-b",
+          "name_fi": null,
+          "official_url": "https://example.invalid/inactive-b"
+        },
+        {
+          "code": "ROOT",
+          "credits_max": null,
+          "credits_min": "5",
+          "group_id": "root",
+          "is_active": true,
+          "name_en": "Course root",
+          "name_fi": null,
+          "official_url": "https://example.invalid/root"
+        }
+      ],
+      "diagnostics": [],
+      "excluded_group_ids": [],
+      "excluded_node_keys": [],
+      "facts": [
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "inference": null,
+          "inferred_category": null,
+          "official_kind": "module_rule",
+          "origin": "official"
+        }
+      ],
+      "include_inferred": false,
+      "include_recommended": false,
+      "inferred_coverage": [],
+      "members": [
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_id": "m:4052e50f9747a81e044feb8d",
+          "source_node_id": "s:root:d:87a023ef909d374278b9eabc",
+          "target_node_id": "course:active-a"
+        },
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_id": "m:bae3367fbf4f0462180a711d",
+          "source_node_id": "course:root",
+          "target_node_id": "s:root:d:87a023ef909d374278b9eabc"
+        },
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_id": "m:d98f1de12c67e2d99e4bfb5d",
+          "source_node_id": "s:root:d:87a023ef909d374278b9eabc",
+          "target_node_id": "course:inactive-b"
+        }
+      ],
+      "modules": [],
+      "pieces": [
+        {
+          "children": [
+            "p:7fa1a3cd6277e556ab232b19",
+            "p:3907765dca790cfe6ad15032"
+          ],
+          "count_max": null,
+          "count_min": null,
+          "course_group_id": null,
+          "credits_max": null,
+          "credits_min": null,
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "and",
+          "manual_credits_min": null,
+          "module_group_id": null,
+          "module_rule": true,
+          "piece_id": "p:16568de656b2115822f92016",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": null,
+          "require_min": null,
+          "work_key": null
+        },
+        {
+          "children": [],
+          "count_max": null,
+          "count_min": null,
+          "course_group_id": "inactive-b",
+          "credits_max": null,
+          "credits_min": null,
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "course",
+          "manual_credits_min": null,
+          "module_group_id": null,
+          "module_rule": true,
+          "piece_id": "p:3907765dca790cfe6ad15032",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": null,
+          "require_min": null,
+          "work_key": null
+        },
+        {
+          "children": [],
+          "count_max": null,
+          "count_min": null,
+          "course_group_id": "active-a",
+          "credits_max": null,
+          "credits_min": null,
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "course",
+          "manual_credits_min": null,
+          "module_group_id": null,
+          "module_rule": true,
+          "piece_id": "p:7fa1a3cd6277e556ab232b19",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": null,
+          "require_min": null,
+          "work_key": null
+        }
+      ],
+      "projection_contexts": [
+        {
+          "children": [
+            {
+              "context_id": "c:66603cf907cffd412b486ee3",
+              "slot": 0
+            },
+            {
+              "context_id": "c:e26e0fe5fb2beb8ec4ffbbd3",
+              "slot": 1
+            }
+          ],
+          "context_id": "c:1682a00f3294ed81eb5c9688",
+          "member_ids": ["m:bae3367fbf4f0462180a711d"],
+          "owner_group_id": "root",
+          "piece_id": "p:16568de656b2115822f92016"
+        },
+        {
+          "children": [],
+          "context_id": "c:66603cf907cffd412b486ee3",
+          "member_ids": ["m:4052e50f9747a81e044feb8d"],
+          "owner_group_id": "root",
+          "piece_id": "p:7fa1a3cd6277e556ab232b19"
+        },
+        {
+          "children": [],
+          "context_id": "c:e26e0fe5fb2beb8ec4ffbbd3",
+          "member_ids": ["m:d98f1de12c67e2d99e4bfb5d"],
+          "owner_group_id": "root",
+          "piece_id": "p:3907765dca790cfe6ad15032"
+        }
+      ],
+      "projection_root_context_id": "c:1682a00f3294ed81eb5c9688",
+      "root_diagnostic_ids": [],
+      "root_group_id": "root",
+      "root_use_id": "u:b6e38f920d9bf9986394b442",
+      "uses": [
+        {
+          "children": [],
+          "diagnostic_ids": [],
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_group_ids": [],
+          "piece_id": "p:3907765dca790cfe6ad15032",
+          "use_id": "u:9b9b4f9af9fdda9092716510"
+        },
+        {
+          "children": [
+            "u:df4c084224cfa955b4ed4e8a",
+            "u:9b9b4f9af9fdda9092716510"
+          ],
+          "diagnostic_ids": [],
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_group_ids": [],
+          "piece_id": "p:16568de656b2115822f92016",
+          "use_id": "u:b6e38f920d9bf9986394b442"
+        },
+        {
+          "children": [],
+          "diagnostic_ids": [],
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_group_ids": [],
+          "piece_id": "p:7fa1a3cd6277e556ab232b19",
+          "use_id": "u:df4c084224cfa955b4ed4e8a"
+        }
+      ]
+    }
+  },
+  "active_module_shortfall_returns_maximum_for_all_rule_families.bare": {
+    "display": null,
+    "solver": {
+      "academic_year_start": 2026,
+      "active_only": true,
+      "bindings": [
+        {
+          "mark_node_ids": [],
+          "node_ids": ["course:inactive-unit"],
+          "owner_group_id": "root",
+          "piece_id": "p:afc209e29f70b7450d487210",
+          "support_id": "s:root:p:afc209e29f70b7450d487210",
+          "use_ids": ["u:7658365aed54170a85bdf96b"]
+        }
+      ],
+      "completed_node_keys": [],
+      "courses": [
+        {
+          "code": "INACTIVE-UNIT",
+          "credits_max": null,
+          "credits_min": "4",
+          "group_id": "inactive-unit",
+          "is_active": false,
+          "name_en": "Course inactive-unit",
+          "name_fi": null,
+          "official_url": "https://example.invalid/inactive-unit"
+        },
+        {
+          "code": "ROOT",
+          "credits_max": null,
+          "credits_min": "5",
+          "group_id": "root",
+          "is_active": true,
+          "name_en": "Course root",
+          "name_fi": null,
+          "official_url": "https://example.invalid/root"
+        }
+      ],
+      "diagnostics": [],
+      "excluded_group_ids": [],
+      "excluded_node_keys": [],
+      "facts": [
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "inference": null,
+          "inferred_category": null,
+          "official_kind": "module_rule",
+          "origin": "official"
+        }
+      ],
+      "include_inferred": false,
+      "include_recommended": false,
+      "inferred_coverage": [],
+      "members": [
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_id": "m:a1805956ba559cc5bfecc869",
+          "source_node_id": "course:root",
+          "target_node_id": "course:inactive-unit"
+        }
+      ],
+      "modules": [],
+      "pieces": [
+        {
+          "children": [],
+          "count_max": null,
+          "count_min": null,
+          "course_group_id": "inactive-unit",
+          "credits_max": null,
+          "credits_min": null,
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "course",
+          "manual_credits_min": null,
+          "module_group_id": null,
+          "module_rule": true,
+          "piece_id": "p:afc209e29f70b7450d487210",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": null,
+          "require_min": null,
+          "work_key": null
+        }
+      ],
+      "projection_contexts": [
+        {
+          "children": [],
+          "context_id": "c:310029f7e540dee73adca18a",
+          "member_ids": ["m:a1805956ba559cc5bfecc869"],
+          "owner_group_id": "root",
+          "piece_id": "p:afc209e29f70b7450d487210"
+        }
+      ],
+      "projection_root_context_id": "c:310029f7e540dee73adca18a",
+      "root_diagnostic_ids": [],
+      "root_group_id": "root",
+      "root_use_id": "u:7658365aed54170a85bdf96b",
+      "uses": [
+        {
+          "children": [],
+          "diagnostic_ids": [],
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_group_ids": [],
+          "piece_id": "p:afc209e29f70b7450d487210",
+          "use_id": "u:7658365aed54170a85bdf96b"
+        }
+      ]
+    }
+  },
+  "active_module_shortfall_returns_maximum_for_all_rule_families.cardinality": {
+    "display": null,
+    "solver": {
+      "academic_year_start": 2026,
+      "active_only": true,
+      "bindings": [
+        {
+          "mark_node_ids": [],
+          "node_ids": ["course:inactive-b"],
+          "owner_group_id": "root",
+          "piece_id": "p:3907765dca790cfe6ad15032",
+          "support_id": "s:root:p:3907765dca790cfe6ad15032",
+          "use_ids": ["u:9b9b4f9af9fdda9092716510"]
+        },
+        {
+          "mark_node_ids": ["s:root:d:dbe06187b3e0044a3cc25550"],
+          "node_ids": ["s:root:d:dbe06187b3e0044a3cc25550"],
+          "owner_group_id": "root",
+          "piece_id": "p:3e3d4ea1f72ccedda6b7c7b6",
+          "support_id": "s:root:p:3e3d4ea1f72ccedda6b7c7b6",
+          "use_ids": ["u:9719e0b83a05a9b8056802fc"]
+        },
+        {
+          "mark_node_ids": [],
+          "node_ids": ["course:active-a"],
+          "owner_group_id": "root",
+          "piece_id": "p:7fa1a3cd6277e556ab232b19",
+          "support_id": "s:root:p:7fa1a3cd6277e556ab232b19",
+          "use_ids": ["u:df4c084224cfa955b4ed4e8a"]
+        },
+        {
+          "mark_node_ids": [],
+          "node_ids": ["course:inactive-c"],
+          "owner_group_id": "root",
+          "piece_id": "p:f00aba906ae5740e166c6fa6",
+          "support_id": "s:root:p:f00aba906ae5740e166c6fa6",
+          "use_ids": ["u:350eaa7410cc7acb5d55cff4"]
+        }
+      ],
+      "completed_node_keys": [],
+      "courses": [
+        {
+          "code": "ACTIVE-A",
+          "credits_max": null,
+          "credits_min": "5",
+          "group_id": "active-a",
+          "is_active": true,
+          "name_en": "Course active-a",
+          "name_fi": null,
+          "official_url": "https://example.invalid/active-a"
+        },
+        {
+          "code": "INACTIVE-B",
+          "credits_max": null,
+          "credits_min": "2",
+          "group_id": "inactive-b",
+          "is_active": false,
+          "name_en": "Course inactive-b",
+          "name_fi": null,
+          "official_url": "https://example.invalid/inactive-b"
+        },
+        {
+          "code": "INACTIVE-C",
+          "credits_max": null,
+          "credits_min": "1",
+          "group_id": "inactive-c",
+          "is_active": false,
+          "name_en": "Course inactive-c",
+          "name_fi": null,
+          "official_url": "https://example.invalid/inactive-c"
+        },
+        {
+          "code": "ROOT",
+          "credits_max": null,
+          "credits_min": "5",
+          "group_id": "root",
+          "is_active": true,
+          "name_en": "Course root",
+          "name_fi": null,
+          "official_url": "https://example.invalid/root"
+        }
+      ],
+      "diagnostics": [],
+      "excluded_group_ids": [],
+      "excluded_node_keys": [],
+      "facts": [
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "inference": null,
+          "inferred_category": null,
+          "official_kind": "module_rule",
+          "origin": "official"
+        }
+      ],
+      "include_inferred": false,
+      "include_recommended": false,
+      "inferred_coverage": [],
+      "members": [
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_id": "m:16acf7557ff2a4f4d98a5e09",
+          "source_node_id": "s:root:d:dbe06187b3e0044a3cc25550",
+          "target_node_id": "course:active-a"
+        },
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_id": "m:1e4d747d1b0a09920f8c0e38",
+          "source_node_id": "s:root:d:dbe06187b3e0044a3cc25550",
+          "target_node_id": "course:inactive-c"
+        },
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_id": "m:2e21a414ae087b87d045ac28",
+          "source_node_id": "s:root:d:dbe06187b3e0044a3cc25550",
+          "target_node_id": "course:inactive-b"
+        },
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_id": "m:305f3bb85932783ac712cc3e",
+          "source_node_id": "course:root",
+          "target_node_id": "s:root:d:dbe06187b3e0044a3cc25550"
+        }
+      ],
+      "modules": [],
+      "pieces": [
+        {
+          "children": [],
+          "count_max": null,
+          "count_min": null,
+          "course_group_id": "inactive-b",
+          "credits_max": null,
+          "credits_min": null,
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "course",
+          "manual_credits_min": null,
+          "module_group_id": null,
+          "module_rule": true,
+          "piece_id": "p:3907765dca790cfe6ad15032",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": null,
+          "require_min": null,
+          "work_key": null
+        },
+        {
+          "children": [
+            "p:7fa1a3cd6277e556ab232b19",
+            "p:3907765dca790cfe6ad15032",
+            "p:f00aba906ae5740e166c6fa6"
+          ],
+          "count_max": null,
+          "count_min": null,
+          "course_group_id": null,
+          "credits_max": null,
+          "credits_min": null,
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "cardinality",
+          "manual_credits_min": null,
+          "module_group_id": null,
+          "module_rule": true,
+          "piece_id": "p:3e3d4ea1f72ccedda6b7c7b6",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": 3,
+          "require_min": 2,
+          "work_key": null
+        },
+        {
+          "children": [],
+          "count_max": null,
+          "count_min": null,
+          "course_group_id": "active-a",
+          "credits_max": null,
+          "credits_min": null,
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "course",
+          "manual_credits_min": null,
+          "module_group_id": null,
+          "module_rule": true,
+          "piece_id": "p:7fa1a3cd6277e556ab232b19",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": null,
+          "require_min": null,
+          "work_key": null
+        },
+        {
+          "children": [],
+          "count_max": null,
+          "count_min": null,
+          "course_group_id": "inactive-c",
+          "credits_max": null,
+          "credits_min": null,
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "course",
+          "manual_credits_min": null,
+          "module_group_id": null,
+          "module_rule": true,
+          "piece_id": "p:f00aba906ae5740e166c6fa6",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": null,
+          "require_min": null,
+          "work_key": null
+        }
+      ],
+      "projection_contexts": [
+        {
+          "children": [],
+          "context_id": "c:05b9ad9e9b95ad33e6bdc6a8",
+          "member_ids": ["m:16acf7557ff2a4f4d98a5e09"],
+          "owner_group_id": "root",
+          "piece_id": "p:7fa1a3cd6277e556ab232b19"
+        },
+        {
+          "children": [
+            {
+              "context_id": "c:05b9ad9e9b95ad33e6bdc6a8",
+              "slot": 0
+            },
+            {
+              "context_id": "c:a2cbdf82eb4fb0a4a3f43f79",
+              "slot": 1
+            },
+            {
+              "context_id": "c:916d4b959d62675196752b2f",
+              "slot": 2
+            }
+          ],
+          "context_id": "c:4dfbb8ff215355e7fc4092eb",
+          "member_ids": ["m:305f3bb85932783ac712cc3e"],
+          "owner_group_id": "root",
+          "piece_id": "p:3e3d4ea1f72ccedda6b7c7b6"
+        },
+        {
+          "children": [],
+          "context_id": "c:916d4b959d62675196752b2f",
+          "member_ids": ["m:1e4d747d1b0a09920f8c0e38"],
+          "owner_group_id": "root",
+          "piece_id": "p:f00aba906ae5740e166c6fa6"
+        },
+        {
+          "children": [],
+          "context_id": "c:a2cbdf82eb4fb0a4a3f43f79",
+          "member_ids": ["m:2e21a414ae087b87d045ac28"],
+          "owner_group_id": "root",
+          "piece_id": "p:3907765dca790cfe6ad15032"
+        }
+      ],
+      "projection_root_context_id": "c:4dfbb8ff215355e7fc4092eb",
+      "root_diagnostic_ids": [],
+      "root_group_id": "root",
+      "root_use_id": "u:9719e0b83a05a9b8056802fc",
+      "uses": [
+        {
+          "children": [],
+          "diagnostic_ids": [],
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_group_ids": [],
+          "piece_id": "p:f00aba906ae5740e166c6fa6",
+          "use_id": "u:350eaa7410cc7acb5d55cff4"
+        },
+        {
+          "children": [
+            "u:df4c084224cfa955b4ed4e8a",
+            "u:9b9b4f9af9fdda9092716510",
+            "u:350eaa7410cc7acb5d55cff4"
+          ],
+          "diagnostic_ids": [],
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_group_ids": [],
+          "piece_id": "p:3e3d4ea1f72ccedda6b7c7b6",
+          "use_id": "u:9719e0b83a05a9b8056802fc"
+        },
+        {
+          "children": [],
+          "diagnostic_ids": [],
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_group_ids": [],
+          "piece_id": "p:3907765dca790cfe6ad15032",
+          "use_id": "u:9b9b4f9af9fdda9092716510"
+        },
+        {
+          "children": [],
+          "diagnostic_ids": [],
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_group_ids": [],
+          "piece_id": "p:7fa1a3cd6277e556ab232b19",
+          "use_id": "u:df4c084224cfa955b4ed4e8a"
+        }
+      ]
+    }
+  },
+  "active_module_shortfall_returns_maximum_for_all_rule_families.course_count": {
+    "display": null,
+    "solver": {
+      "academic_year_start": 2026,
+      "active_only": true,
+      "bindings": [
+        {
+          "mark_node_ids": [],
+          "node_ids": ["s:root:d:2accf84e5502fdd071236d15"],
+          "owner_group_id": "root",
+          "piece_id": "p:3e9304745bba6b479d7eb59a",
+          "support_id": "s:root:p:3e9304745bba6b479d7eb59a",
+          "use_ids": ["u:0608893de1f58209d50269d3"]
+        },
+        {
+          "mark_node_ids": [],
+          "node_ids": ["course:active-a"],
+          "owner_group_id": "root",
+          "piece_id": "p:7fa1a3cd6277e556ab232b19",
+          "support_id": "s:root:p:7fa1a3cd6277e556ab232b19",
+          "use_ids": ["u:811047c742ebff4bf563fe0b"]
+        },
+        {
+          "mark_node_ids": [],
+          "node_ids": ["course:active-b"],
+          "owner_group_id": "root",
+          "piece_id": "p:b5278d2f22e67c4c7cc7b7e0",
+          "support_id": "s:root:p:b5278d2f22e67c4c7cc7b7e0",
+          "use_ids": ["u:f8e30fb356c4142628f306fe"]
+        },
+        {
+          "mark_node_ids": ["s:root:d:922b2aed0aa1761ec031d67f"],
+          "node_ids": ["s:root:d:922b2aed0aa1761ec031d67f"],
+          "owner_group_id": "root",
+          "piece_id": "p:bf5f88be14e0d8c00a36f548",
+          "support_id": "s:root:p:bf5f88be14e0d8c00a36f548",
+          "use_ids": ["u:c93ed7cece81a646c312f700"]
+        },
+        {
+          "mark_node_ids": [],
+          "node_ids": ["course:inactive-c"],
+          "owner_group_id": "root",
+          "piece_id": "p:f00aba906ae5740e166c6fa6",
+          "support_id": "s:root:p:f00aba906ae5740e166c6fa6",
+          "use_ids": ["u:9e60f88351db581ff922d222"]
+        }
+      ],
+      "completed_node_keys": [],
+      "courses": [
+        {
+          "code": "ACTIVE-A",
+          "credits_max": null,
+          "credits_min": "2",
+          "group_id": "active-a",
+          "is_active": true,
+          "name_en": "Course active-a",
+          "name_fi": null,
+          "official_url": "https://example.invalid/active-a"
+        },
+        {
+          "code": "ACTIVE-B",
+          "credits_max": null,
+          "credits_min": "3",
+          "group_id": "active-b",
+          "is_active": true,
+          "name_en": "Course active-b",
+          "name_fi": null,
+          "official_url": "https://example.invalid/active-b"
+        },
+        {
+          "code": "INACTIVE-C",
+          "credits_max": null,
+          "credits_min": "1",
+          "group_id": "inactive-c",
+          "is_active": false,
+          "name_en": "Course inactive-c",
+          "name_fi": null,
+          "official_url": "https://example.invalid/inactive-c"
+        },
+        {
+          "code": "ROOT",
+          "credits_max": null,
+          "credits_min": "5",
+          "group_id": "root",
+          "is_active": true,
+          "name_en": "Course root",
+          "name_fi": null,
+          "official_url": "https://example.invalid/root"
+        }
+      ],
+      "diagnostics": [],
+      "excluded_group_ids": [],
+      "excluded_node_keys": [],
+      "facts": [
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "inference": null,
+          "inferred_category": null,
+          "official_kind": "module_rule",
+          "origin": "official"
+        }
+      ],
+      "include_inferred": false,
+      "include_recommended": false,
+      "inferred_coverage": [],
+      "members": [
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_id": "m:01611f99bbfe6da6ccea2fb3",
+          "source_node_id": "s:root:d:2accf84e5502fdd071236d15",
+          "target_node_id": "course:active-b"
+        },
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_id": "m:26b442e4f2ea792e4cce30b8",
+          "source_node_id": "s:root:d:922b2aed0aa1761ec031d67f",
+          "target_node_id": "s:root:d:2accf84e5502fdd071236d15"
+        },
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_id": "m:2d8ee2468ee71488136d3f64",
+          "source_node_id": "s:root:d:2accf84e5502fdd071236d15",
+          "target_node_id": "course:inactive-c"
+        },
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_id": "m:bfd8fbd89277695ccdc9dbf9",
+          "source_node_id": "s:root:d:2accf84e5502fdd071236d15",
+          "target_node_id": "course:active-a"
+        },
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_id": "m:ef002cb59e87dbcddc7f869a",
+          "source_node_id": "course:root",
+          "target_node_id": "s:root:d:922b2aed0aa1761ec031d67f"
+        }
+      ],
+      "modules": [],
+      "pieces": [
+        {
+          "children": [
+            "p:7fa1a3cd6277e556ab232b19",
+            "p:b5278d2f22e67c4c7cc7b7e0",
+            "p:f00aba906ae5740e166c6fa6"
+          ],
+          "count_max": null,
+          "count_min": null,
+          "course_group_id": null,
+          "credits_max": null,
+          "credits_min": null,
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "and",
+          "manual_credits_min": null,
+          "module_group_id": null,
+          "module_rule": true,
+          "piece_id": "p:3e9304745bba6b479d7eb59a",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": null,
+          "require_min": null,
+          "work_key": null
+        },
+        {
+          "children": [],
+          "count_max": null,
+          "count_min": null,
+          "course_group_id": "active-a",
+          "credits_max": null,
+          "credits_min": null,
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "course",
+          "manual_credits_min": null,
+          "module_group_id": null,
+          "module_rule": true,
+          "piece_id": "p:7fa1a3cd6277e556ab232b19",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": null,
+          "require_min": null,
+          "work_key": null
+        },
+        {
+          "children": [],
+          "count_max": null,
+          "count_min": null,
+          "course_group_id": "active-b",
+          "credits_max": null,
+          "credits_min": null,
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "course",
+          "manual_credits_min": null,
+          "module_group_id": null,
+          "module_rule": true,
+          "piece_id": "p:b5278d2f22e67c4c7cc7b7e0",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": null,
+          "require_min": null,
+          "work_key": null
+        },
+        {
+          "children": ["p:3e9304745bba6b479d7eb59a"],
+          "count_max": null,
+          "count_min": 3,
+          "course_group_id": null,
+          "credits_max": null,
+          "credits_min": null,
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "course_count",
+          "manual_credits_min": null,
+          "module_group_id": null,
+          "module_rule": true,
+          "piece_id": "p:bf5f88be14e0d8c00a36f548",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": null,
+          "require_min": null,
+          "work_key": null
+        },
+        {
+          "children": [],
+          "count_max": null,
+          "count_min": null,
+          "course_group_id": "inactive-c",
+          "credits_max": null,
+          "credits_min": null,
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "course",
+          "manual_credits_min": null,
+          "module_group_id": null,
+          "module_rule": true,
+          "piece_id": "p:f00aba906ae5740e166c6fa6",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": null,
+          "require_min": null,
+          "work_key": null
+        }
+      ],
+      "projection_contexts": [
+        {
+          "children": [],
+          "context_id": "c:25527869f2b8b295c58e1f7f",
+          "member_ids": ["m:bfd8fbd89277695ccdc9dbf9"],
+          "owner_group_id": "root",
+          "piece_id": "p:7fa1a3cd6277e556ab232b19"
+        },
+        {
+          "children": [
+            {
+              "context_id": "c:25527869f2b8b295c58e1f7f",
+              "slot": 0
+            },
+            {
+              "context_id": "c:a64f78c74f687143624294a9",
+              "slot": 1
+            },
+            {
+              "context_id": "c:f4df347426c2782576e87e0b",
+              "slot": 2
+            }
+          ],
+          "context_id": "c:2e45f2444ee8e81cb65b5399",
+          "member_ids": ["m:26b442e4f2ea792e4cce30b8"],
+          "owner_group_id": "root",
+          "piece_id": "p:3e9304745bba6b479d7eb59a"
+        },
+        {
+          "children": [
+            {
+              "context_id": "c:2e45f2444ee8e81cb65b5399",
+              "slot": 0
+            }
+          ],
+          "context_id": "c:4fce0bcabc6fa9fafc76b53a",
+          "member_ids": ["m:ef002cb59e87dbcddc7f869a"],
+          "owner_group_id": "root",
+          "piece_id": "p:bf5f88be14e0d8c00a36f548"
+        },
+        {
+          "children": [],
+          "context_id": "c:a64f78c74f687143624294a9",
+          "member_ids": ["m:01611f99bbfe6da6ccea2fb3"],
+          "owner_group_id": "root",
+          "piece_id": "p:b5278d2f22e67c4c7cc7b7e0"
+        },
+        {
+          "children": [],
+          "context_id": "c:f4df347426c2782576e87e0b",
+          "member_ids": ["m:2d8ee2468ee71488136d3f64"],
+          "owner_group_id": "root",
+          "piece_id": "p:f00aba906ae5740e166c6fa6"
+        }
+      ],
+      "projection_root_context_id": "c:4fce0bcabc6fa9fafc76b53a",
+      "root_diagnostic_ids": [],
+      "root_group_id": "root",
+      "root_use_id": "u:c93ed7cece81a646c312f700",
+      "uses": [
+        {
+          "children": [
+            "u:811047c742ebff4bf563fe0b",
+            "u:f8e30fb356c4142628f306fe",
+            "u:9e60f88351db581ff922d222"
+          ],
+          "diagnostic_ids": [],
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_group_ids": [],
+          "piece_id": "p:3e9304745bba6b479d7eb59a",
+          "use_id": "u:0608893de1f58209d50269d3"
+        },
+        {
+          "children": [],
+          "diagnostic_ids": [],
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_group_ids": [],
+          "piece_id": "p:7fa1a3cd6277e556ab232b19",
+          "use_id": "u:811047c742ebff4bf563fe0b"
+        },
+        {
+          "children": [],
+          "diagnostic_ids": [],
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_group_ids": [],
+          "piece_id": "p:f00aba906ae5740e166c6fa6",
+          "use_id": "u:9e60f88351db581ff922d222"
+        },
+        {
+          "children": ["u:0608893de1f58209d50269d3"],
+          "diagnostic_ids": [],
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_group_ids": [],
+          "piece_id": "p:bf5f88be14e0d8c00a36f548",
+          "use_id": "u:c93ed7cece81a646c312f700"
+        },
+        {
+          "children": [],
+          "diagnostic_ids": [],
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_group_ids": [],
+          "piece_id": "p:b5278d2f22e67c4c7cc7b7e0",
+          "use_id": "u:f8e30fb356c4142628f306fe"
+        }
+      ]
+    }
+  },
+  "active_module_shortfall_returns_maximum_for_all_rule_families.credits": {
+    "display": null,
+    "solver": {
+      "academic_year_start": 2026,
+      "active_only": true,
+      "bindings": [
+        {
+          "mark_node_ids": [],
+          "node_ids": ["course:active-head"],
+          "owner_group_id": "active-head",
+          "piece_id": "p:4725604b4daffe2723f22fa2",
+          "support_id": "s:active-head:p:4725604b4daffe2723f22fa2",
+          "use_ids": ["u:3c7fec8c8e47ae4bad333524"]
+        },
+        {
+          "mark_node_ids": [],
+          "node_ids": ["course:deep-tail"],
+          "owner_group_id": "active-head",
+          "piece_id": "p:f558cb1ba4b908bffb415f8c",
+          "support_id": "s:active-head:p:f558cb1ba4b908bffb415f8c",
+          "use_ids": ["u:a46bfe832a1dbc8ec90ad392"]
+        },
+        {
+          "mark_node_ids": ["s:root:d:fc0b287cf6393c3d7cd4e64f"],
+          "node_ids": ["s:root:d:fc0b287cf6393c3d7cd4e64f"],
+          "owner_group_id": "root",
+          "piece_id": "p:2459e23b59f26fe5291c4f77",
+          "support_id": "s:root:p:2459e23b59f26fe5291c4f77",
+          "use_ids": ["u:97c157ca642afd60c0ac86fd"]
+        },
+        {
+          "mark_node_ids": [],
+          "node_ids": ["course:active-head"],
+          "owner_group_id": "root",
+          "piece_id": "p:4dd32b214be3c49b89e5d554",
+          "support_id": "s:root:p:4dd32b214be3c49b89e5d554",
+          "use_ids": ["u:f9c88b276e6645adf0ba7df7"]
+        },
+        {
+          "mark_node_ids": [],
+          "node_ids": ["course:inactive-big"],
+          "owner_group_id": "root",
+          "piece_id": "p:b102b1e11b57eb2e1b9352e0",
+          "support_id": "s:root:p:b102b1e11b57eb2e1b9352e0",
+          "use_ids": ["u:b6d218ab4a36544f3239fb81"]
+        },
+        {
+          "mark_node_ids": [],
+          "node_ids": ["s:root:d:69eb9a2f02df1678998edf0e"],
+          "owner_group_id": "root",
+          "piece_id": "p:cccdefcef8fc36ee851a0886",
+          "support_id": "s:root:p:cccdefcef8fc36ee851a0886",
+          "use_ids": ["u:7810a8044acc756ee0f2d278"]
+        }
+      ],
+      "completed_node_keys": [],
+      "courses": [
+        {
+          "code": "ACTIVE-HEAD",
+          "credits_max": null,
+          "credits_min": "4",
+          "group_id": "active-head",
+          "is_active": true,
+          "name_en": "Course active-head",
+          "name_fi": null,
+          "official_url": "https://example.invalid/active-head"
+        },
+        {
+          "code": "DEEP-TAIL",
+          "credits_max": null,
+          "credits_min": "100",
+          "group_id": "deep-tail",
+          "is_active": true,
+          "name_en": "Course deep-tail",
+          "name_fi": null,
+          "official_url": "https://example.invalid/deep-tail"
+        },
+        {
+          "code": "INACTIVE-BIG",
+          "credits_max": null,
+          "credits_min": "12",
+          "group_id": "inactive-big",
+          "is_active": false,
+          "name_en": "Course inactive-big",
+          "name_fi": null,
+          "official_url": "https://example.invalid/inactive-big"
+        },
+        {
+          "code": "ROOT",
+          "credits_max": null,
+          "credits_min": "5",
+          "group_id": "root",
+          "is_active": true,
+          "name_en": "Course root",
+          "name_fi": null,
+          "official_url": "https://example.invalid/root"
+        }
+      ],
+      "diagnostics": [],
+      "excluded_group_ids": [],
+      "excluded_node_keys": [],
+      "facts": [
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "inference": null,
+          "inferred_category": null,
+          "official_kind": "module_rule",
+          "origin": "official"
+        },
+        {
+          "fact_id": "f:701dc8a8bc8482b7f38d433f",
+          "inference": null,
+          "inferred_category": null,
+          "official_kind": "compulsory",
+          "origin": "official"
+        },
+        {
+          "fact_id": "f:b6af7880aa24246df024e0d7",
+          "inference": null,
+          "inferred_category": null,
+          "official_kind": null,
+          "origin": "composed"
+        }
+      ],
+      "include_inferred": false,
+      "include_recommended": false,
+      "inferred_coverage": [],
+      "members": [
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_id": "m:40d24fcf56d34a5e8f5a4afe",
+          "source_node_id": "s:root:d:fc0b287cf6393c3d7cd4e64f",
+          "target_node_id": "s:root:d:69eb9a2f02df1678998edf0e"
+        },
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_id": "m:a5b91f6777de8dbfa12fc565",
+          "source_node_id": "course:active-head",
+          "target_node_id": "course:deep-tail"
+        },
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_id": "m:a756ab74a6093f5ea56e6323",
+          "source_node_id": "course:root",
+          "target_node_id": "s:root:d:fc0b287cf6393c3d7cd4e64f"
+        },
+        {
+          "fact_id": "f:701dc8a8bc8482b7f38d433f",
+          "member_id": "m:cbd17505865390e39ce611cb",
+          "source_node_id": "s:root:d:69eb9a2f02df1678998edf0e",
+          "target_node_id": "course:active-head"
+        },
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_id": "m:df95e1bd4a7eb9c8bb8af97f",
+          "source_node_id": "s:root:d:69eb9a2f02df1678998edf0e",
+          "target_node_id": "course:inactive-big"
+        }
+      ],
+      "modules": [],
+      "pieces": [
+        {
+          "children": ["p:cccdefcef8fc36ee851a0886"],
+          "count_max": null,
+          "count_min": null,
+          "course_group_id": null,
+          "credits_max": null,
+          "credits_min": "10",
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "credits",
+          "manual_credits_min": null,
+          "module_group_id": null,
+          "module_rule": true,
+          "piece_id": "p:2459e23b59f26fe5291c4f77",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": null,
+          "require_min": null,
+          "work_key": null
+        },
+        {
+          "children": [],
+          "count_max": null,
+          "count_min": null,
+          "course_group_id": "active-head",
+          "credits_max": null,
+          "credits_min": null,
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "course",
+          "manual_credits_min": null,
+          "module_group_id": null,
+          "module_rule": false,
+          "piece_id": "p:4725604b4daffe2723f22fa2",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": null,
+          "require_min": null,
+          "work_key": null
+        },
+        {
+          "children": [
+            "p:4725604b4daffe2723f22fa2",
+            "p:f558cb1ba4b908bffb415f8c"
+          ],
+          "count_max": null,
+          "count_min": null,
+          "course_group_id": null,
+          "credits_max": null,
+          "credits_min": null,
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "expanded_course",
+          "manual_credits_min": null,
+          "module_group_id": null,
+          "module_rule": false,
+          "piece_id": "p:4dd32b214be3c49b89e5d554",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": null,
+          "require_min": null,
+          "work_key": null
+        },
+        {
+          "children": [],
+          "count_max": null,
+          "count_min": null,
+          "course_group_id": "inactive-big",
+          "credits_max": null,
+          "credits_min": null,
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "course",
+          "manual_credits_min": null,
+          "module_group_id": null,
+          "module_rule": true,
+          "piece_id": "p:b102b1e11b57eb2e1b9352e0",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": null,
+          "require_min": null,
+          "work_key": null
+        },
+        {
+          "children": [
+            "p:4dd32b214be3c49b89e5d554",
+            "p:b102b1e11b57eb2e1b9352e0"
+          ],
+          "count_max": null,
+          "count_min": null,
+          "course_group_id": null,
+          "credits_max": null,
+          "credits_min": null,
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "or",
+          "manual_credits_min": null,
+          "module_group_id": null,
+          "module_rule": false,
+          "piece_id": "p:cccdefcef8fc36ee851a0886",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": null,
+          "require_min": null,
+          "work_key": null
+        },
+        {
+          "children": [],
+          "count_max": null,
+          "count_min": null,
+          "course_group_id": "deep-tail",
+          "credits_max": null,
+          "credits_min": null,
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "course",
+          "manual_credits_min": null,
+          "module_group_id": null,
+          "module_rule": true,
+          "piece_id": "p:f558cb1ba4b908bffb415f8c",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": null,
+          "require_min": null,
+          "work_key": null
+        }
+      ],
+      "projection_contexts": [
+        {
+          "children": [],
+          "context_id": "c:0a12616908c2e2d856d886ed",
+          "member_ids": ["m:df95e1bd4a7eb9c8bb8af97f"],
+          "owner_group_id": "root",
+          "piece_id": "p:b102b1e11b57eb2e1b9352e0"
+        },
+        {
+          "children": [
+            {
+              "context_id": "c:97bcfbdc2c2a92e71ef1c263",
+              "slot": 0
+            },
+            {
+              "context_id": "c:0a12616908c2e2d856d886ed",
+              "slot": 1
+            }
+          ],
+          "context_id": "c:1af8ce9d5ad1d72072c08ba6",
+          "member_ids": ["m:40d24fcf56d34a5e8f5a4afe"],
+          "owner_group_id": "root",
+          "piece_id": "p:cccdefcef8fc36ee851a0886"
+        },
+        {
+          "children": [
+            {
+              "context_id": "c:1af8ce9d5ad1d72072c08ba6",
+              "slot": 0
+            }
+          ],
+          "context_id": "c:5a1989616fe80ada3bd5c9f2",
+          "member_ids": ["m:a756ab74a6093f5ea56e6323"],
+          "owner_group_id": "root",
+          "piece_id": "p:2459e23b59f26fe5291c4f77"
+        },
+        {
+          "children": [],
+          "context_id": "c:5e7b148111938ecfd1c7914f",
+          "member_ids": ["m:cbd17505865390e39ce611cb"],
+          "owner_group_id": "active-head",
+          "piece_id": "p:4725604b4daffe2723f22fa2"
+        },
+        {
+          "children": [],
+          "context_id": "c:5fc718236e6a462d8f7d7e67",
+          "member_ids": ["m:a5b91f6777de8dbfa12fc565"],
+          "owner_group_id": "active-head",
+          "piece_id": "p:f558cb1ba4b908bffb415f8c"
+        },
+        {
+          "children": [
+            {
+              "context_id": "c:5e7b148111938ecfd1c7914f",
+              "slot": 0
+            },
+            {
+              "context_id": "c:5fc718236e6a462d8f7d7e67",
+              "slot": 1
+            }
+          ],
+          "context_id": "c:97bcfbdc2c2a92e71ef1c263",
+          "member_ids": [],
+          "owner_group_id": "root",
+          "piece_id": "p:4dd32b214be3c49b89e5d554"
+        }
+      ],
+      "projection_root_context_id": "c:5a1989616fe80ada3bd5c9f2",
+      "root_diagnostic_ids": [],
+      "root_group_id": "root",
+      "root_use_id": "u:97c157ca642afd60c0ac86fd",
+      "uses": [
+        {
+          "children": [],
+          "diagnostic_ids": [],
+          "fact_id": "f:701dc8a8bc8482b7f38d433f",
+          "member_group_ids": [],
+          "piece_id": "p:4725604b4daffe2723f22fa2",
+          "use_id": "u:3c7fec8c8e47ae4bad333524"
+        },
+        {
+          "children": [
+            "u:f9c88b276e6645adf0ba7df7",
+            "u:b6d218ab4a36544f3239fb81"
+          ],
+          "diagnostic_ids": [],
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_group_ids": [],
+          "piece_id": "p:cccdefcef8fc36ee851a0886",
+          "use_id": "u:7810a8044acc756ee0f2d278"
+        },
+        {
+          "children": ["u:7810a8044acc756ee0f2d278"],
+          "diagnostic_ids": [],
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_group_ids": [],
+          "piece_id": "p:2459e23b59f26fe5291c4f77",
+          "use_id": "u:97c157ca642afd60c0ac86fd"
+        },
+        {
+          "children": [],
+          "diagnostic_ids": [],
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_group_ids": [],
+          "piece_id": "p:f558cb1ba4b908bffb415f8c",
+          "use_id": "u:a46bfe832a1dbc8ec90ad392"
+        },
+        {
+          "children": [],
+          "diagnostic_ids": [],
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_group_ids": [],
+          "piece_id": "p:b102b1e11b57eb2e1b9352e0",
+          "use_id": "u:b6d218ab4a36544f3239fb81"
+        },
+        {
+          "children": [
+            "u:3c7fec8c8e47ae4bad333524",
+            "u:a46bfe832a1dbc8ec90ad392"
+          ],
+          "diagnostic_ids": [],
+          "fact_id": "f:b6af7880aa24246df024e0d7",
+          "member_group_ids": [],
+          "piece_id": "p:4dd32b214be3c49b89e5d554",
+          "use_id": "u:f9c88b276e6645adf0ba7df7"
+        }
+      ]
+    }
+  },
+  "active_module_shortfall_returns_maximum_for_all_rule_families.mixed": {
+    "display": null,
+    "solver": {
+      "academic_year_start": 2026,
+      "active_only": true,
+      "bindings": [
+        {
+          "mark_node_ids": [],
+          "node_ids": ["course:inactive-sibling"],
+          "owner_group_id": "root",
+          "piece_id": "p:532c0228fd4dca34b8108cf0",
+          "support_id": "s:root:p:532c0228fd4dca34b8108cf0",
+          "use_ids": ["u:1e7d35a1ec239788eecefb2f"]
+        },
+        {
+          "mark_node_ids": [],
+          "node_ids": ["course:active-nested"],
+          "owner_group_id": "root",
+          "piece_id": "p:7b4e89abef4944a5d6ae4ad6",
+          "support_id": "s:root:p:7b4e89abef4944a5d6ae4ad6",
+          "use_ids": ["u:190fff0b762527e992727c31"]
+        },
+        {
+          "mark_node_ids": ["s:root:d:73ecbf57f3e5438658f192c3"],
+          "node_ids": ["s:root:d:73ecbf57f3e5438658f192c3"],
+          "owner_group_id": "root",
+          "piece_id": "p:a49e229032f11a5dd81b8a2b",
+          "support_id": "s:root:p:a49e229032f11a5dd81b8a2b",
+          "use_ids": ["u:a780643922452296d40574f0"]
+        },
+        {
+          "mark_node_ids": [],
+          "node_ids": ["s:root:d:1884c2341c4e7dc42482621b"],
+          "owner_group_id": "root",
+          "piece_id": "p:df234e565ce22713ae17cec4",
+          "support_id": "s:root:p:df234e565ce22713ae17cec4",
+          "use_ids": ["u:33ccb184d6d3a15e8d567f68"]
+        },
+        {
+          "mark_node_ids": [],
+          "node_ids": ["course:inactive-nested"],
+          "owner_group_id": "root",
+          "piece_id": "p:fd327c4cca7e04fb6a293399",
+          "support_id": "s:root:p:fd327c4cca7e04fb6a293399",
+          "use_ids": ["u:ebe795b9c46fc913af2168e2"]
+        }
+      ],
+      "completed_node_keys": [],
+      "courses": [
+        {
+          "code": "ACTIVE-NESTED",
+          "credits_max": null,
+          "credits_min": "4",
+          "group_id": "active-nested",
+          "is_active": true,
+          "name_en": "Course active-nested",
+          "name_fi": null,
+          "official_url": "https://example.invalid/active-nested"
+        },
+        {
+          "code": "INACTIVE-NESTED",
+          "credits_max": null,
+          "credits_min": "6",
+          "group_id": "inactive-nested",
+          "is_active": false,
+          "name_en": "Course inactive-nested",
+          "name_fi": null,
+          "official_url": "https://example.invalid/inactive-nested"
+        },
+        {
+          "code": "INACTIVE-SIBLING",
+          "credits_max": null,
+          "credits_min": "7",
+          "group_id": "inactive-sibling",
+          "is_active": false,
+          "name_en": "Course inactive-sibling",
+          "name_fi": null,
+          "official_url": "https://example.invalid/inactive-sibling"
+        },
+        {
+          "code": "ROOT",
+          "credits_max": null,
+          "credits_min": "5",
+          "group_id": "root",
+          "is_active": true,
+          "name_en": "Course root",
+          "name_fi": null,
+          "official_url": "https://example.invalid/root"
+        }
+      ],
+      "diagnostics": [],
+      "excluded_group_ids": [],
+      "excluded_node_keys": [],
+      "facts": [
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "inference": null,
+          "inferred_category": null,
+          "official_kind": "module_rule",
+          "origin": "official"
+        }
+      ],
+      "include_inferred": false,
+      "include_recommended": false,
+      "inferred_coverage": [],
+      "members": [
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_id": "m:19de9c97da6ee7620bc01b00",
+          "source_node_id": "s:root:d:73ecbf57f3e5438658f192c3",
+          "target_node_id": "course:inactive-nested"
+        },
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_id": "m:397f1c69a57b2a4dff6489aa",
+          "source_node_id": "s:root:d:1884c2341c4e7dc42482621b",
+          "target_node_id": "course:inactive-sibling"
+        },
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_id": "m:6392735037cb609cbaa611d3",
+          "source_node_id": "s:root:d:73ecbf57f3e5438658f192c3",
+          "target_node_id": "course:active-nested"
+        },
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_id": "m:6af1f5c0714a0695bbe312fa",
+          "source_node_id": "course:root",
+          "target_node_id": "s:root:d:1884c2341c4e7dc42482621b"
+        },
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_id": "m:feea50af1629a6ae1f218510",
+          "source_node_id": "s:root:d:1884c2341c4e7dc42482621b",
+          "target_node_id": "s:root:d:73ecbf57f3e5438658f192c3"
+        }
+      ],
+      "modules": [],
+      "pieces": [
+        {
+          "children": [],
+          "count_max": null,
+          "count_min": null,
+          "course_group_id": "inactive-sibling",
+          "credits_max": null,
+          "credits_min": null,
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "course",
+          "manual_credits_min": null,
+          "module_group_id": null,
+          "module_rule": true,
+          "piece_id": "p:532c0228fd4dca34b8108cf0",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": null,
+          "require_min": null,
+          "work_key": null
+        },
+        {
+          "children": [],
+          "count_max": null,
+          "count_min": null,
+          "course_group_id": "active-nested",
+          "credits_max": null,
+          "credits_min": null,
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "course",
+          "manual_credits_min": null,
+          "module_group_id": null,
+          "module_rule": true,
+          "piece_id": "p:7b4e89abef4944a5d6ae4ad6",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": null,
+          "require_min": null,
+          "work_key": null
+        },
+        {
+          "children": [
+            "p:7b4e89abef4944a5d6ae4ad6",
+            "p:fd327c4cca7e04fb6a293399"
+          ],
+          "count_max": null,
+          "count_min": null,
+          "course_group_id": null,
+          "credits_max": null,
+          "credits_min": null,
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "cardinality",
+          "manual_credits_min": null,
+          "module_group_id": null,
+          "module_rule": true,
+          "piece_id": "p:a49e229032f11a5dd81b8a2b",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": 2,
+          "require_min": 2,
+          "work_key": null
+        },
+        {
+          "children": [
+            "p:a49e229032f11a5dd81b8a2b",
+            "p:532c0228fd4dca34b8108cf0"
+          ],
+          "count_max": null,
+          "count_min": null,
+          "course_group_id": null,
+          "credits_max": null,
+          "credits_min": null,
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "and",
+          "manual_credits_min": null,
+          "module_group_id": null,
+          "module_rule": true,
+          "piece_id": "p:df234e565ce22713ae17cec4",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": null,
+          "require_min": null,
+          "work_key": null
+        },
+        {
+          "children": [],
+          "count_max": null,
+          "count_min": null,
+          "course_group_id": "inactive-nested",
+          "credits_max": null,
+          "credits_min": null,
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "course",
+          "manual_credits_min": null,
+          "module_group_id": null,
+          "module_rule": true,
+          "piece_id": "p:fd327c4cca7e04fb6a293399",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": null,
+          "require_min": null,
+          "work_key": null
+        }
+      ],
+      "projection_contexts": [
+        {
+          "children": [],
+          "context_id": "c:09a78f95d9dd036b8b1fa28d",
+          "member_ids": ["m:6392735037cb609cbaa611d3"],
+          "owner_group_id": "root",
+          "piece_id": "p:7b4e89abef4944a5d6ae4ad6"
+        },
+        {
+          "children": [
+            {
+              "context_id": "c:ede80a92b00a44f33ad79ec8",
+              "slot": 0
+            },
+            {
+              "context_id": "c:d474413624e5c48b44a62c3a",
+              "slot": 1
+            }
+          ],
+          "context_id": "c:4f731b03bbab039f46eb649f",
+          "member_ids": ["m:6af1f5c0714a0695bbe312fa"],
+          "owner_group_id": "root",
+          "piece_id": "p:df234e565ce22713ae17cec4"
+        },
+        {
+          "children": [],
+          "context_id": "c:d474413624e5c48b44a62c3a",
+          "member_ids": ["m:397f1c69a57b2a4dff6489aa"],
+          "owner_group_id": "root",
+          "piece_id": "p:532c0228fd4dca34b8108cf0"
+        },
+        {
+          "children": [
+            {
+              "context_id": "c:09a78f95d9dd036b8b1fa28d",
+              "slot": 0
+            },
+            {
+              "context_id": "c:ee65e979f6441f2e933f1496",
+              "slot": 1
+            }
+          ],
+          "context_id": "c:ede80a92b00a44f33ad79ec8",
+          "member_ids": ["m:feea50af1629a6ae1f218510"],
+          "owner_group_id": "root",
+          "piece_id": "p:a49e229032f11a5dd81b8a2b"
+        },
+        {
+          "children": [],
+          "context_id": "c:ee65e979f6441f2e933f1496",
+          "member_ids": ["m:19de9c97da6ee7620bc01b00"],
+          "owner_group_id": "root",
+          "piece_id": "p:fd327c4cca7e04fb6a293399"
+        }
+      ],
+      "projection_root_context_id": "c:4f731b03bbab039f46eb649f",
+      "root_diagnostic_ids": [],
+      "root_group_id": "root",
+      "root_use_id": "u:33ccb184d6d3a15e8d567f68",
+      "uses": [
+        {
+          "children": [],
+          "diagnostic_ids": [],
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_group_ids": [],
+          "piece_id": "p:7b4e89abef4944a5d6ae4ad6",
+          "use_id": "u:190fff0b762527e992727c31"
+        },
+        {
+          "children": [],
+          "diagnostic_ids": [],
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_group_ids": [],
+          "piece_id": "p:532c0228fd4dca34b8108cf0",
+          "use_id": "u:1e7d35a1ec239788eecefb2f"
+        },
+        {
+          "children": [
+            "u:a780643922452296d40574f0",
+            "u:1e7d35a1ec239788eecefb2f"
+          ],
+          "diagnostic_ids": [],
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_group_ids": [],
+          "piece_id": "p:df234e565ce22713ae17cec4",
+          "use_id": "u:33ccb184d6d3a15e8d567f68"
+        },
+        {
+          "children": [
+            "u:190fff0b762527e992727c31",
+            "u:ebe795b9c46fc913af2168e2"
+          ],
+          "diagnostic_ids": [],
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_group_ids": [],
+          "piece_id": "p:a49e229032f11a5dd81b8a2b",
+          "use_id": "u:a780643922452296d40574f0"
+        },
+        {
+          "children": [],
+          "diagnostic_ids": [],
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_group_ids": [],
+          "piece_id": "p:fd327c4cca7e04fb6a293399",
+          "use_id": "u:ebe795b9c46fc913af2168e2"
+        }
+      ]
+    }
+  },
+  "active_module_shortfall_returns_maximum_for_all_rule_families.mixed_credit": {
+    "display": null,
+    "solver": {
+      "academic_year_start": 2026,
+      "active_only": true,
+      "bindings": [
+        {
+          "mark_node_ids": [],
+          "node_ids": ["course:credit-fit-inactive"],
+          "owner_group_id": "root",
+          "piece_id": "p:7f2c227ac978d8737a0b51ff",
+          "support_id": "s:root:p:7f2c227ac978d8737a0b51ff",
+          "use_ids": ["u:4c049d5b61f8c53537bae95c"]
+        },
+        {
+          "mark_node_ids": ["s:root:d:1226aa800141c82be06fa00f"],
+          "node_ids": ["s:root:d:1226aa800141c82be06fa00f"],
+          "owner_group_id": "root",
+          "piece_id": "p:8763521e20937fdc2c92ed0b",
+          "support_id": "s:root:p:8763521e20937fdc2c92ed0b",
+          "use_ids": ["u:4d7bf9d692fe961558b89682"]
+        },
+        {
+          "mark_node_ids": ["s:root:d:50c2a82e627ba57fb81db32d"],
+          "node_ids": ["s:root:d:50c2a82e627ba57fb81db32d"],
+          "owner_group_id": "root",
+          "piece_id": "p:a9757915a89168bb049a9369",
+          "support_id": "s:root:p:a9757915a89168bb049a9369",
+          "use_ids": ["u:24362caf56bae5d6944e7c07"]
+        },
+        {
+          "mark_node_ids": [],
+          "node_ids": ["course:credit-high"],
+          "owner_group_id": "root",
+          "piece_id": "p:d7dda706847f7147789e2f5e",
+          "support_id": "s:root:p:d7dda706847f7147789e2f5e",
+          "use_ids": ["u:53ad06b572aeb385d35e231e"]
+        },
+        {
+          "mark_node_ids": [],
+          "node_ids": ["course:credit-low"],
+          "owner_group_id": "root",
+          "piece_id": "p:f102058a02a3b6410b56fb46",
+          "support_id": "s:root:p:f102058a02a3b6410b56fb46",
+          "use_ids": ["u:13c5da9c8729a170c11922c9"]
+        }
+      ],
+      "completed_node_keys": [],
+      "courses": [
+        {
+          "code": "CREDIT-FIT-INACTIVE",
+          "credits_max": null,
+          "credits_min": "6",
+          "group_id": "credit-fit-inactive",
+          "is_active": false,
+          "name_en": "Course credit-fit-inactive",
+          "name_fi": null,
+          "official_url": "https://example.invalid/credit-fit-inactive"
+        },
+        {
+          "code": "CREDIT-HIGH",
+          "credits_max": null,
+          "credits_min": "12",
+          "group_id": "credit-high",
+          "is_active": true,
+          "name_en": "Course credit-high",
+          "name_fi": null,
+          "official_url": "https://example.invalid/credit-high"
+        },
+        {
+          "code": "CREDIT-LOW",
+          "credits_max": null,
+          "credits_min": "3",
+          "group_id": "credit-low",
+          "is_active": true,
+          "name_en": "Course credit-low",
+          "name_fi": null,
+          "official_url": "https://example.invalid/credit-low"
+        },
+        {
+          "code": "ROOT",
+          "credits_max": null,
+          "credits_min": "5",
+          "group_id": "root",
+          "is_active": true,
+          "name_en": "Course root",
+          "name_fi": null,
+          "official_url": "https://example.invalid/root"
+        }
+      ],
+      "diagnostics": [],
+      "excluded_group_ids": [],
+      "excluded_node_keys": [],
+      "facts": [
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "inference": null,
+          "inferred_category": null,
+          "official_kind": "module_rule",
+          "origin": "official"
+        }
+      ],
+      "include_inferred": false,
+      "include_recommended": false,
+      "inferred_coverage": [],
+      "members": [
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_id": "m:2088cc336c6c83b36a680113",
+          "source_node_id": "course:root",
+          "target_node_id": "s:root:d:50c2a82e627ba57fb81db32d"
+        },
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_id": "m:2c1c4fdc178706df5d7ebfce",
+          "source_node_id": "s:root:d:1226aa800141c82be06fa00f",
+          "target_node_id": "course:credit-high"
+        },
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_id": "m:6aa0054c32fe50f63f8ba82c",
+          "source_node_id": "s:root:d:1226aa800141c82be06fa00f",
+          "target_node_id": "course:credit-fit-inactive"
+        },
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_id": "m:7ce826893d88c30b5a0d1e83",
+          "source_node_id": "s:root:d:1226aa800141c82be06fa00f",
+          "target_node_id": "course:credit-low"
+        },
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_id": "m:e7623dddeab0447dbffb5de2",
+          "source_node_id": "s:root:d:50c2a82e627ba57fb81db32d",
+          "target_node_id": "s:root:d:1226aa800141c82be06fa00f"
+        }
+      ],
+      "modules": [],
+      "pieces": [
+        {
+          "children": [],
+          "count_max": null,
+          "count_min": null,
+          "course_group_id": "credit-fit-inactive",
+          "credits_max": null,
+          "credits_min": null,
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "course",
+          "manual_credits_min": null,
+          "module_group_id": null,
+          "module_rule": true,
+          "piece_id": "p:7f2c227ac978d8737a0b51ff",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": null,
+          "require_min": null,
+          "work_key": null
+        },
+        {
+          "children": [
+            "p:f102058a02a3b6410b56fb46",
+            "p:d7dda706847f7147789e2f5e",
+            "p:7f2c227ac978d8737a0b51ff"
+          ],
+          "count_max": null,
+          "count_min": null,
+          "course_group_id": null,
+          "credits_max": null,
+          "credits_min": null,
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "cardinality",
+          "manual_credits_min": null,
+          "module_group_id": null,
+          "module_rule": true,
+          "piece_id": "p:8763521e20937fdc2c92ed0b",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": 1,
+          "require_min": 1,
+          "work_key": null
+        },
+        {
+          "children": ["p:8763521e20937fdc2c92ed0b"],
+          "count_max": null,
+          "count_min": null,
+          "course_group_id": null,
+          "credits_max": "10",
+          "credits_min": "5",
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "credits",
+          "manual_credits_min": null,
+          "module_group_id": null,
+          "module_rule": true,
+          "piece_id": "p:a9757915a89168bb049a9369",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": null,
+          "require_min": null,
+          "work_key": null
+        },
+        {
+          "children": [],
+          "count_max": null,
+          "count_min": null,
+          "course_group_id": "credit-high",
+          "credits_max": null,
+          "credits_min": null,
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "course",
+          "manual_credits_min": null,
+          "module_group_id": null,
+          "module_rule": true,
+          "piece_id": "p:d7dda706847f7147789e2f5e",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": null,
+          "require_min": null,
+          "work_key": null
+        },
+        {
+          "children": [],
+          "count_max": null,
+          "count_min": null,
+          "course_group_id": "credit-low",
+          "credits_max": null,
+          "credits_min": null,
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "course",
+          "manual_credits_min": null,
+          "module_group_id": null,
+          "module_rule": true,
+          "piece_id": "p:f102058a02a3b6410b56fb46",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": null,
+          "require_min": null,
+          "work_key": null
+        }
+      ],
+      "projection_contexts": [
+        {
+          "children": [],
+          "context_id": "c:3408fd775b802b7d895c0152",
+          "member_ids": ["m:6aa0054c32fe50f63f8ba82c"],
+          "owner_group_id": "root",
+          "piece_id": "p:7f2c227ac978d8737a0b51ff"
+        },
+        {
+          "children": [],
+          "context_id": "c:4c49351e72b441e752c0899b",
+          "member_ids": ["m:2c1c4fdc178706df5d7ebfce"],
+          "owner_group_id": "root",
+          "piece_id": "p:d7dda706847f7147789e2f5e"
+        },
+        {
+          "children": [
+            {
+              "context_id": "c:9ccb247083328f50a2af9c7c",
+              "slot": 0
+            }
+          ],
+          "context_id": "c:9ad3a197dbeb624d6c290198",
+          "member_ids": ["m:2088cc336c6c83b36a680113"],
+          "owner_group_id": "root",
+          "piece_id": "p:a9757915a89168bb049a9369"
+        },
+        {
+          "children": [
+            {
+              "context_id": "c:e0156019d773d94b43704107",
+              "slot": 0
+            },
+            {
+              "context_id": "c:4c49351e72b441e752c0899b",
+              "slot": 1
+            },
+            {
+              "context_id": "c:3408fd775b802b7d895c0152",
+              "slot": 2
+            }
+          ],
+          "context_id": "c:9ccb247083328f50a2af9c7c",
+          "member_ids": ["m:e7623dddeab0447dbffb5de2"],
+          "owner_group_id": "root",
+          "piece_id": "p:8763521e20937fdc2c92ed0b"
+        },
+        {
+          "children": [],
+          "context_id": "c:e0156019d773d94b43704107",
+          "member_ids": ["m:7ce826893d88c30b5a0d1e83"],
+          "owner_group_id": "root",
+          "piece_id": "p:f102058a02a3b6410b56fb46"
+        }
+      ],
+      "projection_root_context_id": "c:9ad3a197dbeb624d6c290198",
+      "root_diagnostic_ids": [],
+      "root_group_id": "root",
+      "root_use_id": "u:24362caf56bae5d6944e7c07",
+      "uses": [
+        {
+          "children": [],
+          "diagnostic_ids": [],
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_group_ids": [],
+          "piece_id": "p:f102058a02a3b6410b56fb46",
+          "use_id": "u:13c5da9c8729a170c11922c9"
+        },
+        {
+          "children": ["u:4d7bf9d692fe961558b89682"],
+          "diagnostic_ids": [],
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_group_ids": [],
+          "piece_id": "p:a9757915a89168bb049a9369",
+          "use_id": "u:24362caf56bae5d6944e7c07"
+        },
+        {
+          "children": [],
+          "diagnostic_ids": [],
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_group_ids": [],
+          "piece_id": "p:7f2c227ac978d8737a0b51ff",
+          "use_id": "u:4c049d5b61f8c53537bae95c"
+        },
+        {
+          "children": [
+            "u:13c5da9c8729a170c11922c9",
+            "u:53ad06b572aeb385d35e231e",
+            "u:4c049d5b61f8c53537bae95c"
+          ],
+          "diagnostic_ids": [],
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_group_ids": [],
+          "piece_id": "p:8763521e20937fdc2c92ed0b",
+          "use_id": "u:4d7bf9d692fe961558b89682"
+        },
+        {
+          "children": [],
+          "diagnostic_ids": [],
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_group_ids": [],
+          "piece_id": "p:d7dda706847f7147789e2f5e",
+          "use_id": "u:53ad06b572aeb385d35e231e"
+        }
+      ]
+    }
+  },
+  "active_module_shortfall_returns_maximum_for_all_rule_families.nested_only": {
+    "display": null,
+    "solver": {
+      "academic_year_start": 2026,
+      "active_only": true,
+      "bindings": [
+        {
+          "mark_node_ids": [],
+          "node_ids": ["course:active-ok"],
+          "owner_group_id": "root",
+          "piece_id": "p:250413d4f2a81fb70cdc5be7",
+          "support_id": "s:root:p:250413d4f2a81fb70cdc5be7",
+          "use_ids": ["u:3e27d52dafcd0b446cb6029b"]
+        },
+        {
+          "mark_node_ids": [],
+          "node_ids": ["s:root:d:babde7a35cf2199d959d7059"],
+          "owner_group_id": "root",
+          "piece_id": "p:2fc5198eb6756c0f5d69e5bc",
+          "support_id": "s:root:p:2fc5198eb6756c0f5d69e5bc",
+          "use_ids": ["u:be86faff9a5fe2a53b763ba5"]
+        },
+        {
+          "mark_node_ids": [],
+          "node_ids": ["course:active-nested"],
+          "owner_group_id": "root",
+          "piece_id": "p:7b4e89abef4944a5d6ae4ad6",
+          "support_id": "s:root:p:7b4e89abef4944a5d6ae4ad6",
+          "use_ids": ["u:190fff0b762527e992727c31"]
+        },
+        {
+          "mark_node_ids": ["s:root:d:73ecbf57f3e5438658f192c3"],
+          "node_ids": ["s:root:d:73ecbf57f3e5438658f192c3"],
+          "owner_group_id": "root",
+          "piece_id": "p:a49e229032f11a5dd81b8a2b",
+          "support_id": "s:root:p:a49e229032f11a5dd81b8a2b",
+          "use_ids": ["u:a780643922452296d40574f0"]
+        },
+        {
+          "mark_node_ids": [],
+          "node_ids": ["course:inactive-nested"],
+          "owner_group_id": "root",
+          "piece_id": "p:fd327c4cca7e04fb6a293399",
+          "support_id": "s:root:p:fd327c4cca7e04fb6a293399",
+          "use_ids": ["u:ebe795b9c46fc913af2168e2"]
+        }
+      ],
+      "completed_node_keys": [],
+      "courses": [
+        {
+          "code": "ACTIVE-NESTED",
+          "credits_max": null,
+          "credits_min": "4",
+          "group_id": "active-nested",
+          "is_active": true,
+          "name_en": "Course active-nested",
+          "name_fi": null,
+          "official_url": "https://example.invalid/active-nested"
+        },
+        {
+          "code": "ACTIVE-OK",
+          "credits_max": null,
+          "credits_min": "2",
+          "group_id": "active-ok",
+          "is_active": true,
+          "name_en": "Course active-ok",
+          "name_fi": null,
+          "official_url": "https://example.invalid/active-ok"
+        },
+        {
+          "code": "INACTIVE-NESTED",
+          "credits_max": null,
+          "credits_min": "6",
+          "group_id": "inactive-nested",
+          "is_active": false,
+          "name_en": "Course inactive-nested",
+          "name_fi": null,
+          "official_url": "https://example.invalid/inactive-nested"
+        },
+        {
+          "code": "ROOT",
+          "credits_max": null,
+          "credits_min": "5",
+          "group_id": "root",
+          "is_active": true,
+          "name_en": "Course root",
+          "name_fi": null,
+          "official_url": "https://example.invalid/root"
+        }
+      ],
+      "diagnostics": [],
+      "excluded_group_ids": [],
+      "excluded_node_keys": [],
+      "facts": [
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "inference": null,
+          "inferred_category": null,
+          "official_kind": "module_rule",
+          "origin": "official"
+        }
+      ],
+      "include_inferred": false,
+      "include_recommended": false,
+      "inferred_coverage": [],
+      "members": [
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_id": "m:0cdf2edd432f7ad4f2295ca3",
+          "source_node_id": "s:root:d:babde7a35cf2199d959d7059",
+          "target_node_id": "s:root:d:73ecbf57f3e5438658f192c3"
+        },
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_id": "m:11fdd56b8e53deafc5183620",
+          "source_node_id": "course:root",
+          "target_node_id": "s:root:d:babde7a35cf2199d959d7059"
+        },
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_id": "m:19de9c97da6ee7620bc01b00",
+          "source_node_id": "s:root:d:73ecbf57f3e5438658f192c3",
+          "target_node_id": "course:inactive-nested"
+        },
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_id": "m:2cbf52f92ca22ae50a04d728",
+          "source_node_id": "s:root:d:babde7a35cf2199d959d7059",
+          "target_node_id": "course:active-ok"
+        },
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_id": "m:6392735037cb609cbaa611d3",
+          "source_node_id": "s:root:d:73ecbf57f3e5438658f192c3",
+          "target_node_id": "course:active-nested"
+        }
+      ],
+      "modules": [],
+      "pieces": [
+        {
+          "children": [],
+          "count_max": null,
+          "count_min": null,
+          "course_group_id": "active-ok",
+          "credits_max": null,
+          "credits_min": null,
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "course",
+          "manual_credits_min": null,
+          "module_group_id": null,
+          "module_rule": true,
+          "piece_id": "p:250413d4f2a81fb70cdc5be7",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": null,
+          "require_min": null,
+          "work_key": null
+        },
+        {
+          "children": [
+            "p:a49e229032f11a5dd81b8a2b",
+            "p:250413d4f2a81fb70cdc5be7"
+          ],
+          "count_max": null,
+          "count_min": null,
+          "course_group_id": null,
+          "credits_max": null,
+          "credits_min": null,
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "and",
+          "manual_credits_min": null,
+          "module_group_id": null,
+          "module_rule": true,
+          "piece_id": "p:2fc5198eb6756c0f5d69e5bc",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": null,
+          "require_min": null,
+          "work_key": null
+        },
+        {
+          "children": [],
+          "count_max": null,
+          "count_min": null,
+          "course_group_id": "active-nested",
+          "credits_max": null,
+          "credits_min": null,
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "course",
+          "manual_credits_min": null,
+          "module_group_id": null,
+          "module_rule": true,
+          "piece_id": "p:7b4e89abef4944a5d6ae4ad6",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": null,
+          "require_min": null,
+          "work_key": null
+        },
+        {
+          "children": [
+            "p:7b4e89abef4944a5d6ae4ad6",
+            "p:fd327c4cca7e04fb6a293399"
+          ],
+          "count_max": null,
+          "count_min": null,
+          "course_group_id": null,
+          "credits_max": null,
+          "credits_min": null,
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "cardinality",
+          "manual_credits_min": null,
+          "module_group_id": null,
+          "module_rule": true,
+          "piece_id": "p:a49e229032f11a5dd81b8a2b",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": 2,
+          "require_min": 2,
+          "work_key": null
+        },
+        {
+          "children": [],
+          "count_max": null,
+          "count_min": null,
+          "course_group_id": "inactive-nested",
+          "credits_max": null,
+          "credits_min": null,
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "course",
+          "manual_credits_min": null,
+          "module_group_id": null,
+          "module_rule": true,
+          "piece_id": "p:fd327c4cca7e04fb6a293399",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": null,
+          "require_min": null,
+          "work_key": null
+        }
+      ],
+      "projection_contexts": [
+        {
+          "children": [
+            {
+              "context_id": "c:09a78f95d9dd036b8b1fa28d",
+              "slot": 0
+            },
+            {
+              "context_id": "c:ee65e979f6441f2e933f1496",
+              "slot": 1
+            }
+          ],
+          "context_id": "c:02806181a1774cb7bf90dda7",
+          "member_ids": ["m:0cdf2edd432f7ad4f2295ca3"],
+          "owner_group_id": "root",
+          "piece_id": "p:a49e229032f11a5dd81b8a2b"
+        },
+        {
+          "children": [],
+          "context_id": "c:09a78f95d9dd036b8b1fa28d",
+          "member_ids": ["m:6392735037cb609cbaa611d3"],
+          "owner_group_id": "root",
+          "piece_id": "p:7b4e89abef4944a5d6ae4ad6"
+        },
+        {
+          "children": [
+            {
+              "context_id": "c:02806181a1774cb7bf90dda7",
+              "slot": 0
+            },
+            {
+              "context_id": "c:ab5ae469e25d9559064eb96c",
+              "slot": 1
+            }
+          ],
+          "context_id": "c:1649abb7f57c2b8a48b8028c",
+          "member_ids": ["m:11fdd56b8e53deafc5183620"],
+          "owner_group_id": "root",
+          "piece_id": "p:2fc5198eb6756c0f5d69e5bc"
+        },
+        {
+          "children": [],
+          "context_id": "c:ab5ae469e25d9559064eb96c",
+          "member_ids": ["m:2cbf52f92ca22ae50a04d728"],
+          "owner_group_id": "root",
+          "piece_id": "p:250413d4f2a81fb70cdc5be7"
+        },
+        {
+          "children": [],
+          "context_id": "c:ee65e979f6441f2e933f1496",
+          "member_ids": ["m:19de9c97da6ee7620bc01b00"],
+          "owner_group_id": "root",
+          "piece_id": "p:fd327c4cca7e04fb6a293399"
+        }
+      ],
+      "projection_root_context_id": "c:1649abb7f57c2b8a48b8028c",
+      "root_diagnostic_ids": [],
+      "root_group_id": "root",
+      "root_use_id": "u:be86faff9a5fe2a53b763ba5",
+      "uses": [
+        {
+          "children": [],
+          "diagnostic_ids": [],
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_group_ids": [],
+          "piece_id": "p:7b4e89abef4944a5d6ae4ad6",
+          "use_id": "u:190fff0b762527e992727c31"
+        },
+        {
+          "children": [],
+          "diagnostic_ids": [],
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_group_ids": [],
+          "piece_id": "p:250413d4f2a81fb70cdc5be7",
+          "use_id": "u:3e27d52dafcd0b446cb6029b"
+        },
+        {
+          "children": [
+            "u:190fff0b762527e992727c31",
+            "u:ebe795b9c46fc913af2168e2"
+          ],
+          "diagnostic_ids": [],
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_group_ids": [],
+          "piece_id": "p:a49e229032f11a5dd81b8a2b",
+          "use_id": "u:a780643922452296d40574f0"
+        },
+        {
+          "children": [
+            "u:a780643922452296d40574f0",
+            "u:3e27d52dafcd0b446cb6029b"
+          ],
+          "diagnostic_ids": [],
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_group_ids": [],
+          "piece_id": "p:2fc5198eb6756c0f5d69e5bc",
+          "use_id": "u:be86faff9a5fe2a53b763ba5"
+        },
+        {
+          "children": [],
+          "diagnostic_ids": [],
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_group_ids": [],
+          "piece_id": "p:fd327c4cca7e04fb6a293399",
+          "use_id": "u:ebe795b9c46fc913af2168e2"
+        }
+      ]
+    }
+  },
+  "zero_minimum_module_bound_preserves_child_activity_shortfall.compilation[CourseUnitCountRule]": {
+    "display": null,
+    "solver": {
+      "academic_year_start": 2026,
+      "active_only": true,
+      "bindings": [
+        {
+          "mark_node_ids": ["s:root:d:c0767f063d5a1f957c0820b0"],
+          "node_ids": ["s:root:d:c0767f063d5a1f957c0820b0"],
+          "owner_group_id": "root",
+          "piece_id": "p:1721ac035a8dad9b77050ac9",
+          "support_id": "s:root:p:1721ac035a8dad9b77050ac9",
+          "use_ids": ["u:b960e818dbf5bf8a94e9400b"]
+        },
+        {
+          "mark_node_ids": ["s:root:d:4f71328504cf5c97a72a4a1a"],
+          "node_ids": ["s:root:d:4f71328504cf5c97a72a4a1a"],
+          "owner_group_id": "root",
+          "piece_id": "p:1b81c355c1cb8d5e67ae1010",
+          "support_id": "s:root:p:1b81c355c1cb8d5e67ae1010",
+          "use_ids": ["u:d6942afcf6b688622ede9385"]
+        },
+        {
+          "mark_node_ids": ["s:root:d:301fe5d5912ebf0dd475b282"],
+          "node_ids": ["s:root:d:301fe5d5912ebf0dd475b282"],
+          "owner_group_id": "root",
+          "piece_id": "p:3e95167acbfff04e61ca0d59",
+          "support_id": "s:root:p:3e95167acbfff04e61ca0d59",
+          "use_ids": ["u:a8e871111791154fef69409e"]
+        },
+        {
+          "mark_node_ids": [],
+          "node_ids": ["s:root:d:c0767f063d5a1f957c0820b0"],
+          "owner_group_id": "root",
+          "piece_id": "p:a1a13b182079175ec77a5010",
+          "support_id": "s:root:p:a1a13b182079175ec77a5010",
+          "use_ids": ["u:6f96ccbf44f71f70d353595e"]
+        }
+      ],
+      "completed_node_keys": [],
+      "courses": [
+        {
+          "code": "INACTIVE",
+          "credits_max": null,
+          "credits_min": "5",
+          "group_id": "inactive",
+          "is_active": false,
+          "name_en": "Course INACTIVE",
+          "name_fi": "Kurssi INACTIVE",
+          "official_url": "https://example.invalid/INACTIVE"
+        },
+        {
+          "code": "ROOT",
+          "credits_max": null,
+          "credits_min": "5",
+          "group_id": "root",
+          "is_active": true,
+          "name_en": "Course ROOT",
+          "name_fi": "Kurssi ROOT",
+          "official_url": "https://example.invalid/ROOT"
+        }
+      ],
+      "diagnostics": [],
+      "excluded_group_ids": [],
+      "excluded_node_keys": [],
+      "facts": [
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "inference": null,
+          "inferred_category": null,
+          "official_kind": "module_rule",
+          "origin": "official"
+        },
+        {
+          "fact_id": "f:701dc8a8bc8482b7f38d433f",
+          "inference": null,
+          "inferred_category": null,
+          "official_kind": "compulsory",
+          "origin": "official"
+        }
+      ],
+      "include_inferred": false,
+      "include_recommended": false,
+      "inferred_coverage": [],
+      "members": [
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_id": "m:20ad26f9cf23f0120dd700b3",
+          "source_node_id": "s:root:d:c0767f063d5a1f957c0820b0",
+          "target_node_id": "s:root:d:57edfd335984613a82f748fc"
+        },
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_id": "m:356a06e4a3ec6f4d22f2b15f",
+          "source_node_id": "s:root:d:301fe5d5912ebf0dd475b282",
+          "target_node_id": "s:root:d:c0767f063d5a1f957c0820b0"
+        },
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_id": "m:6e5da866772cb6cc1a54aa23",
+          "source_node_id": "s:root:d:4f71328504cf5c97a72a4a1a",
+          "target_node_id": "s:root:d:301fe5d5912ebf0dd475b282"
+        },
+        {
+          "fact_id": "f:701dc8a8bc8482b7f38d433f",
+          "member_id": "m:be2e31226b03a6e3a20842a8",
+          "source_node_id": "course:root",
+          "target_node_id": "s:root:d:4f71328504cf5c97a72a4a1a"
+        }
+      ],
+      "modules": [
+        {
+          "code": null,
+          "group_id": "module-zero",
+          "module_type": "StudyModule",
+          "name_en": "Module module-zero-v1",
+          "name_fi": null,
+          "sisu_module_id": "module-zero-v1"
+        }
+      ],
+      "pieces": [
+        {
+          "children": ["p:a1a13b182079175ec77a5010"],
+          "count_max": null,
+          "count_min": null,
+          "course_group_id": null,
+          "credits_max": null,
+          "credits_min": null,
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "cardinality",
+          "manual_credits_min": null,
+          "module_group_id": null,
+          "module_rule": true,
+          "piece_id": "p:1721ac035a8dad9b77050ac9",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": 1,
+          "require_min": 1,
+          "work_key": null
+        },
+        {
+          "children": ["p:3e95167acbfff04e61ca0d59"],
+          "count_max": null,
+          "count_min": null,
+          "course_group_id": null,
+          "credits_max": null,
+          "credits_min": null,
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "module_block",
+          "manual_credits_min": null,
+          "module_group_id": "module-zero",
+          "module_rule": false,
+          "piece_id": "p:1b81c355c1cb8d5e67ae1010",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": null,
+          "require_min": null,
+          "work_key": null
+        },
+        {
+          "children": ["p:1721ac035a8dad9b77050ac9"],
+          "count_max": null,
+          "count_min": 0,
+          "course_group_id": null,
+          "credits_max": null,
+          "credits_min": null,
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "course_count",
+          "manual_credits_min": null,
+          "module_group_id": null,
+          "module_rule": true,
+          "piece_id": "p:3e95167acbfff04e61ca0d59",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": null,
+          "require_min": null,
+          "work_key": null
+        },
+        {
+          "children": [],
+          "count_max": null,
+          "count_min": null,
+          "course_group_id": "inactive",
+          "credits_max": null,
+          "credits_min": null,
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "course",
+          "manual_credits_min": null,
+          "module_group_id": null,
+          "module_rule": true,
+          "piece_id": "p:a1a13b182079175ec77a5010",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": null,
+          "require_min": null,
+          "work_key": null
+        }
+      ],
+      "projection_contexts": [
+        {
+          "children": [
+            {
+              "context_id": "c:ac925d8d8946c14701c18932",
+              "slot": 0
+            }
+          ],
+          "context_id": "c:07b5915d493a959dd8111a34",
+          "member_ids": ["m:6e5da866772cb6cc1a54aa23"],
+          "owner_group_id": "root",
+          "piece_id": "p:3e95167acbfff04e61ca0d59"
+        },
+        {
+          "children": [
+            {
+              "context_id": "c:07b5915d493a959dd8111a34",
+              "slot": 0
+            }
+          ],
+          "context_id": "c:60bf598a6f27fe23135ae849",
+          "member_ids": ["m:be2e31226b03a6e3a20842a8"],
+          "owner_group_id": "root",
+          "piece_id": "p:1b81c355c1cb8d5e67ae1010"
+        },
+        {
+          "children": [
+            {
+              "context_id": "c:d909468ad6f479209245d235",
+              "slot": 0
+            }
+          ],
+          "context_id": "c:ac925d8d8946c14701c18932",
+          "member_ids": ["m:356a06e4a3ec6f4d22f2b15f"],
+          "owner_group_id": "root",
+          "piece_id": "p:1721ac035a8dad9b77050ac9"
+        },
+        {
+          "children": [],
+          "context_id": "c:d909468ad6f479209245d235",
+          "member_ids": ["m:20ad26f9cf23f0120dd700b3"],
+          "owner_group_id": "root",
+          "piece_id": "p:a1a13b182079175ec77a5010"
+        }
+      ],
+      "projection_root_context_id": "c:60bf598a6f27fe23135ae849",
+      "root_diagnostic_ids": [],
+      "root_group_id": "root",
+      "root_use_id": "u:d6942afcf6b688622ede9385",
+      "uses": [
+        {
+          "children": [],
+          "diagnostic_ids": [],
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_group_ids": [],
+          "piece_id": "p:a1a13b182079175ec77a5010",
+          "use_id": "u:6f96ccbf44f71f70d353595e"
+        },
+        {
+          "children": ["u:b960e818dbf5bf8a94e9400b"],
+          "diagnostic_ids": [],
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_group_ids": [],
+          "piece_id": "p:3e95167acbfff04e61ca0d59",
+          "use_id": "u:a8e871111791154fef69409e"
+        },
+        {
+          "children": ["u:6f96ccbf44f71f70d353595e"],
+          "diagnostic_ids": [],
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_group_ids": [],
+          "piece_id": "p:1721ac035a8dad9b77050ac9",
+          "use_id": "u:b960e818dbf5bf8a94e9400b"
+        },
+        {
+          "children": ["u:a8e871111791154fef69409e"],
+          "diagnostic_ids": [],
+          "fact_id": "f:701dc8a8bc8482b7f38d433f",
+          "member_group_ids": ["inactive"],
+          "piece_id": "p:1b81c355c1cb8d5e67ae1010",
+          "use_id": "u:d6942afcf6b688622ede9385"
+        }
+      ]
+    }
+  },
+  "zero_minimum_module_bound_preserves_child_activity_shortfall.compilation[CreditsRule]": {
+    "display": null,
+    "solver": {
+      "academic_year_start": 2026,
+      "active_only": true,
+      "bindings": [
+        {
+          "mark_node_ids": ["s:root:d:055ce96d4738b0b8de0ea760"],
+          "node_ids": ["s:root:d:055ce96d4738b0b8de0ea760"],
+          "owner_group_id": "root",
+          "piece_id": "p:07fff51d4afd2d6af9acbac9",
+          "support_id": "s:root:p:07fff51d4afd2d6af9acbac9",
+          "use_ids": ["u:72357585f54fef66b635a437"]
+        },
+        {
+          "mark_node_ids": ["s:root:d:c0767f063d5a1f957c0820b0"],
+          "node_ids": ["s:root:d:c0767f063d5a1f957c0820b0"],
+          "owner_group_id": "root",
+          "piece_id": "p:1721ac035a8dad9b77050ac9",
+          "support_id": "s:root:p:1721ac035a8dad9b77050ac9",
+          "use_ids": ["u:b960e818dbf5bf8a94e9400b"]
+        },
+        {
+          "mark_node_ids": [],
+          "node_ids": ["s:root:d:c0767f063d5a1f957c0820b0"],
+          "owner_group_id": "root",
+          "piece_id": "p:a1a13b182079175ec77a5010",
+          "support_id": "s:root:p:a1a13b182079175ec77a5010",
+          "use_ids": ["u:6f96ccbf44f71f70d353595e"]
+        },
+        {
+          "mark_node_ids": ["s:root:d:5a4a8a8d6396211c70b6b5bf"],
+          "node_ids": ["s:root:d:5a4a8a8d6396211c70b6b5bf"],
+          "owner_group_id": "root",
+          "piece_id": "p:c14b67167fe572c99d7fb3bf",
+          "support_id": "s:root:p:c14b67167fe572c99d7fb3bf",
+          "use_ids": ["u:fc0dad4176dbe435335f9f3a"]
+        }
+      ],
+      "completed_node_keys": [],
+      "courses": [
+        {
+          "code": "INACTIVE",
+          "credits_max": null,
+          "credits_min": "5",
+          "group_id": "inactive",
+          "is_active": false,
+          "name_en": "Course INACTIVE",
+          "name_fi": "Kurssi INACTIVE",
+          "official_url": "https://example.invalid/INACTIVE"
+        },
+        {
+          "code": "ROOT",
+          "credits_max": null,
+          "credits_min": "5",
+          "group_id": "root",
+          "is_active": true,
+          "name_en": "Course ROOT",
+          "name_fi": "Kurssi ROOT",
+          "official_url": "https://example.invalid/ROOT"
+        }
+      ],
+      "diagnostics": [],
+      "excluded_group_ids": [],
+      "excluded_node_keys": [],
+      "facts": [
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "inference": null,
+          "inferred_category": null,
+          "official_kind": "module_rule",
+          "origin": "official"
+        },
+        {
+          "fact_id": "f:701dc8a8bc8482b7f38d433f",
+          "inference": null,
+          "inferred_category": null,
+          "official_kind": "compulsory",
+          "origin": "official"
+        }
+      ],
+      "include_inferred": false,
+      "include_recommended": false,
+      "inferred_coverage": [],
+      "members": [
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_id": "m:20ad26f9cf23f0120dd700b3",
+          "source_node_id": "s:root:d:c0767f063d5a1f957c0820b0",
+          "target_node_id": "s:root:d:57edfd335984613a82f748fc"
+        },
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_id": "m:a7a94f10fe484ffacf6607e5",
+          "source_node_id": "s:root:d:055ce96d4738b0b8de0ea760",
+          "target_node_id": "s:root:d:c0767f063d5a1f957c0820b0"
+        },
+        {
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_id": "m:c4855d6544992aa62369af7c",
+          "source_node_id": "s:root:d:5a4a8a8d6396211c70b6b5bf",
+          "target_node_id": "s:root:d:055ce96d4738b0b8de0ea760"
+        },
+        {
+          "fact_id": "f:701dc8a8bc8482b7f38d433f",
+          "member_id": "m:f9957b964a2747b3b8327a01",
+          "source_node_id": "course:root",
+          "target_node_id": "s:root:d:5a4a8a8d6396211c70b6b5bf"
+        }
+      ],
+      "modules": [
+        {
+          "code": null,
+          "group_id": "module-zero",
+          "module_type": "StudyModule",
+          "name_en": "Module module-zero-v1",
+          "name_fi": null,
+          "sisu_module_id": "module-zero-v1"
+        }
+      ],
+      "pieces": [
+        {
+          "children": ["p:1721ac035a8dad9b77050ac9"],
+          "count_max": null,
+          "count_min": null,
+          "course_group_id": null,
+          "credits_max": null,
+          "credits_min": "0",
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "credits",
+          "manual_credits_min": null,
+          "module_group_id": null,
+          "module_rule": true,
+          "piece_id": "p:07fff51d4afd2d6af9acbac9",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": null,
+          "require_min": null,
+          "work_key": null
+        },
+        {
+          "children": ["p:a1a13b182079175ec77a5010"],
+          "count_max": null,
+          "count_min": null,
+          "course_group_id": null,
+          "credits_max": null,
+          "credits_min": null,
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "cardinality",
+          "manual_credits_min": null,
+          "module_group_id": null,
+          "module_rule": true,
+          "piece_id": "p:1721ac035a8dad9b77050ac9",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": 1,
+          "require_min": 1,
+          "work_key": null
+        },
+        {
+          "children": [],
+          "count_max": null,
+          "count_min": null,
+          "course_group_id": "inactive",
+          "credits_max": null,
+          "credits_min": null,
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "course",
+          "manual_credits_min": null,
+          "module_group_id": null,
+          "module_rule": true,
+          "piece_id": "p:a1a13b182079175ec77a5010",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": null,
+          "require_min": null,
+          "work_key": null
+        },
+        {
+          "children": ["p:07fff51d4afd2d6af9acbac9"],
+          "count_max": null,
+          "count_min": null,
+          "course_group_id": null,
+          "credits_max": null,
+          "credits_min": null,
+          "cycle_closing": false,
+          "detail": null,
+          "kind": "module_block",
+          "manual_credits_min": null,
+          "module_group_id": "module-zero",
+          "module_rule": false,
+          "piece_id": "p:c14b67167fe572c99d7fb3bf",
+          "reason": null,
+          "referenced_group_id": null,
+          "require_max": null,
+          "require_min": null,
+          "work_key": null
+        }
+      ],
+      "projection_contexts": [
+        {
+          "children": [
+            {
+              "context_id": "c:d909468ad6f479209245d235",
+              "slot": 0
+            }
+          ],
+          "context_id": "c:420a25aef7b0899932e3d9f3",
+          "member_ids": ["m:a7a94f10fe484ffacf6607e5"],
+          "owner_group_id": "root",
+          "piece_id": "p:1721ac035a8dad9b77050ac9"
+        },
+        {
+          "children": [
+            {
+              "context_id": "c:420a25aef7b0899932e3d9f3",
+              "slot": 0
+            }
+          ],
+          "context_id": "c:7d7295b69892ab4308603c03",
+          "member_ids": ["m:c4855d6544992aa62369af7c"],
+          "owner_group_id": "root",
+          "piece_id": "p:07fff51d4afd2d6af9acbac9"
+        },
+        {
+          "children": [],
+          "context_id": "c:d909468ad6f479209245d235",
+          "member_ids": ["m:20ad26f9cf23f0120dd700b3"],
+          "owner_group_id": "root",
+          "piece_id": "p:a1a13b182079175ec77a5010"
+        },
+        {
+          "children": [
+            {
+              "context_id": "c:7d7295b69892ab4308603c03",
+              "slot": 0
+            }
+          ],
+          "context_id": "c:f2f9daab68031ed6b9a3208d",
+          "member_ids": ["m:f9957b964a2747b3b8327a01"],
+          "owner_group_id": "root",
+          "piece_id": "p:c14b67167fe572c99d7fb3bf"
+        }
+      ],
+      "projection_root_context_id": "c:f2f9daab68031ed6b9a3208d",
+      "root_diagnostic_ids": [],
+      "root_group_id": "root",
+      "root_use_id": "u:fc0dad4176dbe435335f9f3a",
+      "uses": [
+        {
+          "children": [],
+          "diagnostic_ids": [],
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_group_ids": [],
+          "piece_id": "p:a1a13b182079175ec77a5010",
+          "use_id": "u:6f96ccbf44f71f70d353595e"
+        },
+        {
+          "children": ["u:b960e818dbf5bf8a94e9400b"],
+          "diagnostic_ids": [],
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_group_ids": [],
+          "piece_id": "p:07fff51d4afd2d6af9acbac9",
+          "use_id": "u:72357585f54fef66b635a437"
+        },
+        {
+          "children": ["u:6f96ccbf44f71f70d353595e"],
+          "diagnostic_ids": [],
+          "fact_id": "f:60e71a4bcbed67b803e3c397",
+          "member_group_ids": [],
+          "piece_id": "p:1721ac035a8dad9b77050ac9",
+          "use_id": "u:b960e818dbf5bf8a94e9400b"
+        },
+        {
+          "children": ["u:72357585f54fef66b635a437"],
+          "diagnostic_ids": [],
+          "fact_id": "f:701dc8a8bc8482b7f38d433f",
+          "member_group_ids": ["inactive"],
+          "piece_id": "p:c14b67167fe572c99d7fb3bf",
+          "use_id": "u:fc0dad4176dbe435335f9f3a"
+        }
+      ]
+    }
+  }
+}

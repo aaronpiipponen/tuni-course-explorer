@@ -1,24 +1,17 @@
-"""Pure prerequisite-satisfaction evaluation over one already-filtered calculation tree.
+"""Pure prerequisite-satisfaction evaluation over the native calculation structure.
 
-This module owns the one fixed-basis satisfaction contract minimum-credit pathing shares. It
-consumes a `PrerequisiteCalculationTree` exactly as produced by `graph.py`. The calculation tree is
-the sole evaluation authority. Caller-owned canonical `group_id` values form the chosen zero-cost
-calculation basis. A basis course satisfies its expanded head without traversing descendants. A canonical course named
-by the tree's exclusion set is never a witness, even when it is in the basis or completed: exclusion
-is a calculation rule carried by the tree. Graph-only marks (manual completion and node exclusion of
-non-course nodes) are consulted through the one shared node guard.
+This module owns the fixed-basis satisfaction contract shared with discovery coverage. The native
+piece DAG is the sole evaluation authority. Caller-owned canonical `group_id` values form the
+chosen zero-cost calculation basis. A basis course satisfies its expanded head without traversing
+descendants. A canonical course named by the structure's exclusion set is never a witness. Graph-only
+marks (manual completion and node exclusion of non-course boxes) are consulted through the one
+shared support guard.
 
-Satisfaction is tri-state. A known satisfying witness of basis canonical courses makes a node
-`SATISFIED`. A node with no witness but at least one unresolved alternative is `UNRESOLVED`. A node
-proven unsatisfiable is `UNSATISFIED`. This module evaluates candidates over the fixed basis. The
-bottom-up fold itself lives in `traversal.py`, shared with pathing.
-
-Numeric nodes need the exact set of witness identities and totals, so
-this module carries every candidate result as one family in a compact zero-suppressed decision DAG
-(`_WitnessFamilies`, the satisfaction subclass of the shared `_families._Families` core). Union,
-AND-join, cardinality and credit/count filtering are exact operations over that DAG, so an unbounded
-k-of-n over many leaves never enumerates its selections. The DAG is transient per-session algorithm
-state, never a cache.
+Satisfaction is tri-state: a known witness makes a piece `SATISFIED`, no witness with an unresolved
+alternative is `UNRESOLVED`, and a proven failure is `UNSATISFIED`. The bottom-up fold lives in
+`traversal.py`, and discovery coverage reuses it. Numeric nodes keep the exact witness-family DAG
+inherited from `_families._Families`, so an unbounded k-of-n over many leaves never enumerates its
+selections.
 """
 
 from __future__ import annotations
@@ -37,29 +30,15 @@ from course_explorer.prerequisite._helpers import (
     _PrerequisiteModel,
     _unique_ids,
 )
-from course_explorer.prerequisite.domain import (
-    AndRequirement,
-    CardinalityRequirement,
-    CourseCountRequirement,
-    CourseRequirement,
-    CreditRequirement,
-    ModuleBlockRequirement,
-    OpaqueCreditRequirement,
-    OrRequirement,
-    PrerequisiteExpression,
-    PrerequisiteGraphNodeState,
-    PrerequisiteNodeOccurrence,
-    UnresolvedPrerequisiteReason,
-    UnresolvedRequirement,
-)
-from course_explorer.prerequisite.graph import (
-    PrerequisiteCalculationTree,
-    _iter_expression_occurrences,
-    is_course_activity_eligible,
+from course_explorer.prerequisite.graph import is_course_activity_eligible
+from course_explorer.prerequisite.structure import (
+    PrerequisitePiece,
+    PrerequisiteSolverStructure,
     node_action,
+    support_id,
 )
 from course_explorer.prerequisite.traversal import (
-    ExpressionEvaluator,
+    PieceEvaluator,
     conjunction_is_unresolved,
 )
 
@@ -77,7 +56,7 @@ class PrerequisiteSatisfactionState(StrEnum):
 
 
 class PrerequisiteSatisfactionEvaluation(_PrerequisiteModel):
-    """One immutable evaluation of a compiled tree against the chosen calculation basis."""
+    """One immutable evaluation of a native structure against the chosen calculation basis."""
 
     root_group_id: str
     include_recommended: bool
@@ -100,18 +79,7 @@ class PrerequisiteSatisfactionEvaluation(_PrerequisiteModel):
 
 
 class _WitnessFamilies(_Families[tuple[str, str]]):
-    """One transient zero-suppressed decision DAG of exact satisfaction witness families.
-
-    A family is a set of typed `(kind, identity)` witness variables. A course witness uses its
-    canonical group ID. An opaque witness uses its stable work key. An attested manual-completion
-    witness uses its source action key. The kind keeps a course, an opaque obligation and an attested
-    completion distinct even when their identity text could coincide. Terminal `ZERO` is the empty
-    family and terminal `ONE` holds exactly the empty witness. A variable's weight is its credit/count
-    measure for the enclosing filter. An attested witness with no supplied source extent has an
-    unknown credit measure, and every non-course witness has an unknown course count. The interned
-    nodes, union/join/filter operations and their memos are inherited from the shared
-    `_families._Families` core and are transient state for one session, never a cache.
-    """
+    """One transient zero-suppressed decision DAG of exact satisfaction witness families."""
 
     def __init__(
         self,
@@ -127,17 +95,13 @@ class _WitnessFamilies(_Families[tuple[str, str]]):
         """Return the singleton family holding exactly the one-course witness."""
         return self.singleton(((_COURSE_KIND, group_id),))
 
-    def opaque(self, work_key: str) -> int:
-        """Return the singleton family holding exactly one opaque-work witness."""
-        return self.singleton(((_OPAQUE_KIND, work_key),))
-
-    def attested(self, action_key: str, credits_min: Decimal | None) -> int:
+    def attested(self, support: str, credits_min: Decimal | None) -> int:
         """Return the singleton family holding exactly one attested manual-completion witness."""
-        self._attested_credits[action_key] = credits_min
-        return self.singleton(((_ATTESTED_KIND, action_key),))
+        self._attested_credits[support] = credits_min
+        return self.singleton(((_ATTESTED_KIND, support),))
 
     def credit_weight(self, variable: tuple[str, str]) -> Decimal:
-        """Return one witness variable's minimum-credit weight. Unknown attested is never filtered."""
+        """Return one witness variable's minimum-credit weight."""
         kind, identity = variable
         if kind == _OPAQUE_KIND:
             return self._opaque_credits_by_work_key.get(identity, Decimal(0))
@@ -165,18 +129,14 @@ class _WitnessFamilies(_Families[tuple[str, str]]):
 
 @dataclass(frozen=True)
 class _CandidateEvaluation:
-    """One node's exact witness family plus whether an unknown witness could exist.
-
-    `family` is a `_WitnessFamilies` handle. The `ZERO` terminal is the only "no known witness"
-    value, and the `ONE` terminal is the distinct empty-witness family, so the two are distinct families.
-    """
+    """One piece's exact witness family plus whether an unknown witness could exist."""
 
     family: int
     has_unresolved_alternative: bool
 
     @property
     def is_known(self) -> bool:
-        """Return whether at least one known witness satisfies this node."""
+        """Return whether at least one known witness satisfies this piece."""
         return self.family != _WitnessFamilies.ZERO
 
 
@@ -189,53 +149,42 @@ def _state_from_candidates(evaluation: _CandidateEvaluation) -> PrerequisiteSati
     return PrerequisiteSatisfactionState.UNSATISFIED
 
 
-@dataclass(frozen=True)
-class _SatisfactionEvaluator(ExpressionEvaluator[_CandidateEvaluation]):
-    """One satisfaction fold over a compiled tree and the chosen calculation basis.
+@dataclass
+class _SatisfactionEvaluator(PieceEvaluator[_CandidateEvaluation]):
+    """One satisfaction fold over a native structure and the chosen calculation basis."""
 
-    Results are memoized by expression object identity and occurrence, because graph marks and
-    cycle occurrences make a node's result occurrence-scoped. `retained` holds every evaluated
-    expression alive for the session so a released caller-created expression can never have its
-    `id` reused as a stale memo key. The memo is transient session state, never a cache.
-    """
-
-    tree: PrerequisiteCalculationTree
+    structure: PrerequisiteSolverStructure
     basis_group_ids: frozenset[str]
     families: _WitnessFamilies
     apply_graph_marks: bool = True
     completed_node_keys: frozenset[str] = frozenset()
     excluded_node_keys: frozenset[str] = frozenset()
-    occurrence_by_action_key: dict[str, PrerequisiteNodeOccurrence] = field(default_factory=dict)
-    action_key_by_occurrence: dict[str, str] = field(default_factory=dict)
-    cycle_occurrence_ids: frozenset[str] = frozenset()
-    memo: dict[tuple[int, str], _CandidateEvaluation] = field(default_factory=dict)
-    retained: list[PrerequisiteExpression] = field(default_factory=list)
+    memo: dict[tuple[str, str], _CandidateEvaluation] = field(default_factory=dict)
 
-    def evaluate(
-        self, expression: PrerequisiteExpression, occurrence_id: str
-    ) -> _CandidateEvaluation:
-        """Return one expression occurrence's memoized candidate evaluation."""
-        key = (id(expression), occurrence_id)
+    def __post_init__(self) -> None:
+        """Build the request-local piece index once."""
+        PieceEvaluator.__init__(self, self.structure)
+
+    def evaluate(self, piece_id: str, owner_group_id: str) -> _CandidateEvaluation:
+        """Return one piece's memoized candidate evaluation under its owner course."""
+        key = (owner_group_id, piece_id)
         cached = self.memo.get(key)
         if cached is not None:
             return cached
-        result = super().evaluate(expression, occurrence_id)
+        result = super().evaluate(piece_id, owner_group_id)
         self.memo[key] = result
-        self.retained.append(expression)
         return result
 
     def node_override(
-        self, expression: PrerequisiteExpression, occurrence_id: str
+        self, piece: PrerequisitePiece, owner_group_id: str
     ) -> _CandidateEvaluation | None:
-        """Apply the shared node guard: exclusion first, then manual completion."""
+        """Apply the shared support guard: exclusion first, then manual completion."""
         if not self.apply_graph_marks:
             return None
-        action_key = self.action_key_by_occurrence.get(occurrence_id)
-        if action_key is None:
-            return None
-        node = self.occurrence_by_action_key.get(action_key)
+        support = support_id(owner_group_id=owner_group_id, piece_id=piece.piece_id)
         action = node_action(
-            node,
+            self.structure,
+            support,
             completed_node_keys=self.completed_node_keys,
             excluded_node_keys=self.excluded_node_keys,
         )
@@ -244,29 +193,24 @@ class _SatisfactionEvaluator(ExpressionEvaluator[_CandidateEvaluation]):
                 family=_WitnessFamilies.ZERO, has_unresolved_alternative=False
             )
         if action == "completed":
-            credits_min = None if node is None else node.manual_credits_min
             return _CandidateEvaluation(
-                family=self.families.attested(action_key, credits_min),
+                family=self.families.attested(support, piece.manual_credits_min),
                 has_unresolved_alternative=False,
             )
         return None
 
     def expanded_course(
-        self, expression: AndRequirement, occurrence_id: str
+        self, piece: PrerequisitePiece, owner_group_id: str
     ) -> _CandidateEvaluation:
-        """Evaluate an expanded branch as its head and, only for a cycle-closing head, its closure.
-
-        A head in the fixed basis satisfies the branch and its descendants are skipped. A head
-        outside the basis cannot satisfy it. Only a cycle-closing head folds its descendant
-        closure, whose unresolved alternative it carries, and the descendants add no witness.
-        """
-        head, descendants = expression.children
-        head_evaluation = self.evaluate(head, f"{occurrence_id}.0")
+        """Evaluate an expanded branch as its head and, for a non-basis head, its closure."""
+        head = self.piece(piece.children[0])
+        head_owner = head.course_group_id or owner_group_id
+        head_evaluation = self.evaluate(head.piece_id, head_owner)
         if head.course_group_id in self.basis_group_ids:
             return head_evaluation
         if not head_evaluation.is_known and not head_evaluation.has_unresolved_alternative:
             return head_evaluation
-        descendant_evaluation = self.evaluate(descendants, f"{occurrence_id}.1")
+        descendant_evaluation = self.evaluate(piece.children[1], head_owner)
         projected = self.families.project(descendant_evaluation.family, lambda _variable: True)
         return self._combine_required(
             (
@@ -278,14 +222,11 @@ class _SatisfactionEvaluator(ExpressionEvaluator[_CandidateEvaluation]):
             )
         )
 
-    def course(self, expression: CourseRequirement, occurrence_id: str) -> _CandidateEvaluation:
-        """Evaluate one course leaf. Only an eligible basis course is a witness.
-
-        A basis course resolves a cycle-closing occurrence.
-        """
-        group_id = expression.course_group_id
+    def course(self, piece: PrerequisitePiece, owner_group_id: str) -> _CandidateEvaluation:
+        """Evaluate one course leaf. Only an eligible basis course is a witness."""
+        group_id = piece.course_group_id or ""
         if not is_course_activity_eligible(
-            self.tree, group_id, self.basis_group_ids, for_calculation=True
+            self.structure, group_id, self.basis_group_ids, for_calculation=True
         ):
             return _CandidateEvaluation(
                 family=_WitnessFamilies.ZERO, has_unresolved_alternative=False
@@ -296,35 +237,29 @@ class _SatisfactionEvaluator(ExpressionEvaluator[_CandidateEvaluation]):
             )
         return _CandidateEvaluation(
             family=_WitnessFamilies.ZERO,
-            has_unresolved_alternative=occurrence_id in self.cycle_occurrence_ids,
+            has_unresolved_alternative=piece.cycle_closing,
         )
 
-    def module_block(
-        self, expression: ModuleBlockRequirement, occurrence_id: str
-    ) -> _CandidateEvaluation:
+    def module_block(self, piece: PrerequisitePiece, owner_group_id: str) -> _CandidateEvaluation:
         """Fold an unmarked module boundary transparently over its inlined child."""
-        return self.evaluate(expression.child, f"{occurrence_id}.0")
+        return self.evaluate(piece.children[0], owner_group_id)
 
-    def opaque_credits(
-        self, expression: OpaqueCreditRequirement, occurrence_id: str
-    ) -> _CandidateEvaluation:
+    def opaque_credits(self, piece: PrerequisitePiece, owner_group_id: str) -> _CandidateEvaluation:
         """Evaluate one opaque obligation: an explicit zero requirement is satisfied, else unknown."""
-        if expression.credits_min == 0:
+        if piece.credits_min == 0:
             return _CandidateEvaluation(
                 family=_WitnessFamilies.ONE, has_unresolved_alternative=False
             )
         return _CandidateEvaluation(family=_WitnessFamilies.ZERO, has_unresolved_alternative=False)
 
-    def unresolved(
-        self, expression: UnresolvedRequirement, occurrence_id: str
-    ) -> _CandidateEvaluation:
+    def unresolved(self, piece: PrerequisitePiece, owner_group_id: str) -> _CandidateEvaluation:
         """Evaluate one unresolved requirement as an unknown route with no known witness."""
         return _CandidateEvaluation(family=_WitnessFamilies.ZERO, has_unresolved_alternative=True)
 
     def conjunction(
         self,
-        expression: AndRequirement,
-        occurrence_id: str,
+        piece: PrerequisitePiece,
+        owner_group_id: str,
         children: tuple[_CandidateEvaluation, ...],
     ) -> _CandidateEvaluation:
         """Combine an ordinary logical conjunction's child evaluations."""
@@ -332,8 +267,8 @@ class _SatisfactionEvaluator(ExpressionEvaluator[_CandidateEvaluation]):
 
     def alternatives(
         self,
-        expression: OrRequirement,
-        occurrence_id: str,
+        piece: PrerequisitePiece,
+        owner_group_id: str,
         children: tuple[_CandidateEvaluation, ...],
     ) -> _CandidateEvaluation:
         """Union every known child witness family and OR the unresolved flag."""
@@ -347,12 +282,12 @@ class _SatisfactionEvaluator(ExpressionEvaluator[_CandidateEvaluation]):
 
     def cardinality(
         self,
-        expression: CardinalityRequirement,
-        occurrence_id: str,
+        piece: PrerequisitePiece,
+        owner_group_id: str,
         children: tuple[_CandidateEvaluation, ...],
     ) -> _CandidateEvaluation:
         """Fold allowed child selections as one position DP over witness families."""
-        upper = expression.require_max if expression.require_max is not None else len(children)
+        upper = piece.require_max if piece.require_max is not None else len(children)
         upper = min(upper, len(children))
         rows = [_WitnessFamilies.ZERO] * (upper + 1)
         rows[0] = _WitnessFamilies.ONE
@@ -367,33 +302,30 @@ class _SatisfactionEvaluator(ExpressionEvaluator[_CandidateEvaluation]):
                 next_row[count] = selected
             rows = next_row
         family = _WitnessFamilies.ZERO
-        for count in range(expression.require_min, upper + 1):
+        for count in range(piece.require_min or 0, upper + 1):
             family = self.families.union(family, rows[count])
         viable = sum(1 for child in children if child.is_known or child.has_unresolved_alternative)
         unresolved_children = sum(1 for child in children if child.has_unresolved_alternative)
         return _CandidateEvaluation(
             family=family,
             has_unresolved_alternative=(
-                unresolved_children > 0 and max(expression.require_min, 1) <= min(upper, viable)
+                unresolved_children > 0 and max(piece.require_min or 0, 1) <= min(upper, viable)
             ),
         )
 
     def bounded(
-        self,
-        expression: CreditRequirement | CourseCountRequirement,
-        occurrence_id: str,
-        child: _CandidateEvaluation,
+        self, piece: PrerequisitePiece, owner_group_id: str, child: _CandidateEvaluation
     ) -> _CandidateEvaluation:
         """Keep known-measure witnesses inside the bounds. Carry unknown support as unresolved."""
-        if isinstance(expression, CreditRequirement):
+        if piece.kind == "credits":
             weight = self.families.credit_weight
-            lower: Decimal | int = expression.credits_min
-            upper: Decimal | int | None = expression.credits_max
+            lower: Decimal | int = piece.credits_min or Decimal(0)
+            upper: Decimal | int | None = piece.credits_max
             is_unknown = self.families.is_unknown_credit
         else:
             weight = _WitnessFamilies.count_weight
-            lower = expression.count_min
-            upper = expression.count_max
+            lower = piece.count_min or 0
+            upper = piece.count_max
             is_unknown = _WitnessFamilies.is_unknown_count
         if lower == 0 and upper is None:
             return child
@@ -421,71 +353,38 @@ class _SatisfactionEvaluator(ExpressionEvaluator[_CandidateEvaluation]):
 
 
 class PrerequisiteSatisfactionSession:
-    """One request-local satisfaction context over a fixed tree and basis.
-
-    The constructor owns the shared setup the full-report and standalone-expression entry points
-    reuse: it normalizes the caller state once, indexes the tree's node occurrences and cycle
-    locations once, builds the one witness-family owner and one memoizing evaluator. Every expression
-    evaluated through the session shares those transient results. A session never crosses a tree,
-    basis, policy or request boundary.
-    """
+    """One request-local satisfaction context over a fixed native structure and basis."""
 
     def __init__(
         self,
-        tree: PrerequisiteCalculationTree,
+        structure: PrerequisiteSolverStructure,
         basis_group_ids: Collection[str],
         *,
         apply_graph_marks: bool = True,
     ) -> None:
-        self.tree = tree
+        self.structure = structure
         self.apply_graph_marks = apply_graph_marks
         self.basis_group_ids = _normalize_state_ids(basis_group_ids, label="basis group_id")
-        self._occurrence_by_expression_id: dict[int, str] = {}
-        if tree.requirements is not None:
-            for occurrence_id, expression in _iter_expression_occurrences(tree.requirements):
-                self._occurrence_by_expression_id.setdefault(id(expression), occurrence_id)
-        occurrence_by_action_key: dict[str, PrerequisiteNodeOccurrence] = {}
-        action_key_by_occurrence: dict[str, str] = {}
-        for occurrence in tree.node_occurrences:
-            occurrence_by_action_key.setdefault(occurrence.action_key, occurrence)
-            action_key_by_occurrence.setdefault(occurrence.occurrence_id, occurrence.action_key)
         self._evaluator = _SatisfactionEvaluator(
-            tree=tree,
+            structure=structure,
             basis_group_ids=self.basis_group_ids,
             families=_WitnessFamilies(
-                _credits_min_by_group_id(tree), _opaque_credits_by_work_key(tree)
+                _credits_min_by_group_id(structure), _opaque_credits_by_work_key(structure)
             ),
             apply_graph_marks=apply_graph_marks,
-            completed_node_keys=frozenset(tree.completed_node_keys),
-            excluded_node_keys=frozenset(tree.excluded_node_keys),
-            occurrence_by_action_key=occurrence_by_action_key,
-            action_key_by_occurrence=action_key_by_occurrence,
-            cycle_occurrence_ids=frozenset(
-                issue.occurrence_id
-                for issue in tree.issues
-                if issue.reason is UnresolvedPrerequisiteReason.COURSE_CYCLE
-            ),
+            completed_node_keys=frozenset(structure.completed_node_keys),
+            excluded_node_keys=frozenset(structure.excluded_node_keys),
         )
 
     def evaluate(
-        self, expression: PrerequisiteExpression | None, *, occurrence_id: str | None = None
+        self, piece_id: str | None, *, owner_group_id: str | None = None
     ) -> PrerequisiteSatisfactionState:
-        """Return one expression's public tri-state through the shared satisfaction fold.
-
-        A `None` expression is satisfied. When no occurrence is supplied the expression's original
-        tree location is resolved once, so a caller-supplied subtree sees its own graph marks
-        while a standalone unmarked expression test keeps its neutral result.
-        """
-        if expression is None:
+        """Return one piece's public tri-state. A `None` piece is satisfied."""
+        if piece_id is None:
             return PrerequisiteSatisfactionState.SATISFIED
-        if occurrence_id is None:
-            occurrence_id = self._resolve_occurrence(expression)
-        state = _state_from_candidates(self._evaluator.evaluate(expression, occurrence_id))
+        owner = owner_group_id or self.structure.root_group_id
+        state = _state_from_candidates(self._evaluator.evaluate(piece_id, owner))
         return state
-
-    def _resolve_occurrence(self, expression: PrerequisiteExpression) -> str:
-        """Return the original tree occurrence ID of one expression, or the root fallback."""
-        return self._occurrence_by_expression_id.get(id(expression), "r")
 
 
 def _normalize_state_ids(values: Collection[str], *, label: str) -> frozenset[str]:
@@ -496,148 +395,54 @@ def _normalize_state_ids(values: Collection[str], *, label: str) -> frozenset[st
     return frozenset(normalized)
 
 
-def _credits_min_by_group_id(tree: PrerequisiteCalculationTree) -> dict[str, Decimal]:
-    """Return one canonical course ID to minimum-credit map from the tree's summaries."""
-    return {course.group_id: course.credits_min for course in tree.courses}
+def _credits_min_by_group_id(structure: PrerequisiteSolverStructure) -> dict[str, Decimal]:
+    """Return one canonical course ID to minimum-credit map from the structure summaries."""
+    return {course.group_id: course.credits_min for course in structure.courses}
+
+
+def _root_use(structure: PrerequisiteSolverStructure) -> tuple[str, str]:
+    """Return the root requirements use and its owner course."""
+    return structure.root_use_id or "", structure.root_group_id
 
 
 def evaluate_prerequisite_satisfaction(
-    tree: PrerequisiteCalculationTree,
+    structure: PrerequisiteSolverStructure,
     basis_group_ids: Collection[str],
 ) -> PrerequisiteSatisfactionEvaluation:
-    """Evaluate a compiled tree against one basis of covered canonical courses."""
-    session = PrerequisiteSatisfactionSession(tree, basis_group_ids)
-    if tree.root.group_id in tree.excluded_group_ids:
+    """Evaluate a native structure against one basis of covered canonical courses."""
+    session = PrerequisiteSatisfactionSession(structure, basis_group_ids)
+    if structure.root_group_id in structure.excluded_group_ids:
         requirements_state = PrerequisiteSatisfactionState.UNSATISFIED
-    elif tree.root.group_id in session.basis_group_ids:
+    elif structure.root_group_id in session.basis_group_ids:
         requirements_state = PrerequisiteSatisfactionState.SATISFIED
     else:
-        requirements_state = session.evaluate(tree.requirements, occurrence_id="r")
+        root_use_id, root_owner = _root_use(structure)
+        piece_id = (
+            next(
+                (use.piece_id for use in structure.uses if use.use_id == root_use_id),
+                None,
+            )
+            if root_use_id
+            else None
+        )
+        requirements_state = session.evaluate(piece_id, owner_group_id=root_owner)
     return PrerequisiteSatisfactionEvaluation(
-        root_group_id=tree.root.group_id,
-        include_recommended=tree.include_recommended,
-        include_inferred=tree.include_inferred,
-        active_only=tree.active_only,
+        root_group_id=structure.root_group_id,
+        include_recommended=structure.include_recommended,
+        include_inferred=structure.include_inferred,
+        active_only=structure.active_only,
         basis_group_ids=tuple(sorted(session.basis_group_ids)),
         requirements_state=requirements_state,
     )
 
 
-def evaluate_prerequisite_expression(
-    tree: PrerequisiteCalculationTree,
-    expression: PrerequisiteExpression | None,
-    basis_group_ids: Collection[str],
-) -> PrerequisiteSatisfactionState:
-    """Evaluate one selected subtree through the same satisfaction fold as the full report.
-
-    Discovery consumes this to decide a single category root or one course-alternative slot. The
-    basis satisfies course heads without changing browser completion. A `None` expression is satisfied.
-    """
-    session = PrerequisiteSatisfactionSession(tree, basis_group_ids)
-    return session.evaluate(expression)
-
-
-def evaluate_prerequisite_node_states(
-    tree: PrerequisiteCalculationTree,
+def evaluate_prerequisite_piece(
+    structure: PrerequisiteSolverStructure,
+    piece_id: str | None,
     basis_group_ids: Collection[str],
     *,
-    completed_group_ids: Collection[str],
-) -> tuple[PrerequisiteGraphNodeState, ...]:
-    """Return one aggregated action state per stable node action key.
-
-    Course completion comes from the shared completed-course history and course exclusion from the
-    tree's canonical exclusion set. A non-course node's manual completion comes only from the
-    graph-only mark set. Module `completed_by_courses` evaluates the module's real child through one
-    completed-only session with graph marks and exclusions disabled. Ignored disclosures are marked
-    but never treated as calculation witnesses. This is a derived request result for UI, not a
-    second completion store.
-    """
-    basis = frozenset(basis_group_ids)
-    completed = frozenset(completed_group_ids)
-    occurrence_by_action_key: dict[str, list[str]] = {}
-    for occurrence in tree.node_occurrences:
-        occurrence_by_action_key.setdefault(occurrence.action_key, []).append(
-            occurrence.occurrence_id
-        )
-    expression_by_occurrence: dict[str, PrerequisiteExpression] = {}
-    if tree.requirements is not None:
-        expression_by_occurrence = dict(_iter_expression_occurrences(tree.requirements))
-    completed_node_keys = frozenset(tree.completed_node_keys)
-    excluded_node_keys = frozenset(tree.excluded_node_keys)
-    excluded_group_ids = frozenset(tree.excluded_group_ids)
-    # One shallow unmarked/unexcluded tree input serves both derived sessions: graph marks and
-    # exclusions are disabled so a module/structural state measures only the caller's chosen basis and
-    # completed history through the shared satisfaction fold, and the two sessions are built once and
-    # reused for every represented module/structural occurrence.
-    shallow = tree.model_copy(
-        update={
-            "completed_node_keys": (),
-            "excluded_node_keys": (),
-            "excluded_group_ids": (),
-        }
-    )
-    completed_session = PrerequisiteSatisfactionSession(shallow, completed, apply_graph_marks=False)
-    basis_session = PrerequisiteSatisfactionSession(shallow, basis, apply_graph_marks=False)
-    states: list[PrerequisiteGraphNodeState] = []
-    for action_key in sorted(occurrence_by_action_key):
-        occurrence_ids = tuple(sorted(occurrence_by_action_key[action_key]))
-        if action_key.startswith("course:"):
-            group_id = action_key[len("course:") :]
-            states.append(
-                PrerequisiteGraphNodeState(
-                    action_key=action_key,
-                    occurrence_ids=occurrence_ids,
-                    is_excluded=group_id in excluded_group_ids,
-                    manually_completed=False,
-                    completed_by_courses=group_id in completed,
-                    satisfied_by_basis=group_id in basis,
-                )
-            )
-            continue
-        manually_completed = action_key in completed_node_keys
-        is_excluded = action_key in excluded_node_keys
-        completed_by_courses = False
-        satisfied_by_basis = False
-        representative = expression_by_occurrence.get(occurrence_ids[0])
-        if representative is not None:
-            # A module boundary folds transparently over its child, so the representative expression
-            # itself measures both derived states at its explicit original occurrence.
-            completed_by_courses = (
-                completed_session.evaluate(representative, occurrence_id=occurrence_ids[0])
-                is PrerequisiteSatisfactionState.SATISFIED
-            )
-            satisfied_by_basis = (
-                basis_session.evaluate(representative, occurrence_id=occurrence_ids[0])
-                is PrerequisiteSatisfactionState.SATISFIED
-            )
-        states.append(
-            PrerequisiteGraphNodeState(
-                action_key=action_key,
-                occurrence_ids=occurrence_ids,
-                is_excluded=is_excluded,
-                manually_completed=manually_completed,
-                completed_by_courses=completed_by_courses,
-                satisfied_by_basis=satisfied_by_basis,
-            )
-        )
-    display_occurrences_by_key: dict[str, set[str]] = {}
-    for part in tree.ignored_parts:
-        display_occurrences_by_key.setdefault(part.action_key, set()).add(part.part_id)
-        if part.module is not None:
-            display_occurrences_by_key.setdefault(f"module:{part.module.group_id}", set()).add(
-                part.part_id
-            )
-    for action_key, display_ids in display_occurrences_by_key.items():
-        if action_key in occurrence_by_action_key:
-            continue
-        states.append(
-            PrerequisiteGraphNodeState(
-                action_key=action_key,
-                occurrence_ids=tuple(sorted(display_ids)),
-                is_excluded=action_key in excluded_node_keys,
-                manually_completed=action_key in completed_node_keys,
-                completed_by_courses=False,
-                satisfied_by_basis=False,
-            )
-        )
-    return tuple(sorted(states, key=lambda state: state.action_key))
+    owner_group_id: str | None = None,
+) -> PrerequisiteSatisfactionState:
+    """Evaluate one selected piece through the same satisfaction fold as the full report."""
+    session = PrerequisiteSatisfactionSession(structure, basis_group_ids)
+    return session.evaluate(piece_id, owner_group_id=owner_group_id)

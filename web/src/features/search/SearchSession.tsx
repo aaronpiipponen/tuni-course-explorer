@@ -6,6 +6,7 @@ const SearchSessionContext = createContext<ReturnType<typeof useSearch> | null>(
   null,
 );
 
+/** Provide one submitted search and its report to the mounted tab panes. */
 export function SearchSessionProvider({ children }: { children: ReactNode }) {
   const search = useSearch();
   return (
@@ -15,6 +16,7 @@ export function SearchSessionProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/** Read the shared search session. */
 export function useSearchSession() {
   const search = useContext(SearchSessionContext);
   if (!search) throw new Error("Search session provider is missing");

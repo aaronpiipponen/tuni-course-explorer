@@ -1,4 +1,4 @@
-"""Process composition for unified course search. The one validation boundary for caller input."""
+"""Process composition for unified course search and its caller-input validation boundary."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from typing import Annotated, get_args
 from pydantic import TypeAdapter, ValidationError
 
 from course_explorer.config import (
+    DatabaseSettings,
     SearchSettings,
     load_database_settings,
     load_embedding_settings,
@@ -17,6 +18,7 @@ from course_explorer.curriculum_repository import CurriculumRepository
 from course_explorer.db.session import database_context as _database_context
 from course_explorer.embeddings.provider import EmbeddingProvider
 from course_explorer.search.lookup import CourseLookupService, DisplayLanguage
+from course_explorer.search.projection import LookupProjectionCache
 from course_explorer.search.repository import SemanticSearchRepository
 from course_explorer.search.service import CourseSearchService
 from course_explorer.search.unified import UnifiedCourseSearchService, UnifiedSearchReport
@@ -37,6 +39,8 @@ def run_search_command(
     fuzzy_min_score: float | None = None,
     include_inactive: bool = True,
     include_semantic: bool = True,
+    database_settings: DatabaseSettings | None = None,
+    projection_cache: LookupProjectionCache | None = None,
 ) -> UnifiedSearchReport:
     """Compose one unified search over the match services, the shared repositories, and provider.
 
@@ -45,7 +49,9 @@ def run_search_command(
     embedding settings, so the vector identity and the hubs come from those settings. An
     ``include_semantic`` of ``False`` serves the three lexical methods alone: the embedding settings,
     the semantic repository and the provider are never built, and the unified owner receives no
-    semantic service.
+    semantic service. Supplied database settings are used as given, and otherwise they are resolved
+    after validation. A supplied projection cache answers the lexical methods with the dataset rows it
+    retains. The command opens one engine lifetime from those settings.
     """
     if not query.strip():
         raise ValueError("search query must be nonblank")
@@ -59,9 +65,14 @@ def run_search_command(
     except ValidationError as exc:
         raise ValueError(str(exc)) from exc
     search_settings = load_search_settings()
-    with _database_context(load_database_settings()) as factory:
+    resolved_settings = (
+        database_settings if database_settings is not None else load_database_settings()
+    )
+    with _database_context(resolved_settings) as factory:
         curriculum = CurriculumRepository(factory)
-        course_lookup = CourseLookupService(curriculum, search_settings)
+        course_lookup = CourseLookupService(
+            curriculum, search_settings, projection_cache=projection_cache
+        )
         with ExitStack() as stack:
             semantic_search: CourseSearchService | None = None
             if include_semantic:

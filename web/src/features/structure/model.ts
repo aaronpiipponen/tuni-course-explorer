@@ -1,4 +1,4 @@
-/** Pure browser projection of the official rule AST. No rule satisfaction is inferred. */
+/** Pure browser projection of the official rule AST into the resolved structure tree. */
 import type {
   CourseSummary,
   DisplayLanguage,
@@ -11,15 +11,19 @@ import { UNPLACED_KEY } from "./state";
 import { nodeWordingKind } from "./presentation";
 import { reasonText, uiText, type UiTextKey } from "../../shared/wording";
 
+/** One step into a choice option, with its node and option key. */
 export type StructureChoiceStep = { node: StructureNode; optionKey: string };
+/** The owner key and choice path that reached one rule item. */
 export type StructureRuleOrigin = {
   ownerKey: string;
   choicePath: readonly StructureChoiceStep[];
 };
+/** One rule entry with the origin that reached it. */
 export type StructureRuleItem = {
   entry: Extract<StructureEntry, { kind: "course" | "node" }>;
   origin: StructureRuleOrigin;
 };
+/** One displayed entry: a course, a nested node or a note. */
 export type StructureEntry =
   | {
       kind: "course";
@@ -28,8 +32,16 @@ export type StructureEntry =
       origin?: StructureRuleOrigin;
     }
   | { kind: "node"; node: StructureNode; origin?: StructureRuleOrigin }
-  | { kind: "note"; key: string; text: string };
+  | {
+      kind: "note";
+      key: string;
+      text: string;
+      /** The module group an `ambiguous_version` reference names, set on that note alone. */
+      versionSelectionGroupId?: string;
+    };
+/** One choice option and its entries. */
 export type StructureOption = { key: string; entries: StructureEntry[] };
+/** One rule's requirement counts and its options. */
 export type StructureRuleGroup = {
   key: string;
   rule: string;
@@ -39,6 +51,7 @@ export type StructureRuleGroup = {
   choiceNode: StructureNode | null;
   options: StructureOption[];
 };
+/** One projected official structure node. */
 export type StructureNode = {
   key: string;
   kind: "programme" | "module" | "choice" | "group" | "unplaced";
@@ -52,24 +65,30 @@ export type StructureNode = {
   single: boolean;
   autoSelectSingleWrapper: boolean;
 };
+/** One structure node resolved against the edits and the placed content. */
 export type ResolvedNode = {
   node: StructureNode;
   courses: PlacedCourse[];
   notes: string[];
+  versionSelectionRequiredIds: string[];
   children: ResolvedNode[];
   chosen: StructureOption[];
   subtree: CourseSummary[];
   added: boolean;
   removed: RemovedEntry[];
 };
+/** One course displayed in a node, with whether an operation added it. */
 export type PlacedCourse = { course: CourseSummary; added: boolean };
+/** One course or module an operation removed. */
 export type RemovedEntry =
   | { kind: "course"; course: CourseSummary }
   | { kind: "module"; module: ApiModule["module"] };
+/** The reports and course summaries a resolved tree reads. */
 export type PlacedContent = {
   reports: Readonly<Record<string, StudyStructureReport>>;
   courses: ReadonlyMap<string, CourseSummary>;
 };
+/** The empty placed content. */
 export const NO_CONTENT: PlacedContent = { reports: {}, courses: new Map() };
 
 function range(
@@ -107,6 +126,7 @@ function range(
     value: min,
   });
 }
+/** Return the localized label of one official structure rule. */
 export function ruleLabel(
   rule: StructureRule,
   language: DisplayLanguage,
@@ -275,27 +295,33 @@ function project(
             ),
           },
         ];
-  if (rule.node_type === "ModuleRule")
-    return rule.module
-      ? [
-          {
-            kind: "node",
-            node: moduleNode(
-              rule.module,
-              key,
-              language,
-              `${key}/${rule.module.rule.sibling_position}`,
-            ),
-            origin,
-          },
-        ]
-      : [
-          {
-            kind: "note",
+  if (rule.node_type === "ModuleRule") {
+    if (rule.module)
+      return [
+        {
+          kind: "node",
+          node: moduleNode(
+            rule.module,
             key,
-            text: reasonText(rule.unresolved ?? "module_not_found", language),
-          },
-        ];
+            language,
+            `${key}/${rule.module.rule.sibling_position}`,
+          ),
+          origin,
+        },
+      ];
+    const ambiguousGroupId =
+      rule.unresolved === "ambiguous_version" ? rule.referenced_group_id : null;
+    return [
+      {
+        kind: "note",
+        key,
+        text: reasonText(rule.unresolved ?? "module_not_found", language),
+        ...(ambiguousGroupId === null
+          ? {}
+          : { versionSelectionGroupId: ambiguousGroupId }),
+      },
+    ];
+  }
   if (
     rule.node_type === "AnyCourseUnitRule" ||
     rule.node_type === "AnyModuleRule"
@@ -581,6 +607,7 @@ function project(
   }
   throw new Error("Unsupported structure rule type");
 }
+/** Build the browser node tree of one official structure report. */
 export function buildStructure(
   report: StudyStructureReport,
   key = "r",
@@ -660,6 +687,7 @@ export function buildProgrammeForest(
   };
 }
 
+/** Resolve one structure tree against the edits and the placed content. */
 export function resolveStructure(
   root: StructureNode,
   edits: StructureEdits,
@@ -682,18 +710,39 @@ export function resolveStructure(
         )
       : [],
   );
+  /** Return whether a placement record removes one module reference from its official node. */
+  const placementRemoves = (groupId: string, node: StructureNode): boolean => {
+    const placement = edits.modulePlacements[groupId];
+    return placement !== undefined && placement !== node.key;
+  };
+  /**
+   * Return whether one module reference belongs to the selected plan at its owning node.
+   *
+   * A defined placement that names another node removes the reference, and a group already rendered
+   * or reserved for a programme entry belongs to that occurrence.
+   */
+  const referenceRenders = (groupId: string, node: StructureNode): boolean => {
+    if (placementRemoves(groupId, node)) return false;
+    return (
+      !seenModules.has(groupId) &&
+      // A programme entry renders at its own position in the list.
+      (!programmeIds.has(groupId) || (forest && node.key === FOREST_KEY))
+    );
+  };
   const visitEntries = (
     entries: readonly StructureEntry[],
     node: StructureNode,
   ): {
     courses: PlacedCourse[];
     notes: string[];
+    versionSelectionRequiredIds: string[];
     children: ResolvedNode[];
     subtree: CourseSummary[];
     removed: RemovedEntry[];
   } => {
     const courses: PlacedCourse[] = [],
       notes: string[] = [],
+      versionSelectionRequiredIds: string[] = [],
       children: ResolvedNode[] = [],
       subtree: CourseSummary[] = [],
       removed: RemovedEntry[] = [];
@@ -715,13 +764,27 @@ export function resolveStructure(
           subtree.push(entry.course);
         }
       } else if (entry.kind === "note") {
-        notes.push(entry.text);
+        const groupId = entry.versionSelectionGroupId;
+        // An ambiguity note names a module reference, so it follows the same boundary as a module
+        // entry, and a suppressed note records neither text nor requirement.
+        if (groupId === undefined || referenceRenders(groupId, node)) {
+          if (groupId !== undefined) {
+            seenModules.add(groupId);
+            versionSelectionRequiredIds.push(groupId);
+          }
+          notes.push(entry.text);
+        }
       } else {
         const moduleId = entry.node.module?.group_id;
-        const placement = moduleId
-          ? edits.modulePlacements[moduleId]
-          : undefined;
-        if (moduleId && placement !== undefined && placement !== node.key) {
+        if (!moduleId || referenceRenders(moduleId, node)) {
+          if (moduleId) seenModules.add(moduleId);
+          const child = visit(entry.node, false);
+          children.push(child);
+          subtree.push(...child.subtree);
+          versionSelectionRequiredIds.push(
+            ...child.versionSelectionRequiredIds,
+          );
+        } else if (placementRemoves(moduleId, node)) {
           if (
             entry.node.module &&
             !removed.some(
@@ -730,17 +793,6 @@ export function resolveStructure(
             )
           )
             removed.push({ kind: "module", module: entry.node.module });
-        } else if (
-          !moduleId ||
-          (!seenModules.has(moduleId) &&
-            // A programme entry renders at its own position in the list.
-            (!programmeIds.has(moduleId) ||
-              (forest && node.key === FOREST_KEY)))
-        ) {
-          if (moduleId) seenModules.add(moduleId);
-          const child = visit(entry.node, false);
-          children.push(child);
-          subtree.push(...child.subtree);
         }
       }
     }
@@ -782,9 +834,17 @@ export function resolveStructure(
         const child = visit(childNode, true);
         children.push(child);
         subtree.push(...child.subtree);
+        versionSelectionRequiredIds.push(...child.versionSelectionRequiredIds);
       }
     }
-    return { courses, notes, children, subtree, removed };
+    return {
+      courses,
+      notes,
+      versionSelectionRequiredIds,
+      children,
+      subtree,
+      removed,
+    };
   };
   const visit = (node: StructureNode, added = false): ResolvedNode => {
     const storedChoices = edits.choices[node.key];
@@ -811,6 +871,7 @@ export function resolveStructure(
   };
   return visit(root);
 }
+/** Return the choices with one option toggled at the given node. */
 export function nextChoices(
   choices: StructureChoices,
   node: StructureNode,
@@ -827,6 +888,7 @@ export function nextChoices(
   return { ...choices, [node.key]: next };
 }
 
+/** Return the node keys where the official structure names each course and module. */
 export function officialHomes(
   root: StructureNode,
   edits: StructureEdits,
@@ -859,6 +921,7 @@ export function officialHomes(
   return homes;
 }
 
+/** Return one resolved tree indexed by node key and by course and module identity. */
 export function indexResolved(root: ResolvedNode): {
   byKey: Map<string, ResolvedNode>;
   courseAt: Map<string, ResolvedNode>;

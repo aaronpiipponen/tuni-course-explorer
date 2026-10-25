@@ -62,6 +62,8 @@ A validly admitted unknown path reaches the router's ordinary `404` or `405`, so
 | `POST /api/settings/worker/setup` | `WorkerSetupRequest(branch, code_only)` | One `CommandResult` of the worker setup or update |
 | `POST /api/settings/worker/preflight` | The empty `EmptyRequest` | One `CommandResult` of the read-only worker preflight |
 
+`POST /api/settings/config/set` replaces the value of one key that the named file already carries, and it leaves every other byte of the file as it is. In the environment file it also appends one quoted assignment for an absent key that an owning settings family declares, in the file's first line-ending style. It refuses a key that a subsystem file does not carry and an absent environment key that no settings family owns, and a refused candidate writes no file.
+
 The handlers in `routes/auth.py` are the synchronous `session(request, response)`, `login(request, response, body)` and `logout(request, response, body)`. `session` reports the session the admission middleware put in `request.state.admin_session`, and `login` and `logout` delegate to `application.state.security`. `routes/dashboard.py`, `routes/preparation.py`, `routes/inference.py`, `routes/logs.py` and `routes/settings.py` hold the feature handlers.
 
 A single-command handler returns one `request.app.state.commands.run(...)` result as its `CommandResult` response with `Cache-Control: no-store`, and a read handler of those five modules also passes `automatic=automatic_read(request)` as the runner's flag. `rebuild_admin(request, body)` in `routes/settings.py` is the one handler that returns a `JSONResponse`, because it attaches a second command as a background task.
@@ -171,7 +173,7 @@ Only a read route forwards the marker. The forwarding routes are `dashboard`, th
 | `tests/admin_web/test_routes.py` | One request per feature route mapping to one argv and one outcome, with and without the automatic marker, and the build-then-queue sequence of the administration rebuild. |
 | `tests/admin_web/test_command_log_read.py` | The log read over a temporary checkout: the newest configured entries, no file created for an absent log, and no rewrite of a present one. |
 | `tests/config/test_configuration_sources.py`, `tests/config/test_settings.py` | The administration family's automatic composition, its process overrides and its loopback refusal. |
-| `tests/admin/test_configuration.py` | One `config/admin_web.toml` key save and the refused non-loopback candidate beside a process override. |
+| `tests/admin/test_configuration.py` | One `config/admin_web.toml` key save, one `config/admission.toml` key save, an environment-file save that preserves every other byte, the append of an absent environment key that an owning settings family declares with its refused invalid value, the refused absent subsystem-file key and the refused absent environment key that no family owns, and the refused non-loopback candidate beside a process override. |
 | `tests/admin/test_operator_commands.py`, `tests/admin/test_operator_menu.py` | The password command's hidden two-entry prompt and acknowledgment, the Setup menu entry, and every cancel, end-of-input and interrupt that stores nothing. |
 | `tests/web/test_boundary.py` | The course-exploration web package importing no administration module, `course_explorer_admin_web` included. |
 | `admin-web/src/app/App.test.ts` | The console shell's session boundary, sign-in and refusal handling, the five mounted tab trees, and the sign-out a completed administration rebuild leaves. |

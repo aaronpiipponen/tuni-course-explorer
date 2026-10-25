@@ -1,4 +1,4 @@
-"""Compose the fixed read-only feature API."""
+"""Compose the plain read-only feature application that one worker process serves."""
 
 from pathlib import Path
 
@@ -6,34 +6,34 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
+from starlette.middleware.gzip import GZipMiddleware
 
 from course_explorer_web.frontend import register_frontend
 from course_explorer_web.routes import (
+    catalogue,
     comparison,
-    course_lookup,
     course_summaries,
     features,
-    minimum_route,
-    module_lookup,
     next_courses,
     prerequisites,
     recommendations,
     search,
     study_structure,
 )
-from course_explorer_web.usage import UsageMiddleware
 
 
 def create_app(*, frontend_directory: Path | None = None) -> FastAPI:
-    """Create the fixed API surface, register usage recording and translate caller errors to 422."""
-    application = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+    """Create the fixed API surface, register compression and translate caller errors to 422."""
+    application = FastAPI(
+        docs_url=None,
+        redoc_url=None,
+        openapi_url=None,
+    )
     for route in (
         search.router,
-        course_lookup.router,
-        module_lookup.router,
+        catalogue.router,
         comparison.router,
         prerequisites.router,
-        minimum_route.router,
         next_courses.router,
         recommendations.router,
         study_structure.router,
@@ -56,7 +56,7 @@ def create_app(*, frontend_directory: Path | None = None) -> FastAPI:
         application,
         dist_directory=frontend_directory or Path(__file__).resolve().parents[2] / "web" / "dist",
     )
-    application.add_middleware(UsageMiddleware)
+    application.add_middleware(GZipMiddleware, minimum_size=500, compresslevel=6)
     return application
 
 

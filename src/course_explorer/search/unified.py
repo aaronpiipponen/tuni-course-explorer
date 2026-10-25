@@ -1,11 +1,12 @@
 """Unified single-query search composition over the match services.
 
 This module owns the one product-facing ``UnifiedCourseSearchService`` plus its result and report
-contracts. It performs exactly one projected represented-course summary read per query, attempts the
-separately callable exact-code, substring and fuzzy-name services exactly once for every valid query,
-attempts the semantic service the same way when one is supplied, merges their results to one entry
-per canonical ``course.group_id``, retains every match source, keeps the fuzzy (`0-100`) and
-semantic (`[-1, 1]`) score scales in distinct fields, and orders merged courses by the config-owned
+contracts. It obtains one normalized row set per query from the lookup service, reads the represented
+courses once only when a semantic service needs their identity pairing, attempts the separately
+callable exact-code, substring and fuzzy-name services exactly once for every valid query, attempts
+the semantic service the same way when one is supplied, merges their results to one entry per
+canonical ``course.group_id``, retains every match source, keeps the fuzzy (`0-100`) and semantic
+(`[-1, 1]`) score scales in distinct fields, and orders merged courses by the config-owned
 ``SearchSettings.search_tier_priority`` then active-before-inactive then the primary method's own
 result position.
 
@@ -94,29 +95,32 @@ class UnifiedCourseSearchService:
         methods alone, semantic matching is unavailable, and the effective tier order omits
         ``semantic``.
         """
-        represented: tuple[RepresentedCourseSummary, ...] = (
-            self._curriculum.list_represented_summaries(
+        represented: tuple[RepresentedCourseSummary, ...] | None = None
+        if self._semantic_search is not None:
+            represented = self._curriculum.list_represented_summaries(
                 active_only=None if include_inactive else True
             )
+        rows = self._course_lookup.lookup_rows(
+            include_inactive=include_inactive, represented=represented
         )
         exact_matches = self._course_lookup.exact_code_search(
             query,
             display_language=display_language,
             include_inactive=include_inactive,
-            represented=represented,
+            rows=rows,
         )
         substring_matches = self._course_lookup.substring_search(
             query,
             display_language=display_language,
             include_inactive=include_inactive,
-            represented=represented,
+            rows=rows,
         )
         fuzzy_matches = self._course_lookup.fuzzy_name_search(
             query,
             display_language=display_language,
             min_score=fuzzy_min_score,
             include_inactive=include_inactive,
-            represented=represented,
+            rows=rows,
         )
         semantic_matches: tuple[CourseSearchResult, ...] = ()
         semantic_available = False

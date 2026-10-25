@@ -7,10 +7,9 @@ The scripts directory holds one adapter per command surface: the feature reads, 
 | Script | Callable | Report |
 |---|---|---|
 | `scripts/search.py` | `course_explorer.search.commands.run_search_command` | `UnifiedSearchReport` |
-| `scripts/course_lookup.py` | `course_explorer.search.lookup_commands.run_course_lookup_command` | `CourseLookupReport` |
-| `scripts/module_lookup.py` | `course_explorer.search.lookup_commands.run_module_lookup_command` | `ModuleLookupReport` |
+| `scripts/catalogue.py` | `course_explorer.search.lookup_commands.run_catalogue_command` | `CatalogueReport` |
 | `scripts/compare_courses.py` | `course_explorer.comparison.commands.run_course_comparison_command` | `CourseComparisonReport` |
-| `scripts/prerequisites.py` | `course_explorer.prerequisite.commands.run_prerequisite_command` or `run_minimum_route_command` | `PrerequisiteGraphReport` or `MinimumCreditPathEvaluation` |
+| `scripts/prerequisites.py` | `course_explorer.prerequisite.commands.run_prerequisite_command` or `run_minimum_route_command` | `PrerequisiteGraphReport` or a minimum-route result |
 | `scripts/next_courses.py` | `course_explorer.next_courses.commands.run_next_courses_command` | `NextCoursesReport` |
 | `scripts/recommendations.py` | `course_explorer.recommendations.commands.run_recommendations_command` | `RecommendationsReport` |
 | `scripts/study_structure.py` | `course_explorer.study_structure.commands.run_study_structure_command` | `StudyStructureReport` |
@@ -26,23 +25,22 @@ No adapter holds a rule of its own, matching [Adapters hold no business logic](/
 | Script | Arguments |
 |---|---|
 | `search.py` | `query` positional, `--display-language` required with choices from `get_args(DisplayLanguage)`, `--semantic-min-score` float, `--fuzzy-min-score` float, `--active-only` store true |
-| `course_lookup.py` | `query` positional, `--display-language` required with choices from `get_args(DisplayLanguage)`, `--active-only` store true |
-| `module_lookup.py` | `query` positional, `--display-language` required, no other option |
+| `catalogue.py` | No argument and no option |
 | `compare_courses.py` | `course_a` and `course_b` positionals, no option |
 | `prerequisites.py` | `course_code` positional, `--completed`, `--selected`, `--excluded`, `--completed-node`, and `--excluded-node` append, `--include-recommended`, `--include-inferred`, `--active-only`, `--basis` with the choices `completed` and `selected`, `--route` store true |
 | `next_courses.py` | `--selected` and `--completed` append, `--basis`, `--mode` with the choices `all` and `at_least_one`, `--display-language` required, `--include-inferred`, and the mutually exclusive `--active-only` and `--all-courses` |
 | `recommendations.py` | The same set as `next_courses.py` |
-| `study_structure.py` | `root_group_id` positional, no option |
+| `study_structure.py` | `root_group_id` positional, `--module-version GROUP_ID=VERSION_ID` append |
 | `admin.py` | No parser, the dispatcher owns it |
 | `mock_data.py` | `action` positional with the choices `load-curriculum`, `load`, and `write-artifacts`, `--fixture-dir` defaulting to `data/mock`, `--raw-root` defaulting to `data/mock-import`, `--hubs-dir` defaulting to `config/derived` |
 
-`search.py` and `course_lookup.py` map `--active-only` to `include_inactive=not args.active_only`. `next_courses.py` and `recommendations.py` call `parser.set_defaults(active_only=True)`, so an invocation without either activity flag reads active courses only. `prerequisites.py` builds one `options` dict and passes it to whichever of the two prerequisite commands the invocation selects.
+`search.py` maps `--active-only` to `include_inactive=not args.active_only`. `next_courses.py` and `recommendations.py` call `parser.set_defaults(active_only=True)`, so an invocation without either activity flag reads active courses only. `prerequisites.py` builds one `options` dict and passes it to whichever prerequisite command the invocation selects. `--route` prints the minimum-new-credit result from the shared TypeScript solver run through Node.
 
-The comparison and structure adapters take their identities as positionals and declare no option, so the two report shapes are the only difference between them at this layer.
+The comparison adapter takes its identities as positionals and declares no option. The structure adapter takes its root as a positional and repeatable exact group-to-version selections, so it owns argument parsing alone and no selection rule.
 
 ## Delegation and output
 
-Every feature adapter and the example-data adapter define `main(argv: Sequence[str] | None = None) -> int`, parse with `argparse`, and call their command once. A returned report is printed with `report.model_dump_json()`, and a successful call returns 0. Each closes with the `if __name__ == "__main__":` guard and `raise SystemExit(main())`, so the process exit status is the function's return value.
+Every feature adapter and the example-data adapter define `main(argv: Sequence[str] | None = None) -> int`, parse with `argparse`, and call their command once. A returned report is printed with `report.model_dump_json()`, and the route command prints the object its command returns with `json.dumps`. A successful call returns 0. Each closes with the `if __name__ == "__main__":` guard and `raise SystemExit(main())`, so the process exit status is the function's return value.
 
 `scripts/admin.py` is the administrative adapter. It imports `main` from `course_explorer_admin.cli` and raises `SystemExit(main())` from that imported function, so the parser, the JSON emission, and the exit status belong to the dispatcher rather than to the script. The script states the command grammar in its usage header and holds no rule of its own.
 
@@ -97,7 +95,7 @@ The server status and the log reads resolve the production subprocess runner exa
 
 ## The launcher scripts
 
-`scripts/run_web.sh` is the shell adapter for the web server. It enables `set -euo pipefail` and execs `./.venv/bin/python -m course_explorer_web.launch`, so the launcher takes the place of the shell process. The launcher module composes the four settings families every site needs and adds the embedding family only when the site serves embedding features, then hands the serving process a file-free environment, as described in [Web server](/docs/backend/interfaces/web-server.md#the-launcher-and-the-environment-handoff).
+`scripts/run_web.sh` is the shell adapter for the web server. It enables `set -euo pipefail` and execs `./.venv/bin/python -m course_explorer_web.launch`, so the launcher takes the place of the shell process. The launcher module composes the five settings families every site needs and adds the embedding family only when the site serves embedding features, then hands the serving process a file-free environment, as described in [Web server](/docs/backend/interfaces/web-server.md#the-launcher-and-the-environment-handoff).
 
 `scripts/run_admin_web.sh` is the shell adapter for the administration backend. It enables `set -euo pipefail` and execs `./.venv/bin/python -m course_explorer_admin_web`, so the backend takes the place of the shell process. The backend's own entry point loads `AdminWebSettings` and builds the application, as [Administration backend](/docs/backend/interfaces/admin-backend.md) describes.
 
@@ -124,12 +122,12 @@ The adapter tests load a script by path with `importlib.util.spec_from_file_loca
 | Test file | Covers |
 |---|---|
 | `tests/search/test_search_command.py` | The search adapter forwarding every option and printing one unified report, and the missing-language usage failure. |
-| `tests/search/test_lookup_commands.py` | The course and module lookup adapters, the forwarded `include_inactive` mapping, and the module adapter rejecting an option it does not declare. |
+| `tests/search/test_lookup_commands.py` | The catalogue adapter printing one delegated report and rejecting an undeclared argument, the catalogue command's minimal projection, and the empty summary shortcut. |
 | `tests/comparison/test_comparison_command.py` | The comparison adapter delegating both identities once and the missing-argument usage failure. |
-| `tests/prerequisite/test_prerequisite_command.py` | The prerequisite adapter forwarding every option to the graph command, `--route` dispatching the same options to the route command alone, and each operation running only its own read. |
+| `tests/prerequisite/test_prerequisite_command.py` | The prerequisite adapter forwarding every option to the graph command, `--route` dispatching the same options to the route command alone, each operation running only its own read, and the machine command returning the shared Node result. |
 | `tests/next_courses/test_next_courses_command.py` | The discovery adapter with the mode and activity defaults, both activity flags, and the missing-language usage failure. |
 | `tests/recommendations/test_recommendations_command.py` | The recommendation adapter forwarding all toggles once and emitting the recommendation report. |
-| `tests/study_structure/test_study_structure_command.py` | The structure adapter delegating one identity and rejecting an undeclared option. |
+| `tests/study_structure/test_study_structure_command.py` | The structure adapter delegating one identity and printing one report, passing a `--module-version` selection through with its surrounding spaces trimmed, refusing a duplicate group selection and an undeclared option, and the batch command forwarding its `module_versions` map to the service with a blank root refused before any settings load. |
 | `tests/admin/test_operator_commands.py` | The dispatcher's delegate-once contract across setup, migration, cleanup, configuration, status, log, usage, password and rebuild, the report emission and targets, the injected family tuple, the syntax failures that dispatch nothing, and the safe failure token with no payload. |
 | `tests/admin/test_operator_menu.py` | The numbered entries, their confirmations, and every refusal, cancel, end-of-input and interrupt that mutates nothing. |
 | `tests/admin/test_configuration.py` | One subsystem-file key save and one environment-file key save, each preserving the other bytes, and each refused candidate changing neither the file nor its directories. |

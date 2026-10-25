@@ -1,3 +1,5 @@
+# Build output, installed packages, local solver files and the npm lockfile are not formatted.
 node_modules/
 dist/
+.solver-cli/
 package-lock.json

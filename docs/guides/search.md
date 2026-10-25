@@ -4,7 +4,7 @@ The Search tab matches one query against the catalogue through the methods its s
 
 ## Running a search
 
-Type a code fragment, a course name, or a description of a topic into the field at the top of the tab. Press Enter, or select the magnifier beside the field, to run the search.
+Type a code fragment, a course name, or a description of a topic into the field. On a desktop screen the field sits at the top of the tab, with **Active only** inside the bar at its right and the magnifier beside it. On a phone the field is centred in the tab while no report, loading state or error is shown. A submitted search puts the field in the fixed header at the top of the tab, with **Active only**, the **?** button and the result count in a secondary row under the field and the results scrolling below. Press Enter, or select the magnifier beside the field, to run the search.
 
 A search runs on submit alone, so the results follow the text you submitted rather than the text that sits in the field afterwards. An empty field submits nothing. The app searches the official code, the name it shows for the course, and, on a site that serves topic matching, the meaning of the teaching text in one pass, so one query can match a course by code, by name, and by topic at the same time.
 
@@ -19,17 +19,21 @@ The app runs every method its site serves for the submitted query and merges the
 | Method | What it finds |
 |---|---|
 | **Exact code** | A course whose official code is one token of the query. A list of codes separated by commas or spaces finds each course in the list. |
-| **Substring** | A course whose official code or shown name contains the query, ignoring upper and lower case. |
+| **Substring** | A course whose official code or shown name contains the query, ignoring case. |
 | **Fuzzy search** | A course whose shown name is close to the query, so a typo or a different word order can match it. |
 | **Semantic** | A course whose teaching text is about the topic the query describes, even when the text shares no word with the query. Available with the embedding features. |
 
-The **?** button beside the field opens **About these options**, which explains the activity option and the match methods of the site.
+The **?** button opens **About these options**, which explains the activity option and the match methods of the site, and ends with a **Searching for courses** link to this guide.
 
 ## Reading the results
 
 Above the results is the number of courses that matched. The results are grouped, and each group is headed by the name of the method that matched its courses, in the method order of the app. Within a group the active courses come first.
 
 ![The Search tab after a query, with the number of courses found, the group heading that names the method, and five results that each show a code, a name, a match mark, credits, and an active label](/docs/screenshots/search-course-list.png)
+
+On a desktop screen the field, the group headings and every result row line up in one wide column. A course name is shown on one line with an ellipsis when the row cuts it, and the [course menu](/docs/guides/README.md#shared-course-state) shows the complete name. In a narrower desktop window a result row sets the code and the comparison badge on the first line, the title on the second, the credits with the activity and the state on the third, and the match marks on the fourth, and all four lines share the left edge of the card.
+
+On a phone the fixed header holds the field and the secondary row, the results scroll below it, and the number of matches sits at the right of the secondary row. A result puts its code, comparison slot letter and selected or completed badge on the first line, with activity at the right. The name occupies the next line with an ellipsis when needed and credits at the right, and the match marks close the row. [Using the app on a phone](/docs/guides/phone.md) describes the phone shell and the course sheet that a result opens.
 
 Each result is one course and shows its official code, its name, its credits, and whether the course is active or inactive. The match marks name every method that matched the course, and the first mark is the method that placed the course in its group. A result is the same course card as everywhere else, so it also carries a **selected** or **completed** mark when the course belongs to your course sets, and, on a site that serves comparison, the letter of its comparison slot when it holds one.
 
@@ -55,6 +59,6 @@ The query and the **Active only** option belong to the [profile](/docs/guides/pr
 
 ## Acting on a result
 
-Every result opens the shared [course menu](/docs/guides/README.md#shared-course-state), with **Add to comparison** on a site that serves comparison, **Open prerequisite graph**, **Add to Unplaced studies**, **Mark completed**, and **Open in Sisu**. From the menu a course joins the [Compare tab](/docs/guides/compare.md), opens as the root of the [prerequisite graph](/docs/guides/prerequisites.md), joins [Unplaced studies](/docs/guides/structure-of-studies.md#unplaced-studies), gains or loses its completion, or opens the official page of the course outside the app.
+Every result opens the shared [course menu](/docs/guides/README.md#shared-course-state), with **Add to comparison** on a site that serves comparison, **Open prerequisite graph**, **Add to Unplaced studies**, **Mark completed**, and **Open in Sisu**. From the menu a course joins the [Compare tab](/docs/guides/compare.md), opens as the root of the [prerequisite graph](/docs/guides/prerequisites.md), joins [Unplaced studies](/docs/guides/structure-of-studies.md#unplaced-studies), gains or loses its completion, or opens the official page of the course outside the app. **Add to Unplaced studies** reports the number of courses it added in a bottom notice with a **Structure of studies** link. **Mark completed** completes a selected course in place. For a course that is not selected, the dialog **Mark completed?** offers **Cancel** and **Add and complete**, and **Add and complete** adds the course to Unplaced studies and completes it. **Cancel** changes nothing. This is described in [shared course state](/docs/guides/README.md#shared-course-state).
 
 How the four methods match a query and how their results are merged is described in [Search](/docs/backend/search-and-discovery/search.md).

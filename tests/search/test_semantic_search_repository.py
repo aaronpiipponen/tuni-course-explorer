@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from sqlalchemy import Engine
+from sqlalchemy import Engine, event
 
 from course_explorer.comparison import commands as comparison_commands
 from course_explorer.comparison.commands import CourseComparisonReport
@@ -11,8 +11,13 @@ from course_explorer.constants import COURSE_EMBEDDING_DIMENSION
 from course_explorer.curriculum_repository import CurriculumRepository
 from course_explorer.db.session import session_scope
 from course_explorer.embeddings.generation import embedding_configuration_sha256
-from course_explorer.embeddings.read import TeachingEmbeddingRepository
-from course_explorer.enums import TeachingTextField, TeachingTextLanguage, TeachingTextOrigin
+from course_explorer.embeddings.read import DescriptiveChunkCache, TeachingEmbeddingRepository
+from course_explorer.enums import (
+    DESCRIPTIVE_TEACHING_TEXT_FIELDS,
+    TeachingTextField,
+    TeachingTextLanguage,
+    TeachingTextOrigin,
+)
 from course_explorer.recommendations.service import rank_recommendation_candidates
 from course_explorer.search.repository import SemanticSearchRepository
 from course_explorer.search.service import CourseSearchService
@@ -124,6 +129,10 @@ def test_exact_cosine_uses_best_completed_compatible_chunk_without_cap(
         ("group-b", TeachingTextField.OUTCOMES, TeachingTextLanguage.FI, 1),
         ("group-b", TeachingTextField.NAME, TeachingTextLanguage.FI, 2),
     }
+    # The narrowed read returns exactly the full read's content and outcomes rows in the same order.
+    assert TeachingEmbeddingRepository(factory).get_chunks(
+        requested, embedding_configuration_hash=configuration_hash, descriptive_only=True
+    ) == tuple(chunk for chunk in chunks if chunk.field in DESCRIPTIVE_TEACHING_TEXT_FIELDS)
     a_fi = next(
         chunk
         for chunk in chunks
@@ -252,3 +261,51 @@ def test_service_returns_current_summary_for_derived_only_match_and_ignores_obso
     assert report.meters.overlap.b_in_a == pytest.approx(100.0)
     assert report.verdict == "heavily_overlapping"
     assert CourseComparisonReport.model_validate_json(report.model_dump_json()) == report
+
+
+def test_descriptive_chunk_cache_returns_the_full_read_order_and_reuses_retained_triples(
+    database: tuple[Engine, object],
+) -> None:
+    """A cached descriptive read keeps the full read's order and a repeated read issues no SQL."""
+    _seed_semantic_courses(database)
+    engine, factory = database
+    curriculum = CurriculumRepository(factory)
+    requested = tuple(
+        record
+        for record in curriculum.list_represented_summaries()
+        if record.summary.group_id in {"group-a", "group-b", "group-c", "group-d"}
+    )
+    configuration_hash = embedding_configuration_sha256(embedding_settings())
+    repository = TeachingEmbeddingRepository(factory)
+    full = repository.get_chunks(requested, embedding_configuration_hash=configuration_hash)
+    cache = DescriptiveChunkCache(max_entries=8)
+
+    cached = repository.get_chunks(
+        requested,
+        embedding_configuration_hash=configuration_hash,
+        descriptive_only=True,
+        cache=cache,
+    )
+
+    # The request carries groups with no compatible descriptive row, so those triples retain an
+    # empty tuple and the repeated read answers every triple from the cache.
+    assert cached == tuple(
+        chunk for chunk in full if chunk.field in DESCRIPTIVE_TEACHING_TEXT_FIELDS
+    )
+    statements: list[str] = []
+
+    def _capture(_conn, _cursor, statement, _parameters, _context, _executemany):
+        statements.append(statement)
+
+    event.listen(engine, "before_cursor_execute", _capture)
+    try:
+        repeated = repository.get_chunks(
+            requested,
+            embedding_configuration_hash=configuration_hash,
+            descriptive_only=True,
+            cache=cache,
+        )
+    finally:
+        event.remove(engine, "before_cursor_execute", _capture)
+    assert repeated == cached
+    assert statements == []

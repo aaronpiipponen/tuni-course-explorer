@@ -1,11 +1,11 @@
 /**
- * One current-shape validation boundary for the stored browser envelope, the typed profile and
- * whole-state files, and the pending Sisu capture a profile holds.
+ * The validation boundary for the stored browser envelope, the typed profile and whole-state
+ * files, and the pending Sisu capture a profile holds.
  *
  * A supplied field is checked before it is used, and an unknown field is dropped.
  * An absent profile field reads from its default. A supplied structure requires its ordered
- * programme list. Validation checks shape and types rather than catalogue membership: a
- * course identity is accepted as the string it is.
+ * programme list and its per-group version selections. Validation checks shape and types rather
+ * than catalogue membership. A course identity is accepted as the string it is.
  */
 import { initialProfileState } from "./defaults";
 import type {
@@ -76,6 +76,18 @@ function literalField<T extends string>(
 function identityArray(value: unknown, message: string): string[] {
   if (!Array.isArray(value)) throw new Error(message);
   return value.map((item) => identity(item, message));
+}
+
+const GRAPH_BOX_KEY = /^s:.+:d:[0-9a-f]{24}$/;
+
+/**
+ * Validate one saved mark array and retain only keys in the graph-box format.
+ *
+ * Supplied values must be nonempty strings. A key in another format is dropped. Valid keys absent
+ * from the drawing are saved and apply when the graph draws the box.
+ */
+function graphBoxKeyArray(value: unknown, message: string): string[] {
+  return identityArray(value, message).filter((key) => GRAPH_BOX_KEY.test(key));
 }
 
 function uniqueIdentityArray(value: unknown, message: string): string[] {
@@ -170,11 +182,11 @@ function projectPrerequisites(value: unknown) {
     completedNodeKeys:
       saved.completedNodeKeys === undefined
         ? []
-        : identityArray(saved.completedNodeKeys, message),
+        : graphBoxKeyArray(saved.completedNodeKeys, message),
     excludedNodeKeys:
       saved.excludedNodeKeys === undefined
         ? []
-        : identityArray(saved.excludedNodeKeys, message),
+        : graphBoxKeyArray(saved.excludedNodeKeys, message),
   };
 }
 
@@ -233,12 +245,26 @@ function placementsField(
   );
 }
 
+function moduleVersionsField(
+  value: unknown,
+  message: string,
+): Record<string, string> {
+  const saved = objectValue(value, message);
+  return Object.fromEntries(
+    Object.entries(saved).map(([key, version]) => [
+      identity(key, message),
+      identity(version, message),
+    ]),
+  );
+}
+
 function projectStructure(value: unknown) {
   const message = sliceMessage("structure");
   const saved = objectValue(value, message);
   return {
-    // The ordered programme list is the structure's top-level identity, so a supplied
-    // structure object without it is not a readable structure.
+    // The ordered programme list is the structure's top-level identity and the per-group version
+    // selections are required, so a supplied structure object without either is not a readable
+    // structure.
     programmeGroupIds: uniqueIdentityArray(saved.programmeGroupIds, message),
     choices:
       saved.choices === undefined ? {} : choicesField(saved.choices, message),
@@ -250,6 +276,7 @@ function projectStructure(value: unknown) {
       saved.modulePlacements === undefined
         ? {}
         : placementsField(saved.modulePlacements, message),
+    moduleVersions: moduleVersionsField(saved.moduleVersions, message),
     placedCourseIds:
       saved.placedCourseIds === undefined
         ? []
@@ -260,7 +287,8 @@ function projectStructure(value: unknown) {
 /**
  * Validate one profile state, filling absent profile fields from their defaults.
  *
- * A supplied structure requires its ordered programme list. Unknown fields are dropped.
+ * A supplied structure requires its ordered programme list and its per-group version selections.
+ * Unknown fields are dropped.
  */
 export function validateProfileState(value: unknown): ProfileState {
   const saved = objectValue(value, STATE_MESSAGE);
@@ -326,13 +354,13 @@ export function validateProfile(value: unknown): Profile {
 }
 
 /**
- * Validate one stored envelope of schema version 2.
+ * Validate one stored envelope of schema version 3.
  *
  * Every profile is validated, the current profile must exist, and profile names must be unique.
  */
 export function validateBrowserState(value: unknown): BrowserState {
   const saved = objectValue(value, ENVELOPE_MESSAGE);
-  if (saved.schemaVersion !== 2)
+  if (saved.schemaVersion !== 3)
     throw new Error("Unsupported saved browser state schema");
   if (
     typeof saved.currentProfileId !== "string" ||
@@ -356,7 +384,7 @@ export function validateBrowserState(value: unknown): BrowserState {
   const names = new Set(ids.map((id) => profiles[id].name));
   if (names.size !== ids.length) throw new Error(ENVELOPE_MESSAGE);
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     currentProfileId: saved.currentProfileId,
     profiles,
   };

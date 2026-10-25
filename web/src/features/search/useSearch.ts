@@ -1,9 +1,12 @@
-/** Explicit transient unified-search requests. Only submitted input is ever sent. */
+/** Explicit transient unified-search requests send only submitted input. */
 import { useEffect, useState } from "react";
+import { readCachedReport } from "../../app/cachedRead";
+import { useReadCache } from "../../app/useReadCache";
 import type { SearchRequest, UnifiedSearchReport } from "../../api/types";
 import { searchCourses } from "../../api/search";
 import { useProfileSelector } from "../../state/useProfileSelector";
 
+/** Return the submitted search, its report, its state and its submit action. */
 export function useSearch(): {
   report: UnifiedSearchReport | null;
   loading: boolean;
@@ -15,6 +18,7 @@ export function useSearch(): {
     (state) => state.search.activeOnly,
   );
   const { value: query } = useProfileSelector((state) => state.search.query);
+  const cache = useReadCache();
   const [submitted, setSubmitted] = useState<{
     request: SearchRequest;
     serial: number;
@@ -44,7 +48,12 @@ export function useSearch(): {
       loading: true,
       error: null,
     }));
-    searchCourses(request, controller.signal).then(
+    readCachedReport(
+      cache,
+      JSON.stringify(["search", request]),
+      (signal) => searchCourses(request, signal),
+      controller.signal,
+    ).then(
       (report) => {
         if (!controller.signal.aborted)
           setResult({ request, report, loading: false, error: null });
@@ -61,6 +70,7 @@ export function useSearch(): {
     );
     return () => controller.abort();
   }, [
+    cache,
     currentRequest?.query,
     currentRequest?.display_language,
     currentRequest?.include_inactive,

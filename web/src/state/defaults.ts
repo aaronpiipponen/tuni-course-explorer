@@ -6,6 +6,7 @@ import { initialSearchState } from "../features/search/state";
 import { initialStructureState } from "../features/structure/state";
 import type { BrowserState, ProfileState } from "./types";
 
+/** Build the initial state for one profile. */
 export function initialProfileState(): ProfileState {
   return {
     language: "en",
@@ -20,9 +21,10 @@ export function initialProfileState(): ProfileState {
   };
 }
 
+/** Build the first browser envelope with one default profile. */
 export function initialBrowserState(): BrowserState {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     currentProfileId: "default",
     profiles: { default: { name: "My plan", state: initialProfileState() } },
   };

@@ -2,12 +2,25 @@
 import type { UiTextKey } from "../shared/wording";
 import type { TabId } from "../state/types";
 
-export const TABS: readonly { id: TabId; labelKey: UiTextKey }[] = [
-  { id: "search", labelKey: "Search" },
-  { id: "compare", labelKey: "Compare" },
-  { id: "prerequisites", labelKey: "Prerequisites" },
-  { id: "discover", labelKey: "Discover" },
-  { id: "structure", labelKey: "Structure of studies" },
+/** The five tabs in canonical navigation order. */
+export const TABS: readonly {
+  id: TabId;
+  labelKey: UiTextKey;
+  phoneLabelKey: UiTextKey;
+}[] = [
+  { id: "search", labelKey: "Search", phoneLabelKey: "Search" },
+  { id: "compare", labelKey: "Compare", phoneLabelKey: "Compare" },
+  {
+    id: "prerequisites",
+    labelKey: "Prerequisites",
+    phoneLabelKey: "Prereqs",
+  },
+  { id: "discover", labelKey: "Discover", phoneLabelKey: "Discover (phone)" },
+  {
+    id: "structure",
+    labelKey: "Structure of studies",
+    phoneLabelKey: "Structure",
+  },
 ];
 
 const WITHOUT_COMPARE = TABS.filter((tab) => tab.id !== "compare");

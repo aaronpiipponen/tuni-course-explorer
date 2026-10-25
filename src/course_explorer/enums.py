@@ -66,6 +66,14 @@ class TeachingTextField(StrEnum):
     OUTCOMES = "outcomes"
 
 
+# The two fields whose text describes what a course teaches. Search, comparison and recommendation
+# measure these fields, while a name cell identifies a course rather than teaching its subject.
+DESCRIPTIVE_TEACHING_TEXT_FIELDS: tuple[TeachingTextField, ...] = (
+    TeachingTextField.CONTENT,
+    TeachingTextField.OUTCOMES,
+)
+
+
 class TeachingTextLanguage(StrEnum):
     """Language of a teaching-text value, either official or derived."""
 

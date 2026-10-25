@@ -9,6 +9,7 @@ Alembic migration, yielded tests and cleanup.
 from __future__ import annotations
 
 import os
+import subprocess
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -67,9 +68,9 @@ def _file_free_settings_environment(
 def _temporary_usage_root(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Point the shared usage owner at the calling test's temporary directory.
 
-    Every ``TestClient`` request appends one usage record through the serving middleware. Binding
-    the owner's root to the temporary directory keeps that write out of the checkout's own usage
-    file, and the real writer is enabled because the middleware resolves the owner when it runs.
+    The front router's usage middleware appends one record per forwarded request, and it resolves
+    this owner's root when it runs. Binding the root to the temporary directory keeps those writes
+    out of the checkout's own usage file, and the real writer stays enabled.
     """
     monkeypatch.setattr(usage, "repository_root", lambda: tmp_path)
 
@@ -97,6 +98,16 @@ def _truncate_database(engine: Engine) -> None:
         return
     with engine.begin() as connection:
         connection.exec_driver_sql(f"TRUNCATE {tables} RESTART IDENTITY CASCADE")
+
+
+@pytest.fixture(scope="session")
+def solver_bundle() -> None:
+    """Build the Node solver bundle the machine route command runs."""
+    subprocess.run(
+        ["npm", "--prefix", "web", "run", "solver:build"],
+        cwd=Path(__file__).parents[1],
+        check=True,
+    )
 
 
 @pytest.fixture(scope="session")

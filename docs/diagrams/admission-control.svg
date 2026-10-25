@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 560" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Admission control</title>
+  <desc id="d">A POST to a fixed API path receives an admission class: free, light or heavy. A free
+  read passes to the least busy worker process without a check. A light read takes its cookie's light
+  limits, and a heavy read is charged to its cookie's heavy budget and then takes a global heavy slot
+  from a first-in-first-out queue. A check that fails sends the request to the fixed refusal, which
+  answers 429 with a Retry-After header. An admitted heavy read is placed only on a worker process
+  that carries no other heavy read, while a free or light read may use any least busy worker process.
+  The front router appends one request record for every HTTP request.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="560" rx="12" fill="#232434"/>
+
+  <rect x="40" y="24" width="280" height="40" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="180" y="50" text-anchor="middle" font-size="16" fill="#ececf2">POST to a fixed API path</text>
+
+  <rect x="40" y="104" width="200" height="296" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="140" y="242" text-anchor="middle" font-size="16" fill="#ececf2">Admission class</text>
+  <text x="140" y="264" text-anchor="middle" font-size="14" fill="#a3a4b8">free, light or heavy</text>
+
+  <rect x="296" y="192" width="180" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="386" y="218" text-anchor="middle" font-size="16" fill="#ececf2">Light limits</text>
+  <text x="386" y="240" text-anchor="middle" font-size="14" fill="#a3a4b8">rate, concurrency</text>
+
+  <rect x="296" y="304" width="180" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="386" y="330" text-anchor="middle" font-size="16" fill="#ececf2">Heavy budget</text>
+  <text x="386" y="352" text-anchor="middle" font-size="14" fill="#a3a4b8">per cookie</text>
+
+  <rect x="296" y="440" width="180" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="386" y="466" text-anchor="middle" font-size="16" fill="#ececf2">Heavy slots</text>
+  <text x="386" y="488" text-anchor="middle" font-size="14" fill="#a3a4b8">slots and queue</text>
+
+  <rect x="516" y="232" width="180" height="192" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="606" y="260" text-anchor="middle" font-size="16" fill="#ececf2">Refused</text>
+  <text x="606" y="282" text-anchor="middle" font-size="14" fill="#a3a4b8">429, Retry-After</text>
+
+  <rect x="744" y="104" width="176" height="416" rx="8"
+        fill="#2e3045" stroke="#a98ae0" stroke-width="1.5"/>
+  <text x="832" y="302" text-anchor="middle" font-size="16" fill="#ececf2">Worker process</text>
+  <text x="832" y="324" text-anchor="middle" font-size="14" fill="#a3a4b8">least busy</text>
+
+  <rect x="40" y="448" width="200" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="140" y="474" text-anchor="middle" font-size="16" fill="#ececf2">Request record</text>
+  <text x="140" y="496" text-anchor="middle" font-size="14" fill="#a3a4b8">one per request</text>
+
+  <line x1="176" y1="64" x2="176" y2="104" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <line x1="240" y1="136" x2="744" y2="136" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="248" y="128" font-size="14" fill="#a3a4b8">free, no check</text>
+
+  <line x1="240" y1="224" x2="296" y2="224" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="244" y="216" font-size="14" fill="#a3a4b8">light</text>
+
+  <line x1="240" y1="336" x2="296" y2="336" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="244" y="328" font-size="14" fill="#a3a4b8">heavy</text>
+
+  <line x1="476" y1="208" x2="744" y2="208" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <polyline points="476,240 484,240 484,304 516,304" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <line x1="386" y1="368" x2="386" y2="440" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <line x1="476" y1="352" x2="516" y2="352" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <polyline points="476,456 500,456 500,400 516,400" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <line x1="476" y1="488" x2="744" y2="488" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="520" y="480" font-size="14" fill="#a3a4b8">no other heavy read</text>
+
+  <line x1="140" y1="400" x2="140" y2="448" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="148" y="432" font-size="14" fill="#a3a4b8">appends</text>
+</svg>

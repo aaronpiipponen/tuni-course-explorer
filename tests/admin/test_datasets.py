@@ -40,7 +40,11 @@ INITIAL_DATABASE = "course_initial_demo"
 
 
 class FakeRunner:
-    """Scripted local runner for git/Compose/Alembic/dropdb commands."""
+    """Scripted local runner for git, Compose, Alembic, and database commands.
+
+    The git handlers report a detached checkout with a dirty runtime path, so a caller that
+    requires a branch or a clean tree fails loudly.
+    """
 
     def __init__(self, *, revision: str = REVISION) -> None:
         self.calls: list[tuple[str, ...]] = []
@@ -53,9 +57,9 @@ class FakeRunner:
         self.envs.append(dict(env or {}))
         output = b""
         if command[:3] == ("git", "branch", "--show-current"):
-            output = b"prerequisite-inference\n"
-        elif command[:2] == ("git", "status"):
             output = b""
+        elif command[:2] == ("git", "status"):
+            output = b" M src/course_explorer/inference/domain.py\n"
         elif command[:2] == ("git", "rev-parse"):
             output = (self.revision + "\n").encode()
         elif "ps" in command and "--services" in command:
@@ -153,7 +157,8 @@ def _snapshot(admin, session: WorkerDatasetSession, dump: Path) -> DatabaseSnaps
 def test_initial_setup_keeps_its_data_and_is_idempotent(
     configured: tuple[Path, RestoreStub], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Setup migrates and verifies once, then reuses its receipt across a pointer-only interruption."""
+    """Setup migrates and verifies once without a branch or clean-tree gate, then reuses its receipt
+    across a pointer-only interruption."""
     root, _ = configured
     runner = FakeRunner()
     observations = [sample_verification()]
@@ -196,14 +201,13 @@ def test_initial_setup_keeps_its_data_and_is_idempotent(
         sample_verification().model_copy(update={"alembic_revision": "20260101_9999"})
     )
 
-    # The retry reads a different checkout revision: enrollment compares dataset identity only.
+    # The retry runs against another revision of a detached checkout with dirty runtime paths:
+    # pointer repair reads no revision, and enrollment compares dataset identity only.
     retry_runner = FakeRunner(revision="b" * 40)
     assert datasets_admin.initialize_selected_dataset(runner=retry_runner) == receipt
-    new_calls = retry_runner.calls
-    assert all(call[0] == "git" for call in new_calls)
     assert not any(
         "compose" in call or "alembic" in call or call[:2] == ("sudo", "docker")
-        for call in new_calls
+        for call in retry_runner.calls
     )
     assert len(verifier_calls) == 1
     assert receipt_path.read_bytes() == receipt_bytes

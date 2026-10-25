@@ -2,6 +2,7 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useReducedMotion } from "./useReducedMotion";
 
+/** Render one animated disclosure panel that stays inert while closed. */
 export function Disclosure({
   open,
   className,

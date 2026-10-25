@@ -15,6 +15,7 @@ import { useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { ErrorNotice } from "../../shared/ErrorNotice";
 import { useWording } from "../../shared/useWording";
+import { usePhoneTabsOnClose } from "../../shared/usePhoneTabsOnClose";
 import type { UiTextKey } from "../../shared/wording";
 
 /** The variant one open confirmation shows, kept while the panel animates closed. */
@@ -59,6 +60,7 @@ const DESCRIPTIONS: Record<
   },
 };
 
+/** Render one confirmation for removing or resetting a programme or module. */
 export function ModuleRemoveDialog({
   open,
   name,
@@ -90,6 +92,7 @@ export function ModuleRemoveDialog({
   returnFocus(): void;
 }) {
   const { language, t } = useWording();
+  usePhoneTabsOnClose(open);
   // The close animation keeps showing the content the confirmation opened with.
   const [retained, setRetained] = useState<Target | null>(null);
   const current: Target | null = open

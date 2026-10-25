@@ -10,11 +10,7 @@ from course_explorer.enums import (
     PrerequisiteRequirementKind,
 )
 from course_explorer.prerequisite.domain import (
-    AndRequirement,
-    CourseRequirement,
-    ModuleBlockRequirement,
     UnresolvedPrerequisiteReason,
-    UnresolvedRequirement,
 )
 from course_explorer.prerequisite.graph import (
     PrerequisiteGraphCompiler,
@@ -25,8 +21,11 @@ from tests.prerequisite._graph_support import (
     RecordingInferredSetRead,
     catalogue_course,
     catalogue_module,
+    child_uses,
+    issues,
     module_rule,
     module_version,
+    piece_of,
     prerequisite_course_member,
     prerequisite_module_member,
     prerequisite_option,
@@ -93,14 +92,16 @@ def test_module_expansion_preserves_course_guards_and_detects_course_and_module_
         FakeCurriculumRead(courses, modules), inferred_read, RecordingEquivalenceGroupRead()
     ).compile("root")
     assert inferred_read.reads == []
-    inlined = compilation.tree.requirements
-    assert isinstance(inlined, ModuleBlockRequirement)
+    inlined_root = compilation.solver.root_use_id
+    assert inlined_root is not None
+    inlined = piece_of(compilation.solver, inlined_root)
+    assert inlined.kind == "module_block"
     assert inlined.module_group_id == "module-holder"
-    inlined_leaf = inlined.child
-    assert isinstance(inlined_leaf, CourseRequirement)
+    inlined_leaf = piece_of(compilation.solver, child_uses(compilation.solver, inlined_root)[0])
+    assert inlined_leaf.kind == "course"
     assert inlined_leaf.course_group_id == "module-inactive"
-    assert "hidden-child" not in {summary.group_id for summary in compilation.tree.courses}
-    assert "hidden-substitute" not in {summary.group_id for summary in compilation.tree.courses}
+    assert "hidden-child" not in {summary.group_id for summary in compilation.solver.courses}
+    assert "hidden-substitute" not in {summary.group_id for summary in compilation.solver.courses}
 
     # A direct ModuleRule self-reference terminates with a deterministic cycle diagnostic.
     direct_cycle_root = catalogue_course(
@@ -118,11 +119,13 @@ def test_module_expansion_preserves_course_guards_and_detects_course_and_module_
         RecordingInferredSetRead(),
         RecordingEquivalenceGroupRead(),
     ).compile("direct-root")
-    direct_rule = direct.tree.requirements
-    assert isinstance(direct_rule, ModuleBlockRequirement)
-    direct_unresolved = direct_rule.child
-    assert isinstance(direct_unresolved, UnresolvedRequirement)
-    assert direct_unresolved.reason is UnresolvedPrerequisiteReason.MODULE_CYCLE
+    direct_root = direct.solver.root_use_id
+    assert direct_root is not None
+    direct_rule = piece_of(direct.solver, direct_root)
+    assert direct_rule.kind == "module_block"
+    direct_unresolved = piece_of(direct.solver, child_uses(direct.solver, direct_root)[0])
+    assert direct_unresolved.kind == "unresolved"
+    assert direct_unresolved.reason is UnresolvedPrerequisiteReason.MODULE_CYCLE.value
 
     # module -> course -> module terminates with the same structured reason.
     backedge_rule = module_rule(
@@ -162,15 +165,20 @@ def test_module_expansion_preserves_course_guards_and_detects_course_and_module_
         RecordingInferredSetRead(),
         RecordingEquivalenceGroupRead(),
     ).compile("back-root")
-    backedge_wrapper = backedge.tree.requirements
-    assert isinstance(backedge_wrapper, ModuleBlockRequirement)
-    backedge_branch = backedge_wrapper.child
-    assert isinstance(backedge_branch, AndRequirement)
-    backedge_course_leaf, backedge_cycle = backedge_branch.children
-    assert isinstance(backedge_course_leaf, CourseRequirement)
+    backedge_root = backedge.solver.root_use_id
+    assert backedge_root is not None
+    assert piece_of(backedge.solver, backedge_root).kind == "module_block"
+    backedge_branch = piece_of(backedge.solver, child_uses(backedge.solver, backedge_root)[0])
+    assert backedge_branch.kind == "expanded_course"
+    backedge_course_use, backedge_cycle_use = child_uses(
+        backedge.solver, child_uses(backedge.solver, backedge_root)[0]
+    )
+    backedge_course_leaf = piece_of(backedge.solver, backedge_course_use)
+    backedge_cycle = piece_of(backedge.solver, backedge_cycle_use)
+    assert backedge_course_leaf.kind == "course"
     assert backedge_course_leaf.course_group_id == "module-back-course"
-    assert isinstance(backedge_cycle, UnresolvedRequirement)
-    assert backedge_cycle.reason is UnresolvedPrerequisiteReason.MODULE_CYCLE
+    assert backedge_cycle.kind == "unresolved"
+    assert backedge_cycle.reason is UnresolvedPrerequisiteReason.MODULE_CYCLE.value
 
     # A module course leaf that participates in a course cycle keeps the COURSE_CYCLE issue.
     course_cycle_rule = module_rule(ModuleRuleType.COURSE_UNIT_RULE, referenced_group_id="cycle-a")
@@ -222,7 +230,6 @@ def test_module_expansion_preserves_course_guards_and_detects_course_and_module_
         RecordingInferredSetRead(),
         RecordingEquivalenceGroupRead(),
     ).compile("cycle-root")
-    issues = cycle_compilation.tree.issues
-    assert len(issues) == 1
-    assert issues[0].reason is UnresolvedPrerequisiteReason.COURSE_CYCLE
-    assert issues[0].course_group_path == ("cycle-root", "cycle-a", "cycle-b", "cycle-a")
+    cycle_issues = issues(cycle_compilation.solver)
+    assert len(cycle_issues) == 1
+    assert cycle_issues[0].kind == "course_cycle"

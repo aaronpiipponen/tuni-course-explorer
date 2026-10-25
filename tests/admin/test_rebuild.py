@@ -51,7 +51,8 @@ class _RebuildProcessBoundary:
     checkout's administration launcher, so an owner that selects the wrong unit or the wrong launcher
     is refused before it mutates anything. The administration build and restart outcomes are decided
     by their own flags, so one double serves the site rebuild, the administration build and the
-    administration restart.
+    administration restart. The double answers both the user-manager and the system-manager command
+    forms, and the public-contract assertions verify that the configured manager selects the form.
     """
 
     def __init__(
@@ -98,7 +99,14 @@ class _RebuildProcessBoundary:
         self.calls.append((command, timeout))
         if command[:3] == ("systemctl", "--user", "show"):
             return self._completed(command, self._unit_properties(command[3]))
+        if command[:2] == ("systemctl", "show"):
+            return self._completed(command, self._unit_properties(command[2]))
         if command[:3] == ("systemctl", "--user", "restart"):
+            if self.fail_step == "restart":
+                self._fail(command)
+            self.restarted = True
+            return self._completed(command, b"")
+        if command[:4] == ("sudo", "-n", "/usr/bin/systemctl", "restart"):
             if self.fail_step == "restart":
                 self._fail(command)
             self.restarted = True
@@ -181,9 +189,17 @@ class _RebuildProcessBoundary:
         """Return the recorded commands as their step labels, in execution order."""
         labels: list[str] = []
         for command, _ in self.calls:
-            if command[:3] == ("systemctl", "--user", "show"):
+            if command[:3] == ("systemctl", "--user", "show") or command[:2] == (
+                "systemctl",
+                "show",
+            ):
                 labels.append("unit")
-            elif command[:3] == ("systemctl", "--user", "restart"):
+            elif command[:3] == ("systemctl", "--user", "restart") or command[:4] == (
+                "sudo",
+                "-n",
+                "/usr/bin/systemctl",
+                "restart",
+            ):
                 labels.append("restart")
             elif command[:4] == ("systemctl", "--user", "--no-block", "restart"):
                 labels.append("admin-restart")
@@ -200,10 +216,13 @@ class _RebuildProcessBoundary:
         return labels
 
 
-def _bind_rebuild_roots(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
-    """Bind both site identities, the timing policy and the checkout the rebuild reads."""
+def _bind_rebuild_roots(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, *, scope: str = "user"
+) -> Path:
+    """Bind both site identities, the web manager scope, the timing policy and the checkout."""
     monkeypatch.setenv("ADMIN_SITE_WEB_SERVICE_UNIT", _UNIT)
     monkeypatch.setenv("ADMIN_SITE_ADMIN_SERVICE_UNIT", _ADMIN_UNIT)
+    monkeypatch.setenv("ADMIN_SITE_WEB_SERVICE_SCOPE", scope)
     monkeypatch.setenv("WEB_HOST", _WEB_HOST)
     monkeypatch.setenv("WEB_PORT", str(_WEB_PORT))
     monkeypatch.setenv("WEB_WORKERS", str(_WEB_WORKERS))
@@ -217,6 +236,7 @@ def _bind_rebuild_roots(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path
     return root
 
 
+@pytest.mark.parametrize("scope", ["user", "system"])
 @pytest.mark.parametrize(
     ("case", "fail_step", "wrong_site", "listeners"),
     [
@@ -245,13 +265,14 @@ def _bind_rebuild_roots(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path
 def test_rebuild_runs_only_the_remaining_fixed_steps(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
+    scope: str,
     case: str,
     fail_step: str | None,
     wrong_site: bool,
     listeners: tuple[tuple[str, str], ...],
 ) -> None:
     """One rebuild stops at its first failure and otherwise verifies its own loopback bind."""
-    root = _bind_rebuild_roots(monkeypatch, tmp_path)
+    root = _bind_rebuild_roots(monkeypatch, tmp_path, scope=scope)
     boundary = _RebuildProcessBoundary(
         root=root,
         unit=_UNIT,
@@ -310,7 +331,7 @@ def test_rebuild_runs_only_the_remaining_fixed_steps(
     step_timeouts = {
         timeout
         for command, timeout in boundary.calls
-        if command[0] in {"npm", "ss", "uv"} or command[:3] == ("systemctl", "--user", "restart")
+        if command[0] in {"npm", "ss", "uv"} or "restart" in command
     }
     expected_steps = [label for label in expected_labels if label != "unit" and label != "git"]
     assert step_timeouts == ({float(_STOP_TIMEOUT_SECONDS)} if expected_steps else set())
@@ -321,9 +342,28 @@ def test_rebuild_runs_only_the_remaining_fixed_steps(
     )
     # No step removes a volume, tears the stack down, or builds or downloads an image.
     assert all(not (set(command) & {"volume", "down", "rm", "prune"}) for command in commands)
+    expected_show = (
+        ("systemctl", "show", _UNIT)
+        if scope == "system"
+        else ("systemctl", "--user", "show", _UNIT)
+    )
     for command in commands:
-        if command[:3] == ("systemctl", "--user", "restart"):
-            assert command[3] == _UNIT and command[3] != _OTHER_UNIT
+        if command[:3] == ("systemctl", "--user", "show") or command[:2] == (
+            "systemctl",
+            "show",
+        ):
+            assert command[: len(expected_show)] == expected_show
+    restarts = [command for command in commands if "restart" in command]
+    if "restart" in expected_labels:
+        expected_restart = (
+            ("sudo", "-n", "/usr/bin/systemctl", "restart", _UNIT)
+            if scope == "system"
+            else ("systemctl", "--user", "restart", _UNIT)
+        )
+        assert restarts == [expected_restart]
+        assert restarts[0][-1] != _OTHER_UNIT
+    else:
+        assert restarts == []
     prefixes = mechanics.compose_prefix(non_interactive=True)
     compose = next((command for command in commands if command[0] == "uv"), None)
     if "containers" in expected_labels:
@@ -340,6 +380,7 @@ def test_rebuild_runs_only_the_remaining_fixed_steps(
     assert list(root.rglob("*")) == []
 
 
+@pytest.mark.parametrize("site_scope", ["user", "system"])
 @pytest.mark.parametrize(
     "action",
     ["build", "restart"],
@@ -349,10 +390,14 @@ def test_rebuild_runs_only_the_remaining_fixed_steps(
     ["success", "unit-not-loaded", "wrong-checkout", "wrong-launcher", "step-failure"],
 )
 def test_admin_maintenance_commands_act_only_on_their_own_unit(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, action: str, case: str
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, site_scope: str, action: str, case: str
 ) -> None:
-    """One administration build or restart mutates this checkout's own administration unit alone."""
-    root = _bind_rebuild_roots(monkeypatch, tmp_path)
+    """One administration build or restart mutates this checkout's own administration unit alone.
+
+    The feature web unit's configured scope varies, and the administration commands address the
+    user manager and their own unit.
+    """
+    root = _bind_rebuild_roots(monkeypatch, tmp_path, scope=site_scope)
     boundary = _RebuildProcessBoundary(
         root=root,
         unit=_UNIT,
@@ -397,6 +442,7 @@ def test_admin_maintenance_commands_act_only_on_their_own_unit(
     commands = [recorded for recorded, _ in boundary.calls]
     # Only the configured administration unit is addressed, and only its own frontend is built.
     unit_reads = [command for command in commands if command[:3] == ("systemctl", "--user", "show")]
+    assert all(command[:2] != ("systemctl", "show") for command in commands)
     assert unit_reads == [
         (
             "systemctl",

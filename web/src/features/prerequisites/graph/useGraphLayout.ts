@@ -1,8 +1,15 @@
-/** Transient asynchronous layout keyed only by graph structure. */
+/** Transient asynchronous layout keyed by graph structure and node footprints. */
 import { useEffect, useState } from "react";
 import type { GraphModel } from "./model";
 import { layoutGraph, type GraphLayout } from "./layout";
 
+/**
+ * Lay out a graph whenever its structure or a node footprint changes.
+ *
+ * A change to node states with every footprint equal leaves the signature and the held layout in
+ * place. A changed root clears the previous graph, and a settled layout whose effect was cleaned up
+ * is dropped.
+ */
 export function useGraphLayout(model: GraphModel | null): {
   graph: LaidOutGraph | null;
   layouting: boolean;
@@ -11,7 +18,12 @@ export function useGraphLayout(model: GraphModel | null): {
   const signature = model
     ? JSON.stringify([
         model.rootId,
-        model.nodes.map(({ id, kind }) => [id, kind]),
+        model.nodes.map(({ id, kind, size }) => [
+          id,
+          kind,
+          size.width,
+          size.height,
+        ]),
         model.edges.map(({ id }) => id),
       ])
     : "";
@@ -98,4 +110,5 @@ export function useGraphLayout(model: GraphModel | null): {
   };
 }
 
+/** One graph model and its computed layout. */
 export type LaidOutGraph = { model: GraphModel; layout: GraphLayout };

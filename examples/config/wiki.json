@@ -56,6 +56,12 @@
             "path": "docs/guides/sisu-import.md",
             "nav": "Importing a Sisu plan",
             "children": []
+          },
+          {
+            "id": "guide-phone",
+            "path": "docs/guides/phone.md",
+            "nav": "Using the app on a phone",
+            "children": []
           }
         ]
       }
@@ -231,6 +237,12 @@
                 "id": "web-api",
                 "path": "docs/backend/interfaces/web-api.md",
                 "nav": "Web API",
+                "children": []
+              },
+              {
+                "id": "admission-control",
+                "path": "docs/backend/interfaces/admission-control.md",
+                "nav": "Admission control",
                 "children": []
               },
               {

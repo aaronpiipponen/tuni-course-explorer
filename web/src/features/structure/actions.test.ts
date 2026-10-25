@@ -53,6 +53,7 @@ const rule = (
   credits_max: null,
   count_min: null,
   count_max: null,
+  referenced_group_id: null,
   children: [],
   course: null,
   module: null,
@@ -130,6 +131,7 @@ const writeStructure = (
   applyStructure(store, () => ({
     next: {
       programmeGroupIds: [...ids],
+      moduleVersions: {},
       ...edits,
       placedCourseIds: resolved.subtree.map((item) => item.group_id),
     },
@@ -154,6 +156,7 @@ describe("structure selection actions", () => {
       applyStructure(store, () => ({
         next: {
           programmeGroupIds: [...(next.programmeGroupIds ?? ["root-a"])],
+          moduleVersions: {},
           choices: next.choices ?? {},
           coursePlacements: {},
           modulePlacements: {},
@@ -309,6 +312,7 @@ describe("structure selection actions", () => {
       applyStructure(store, () => ({
         next: {
           programmeGroupIds: ["root"],
+          moduleVersions: {},
           ...edits,
           placedCourseIds: resolved.subtree.map((item) => item.group_id),
         },
@@ -385,9 +389,26 @@ describe("structure selection actions", () => {
     const officialSibling = before.children[0].children[0].subtree.map(
       (item) => item.group_id,
     );
+    // The reset removes the placed module from the tree, so its version entry goes and the
+    // selection of a module that stays keeps its place, as does one the tree never displayed.
+    applyStructure(store, (state) => ({
+      next: {
+        ...state.structure,
+        moduleVersions: {
+          "bucket-module": "bucket-module-v1",
+          "sibling-module": "sibling-module-v1",
+          "not-rendered-module": "not-rendered-module-v1",
+        },
+        placedCourseIds: [...state.structure.placedCourseIds],
+      },
+    }));
     resetUnplaced(store, content);
     store = createBrowserStore(localStorage);
     const state = store.getSnapshot().profiles.default.state;
+    expect(state.structure.moduleVersions).toEqual({
+      "sibling-module": "sibling-module-v1",
+      "not-rendered-module": "not-rendered-module-v1",
+    });
     expect(state.selectedCourseIds).toEqual([
       "sibling-course",
       "completed-course",
@@ -476,13 +497,17 @@ describe("structure selection actions", () => {
     // Adding the later holder lists the shared course and the node it is in now.
     const moves = programmeMoves(
       store.getSnapshot().profiles.default.state.structure,
-      { kind: "add", groupId: "prog-c" },
+      { kind: "add", groupId: "prog-c", versionId: "prog-c-v1" },
       content,
     );
     expect(moves.map((move) => move.course.group_id)).toEqual(["shared"]);
     expect(moves[0].from("en")).toBe("Module B");
     expect(moves[0].from("fi")).toBe("Moduuli B");
-    changeProgrammes(store, { kind: "add", groupId: "prog-c" }, content);
+    changeProgrammes(
+      store,
+      { kind: "add", groupId: "prog-c", versionId: "prog-c-v1" },
+      content,
+    );
     store = createBrowserStore(localStorage);
     let state = store.getSnapshot().profiles.default.state;
     expect(state.structure.programmeGroupIds).toEqual(["prog-d", "prog-c"]);
@@ -574,6 +599,7 @@ describe("structure selection actions", () => {
     applyStructure(store, () => ({
       next: {
         programmeGroupIds: ["prog-d"],
+        moduleVersions: {},
         ...modulePlacement.edits,
         placedCourseIds: moduleProjection.subtree.map((item) => item.group_id),
       },
@@ -646,6 +672,16 @@ describe("structure selection actions", () => {
       addCoursesToFreeChoice(store, ["loose-done"]);
       toggleCompleted(store, "loose-done");
       store = createBrowserStore(localStorage);
+      applyStructure(store, (state) => ({
+        next: {
+          ...state.structure,
+          moduleVersions: {
+            "prog-a": "prog-a-v1",
+            "prog-b": "prog-b-v1",
+          },
+          placedCourseIds: [...state.structure.placedCourseIds],
+        },
+      }));
       changeProgrammes(
         store,
         operation === "replace"
@@ -653,6 +689,7 @@ describe("structure selection actions", () => {
               kind: "replace",
               groupId: "prog-a",
               replacementGroupId: "prog-c",
+              versionId: "prog-c-v1",
             }
           : { kind: "reset", groupId: "prog-a" },
         content,
@@ -696,6 +733,13 @@ describe("structure selection actions", () => {
       expect(state.structure.placedCourseIds).toContain("b-optional");
       expect(state.structure.placedCourseIds).not.toContain("a-optional");
       expect(state.structure.placedCourseIds).not.toContain("a-manual");
+      // A replacement forgets the replaced programme's selection and keeps every other one. A
+      // reset keeps the named programme and its selection.
+      expect(state.structure.moduleVersions).toEqual(
+        operation === "replace"
+          ? { "prog-b": "prog-b-v1", "prog-c": "prog-c-v1" }
+          : { "prog-a": "prog-a-v1", "prog-b": "prog-b-v1" },
+      );
       if (operation === "replace")
         expect(state.structure.placedCourseIds).toContain("c-default");
       else expect(state.structure.placedCourseIds).not.toContain("c-default");
@@ -858,17 +902,52 @@ describe("structure selection actions", () => {
       aOptional = course("a-optional"),
       bDefault = course("b-default"),
       bOptional = course("b-optional"),
+      bModuleCourse = course("b-module-course"),
       loose = course("loose");
+    const bModule: StudyStructureReport["root"] = {
+      module: {
+        group_id: "b-module",
+        sisu_module_id: "b-module-v1",
+        module_type: "StudyModule",
+        code: "B-MODULE",
+        name_fi: "B module",
+        name_en: "B module",
+      },
+      target_credits_min: null,
+      target_credits_max: null,
+      rule: rule("CompositeRule", 0, {
+        all_mandatory: true,
+        children: [rule("CourseUnitRule", 0, { course: bModuleCourse })],
+      }),
+    };
+    const reportB = programmeReport("prog-b", [bDefault]);
     const content: PlacedContent = {
       reports: {
         "prog-a": programmeReport("prog-a", [aDefault], aOptional),
-        "prog-b": programmeReport("prog-b", [bDefault], bOptional),
+        "prog-b": {
+          ...reportB,
+          root: {
+            ...reportB.root,
+            rule: rule("CompositeRule", 0, {
+              all_mandatory: true,
+              children: [
+                rule("CourseUnitRule", 0, { course: bDefault }),
+                rule("CompositeRule", 1, {
+                  require_min: 0,
+                  require_max: null,
+                  children: [rule("CourseUnitRule", 0, { course: bOptional })],
+                }),
+                rule("ModuleRule", 2, { module: bModule }),
+              ],
+            }),
+          },
+        },
+        "b-module": { academic_year_start: 2026, root: bModule },
       },
       courses: new Map(
-        [aDefault, aOptional, bDefault, bOptional, loose].map((item) => [
-          item.group_id,
-          item,
-        ]),
+        [aDefault, aOptional, bDefault, bOptional, bModuleCourse, loose].map(
+          (item) => [item.group_id, item],
+        ),
       ),
     };
     let edits = selectOptional(emptyEdits(), "prog-a", 1);
@@ -877,10 +956,25 @@ describe("structure selection actions", () => {
     toggleCompleted(store, "b-default");
     addCoursesToFreeChoice(store, ["loose"]);
     store = createBrowserStore(localStorage);
+    // One selection per programme and one for a module nested inside the deleted programme.
+    applyStructure(store, (state) => ({
+      next: {
+        ...state.structure,
+        moduleVersions: {
+          "prog-a": "prog-a-v1",
+          "prog-b": "prog-b-v1",
+          "b-module": "b-module-v1",
+        },
+        placedCourseIds: [...state.structure.placedCourseIds],
+      },
+    }));
     changeProgrammes(store, { kind: "delete", groupId: "prog-b" }, content);
     store = createBrowserStore(localStorage);
     let state = store.getSnapshot().profiles.default.state;
     expect(state.structure.programmeGroupIds).toEqual(["prog-a"]);
+    // The deleted programme's own selection and its nested module's selection are forgotten,
+    // while the programme that stays keeps its selection.
+    expect(state.structure.moduleVersions).toEqual({ "prog-a": "prog-a-v1" });
     expect(state.completedCourseIds).toEqual(["b-default"]);
     expect(state.selectedCourseIds).toEqual(
       expect.arrayContaining(["a-default", "a-optional", "b-default", "loose"]),

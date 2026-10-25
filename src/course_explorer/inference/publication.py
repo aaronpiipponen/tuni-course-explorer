@@ -4,7 +4,7 @@ This module is the only inference-side publication adapter. Given an explicitly 
 caller-supplied cohort of exact retained proposal pointers, it reads each accepted proposal's
 foreign-key-owned work and completion facts and validates that ownership once, builds the exact
 target inferred-set and global equivalence-group publications, and materializes them only through
-the graph/path-owned repositories. It never derives currentness from a stored timestamp or
+the prerequisite repositories. It never derives currentness from a stored timestamp or
 old work id, never reruns selection, reranking, or model work, never writes a final table directly,
 and never relabels inferred output as official.
 

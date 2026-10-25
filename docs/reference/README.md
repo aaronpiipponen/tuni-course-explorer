@@ -21,13 +21,13 @@ A selected course is a course added to the current profile's selection. A comple
 Either set can serve as the basis, the set of courses that counts as already covered in a calculation. The completed courses leave out a course that is picked but not finished, and the selection counts a picked course as covered.
 
 > [!TIP]
-> Marking a course completed adds it to the selection as well. Unmarking the completion leaves the course selected and removes only the completion.
+> Marking a selected course completed completes it in place. From a course card or the graph, marking an unselected course completed first asks once to add it to Unplaced studies and complete it. In **Structure of studies**, the **Complete** control on a course card completes the course directly. In the structure drawer, marking an unselected course completed places it in that rule and completes it without asking. Unmarking the completion leaves the course selected and removes only the completion.
 
 ## Official and inferred
 
 Official data is the course and module data as the university publishes it in the public curriculum source. An official prerequisite is a prerequisite that the university publishes.
 
-An inferred prerequisite is a prerequisite found by analysis of teaching text. On a site that serves the inference features, the app shows inferred prerequisites apart from the official ones, behind **Inferred**, and marks each one **inferred**.
+An inferred prerequisite is a prerequisite found by analysis of teaching text. On a site that serves the inference features, the app can add inferred prerequisites to the same graph with **Inferred**, and marks each one **inferred**.
 
 ## The meanings of coverage
 

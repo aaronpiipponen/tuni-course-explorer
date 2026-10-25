@@ -7,8 +7,13 @@ import json
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
 from course_explorer import configuration
+from course_explorer.config import (
+    SETTINGS_SOURCE_MARKER,
+    load_administrative_site_settings,
+)
 from course_explorer_admin import configuration as editor
 from tests.support import write_example_config_tree
 
@@ -26,6 +31,8 @@ _SYNTHETIC_ENVIRONMENT = (
     "\n"
     "LITERAL_KEY='initial'\n"
     "MULTILINE_KEY='one'\n"
+    "ADMIN_SITE_WEB_SERVICE_UNIT=synthetic-site-web.service\n"
+    "ADMIN_SITE_ADMIN_SERVICE_UNIT=synthetic-site-admin.service\n"
 )
 
 _TIER_METHODS = ["semantic", "exact_code", "substring", "fuzzy_name"]
@@ -124,6 +131,7 @@ def _rewrite_line_endings(path: Path, newline: str) -> None:
         ("config/worker.toml", "ADMIN_POLL_INTERVAL_SECONDS", json.dumps(1.5)),
         ("config/admin_web.toml", "ADMIN_WEB_PORT", json.dumps(18027)),
         ("config/web.toml", "WEB_PORT", json.dumps(18026)),
+        ("config/admission.toml", "ADMISSION_SCORE_HEADROOM", json.dumps(0.55)),
     ],
 )
 def test_toml_configuration_save_preserves_file_contract(
@@ -269,6 +277,64 @@ def test_environment_configuration_save_preserves_literal_values(
             assert values[name] == value
 
 
+@pytest.mark.parametrize("newline", ["\n", "\r\n"])
+@pytest.mark.parametrize(
+    ("literal", "scope"),
+    [
+        (json.dumps("user"), "user"),
+        (json.dumps("system"), "system"),
+        (json.dumps("cluster"), None),
+    ],
+)
+def test_environment_save_inserts_an_owned_machine_key(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    literal: str,
+    scope: str | None,
+    newline: str,
+) -> None:
+    """One save appends an absent owned environment key, and the owning family loads it.
+
+    The fixture carries both site unit identities, so the saved scope validates through the family
+    that owns it. The file holds either line ending, and every comparison is a byte comparison. The
+    invalid scope is refused by that family before any file changes.
+    """
+    root = _editor_root(monkeypatch, tmp_path)
+    path = root / ".env"
+    _rewrite_line_endings(path, newline)
+    before_bytes = path.read_bytes()
+
+    if scope is None:
+        with pytest.raises(ValidationError):
+            editor.set_configuration_value(".env", "ADMIN_SITE_WEB_SERVICE_SCOPE", literal)
+        assert path.read_bytes() == before_bytes
+        return
+
+    acknowledgment = editor.set_configuration_value(".env", "ADMIN_SITE_WEB_SERVICE_SCOPE", literal)
+
+    assert acknowledgment.model_dump() == {
+        "schema_version": 1,
+        "file": ".env",
+        "key": "ADMIN_SITE_WEB_SERVICE_SCOPE",
+    }
+    expected = before_bytes + (f"ADMIN_SITE_WEB_SERVICE_SCOPE='{scope}'" + newline).encode()
+    assert path.read_bytes() == expected
+    assert path.stat().st_mode & 0o777 == 0o600
+
+    for alias in (
+        SETTINGS_SOURCE_MARKER,
+        "ADMIN_SITE_WEB_SERVICE_UNIT",
+        "ADMIN_SITE_ADMIN_SERVICE_UNIT",
+        "ADMIN_SITE_WEB_SERVICE_SCOPE",
+    ):
+        monkeypatch.delenv(alias, raising=False)
+    configuration.clear_configuration_caches()
+    settings = load_administrative_site_settings()
+    assert settings.web_service_scope == scope
+    assert settings.web_service_unit == "synthetic-site-web.service"
+    assert settings.admin_service_unit == "synthetic-site-admin.service"
+
+
 _REFUSED_CASES: dict[str, tuple[str, str, str]] = {
     "unlisted-file": ("config/wiki.json", "WEB_PORT", json.dumps(18026)),
     "traversal": ("../.env", "WEB_HOST", json.dumps("127.0.0.1")),
@@ -296,6 +362,11 @@ _REFUSED_CASES: dict[str, tuple[str, str, str]] = {
         "KORI_FIRST_ACADEMIC_YEAR",
         json.dumps("2027-2028"),
     ),
+    "score-line-order": (
+        "config/admission.toml",
+        "ADMISSION_SCORE_RELEASE",
+        json.dumps(1.10),
+    ),
     "unstructured-tier-priority": (
         "config/search.toml",
         "SEARCH_TIER_PRIORITY",
@@ -322,6 +393,7 @@ _REFUSED_CASES: dict[str, tuple[str, str, str]] = {
         json.dumps("0.0.0.0"),
     ),
     "non-string-environment-value": (".env", "WEB_HOST", json.dumps(12)),
+    "unowned-absent-environment-key": (".env", "UNOWNED_ABSENT_KEY", json.dumps("value")),
     "differently-cased-duplicate-binding": (
         ".env",
         "WEB_HOST",
@@ -348,11 +420,12 @@ def test_configuration_write_refuses_invalid_or_unconfined_candidates(
     value, a non-loopback administration host beside a valid process value, a cached local value
     beside a changed file, a duplicated and a malformed local input, a lowercase local alias that
     must not mask an invalid subsystem-file candidate, an academic-year order, an invalid structured
-    value, an App URL carrying a query or fragment marker, a non-string environment value, a
-    lowercase owned environment value that its validator refuses, a differently cased duplicate
-    environment binding, a duplicated environment assignment, a symlinked environment file and a
-    symlinked directory. Every case runs the real validators and files, refuses before publication,
-    and leaves no temporary file behind.
+    value, an App URL carrying a query or fragment marker, a non-string environment value, an
+    unowned absent environment key, a lowercase owned environment value that its validator refuses,
+    a differently cased duplicate environment binding, a duplicated environment assignment, a
+    symlinked environment file, a symlinked directory and a score line above a sibling line. Every
+    case runs the real validators and files, refuses before publication, and leaves no temporary
+    file behind.
     A subsystem-file save reads the local input freshly, so neither a cached value nor an ambiguous
     file can mask the candidate, and a malformed input reports nothing.
     """

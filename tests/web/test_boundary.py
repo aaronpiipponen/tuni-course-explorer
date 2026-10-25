@@ -18,11 +18,9 @@ def test_web_surface_is_read_only() -> None:
         (path, frozenset({"POST"}))
         for path in (
             "/api/search",
-            "/api/course-lookup",
-            "/api/module-lookup",
+            "/api/catalogue",
             "/api/comparison",
             "/api/prerequisites",
-            "/api/minimum-route",
             "/api/next-courses",
             "/api/recommendations",
             "/api/study-structure",

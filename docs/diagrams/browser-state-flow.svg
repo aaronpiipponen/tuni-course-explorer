@@ -1,13 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 672" role="img"
      aria-labelledby="t d" font-family="system-ui, sans-serif">
-  <title id="t">Browser state, the open tab and the server reads</title>
-  <desc id="d">Before the shell mounts, the app asks the server once for the site's feature switches and keeps
-  the answer for the visit. A tab action is written into the browser tab's session storage, which holds the
+  <title id="t">Browser state, the caches, the open tab and the server reads</title>
+  <desc id="d">Before the shell mounts, the app asks the server once for the site's feature switches and the
+  serving dataset identity, and keeps the answer for the visit. A tab action is written into the browser tab's session storage, which holds the
   open tab, and a course or settings action is written into browser storage, which holds every saved profile.
   Browser storage publishes the current profile, which is also read back at the start of the app. The current
   profile supplies the request inputs, a typed client sends them to the read-only web server as a read
-  request, and the server report becomes the transient result that the open tab shows. The dashed boxes are
-  the reports that are never persisted, and the accent arrow marks the read request.</desc>
+  request, and the server report becomes the tab result. A successful report joins the
+  memory cache, and a structure report also joins the derived structure store, which holds structure reports
+  alone. The dashed boxes mark the transient reports, the memory cache and the structure store, and the
+  accent arrow marks the read request.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
             markerWidth="8" markerHeight="8" orient="auto-start-reverse">
@@ -28,12 +30,12 @@
 
   <rect x="410" y="56" width="250" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
   <text x="535" y="82" text-anchor="middle" font-size="16" fill="#ececf2">Feature read</text>
-  <text x="535" y="104" text-anchor="middle" font-size="14" fill="#a3a4b8">POST /api/features</text>
+  <text x="535" y="104" text-anchor="middle" font-size="14" fill="#a3a4b8">switches and identity</text>
 
   <rect x="740" y="56" width="196" height="64" rx="8" fill="#2e3045"
         stroke="#4a4c6b" stroke-width="1.5" stroke-dasharray="5 4"/>
-  <text x="838" y="82" text-anchor="middle" font-size="16" fill="#ececf2">Feature switches</text>
-  <text x="838" y="104" text-anchor="middle" font-size="14" fill="#a3a4b8">the two settings</text>
+  <text x="838" y="82" text-anchor="middle" font-size="16" fill="#ececf2">Feature report</text>
+  <text x="838" y="104" text-anchor="middle" font-size="14" fill="#a3a4b8">settings and identity</text>
 
   <rect x="40" y="160" width="230" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
   <text x="155" y="186" text-anchor="middle" font-size="16" fill="#ececf2">Course and settings</text>
@@ -71,7 +73,17 @@
   <rect x="740" y="576" width="196" height="64" rx="8" fill="#2e3045"
         stroke="#4a4c6b" stroke-width="1.5" stroke-dasharray="5 4"/>
   <text x="838" y="602" text-anchor="middle" font-size="16" fill="#ececf2">Tab result</text>
-  <text x="838" y="624" text-anchor="middle" font-size="14" fill="#a3a4b8">shown, not saved</text>
+  <text x="838" y="624" text-anchor="middle" font-size="14" fill="#a3a4b8">shown by the tab</text>
+
+  <rect x="410" y="368" width="250" height="64" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="535" y="394" text-anchor="middle" font-size="16" fill="#ececf2">Memory cache</text>
+  <text x="535" y="416" text-anchor="middle" font-size="14" fill="#a3a4b8">successful reads</text>
+
+  <rect x="410" y="472" width="250" height="64" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="535" y="498" text-anchor="middle" font-size="16" fill="#ececf2">Structure store</text>
+  <text x="535" y="520" text-anchor="middle" font-size="14" fill="#a3a4b8">IndexedDB, structures only</text>
 
   <line x1="270" y1="88" x2="410" y2="88" stroke="#a3a4b8" stroke-width="1.5"
         marker-end="url(#arrow)"/>
@@ -109,15 +121,19 @@
         marker-end="url(#arrow)"/>
   <text x="830" y="564" text-anchor="end" font-size="14" fill="#a3a4b8">report</text>
 
-  <polyline points="660,296 700,296 700,608 740,608" fill="none" stroke="#a3a4b8"
-            stroke-width="1.5" marker-end="url(#arrow)"/>
-  <text x="690" y="450" text-anchor="end" font-size="14" fill="#a3a4b8">shown by the open tab</text>
+  <polyline points="740,488 690,488 690,400 660,400" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+  <text x="702" y="474" font-size="14" fill="#a3a4b8">held</text>
 
-  <rect x="40" y="564" width="240" height="76" rx="8" fill="none" stroke="#4a4c6b" stroke-width="1.5"/>
-  <rect x="64" y="581" width="24" height="14" rx="2" fill="#2e3045"
+  <line x1="535" y1="432" x2="535" y2="472" stroke="#a3a4b8" stroke-width="1.5"
+        stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+  <text x="547" y="456" font-size="14" fill="#a3a4b8">structures</text>
+
+  <rect x="40" y="548" width="300" height="76" rx="8" fill="none" stroke="#4a4c6b" stroke-width="1.5"/>
+  <rect x="64" y="565" width="24" height="14" rx="2" fill="#2e3045"
         stroke="#4a4c6b" stroke-width="1.5" stroke-dasharray="5 4"/>
-  <text x="108" y="593" font-size="14" fill="#a3a4b8">Transient reports</text>
-  <line x1="56" y1="616" x2="96" y2="616" stroke="#a98ae0" stroke-width="1.5"
+  <text x="108" y="577" font-size="14" fill="#a3a4b8">Transient and held values</text>
+  <line x1="56" y1="604" x2="96" y2="604" stroke="#a98ae0" stroke-width="1.5"
         marker-end="url(#arrow-accent)"/>
-  <text x="108" y="621" font-size="14" fill="#a3a4b8">Read request</text>
+  <text x="108" y="609" font-size="14" fill="#a3a4b8">Read request</text>
 </svg>

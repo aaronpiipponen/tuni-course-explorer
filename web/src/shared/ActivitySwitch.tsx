@@ -2,6 +2,7 @@
 import { ToggleChip } from "./ToggleChip";
 import { useWording } from "./useWording";
 
+/** Render the Active only toggle for the course activity scope. */
 export function ActivitySwitch({
   activeOnly,
   onChange,

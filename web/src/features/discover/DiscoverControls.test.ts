@@ -2,6 +2,9 @@
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { CourseSummary, DiscoveryRequest } from "../../api/types";
+import { ReadCacheContext } from "../../app/readCacheContext";
+import { READ_CACHE_CAPACITY, ReadCache } from "../../app/readCache";
 import { StoreContext } from "../../state/context";
 import {
   BROWSER_STORAGE_KEY,
@@ -10,6 +13,8 @@ import {
 } from "../../state/store";
 import { uiText } from "../../shared/wording";
 import { WebFeaturesContext } from "../../app/webFeaturesContext";
+import { NoticeProvider } from "../../shared/NoticeProvider";
+import { addToComparison } from "../compare/actions";
 import { DiscoverPane } from "./DiscoverPane";
 
 (
@@ -20,6 +25,7 @@ describe("Discover list preservation", () => {
   let container: HTMLDivElement;
   let root: Root;
   let store: BrowserStore;
+  let originalMatchMedia: typeof window.matchMedia;
 
   beforeEach(() => {
     localStorage.clear();
@@ -34,16 +40,32 @@ describe("Discover list preservation", () => {
       completedCourseIds: [],
       discover: { ...state.discover, list: "recommended" },
     }));
+    originalMatchMedia = window.matchMedia;
+    // The pane hosts the list tabs inline at a desktop width, and the phone options sheet holds no tabs.
+    window.matchMedia = ((query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener() {},
+      removeListener() {},
+      addEventListener() {},
+      removeEventListener() {},
+      dispatchEvent: () => false,
+    })) as typeof window.matchMedia;
     root = createRoot(container);
   });
 
   afterEach(() => {
     act(() => root.unmount());
     container.remove();
+    window.matchMedia = originalMatchMedia;
     vi.unstubAllGlobals();
   });
 
-  function render(embeddingsEnabled: boolean): void {
+  function render(
+    embeddingsEnabled: boolean,
+    cache = new ReadCache("synthetic-dataset", READ_CACHE_CAPACITY),
+  ): void {
     act(() =>
       root.render(
         createElement(
@@ -55,9 +77,14 @@ describe("Discover list preservation", () => {
               value: {
                 embeddings_enabled: embeddingsEnabled,
                 inference_enabled: true,
+                dataset_identity: "synthetic-dataset",
               },
             },
-            createElement(DiscoverPane),
+            createElement(
+              ReadCacheContext.Provider,
+              { value: cache },
+              createElement(NoticeProvider, null, createElement(DiscoverPane)),
+            ),
           ),
         ),
       ),
@@ -105,6 +132,88 @@ describe("Discover list preservation", () => {
         ?.getAttribute("aria-selected"),
     ).toBe("true");
     expect(localStorage.getItem(BROWSER_STORAGE_KEY)).toBe(saved);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("preserves recommended result rows after another tab adds a comparison course", async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    act(() =>
+      store.updateCurrent((state) => ({
+        ...state,
+        selectedCourseIds: ["course-basis"],
+        completedCourseIds: [],
+        discover: { ...state.discover, list: "recommended", basis: "selected" },
+      })),
+    );
+    const identity = "synthetic-dataset";
+    const basisCourse: CourseSummary = {
+      group_id: "course-basis",
+      name_fi: null,
+      name_en: "Basis course",
+      code: "BASIS",
+      credits_min: "5",
+      credits_max: null,
+      is_active: true,
+      official_url: "https://example.invalid/basis",
+    };
+    const recommended: CourseSummary = {
+      group_id: "course-rec",
+      name_fi: null,
+      name_en: "Recommended course",
+      code: "REC",
+      credits_min: "5",
+      credits_max: null,
+      is_active: true,
+      official_url: "https://example.invalid/rec",
+    };
+    const request: DiscoveryRequest = {
+      selected_courses: ["course-basis"],
+      completed_courses: [],
+      basis: "selected",
+      mode: "all",
+      display_language: "en",
+      include_inferred: true,
+      active_only: true,
+    };
+    const cache = new ReadCache(identity, READ_CACHE_CAPACITY);
+    cache.put(identity, JSON.stringify(["recommended", request]), {
+      dataset_identity: identity,
+      similarity_results: [
+        {
+          course: recommended,
+          relatedness: 37,
+          score: 1,
+          overlap_with_basis: null,
+          uses_derived_text: false,
+        },
+      ],
+    });
+    cache.put(
+      identity,
+      JSON.stringify(["course-summaries", ["course-basis"]]),
+      {
+        dataset_identity: identity,
+        results: [basisCourse],
+      },
+    );
+
+    render(true, cache);
+    await act(async () => {});
+    await act(async () => {});
+    const row = container.querySelector('[data-course-id="course-rec"]');
+    expect(row).toBeTruthy();
+
+    const other = createBrowserStore(localStorage);
+    act(() => {
+      addToComparison(other, "course-rec");
+    });
+    act(() => {
+      store.refreshFromStorage();
+    });
+
+    expect(container.querySelector('[data-course-id="course-rec"]')).toBe(row);
+    expect(container.querySelector(".discover-loading")).toBeNull();
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 });

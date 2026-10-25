@@ -1,7 +1,11 @@
 /** Persistent animated drawer for choices, search, contents, removal and reset. */
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import type { CourseSummary, ModuleSummary } from "../../api/types";
+import type {
+  CatalogueModule,
+  CourseSummary,
+  ModuleSummary,
+} from "../../api/types";
 import type { DisplayLanguage } from "../../state/types";
 import { useProfileSelector } from "../../state/useProfileSelector";
 import {
@@ -22,25 +26,23 @@ import { DrawerSearch } from "./DrawerSearch";
 import { DrawerOptionRow } from "./DrawerOptionRow";
 import { CompletedCourseDeselectDialog } from "./CompletedCourseDeselectDialog";
 import { ModuleRemoveDialog } from "./ModuleRemoveDialog";
-import { MoveConfirmDialog } from "./MoveConfirmDialog";
+import { ConfirmDialog } from "../../shared/ConfirmDialog";
 import {
   CourseMoveConfirmDialog,
   useCourseMoveConfirm,
 } from "./CourseMoveConfirmDialog";
 import type { PulledCourse } from "./edits";
-import { CLOSE } from "../../shared/icons";
 import { useReducedMotion } from "../../shared/useReducedMotion";
 import { useWording } from "../../shared/useWording";
+import { useMediaQuery } from "../../shared/useMediaQuery";
+import { PHONE_SHELL_QUERY } from "../../shared/viewport";
 
 type DrawerTarget = { resolved: ResolvedNode; programmeId: string | null };
 
 type Editor = {
   choose(node: StructureNode, optionKey: string): void;
   addCourse(course: CourseSummary, node: StructureNode): void;
-  addModule(
-    module: import("../../api/types").ModuleSummary,
-    node: StructureNode,
-  ): void;
+  addModule(module: CatalogueModule, node: StructureNode): void;
   selectRuleCourse(course: CourseSummary, item: StructureRuleItem): void;
   toggleRuleCourseCompleted(
     course: CourseSummary,
@@ -72,6 +74,7 @@ type Editor = {
   pendingModuleId: string | null;
 };
 
+/** Render the structure drawer for choices, search, contents, removal and reset. */
 export function StructureDrawer({
   target,
   index,
@@ -135,6 +138,8 @@ export function StructureDrawer({
     }
   }, [target]);
   const { language, t } = useWording();
+  const phoneSheet = useMediaQuery(PHONE_SHELL_QUERY);
+  const sheetRef = useRef<HTMLElement>(null);
   const completed = new Set(
     useProfileSelector((state) => state.completedCourseIds).value,
   );
@@ -151,6 +156,35 @@ export function StructureDrawer({
     if (!node || !["programme", "module", "unplaced"].includes(node.kind))
       setSearchOpen(false);
   }, [node?.key]);
+  useEffect(() => {
+    if (!target) return;
+    const keys = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || searchOpen) return;
+      if (document.querySelector('[role="dialog"], .root-picker.open')) return;
+      event.stopPropagation();
+      onClose();
+    };
+    document.addEventListener("keydown", keys, true);
+    return () => document.removeEventListener("keydown", keys, true);
+  }, [target, searchOpen, onClose]);
+  useEffect(() => {
+    if (!target || !phoneSheet) return;
+    // The phone drawer is a sheet over the shell, so an outside press dismisses it, while the
+    // desktop side panel leaves the tree beside it interactive.
+    const outside = (event: PointerEvent) => {
+      if (
+        !(event.target instanceof Node) ||
+        sheetRef.current?.contains(event.target) ||
+        document.querySelector(
+          '[role="dialog"], [role="menu"], .root-picker.open, .root-picker-scrim.open',
+        )
+      )
+        return;
+      onClose();
+    };
+    document.addEventListener("pointerdown", outside);
+    return () => document.removeEventListener("pointerdown", outside);
+  }, [target, phoneSheet, onClose]);
   const title =
     node?.kind === "choice" || node?.kind === "unplaced"
       ? node.title
@@ -548,6 +582,7 @@ export function StructureDrawer({
         className={`sdrawer${target ? " open" : ""}`}
         aria-hidden={!target}
         inert={!target}
+        ref={sheetRef}
         onTransitionEnd={(event) => {
           if (
             !target &&
@@ -567,12 +602,12 @@ export function StructureDrawer({
             </span>
           </div>
           <button
-            className="dx"
+            className="pill-btn"
             type="button"
             aria-label={t("Close drawer")}
             onClick={onClose}
           >
-            {CLOSE}
+            {t("Close")}
           </button>
         </header>
         <div className="db">
@@ -639,12 +674,16 @@ export function StructureDrawer({
           </div>
         </div>
       </aside>
-      <MoveConfirmDialog
+      <ConfirmDialog
         open={pendingMove !== null}
-        name={pendingMove ? pendingMove.name(language) : ""}
-        place={pendingMove ? (pendingMove.place(language) ?? "") : ""}
+        title={t("Move here?")}
+        description={t("{name} is already in {place}. Move it here?", {
+          name: pendingMove ? pendingMove.name(language) : "",
+          place: pendingMove ? (pendingMove.place(language) ?? "") : "",
+        })}
+        confirmLabel={t("Move")}
         onCancel={() => setPendingMove(null)}
-        onMove={() => {
+        onConfirm={() => {
           pendingMove?.run();
           setPendingMove(null);
         }}

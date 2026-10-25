@@ -1,6 +1,5 @@
 """Opt-in PostgreSQL proof that graph compilation consumes real test-published inferred sets."""
 
-import json
 from datetime import UTC, datetime
 from decimal import Decimal
 
@@ -34,6 +33,7 @@ from tests.ingestion._normalization_repository_support import (
     build_completed_fixture_store,
 )
 from tests.prerequisite._command_support import search_settings
+from tests.prerequisite._graph_support import root_summary
 
 pytestmark = [
     pytest.mark.integration,
@@ -52,6 +52,7 @@ def test_inferred_recommended_toggle_matrix_flows_through_postgresql_and_command
     database: tuple[Engine, object],
     tmp_path,
     monkeypatch: pytest.MonkeyPatch,
+    solver_bundle: None,
 ) -> None:
     """Real normalized curriculum plus a published mixed-category set reach command/path/JSON."""
     _, factory = database
@@ -116,21 +117,19 @@ def test_inferred_recommended_toggle_matrix_flows_through_postgresql_and_command
         "course_explorer.prerequisite.commands.load_search_settings", search_settings
     )
     report = run_prerequisite_command("CS.A2", include_inferred=True, include_recommended=True)
-    assert report.compilation.tree.root.group_id == "course-group-a"
-    assert report.compilation.tree.root.code == "CS.A2"
+    assert root_summary(report.solver).group_id == "course-group-a"
+    assert root_summary(report.solver).code == "CS.A2"
     assert "path" not in type(report).model_fields
-    serialized_edges = json.loads(report.model_dump_json())["compilation"]["graph"]["edges"]
     assert {
-        member["inferred_category"]
-        for edge in serialized_edges
-        for member in edge["relationships"]
-        if member["origin"] == PrerequisiteOrigin.INFERRED.value
+        fact.inferred_category.value
+        for fact in report.solver.facts
+        if fact.origin is PrerequisiteOrigin.INFERRED
     } == {"required", "recommended"}
 
     # The separate explicit route operation owns the new-credit and new-course result.
     route = run_minimum_route_command("CS.A2", include_inferred=True, include_recommended=True)
-    assert route.total_new_credits == Decimal("4")
-    assert [entry.course.group_id for entry in route.new_courses] == [
+    assert Decimal(route["total_new_credits"]) == Decimal("4")
+    assert [entry["course"]["group_id"] for entry in route["new_courses"]] == [
         "course-group-inactive",
         "course-group-tie",
     ]

@@ -4,8 +4,7 @@
  * The outer viewport holds the inner content's measured border-box height, so a content change
  * interpolates the box while the panel's own `hidden` state keeps governing layout, focus and
  * accessibility. The measurement comes from the browser's layout through `ResizeObserver`. jsdom
- * performs no layout, so its test substitute emits no measurement and real layout proof lives in
- * browser acceptance.
+ * performs no layout, so its test substitute emits no measurement.
  */
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 

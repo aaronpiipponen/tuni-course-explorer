@@ -1,13 +1,14 @@
-/** Orthogonal ELK edge with parent hue and visually distinct recommended provenance. */
+/** Orthogonal ELK edge with parent hue and a dashed style for an all-inferred connection. */
 import { BaseEdge, type EdgeProps } from "@xyflow/react";
 
 const HUES = ["#5a77b3", "#4f9c7c", "#a3834f", "#8670ad", "#a86f82", "#4f8f9b"];
+/** Render one orthogonal graph edge in its parent hue or inferred dash style. */
 export function PrerequisiteEdge({ id, data }: EdgeProps) {
   const edge = data as
     | {
         points?: readonly { x: number; y: number }[];
         parentIndex?: number;
-        recommended?: boolean;
+        inferred?: boolean;
         delay?: string;
         opacity?: number;
       }
@@ -35,7 +36,7 @@ export function PrerequisiteEdge({ id, data }: EdgeProps) {
     return `${d} L${point.x - inUnitX * radius},${point.y - inUnitY * radius} Q${point.x},${point.y} ${point.x + outUnitX * radius},${point.y + outUnitY * radius}`;
   }, "");
   const color = HUES[(edge?.parentIndex ?? 0) % HUES.length];
-  const className = `prereq-edge${edge?.recommended ? " rec" : ""}`;
+  const className = `prereq-edge${edge?.inferred ? " inferred" : ""}`;
   // React Flow hands the edge style to this component, not to its wrapper group, so the frame's
   // fade opacity and the route's per-edge light-up delay both have to live on this group.
   return (

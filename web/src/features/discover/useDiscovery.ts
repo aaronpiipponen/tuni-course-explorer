@@ -1,5 +1,7 @@
 /** One keyed, cancellable request to the selected discovery endpoint. */
 import { useEffect, useState } from "react";
+import { readCachedReport } from "../../app/cachedRead";
+import { useReadCache } from "../../app/useReadCache";
 import { readNextCourses, readRecommendations } from "../../api/discovery";
 import type {
   DiscoveryRequest,
@@ -8,21 +10,19 @@ import type {
 } from "../../api/types";
 import type { DiscoverState } from "./state";
 
+/** Read and cache the selected discovery report. */
 export function useDiscovery(
   list: DiscoverState["list"],
   request: DiscoveryRequest,
+  hasBasis: boolean,
 ): {
   next: NextCoursesReport | null;
   similarity: readonly SimilarityRecommendation[];
   loading: boolean;
   error: Error | null;
 } {
+  const cache = useReadCache();
   const key = JSON.stringify([list, request]);
-  const hasBasis =
-    (request.basis === "selected"
-      ? request.selected_courses
-      : request.completed_courses
-    ).length > 0;
   const [result, setResult] = useState<{
     key: string;
     next: NextCoursesReport | null;
@@ -32,6 +32,10 @@ export function useDiscovery(
   }>({ key, next: null, similarity: [], loading: false, error: null });
 
   useEffect(() => {
+    const [currentList, currentRequest] = JSON.parse(key) as [
+      DiscoverState["list"],
+      DiscoveryRequest,
+    ];
     if (!hasBasis) {
       setResult({
         key,
@@ -45,12 +49,22 @@ export function useDiscovery(
     const controller = new AbortController();
     setResult({ key, next: null, similarity: [], loading: true, error: null });
     const pending =
-      list === "next"
-        ? readNextCourses(request, controller.signal).then((next) => ({
+      currentList === "next"
+        ? readCachedReport(
+            cache,
+            key,
+            (signal) => readNextCourses(currentRequest, signal),
+            controller.signal,
+          ).then((next) => ({
             next,
             similarity: [],
           }))
-        : readRecommendations(request, controller.signal).then((report) => ({
+        : readCachedReport(
+            cache,
+            key,
+            (signal) => readRecommendations(currentRequest, signal),
+            controller.signal,
+          ).then((report) => ({
             next: null,
             similarity: report.similarity_results,
           }));
@@ -71,7 +85,7 @@ export function useDiscovery(
       },
     );
     return () => controller.abort();
-  }, [hasBasis, key, list, request]);
+  }, [cache, hasBasis, key]);
 
   if (!hasBasis)
     return { next: null, similarity: [], loading: false, error: null };

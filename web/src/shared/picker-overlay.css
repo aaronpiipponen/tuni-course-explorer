@@ -46,3 +46,49 @@
   align-items: center;
   margin-bottom: 10px;
 }
+
+@media (max-width: 680px) {
+  .root-picker {
+    position: fixed;
+    top: calc(env(safe-area-inset-top, 0px) + 8px);
+    right: 8px;
+    bottom: calc(var(--phone-tabbar-space) + 8px);
+    left: 8px;
+    width: auto;
+    max-height: none;
+    transform: translateY(-14px) scale(0.98);
+    transition:
+      bottom 0.24s cubic-bezier(0.22, 0.8, 0.2, 1),
+      opacity 0.3s,
+      transform 0.4s cubic-bezier(0.22, 0.8, 0.2, 1);
+  }
+  .root-picker.open {
+    transform: none;
+  }
+  .root-picker-card {
+    display: flex;
+    height: 100%;
+    max-height: none;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 12px;
+  }
+  .root-picker-card > .root-picker-top,
+  .root-picker-card > .course-lookup-controls,
+  .root-picker-card > .course-lookup-filters,
+  .root-picker-card > .module-lookup-controls,
+  .root-picker-card > .discover-total,
+  .root-picker-card > .error-notice,
+  .root-picker-card > .course-lookup-empty,
+  .root-picker-card > .sempty {
+    flex: none;
+  }
+  .root-picker-card > .course-lookup-list,
+  .root-picker-card > .plist,
+  .root-picker-card > .discover-basis-list {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
+  }
+}

@@ -2,6 +2,8 @@
 
 The administration console is a separate signed-in browser application that runs the same fixed administration commands as the operator menu and shows their reports.
 
+The console uses a narrow desktop layout. A phone renders that layout scaled to the screen, with the same tabs, panels and controls.
+
 ## Signing in
 
 Open the console's address. The sign-in screen appears before any panel, with the site name, the **Administration** heading, the **Username** and **Password** fields and the **Sign in** button.
@@ -16,12 +18,12 @@ Opening many fresh sign-in sessions within a short time can temporarily delay an
 
 ## The header
 
-The signed-in header carries the site name, the **Admin** label and the five tabs: **Dashboard**, **Data preparation**, **Inference**, **Logs** and **Settings**. The right side holds **GitHub**, **Wiki**, **App** and **Sign out**.
+The signed-in header carries the site name, the **Admin** label and the five tabs: **Dashboard**, **Data preparation**, **Inference**, **Logs** and **Settings**. The right side holds **GitHub**, **Docs**, **App** and **Sign out**.
 
-![The console header with the site name, the Admin label, the five tabs and the GitHub, Wiki, App and Sign out controls](/docs/screenshots/admin-console-header.png)
+![The console header with the site name, the Admin label, the five tabs and the GitHub, Docs, App and Sign out controls](/docs/screenshots/admin-console-header.png)
 
 - **GitHub** opens the project's repository in another browser tab.
-- **Wiki** opens the documentation home of the course-exploration site.
+- **Docs** opens the documentation home of the course-exploration site.
 - **App** opens the course-exploration site.
 - **Sign out** ends the session on the server and returns to the sign-in screen.
 

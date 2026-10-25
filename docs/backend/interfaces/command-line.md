@@ -9,8 +9,7 @@ The feature read scripts answer one read each and print one JSON report line.
 | Script | Purpose |
 |---|---|
 | `scripts/search.py` | One unified search over one query, with the four search methods merged into one entry per course. |
-| `scripts/course_lookup.py` | Course narrowing by case-insensitive substring over the displayed official name or official code. |
-| `scripts/module_lookup.py` | Module narrowing by case-insensitive substring over the displayed name or code of the current academic year. |
+| `scripts/catalogue.py` | The minimal official catalogue the browser narrowing boxes filter locally. |
 | `scripts/compare_courses.py` | The five meters and the verdict for two course identities. |
 | `scripts/prerequisites.py` | The prerequisite graph of one course, or its minimum-new-credit route with `--route`. |
 | `scripts/next_courses.py` | The courses the chosen basis covers, under the chosen mode. |
@@ -35,38 +34,41 @@ A feature read script runs in the process that calls it, prints exactly one JSON
 Each read command opens its own database context and reads the [selected dataset](/docs/reference/glossary.md#administration). The report of a command is self-contained and holds the result of its read.
 
 - The search report repeats the effective semantic and fuzzy thresholds, the activity scope, and the tier order it used.
-- The course lookup report repeats the query and the language and carries the activity scope.
-- The module lookup report repeats the query and the language and carries the academic year.
+- The catalogue report carries every represented course's canonical identity, code, FI and EN names, credits and activity flag, and every canonical module's eligible version candidates with their exact version identity, kind, code, FI and EN names, validity bounds and period memberships.
 - The next-course report carries the two canonical input sets, the chosen basis, the mode, the language and activity flags, and the ordered results.
 - The recommendation report carries the similar courses alone.
 - The comparison report carries both summaries, the meters, and the verdict.
-- The graph report carries the compiled expression, the drawing with its node states, and the drawing counts.
+- The graph report carries the solver structure, the drawing when the configured allowance permits it, and the drawing counts. It carries no computed box states, because the browser evaluates those from the structure it holds.
 - The route report carries the outcome, the new credits, the new courses, and the located problems.
-- The structure report carries the root, its rules, and its nodes.
+- The structure report carries the root, its rules, and its nodes. The web batch report carries every requested root, the roots it could not project, and the roots whose canonical group needs an explicit version selection.
 
 [Search](/docs/backend/search-and-discovery/search.md), [Comparison](/docs/backend/search-and-discovery/comparison.md), [Next courses](/docs/backend/search-and-discovery/next-courses.md), [Recommendations](/docs/backend/search-and-discovery/recommendations.md), and [Structure of studies in the catalogue](/docs/backend/catalogue/study-structure.md) describe the reads and their reports.
 
 ## Identities and language
 
-The commands that take a course identity accept either a canonical identity or an exact official code, and a canonical identity takes precedence. A blank input, an unknown input, and an official code held by more than one course each fail instead of resolving to a guess. The structure command takes one canonical module identity, and the search, course lookup, and module lookup commands take a text query.
+The commands that take a course identity accept either a canonical identity or an exact official code, and a canonical identity takes precedence. A blank input, an unknown input, and an official code held by more than one course each fail instead of resolving to a guess. The structure command takes one canonical module identity from the catalogue report, plus one repeatable `--module-version GROUP_ID=VERSION_ID` selection per ambiguous group, the search command takes a text query, and the catalogue command takes no input.
 
-`--display-language` is required by the commands that render official names, and its value is `fi` or `en`. Five scripts take it: search, course lookup, module lookup, next courses, and recommendations. The other commands select no app language, so they take no language option.
+`--display-language` is required by the commands that render official names, and its value is `fi` or `en`. Three scripts take it: search, next courses, and recommendations. The other commands select no app language, so they take no language option.
 
 ## Scope, basis, and toggles
 
-The discovery commands start with inactive courses left out and accept `--all-courses` to include them, while the search, course lookup, and prerequisites commands start with inactive courses included and accept `--active-only` to limit the read. The comparison and structure commands take no activity option.
+The discovery commands start with inactive courses left out and accept `--all-courses` to include them, while the search and prerequisites commands start with inactive courses included and accept `--active-only` to limit the read. The catalogue command carries every course's activity flag, so the browser applies the activity scope to its local filter. The comparison and structure commands take no activity option.
 
 `--basis` chooses which set counts as covered, either `completed` or `selected`, and it defaults to `completed`. On the prerequisites, next-course, and recommendation commands, `--completed` and `--selected` are repeatable and accept canonical identities or exact official codes. The next-course and recommendation commands use the completed set as the selected set when no selected code is supplied, and a supplied selected set must contain every completed course.
 
 Prerequisites adds `--excluded` and the two category toggles. Each repeatable `--excluded` course appears in the drawing while the calculation routes around it, and excluding the opened root blocks the whole request. `--include-recommended` and `--include-inferred` each add their category to the drawing and to the calculation, and the two are independent.
 
+Prerequisites also takes the repeatable `--completed-node` and `--excluded-node`. Each value is one current graph-box key in the form `s:<owner>:d:<24 hex>`, whose last part is 24 lowercase hexadecimal digits, and the graph report's drawing carries the key of each module and numeric requirement box as that box's node identity. A value of another shape fails the command before it opens the database, with `completed node key '<key>' is not a current graph-box key (s:<owner>:d:<24 hex>)`, or the same message naming `excluded`.
+
+A key marks one drawn module or numeric requirement box as met or excluded in the calculation, and the mark applies to every requirement that box stands for. It changes neither the completed set nor the selected set. Exclusion wins when both options name the same box, and a key that names any other box marks nothing. The graph report and the `--route` result take the two options alike.
+
 The next-course and recommendation commands add `--mode`, either `all` or `at_least_one`, and it defaults to `all`. The category toggles are off by default.
 
 ## The graph and the route
 
-`scripts/prerequisites.py` prints the prerequisite graph report unless `--route` is given, and `--route` prints the minimum-new-credit result instead. One invocation prints exactly one of the two results. The graph report carries no route result, and the route result carries no drawing graph.
+`scripts/prerequisites.py` prints the prerequisite graph report unless `--route` is given, and `--route` prints the minimum-new-credit result instead. The graph report describes the drawing and the calculation structure without any node state, and the route result is separate. The route command runs the shared TypeScript solver through Node, so its bundle is prepared once with `npm --prefix web run solver:build`. A missing bundle fails the command with the build instruction, and one invocation prints exactly one of the two results. The graph report carries no route result, and the route result carries no drawing graph.
 
-Both operations compile one expression for the root, so the drawing and the calculation cannot describe different requirement sets. A script caller passes no drawing limit, so the graph report always carries a drawing. The web graph route applies the configured limit instead. [Prerequisite graph](/docs/backend/prerequisites/prerequisite-graph.md) and [Minimum route](/docs/backend/prerequisites/minimum-route.md) describe the two operations.
+Both operations compile one solver structure for the root, so the drawing and the calculation cannot describe different requirement sets. A script caller passes no drawing limit, so the graph report always carries a drawing. The web graph route applies the configured limit instead. [Prerequisite graph](/docs/backend/prerequisites/prerequisite-graph.md) and [Minimum route](/docs/backend/prerequisites/minimum-route.md) describe the two operations.
 
 ## The administration command
 
@@ -102,7 +104,9 @@ All four commands print their owner's report and return exit status 0. A failure
 
 `config read FILE` reports every key of one listed file as that file holds it. A subsystem file is parsed as TOML, so a hub key is reported as its reference table rather than the vector the table points at. The environment file is parsed into its assignments, a bare key reports no value, and every value is reported in plain text. The report is transient and is the one command output that carries file values.
 
-`config set FILE KEY VALUE` replaces the one key of the one listed file with `VALUE`, which is one JSON literal over the broad type the key holds. The write renders only that key's text and leaves every other key with its comments, its order and its line endings. It validates the whole candidate through the settings families that own the key, comparing the key and the aliases without case, reading the environment file freshly and parsing it strictly, and publishes the file atomically. A malformed assignment and a key assigned more than once in the environment file, ignoring case, each refuse the save. An environment-file save locates the stored binding without case and preserves its spelling. An environment-file write is mode 0600 and a subsystem file is published with its own permission bits. The acknowledgment holds the file and the key and no value.
+`config set FILE KEY VALUE` replaces the one key of the one listed file with `VALUE`, which is one JSON literal over the broad type the key holds. The write renders only that key's text and leaves every other key with its comments, its order and its line endings. An environment-file save also appends one absent binding, and only when a settings family declares the key as one of its aliases. The appended assignment is one quoted line and leaves every other byte as it is. A subsystem TOML file takes no absent key, and the interactive operator menu edits the keys its read displays instead.
+
+The save validates the whole candidate through the settings families that own the key, comparing the key and the aliases without case, reading the environment file freshly and parsing it strictly, and publishes the file atomically. A malformed assignment and a key assigned more than once in the environment file, ignoring case, each refuse the save. An environment-file save locates the stored binding without case and preserves its spelling. An environment-file write is mode 0600 and a subsystem file is published with its own permission bits. The acknowledgment holds the file and the key and no value.
 
 ```bash
 uv run python scripts/admin.py config list
@@ -113,7 +117,7 @@ uv run python scripts/admin.py config set config/curriculum.toml CURRENT_ACADEMI
 
 Every example uses a synthetic value, and an environment-file read is the only command output that renders a device credential.
 
-An unlisted file, a key the file does not carry, a JSON `null`, a non-finite number, a value of the wrong broad type, a value the owning settings family refuses, a value that is not one JSON literal, and a malformed or case-insensitively duplicated environment-file assignment each print the content-free JSON line and the configuration guidance to standard error and return exit status 1. [Operator menu](/docs/operations/operator-menu.md#configuration) holds the same reads and the same save behind a confirmation.
+An unlisted file, a key the file does not carry outside that one append case, a JSON `null`, a non-finite number, a value of the wrong broad type, a value the owning settings family refuses, a value that is not one JSON literal, and a malformed or case-insensitively duplicated environment-file assignment each print the content-free JSON line and the configuration guidance to standard error and return exit status 1. [Operator menu](/docs/operations/operator-menu.md#configuration) holds the same reads and the same save behind a confirmation.
 
 ## The administration password
 
@@ -185,7 +189,7 @@ The window is whole hours back from the current rounded UTC hour inclusive. `--h
 
 `USAGE_RETENTION_DAYS` of `config/web.toml` sets the retention that bounds the file. A count that is not positive, or that is longer than the retention in hours, is refused before the command opens the usage file, so a window longer than the retention is refused rather than shortened. The same read drops the records older than the retention in days and retains every newer record, including one outside the reported window. One invocation therefore reports a window and prunes the file.
 
-[Web server](/docs/backend/interfaces/web-server.md#the-request-usage-record) describes the records the serving middleware appends and the file they live in. The report and the serving append take one exclusive lock on the same file, so an append never interleaves with the report's rewrite and neither one loses a record. An absent usage file reports zero requests and creates no file, and a malformed line fails the command without rewriting the file.
+[Web server](/docs/backend/interfaces/web-server.md#the-request-usage-record) describes the records the front router appends and the file they live in. The report and the serving append take one exclusive lock on the same file, so an append never interleaves with the report's rewrite and neither one loses a record. An absent usage file reports zero requests and creates no file, and a malformed line fails the command without rewriting the file.
 
 ```bash
 uv run python scripts/admin.py usage --hours 24
@@ -205,6 +209,6 @@ uv run python scripts/admin.py coverage embedding
 uv run python scripts/mock_data.py load
 ```
 
-The comparison command takes two course identities as positional arguments, and the structure command takes one canonical module identity as a positional argument, which the module lookup report supplies.
+The comparison command takes two course identities as positional arguments, and the structure command takes one canonical module identity as a positional argument, which the catalogue report supplies.
 
 The stage actions, the dataset operations, and the worker operations are described in [Stage lifecycle](/docs/operations/stage-lifecycle.md), [Datasets](/docs/operations/datasets.md), and [Worker sessions](/docs/operations/worker-sessions.md).

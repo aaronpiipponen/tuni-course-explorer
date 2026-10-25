@@ -1,14 +1,14 @@
 """One owner for the shared prerequisite primitives.
 
-`domain.py`, `graph.py`, `path.py`, and `satisfaction.py` all declare the same frozen closed
-Pydantic base, reject the same blank text, enforce the same official/inferred/composed provenance
-shape, measure one witness set's canonical credit total, map a tree's opaque work keys to their
-source minimum credits, and check distinct IDs and order the same way. Those live here once so a
-change cannot drift between the expression vocabulary, the calculation
-tree and its drawing projection, satisfaction, and minimum-credit pathing. Semantics that differ
-(field-specific `validate_kind` matrices, the two-field compilation-issue/path-blocker
-provenance checks, and the solver) stay in their owning modules. The witness credit/count bounds
-themselves are exact family filters owned by the solver and satisfaction DAGs.
+The prerequisite expression, structure and satisfaction contracts share the frozen closed Pydantic
+base and the blank-text rejection, the expression and satisfaction contracts share the distinct-ID
+and order check, and the expression contract owns the provenance-shape validator. `satisfaction.py`
+maps one tree's opaque work keys to their source minimum credits. The inference context and domain
+contracts use the distinct-ID and order check, and the structure, projection and command contracts
+use the base. Those live here once so a change cannot drift between the expression vocabulary, the
+solver structure and its drawing projection, satisfaction, commands, and inference. Semantics that
+differ, including field-specific `validate_kind` matrices and the solver, stay in their owning
+modules.
 
 The domain type names are imported for type checking only: `domain.py` imports this module for its
 expression base and provenance validator, so a runtime reverse import would cycle. At runtime the
@@ -29,11 +29,11 @@ if TYPE_CHECKING:
         OfficialPrerequisiteKind,
         PrerequisiteOrigin,
     )
-    from course_explorer.prerequisite.graph import PrerequisiteCalculationTree
+    from course_explorer.prerequisite.structure import PrerequisiteSolverStructure
 
 
 class _PrerequisiteModel(BaseModel):
-    """Frozen, closed base for every prerequisite expression, graph, path, and satisfaction contract."""
+    """Frozen, closed base for the prerequisite expression, structure, projection, satisfaction and command contracts."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -89,28 +89,12 @@ def _validate_origin_shape(
             raise ValueError("composed nodes forbid inferred_category")
 
 
-def _witness_credits(
-    witness_group_ids: frozenset[str], credits_min_by_group_id: dict[str, Decimal]
-) -> Decimal:
-    """Return one witness set's canonical `credits_min` total."""
-    total = Decimal(0)
-    for group_id in witness_group_ids:
-        credits = credits_min_by_group_id.get(group_id)
-        if credits is None:
-            raise ValueError(f"course {group_id} is missing from the calculation tree courses")
-        total += credits
-    return total
-
-
-def _opaque_credits_by_work_key(tree: PrerequisiteCalculationTree) -> dict[str, Decimal]:
-    """Return one opaque work key to source minimum-credit map from the tree's expression."""
-    from course_explorer.prerequisite.domain import OpaqueCreditRequirement
-    from course_explorer.prerequisite.graph import _iter_expression_occurrences
-
+def _opaque_credits_by_work_key(
+    structure: PrerequisiteSolverStructure,
+) -> dict[str, Decimal]:
+    """Return one opaque work key to source minimum-credit map from the native pieces."""
     credits: dict[str, Decimal] = {}
-    if tree.requirements is None:
-        return credits
-    for _, expression in _iter_expression_occurrences(tree.requirements):
-        if isinstance(expression, OpaqueCreditRequirement):
-            credits.setdefault(expression.work_key, expression.credits_min)
+    for piece in structure.pieces:
+        if piece.kind == "opaque_credits" and piece.work_key is not None:
+            credits.setdefault(piece.work_key, piece.credits_min or Decimal(0))
     return credits

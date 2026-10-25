@@ -28,7 +28,7 @@ Compare places two courses side by side and measures how much their teaching tex
 
 ### Prerequisites
 
-The graph shows the layered prerequisite structure of a course as AND and OR groups, with the completed or selected courses as the basis. The **Recommended** toggle adds recommended prerequisites, drawn apart from the required ones. The **Inferred** toggle adds prerequisites found by analysis, tagged as inferred so they stay separate from the official ones. **Find minimum route** computes the set of courses that needs the fewest new credits and highlights it on the graph.
+The graph shows the layered prerequisite structure of a course as AND and OR groups, with the completed or selected courses as the basis. The **Recommended** toggle adds recommended prerequisites, drawn apart from the required ones. The **Inferred** toggle adds prerequisites found by analysis to the same graph and marks them inferred. **Find minimum route** computes the set of courses that needs the fewest new credits and highlights it on the graph.
 
 ![Prerequisites tab with the graph of one course, its AND and OR groups and the basis and toggle controls](/docs/screenshots/prerequisite-graph.png)
 
@@ -36,15 +36,15 @@ The graph shows the layered prerequisite structure of a course as AND and OR gro
 
 ### Discover
 
-Discover has two lists. **Next courses** shows the courses that can be studied next from a basis of completed or selected courses, in an **All** mode or an **At least one** mode, with a coverage meter for each category that holds course prerequisites. **All** lists fully covered courses without a coverage meter. **Recommended** lists courses similar to the basis.
+Discover has two lists. **Next courses** shows the courses that can be studied next from a basis of completed or selected courses, in an **All** mode or a **Partially covered** mode, with a coverage meter for each category that holds course prerequisites. **All** lists fully covered courses without a coverage meter. **Recommended** lists courses similar to the basis.
 
-![Discover tab in the At least one mode, with a basis of three completed courses and two next-course rows that each carry a Required meter](/docs/screenshots/discover-next-courses.png)
+![Discover tab in the Partially covered mode, with a basis of three completed courses and two next-course rows that each carry a Required meter](/docs/screenshots/discover-next-courses.png)
 
 ### Structure of studies
 
 This tab shows an ordered list of programmes, each with the official structure of a degree programme or module and credit totals per node. **Add programme** ends the list, every programme row carries a menu that replaces, resets or deletes it, courses can be marked complete, and courses no programme holds appear under **Unplaced studies**. The structure can be edited in the browser to match a personal plan.
 
-![Structure of studies tab with two programmes, their completed courses, the Add programme row and the Unplaced studies row](/docs/screenshots/structure-of-studies.png)
+![Structure of studies tab with one programme and one module row, their courses including completed ones, the Add programme row and the Unplaced studies row](/docs/screenshots/structure-of-studies.png)
 
 ### Profiles and language
 
@@ -67,7 +67,7 @@ Requirements:
 
 - Python 3.14.3
 - [uv](https://docs.astral.sh/uv/)
-- Node.js 20.19 or later with npm
+- Node.js `^20.19.0 || >=22.12.0` with npm
 - Docker with Docker Compose, for PostgreSQL with pgvector
 
 Runtime configuration and deployment files are provided as examples under `examples/`. The files a running copy uses are local to each checkout and are ignored by Git.
@@ -86,17 +86,18 @@ Runtime configuration and deployment files are provided as examples under `examp
    mkdir -p config/derived deploy
    ```
 
-   - the eight `examples/config/*.toml` files into `config/`
+   - the nine `examples/config/*.toml` files into `config/`
    - `examples/config/wiki.json` into `config/wiki.json`
    - the two `examples/config/derived/*.json` files into `config/derived/`
    - `examples/.env.example` into `.env`
    - `examples/docker-compose.yml` into the repository root
    - `examples/deploy/Caddyfile` and `examples/deploy/systemd/tuni-course-explorer-web.service.in` into `deploy/`
 
-3. Build the browser application and the administration console. The browser application's build reads `config/wiki.json`, so it runs after the copy.
+3. Build the browser application, the machine solver bundle and the administration console. The browser application's build reads `config/wiki.json`, so it runs after the copy. `solver:build` writes `web/.solver-cli/cli.js`, the bundle that the machine minimum-route command runs through Node.
 
    ```bash
    npm --prefix web run build
+   npm --prefix web run solver:build
    npm --prefix admin-web run build
    ```
 

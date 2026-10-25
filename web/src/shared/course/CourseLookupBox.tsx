@@ -1,13 +1,20 @@
 /** Shared substring box, activity control, loading/error states and selectable course rows. */
 import { useEffect, useRef } from "react";
-import type { CourseSummary } from "../../api/types";
+import type { CatalogueCourse } from "../../api/types";
 import { ActivitySwitch } from "../ActivitySwitch";
 import { ErrorNotice } from "../ErrorNotice";
 import { LookupSkeletons } from "../LookupSkeletons";
+import { LookupVirtualList } from "../LookupVirtualList";
 import { useWording } from "../useWording";
-import { CourseCard, type CoursePick } from "./CourseCard";
+import type { CoursePick } from "./CourseCard";
+import { courseCredits, courseName } from "./presentation";
 import { useCourseLookup } from "./useCourseLookup";
+import { useTapGuardCapture } from "./useTapGuard";
 
+/** One course row's canonical identity. */
+const courseKey = (course: CatalogueCourse) => course.group_id;
+
+/** Render one course substring lookup with its activity control, states and selectable rows. */
 export function CourseLookupBox({
   open,
   query,
@@ -21,9 +28,10 @@ export function CourseLookupBox({
   onQuery: (q: string) => void;
   activeOnly: boolean;
   onActiveOnly: (a: boolean) => void;
-  pick: (course: CourseSummary) => CoursePick;
+  pick: (course: CatalogueCourse) => CoursePick;
 }) {
   const input = useRef<HTMLInputElement>(null);
+  const tap = useTapGuardCapture<HTMLDivElement>();
   const { language, t } = useWording();
   const { report, loading, error } = useCourseLookup(open, query, activeOnly);
   useEffect(() => {
@@ -33,6 +41,10 @@ export function CourseLookupBox({
   return (
     <>
       <div className="course-lookup-controls">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="11" cy="11" r="7" />
+          <path d="m20 20-3.5-3.5" />
+        </svg>
         <input
           ref={input}
           value={query}
@@ -40,6 +52,8 @@ export function CourseLookupBox({
           placeholder={t("Filter courses by name or code")}
           aria-label={t("Filter courses by name or code")}
         />
+      </div>
+      <div className="course-lookup-filters">
         <ActivitySwitch activeOnly={activeOnly} onChange={onActiveOnly} />
       </div>
       {error && <ErrorNotice error={error} language={language} />}
@@ -48,17 +62,32 @@ export function CourseLookupBox({
         !error &&
         (query.trim() ? (
           courses.length ? (
-            <div className="list course-lookup-list">
-              {courses.map((course, index) => (
-                <CourseCard
-                  key={course.group_id}
-                  course={course}
-                  isFirst={index === 0}
-                  isLast={index === courses.length - 1}
-                  pick={pick(course)}
-                />
-              ))}
-            </div>
+            <LookupVirtualList
+              items={courses}
+              getItemKey={courseKey}
+              className="course-lookup-list"
+              resetKey={`${open}-${query}-${language}-${activeOnly}`}
+              inputRef={input}
+              containerProps={tap}
+              renderRow={(course) => {
+                const chosen = pick(course);
+                return (
+                  <button
+                    className="prow"
+                    type="button"
+                    aria-label={chosen.ariaLabel}
+                    onClick={chosen.onPick}
+                  >
+                    <span className="code">{course.code}</span>
+                    <span className="pn">{courseName(course, language)}</span>
+                    <span className="cr">
+                      {courseCredits(course, language)}
+                    </span>
+                    <span className="add">{chosen.text}</span>
+                  </button>
+                );
+              }}
+            />
           ) : (
             report && (
               <p className="course-lookup-empty">

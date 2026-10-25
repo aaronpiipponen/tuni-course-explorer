@@ -1,11 +1,14 @@
-"""Shared builders for the minimum-new-credit path tests."""
+"""Shared builders for the prerequisite compiler and native solver tests."""
 
 from __future__ import annotations
 
 import functools
+from collections.abc import Collection
 from decimal import Decimal
+from typing import Any
 
 from course_explorer.curriculum import CourseSummary
+from course_explorer.prerequisite import commands as command_module
 from course_explorer.prerequisite.domain import (
     AndRequirement,
     CardinalityRequirement,
@@ -15,31 +18,31 @@ from course_explorer.prerequisite.domain import (
     InferenceNodeMetadata,
     OfficialPrerequisiteKind,
     OrRequirement,
-    PrerequisiteNodeOccurrence,
+    PrerequisiteExpression,
     PrerequisiteOrigin,
 )
-from course_explorer.prerequisite.graph import (
-    InferredCoverageRecord,
-    PrerequisiteCalculationTree,
-    PrerequisiteCompilationIssue,
+from course_explorer.prerequisite.projection import (
     PrerequisiteGraphCompilation,
     project_prerequisite_graph,
 )
-from course_explorer.prerequisite.path import (
-    MinimumCreditPathEvaluation,
+from course_explorer.prerequisite.structure import (
+    InferredCoverageRecord,
+    PrerequisiteSolverStructure,
 )
 from tests.prerequisite._expression_support import (
     course_summary as course_summary,
 )
 from tests.prerequisite._expression_support import (
-    inferred_course as _shared_inferred_course,
+    fixture_structure as _fixture_structure,
 )
 from tests.prerequisite._expression_support import (
-    node_occurrences_for_fixture as _node_occurrences_for_fixture,
+    inferred_course as _shared_inferred_course,
 )
 from tests.prerequisite._expression_support import (
     official_course as official_course,
 )
+
+fixture_structure = _fixture_structure
 
 INFERENCE_METADATA = InferenceNodeMetadata(confidence=Decimal("0.9"))
 inferred_course = functools.partial(_shared_inferred_course, inference=INFERENCE_METADATA)
@@ -77,43 +80,55 @@ def expanded_course(head: str, descendants) -> AndRequirement:
 
 def make_compilation(
     root: CourseSummary,
-    requirements,
+    requirements: PrerequisiteExpression | None,
     courses: tuple[CourseSummary, ...],
     *,
     include_recommended: bool = False,
     include_inferred: bool = False,
     active_only: bool = False,
     coverage: tuple[InferredCoverageRecord, ...] = (),
-    issues: tuple[PrerequisiteCompilationIssue, ...] = (),
     excluded_group_ids: tuple[str, ...] = (),
+    completed_node_keys: tuple[str, ...] = (),
+    excluded_node_keys: tuple[str, ...] = (),
+    cycle_group_ids: tuple[str, ...] = (),
 ) -> PrerequisiteGraphCompilation:
-    """Build one valid compilation, deriving its drawing graph through the real projector."""
-    if root.group_id not in {course.group_id for course in courses}:
-        courses = (root, *courses)
-    ordered = tuple(sorted(courses, key=lambda course: course.group_id))
-    node_occurrences = (
-        PrerequisiteNodeOccurrence(occurrence_id="root", action_key=f"course:{root.group_id}"),
-        *_node_occurrences_for_fixture(requirements),
-    )
-    tree = PrerequisiteCalculationTree(
+    """Build one valid native compilation through the real projector."""
+    structure = _fixture_structure(
+        requirements,
         root=root,
-        academic_year_start=2026,
-        requirements=requirements,
-        courses=ordered,
+        courses=courses,
         include_recommended=include_recommended,
         include_inferred=include_inferred,
         active_only=active_only,
-        inferred_coverage=coverage,
-        issues=issues,
         excluded_group_ids=excluded_group_ids,
-        node_occurrences=node_occurrences,
+        completed_node_keys=completed_node_keys,
+        excluded_node_keys=excluded_node_keys,
+        cycle_group_ids=cycle_group_ids,
+        coverage=coverage,
     )
-    return PrerequisiteGraphCompilation(tree=tree, graph=project_prerequisite_graph(tree))
+    return project_prerequisite_graph(structure)
 
 
-def selected_group_ids(result: MinimumCreditPathEvaluation) -> tuple[str, ...]:
-    """Return the selected canonical course IDs of one result."""
-    return tuple(entry.course.group_id for entry in result.new_courses)
+def selected_group_ids(result: dict[str, Any]) -> tuple[str, ...]:
+    """Return the selected canonical course IDs of one route result."""
+    return tuple(entry["course"]["group_id"] for entry in result["new_courses"])
+
+
+def solve_route(
+    structure: PrerequisiteSolverStructure,
+    basis_group_ids: Collection[str],
+    *,
+    max_compact_nodes: int | None = None,
+) -> dict[str, Any]:
+    """Return the real Node solver result for one structure and its explicit basis."""
+    return command_module._run_node_solver(
+        {
+            "operation": "route",
+            "structure": structure.model_dump(mode="json"),
+            "basis_group_ids": list(basis_group_ids),
+            "max_compact_nodes": max_compact_nodes,
+        }
+    )
 
 
 def module_course(group_id: str) -> CourseRequirement:

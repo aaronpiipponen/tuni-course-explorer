@@ -1,14 +1,19 @@
-/** Transient request hook for only the supplied course IDs. Loaded ones are held while others load. */
+/**
+ * Transient request hook for the supplied course IDs, holding loaded courses while others load.
+ */
 import { useEffect, useState } from "react";
-import { readCourseSummaries } from "../../api/course-summaries";
 import type { CourseSummary } from "../../api/types";
+import { useReadCache } from "../../app/useReadCache";
+import { readCachedCourseSummaries } from "./reads";
 
+/** Return the official summaries of the supplied course identities. */
 export function useCourseSummaries(identifiers: readonly string[]): {
   courses: readonly CourseSummary[];
   loading: boolean;
   error: Error | null;
 } {
-  const key = JSON.stringify(identifiers);
+  const cache = useReadCache();
+  const key = JSON.stringify(["course-summaries", identifiers]);
   const requested = new Set(identifiers);
   const [result, setResult] = useState<{
     key: string;
@@ -35,7 +40,7 @@ export function useCourseSummaries(identifiers: readonly string[]): {
       loading: true,
       error: null,
     }));
-    readCourseSummaries(identifiers, controller.signal).then(
+    readCachedCourseSummaries(cache, identifiers, controller.signal).then(
       (report) => {
         if (!controller.signal.aborted)
           setResult({
@@ -57,7 +62,7 @@ export function useCourseSummaries(identifiers: readonly string[]): {
       },
     );
     return () => controller.abort();
-  }, [key]);
+  }, [cache, key]);
   if (result.key !== key)
     return {
       courses: result.courses.filter((course) =>

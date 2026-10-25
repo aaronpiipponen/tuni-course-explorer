@@ -4,6 +4,8 @@ from fastapi import APIRouter, Response
 from pydantic import BaseModel, ConfigDict
 
 from course_explorer.search import lookup_commands
+from course_explorer_web.dataset import resolve_serving_dataset
+from course_explorer_web.reports import dataset_report_response
 
 router = APIRouter()
 
@@ -17,6 +19,9 @@ class CourseSummariesRequest(BaseModel):
 
 @router.post("/api/course-summaries")
 def course_summaries(request: CourseSummariesRequest) -> Response:
-    """Return the command's serialized report."""
-    report = lookup_commands.run_course_summaries_command(request.identifiers)
-    return Response(content=report.model_dump_json(), media_type="application/json")
+    """Return the command's serialized report over the resolved serving dataset."""
+    serving = resolve_serving_dataset()
+    report = lookup_commands.run_course_summaries_command(
+        request.identifiers, database_settings=serving.settings
+    )
+    return dataset_report_response(report, serving)

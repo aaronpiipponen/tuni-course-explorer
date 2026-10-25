@@ -1,21 +1,21 @@
-/** Explicit-submit growing search field and activity scope control. */
-import { useLayoutEffect, useRef } from "react";
-import { ActivitySwitch } from "../../shared/ActivitySwitch";
+/** Explicit-submit growing search field with a caller-supplied activity slot. */
+import { useLayoutEffect, useRef, type ReactNode } from "react";
 import { useWording } from "../../shared/useWording";
 
+/** Render the search field that submits on Enter and grows with its text. */
 export function SearchBar({
   query,
-  activeOnly,
   loading,
+  phone,
+  activity,
   onQueryChange,
-  onActiveOnlyChange,
   onSubmit,
 }: {
   query: string;
-  activeOnly: boolean;
   loading: boolean;
+  phone: boolean;
+  activity?: ReactNode;
   onQueryChange: (query: string) => void;
-  onActiveOnlyChange: (activeOnly: boolean) => void;
   onSubmit: () => void;
 }) {
   const textarea = useRef<HTMLTextAreaElement>(null);
@@ -33,7 +33,7 @@ export function SearchBar({
   }, [query]);
   return (
     <form
-      className="search-bar bar"
+      className="search-bar"
       onSubmit={(event) => {
         event.preventDefault();
         onSubmit();
@@ -48,7 +48,9 @@ export function SearchBar({
         aria-label={t("Search by code, name or topic")}
         value={query}
         rows={1}
-        placeholder={t("Search by code, name or topic")}
+        placeholder={t(
+          phone ? "Search by code or name" : "Search by code, name or topic",
+        )}
         onChange={(event) => onQueryChange(event.target.value)}
         onKeyDown={(event) => {
           if (event.key === "Enter" && !event.nativeEvent.isComposing) {
@@ -57,7 +59,7 @@ export function SearchBar({
           }
         }}
       />
-      <ActivitySwitch activeOnly={activeOnly} onChange={onActiveOnlyChange} />
+      {activity && <span className="search-inline-activity">{activity}</span>}
       <button
         className="search-submit"
         type="submit"

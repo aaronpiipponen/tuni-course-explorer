@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 688" role="img"
      aria-labelledby="t d" font-family="system-ui, sans-serif">
   <title id="t">Minimum route outcomes</title>
-  <desc id="d">One exact search reads the same compiled prerequisite expression and basis as the graph.
+  <desc id="d">One exact search reads the same solver structure and basis as the graph.
   When the exact attempt stays inside the configured size limit, the search yields the exact minimum
   route, a shortfall, an unresolved route, or no route under the rules. When the attempt exceeds the
   size limit, one greedy restart yields an approximate route or no route found.</desc>
@@ -14,11 +14,11 @@
   <rect width="960" height="688" rx="12" fill="#232434"/>
 
   <rect x="380" y="32" width="200" height="40" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
-  <text x="480" y="58" text-anchor="middle" font-size="16" fill="#ececf2">Route request</text>
+  <text x="480" y="58" text-anchor="middle" font-size="16" fill="#ececf2">Route calculation</text>
 
   <rect x="290" y="104" width="380" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
   <text x="480" y="130" text-anchor="middle" font-size="16" fill="#ececf2">Exact search</text>
-  <text x="480" y="152" text-anchor="middle" font-size="14" fill="#a3a4b8">same expression and basis as the graph</text>
+  <text x="480" y="152" text-anchor="middle" font-size="14" fill="#a3a4b8">same structure and basis as the graph</text>
 
   <rect x="290" y="208" width="380" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
   <text x="480" y="234" text-anchor="middle" font-size="16" fill="#ececf2">Size limit</text>

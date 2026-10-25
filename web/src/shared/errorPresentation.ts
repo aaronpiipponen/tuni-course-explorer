@@ -41,6 +41,10 @@ const KNOWN_MESSAGES: Record<string, UiTextKey> = {
     "A module cannot be added inside itself",
   "Structure programmes changed while adding a module":
     "Structure programmes changed while adding a module",
+  "Structure version selection changed while adding a module":
+    "Structure version selection changed while adding a module",
+  "The serving dataset changed during the read":
+    "The serving dataset changed during the read",
   "Structure moves changed while confirming a module":
     "Structure moves changed while confirming a module",
   "Structure target is unavailable": "Structure target is unavailable",
@@ -60,9 +64,14 @@ const KNOWN_MESSAGES: Record<string, UiTextKey> = {
   "There is no saved data to export": "There is no saved data to export",
   "Invalid Sisu plan file": "Invalid Sisu plan file",
   "Sisu choice is ambiguous": "Sisu choice is ambiguous",
+  "Sisu plan selects two versions of a module":
+    "Sisu plan selects two versions of a module",
+  "Another version of this module is already selected":
+    "Another version of this module is already selected",
   "Could not copy Sisu import script": "Could not copy Sisu import script",
 };
 
+/** Return the summary and technical detail of one error in one language. */
 export function errorPresentation(
   error: Error,
   language: DisplayLanguage,

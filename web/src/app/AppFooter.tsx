@@ -1,6 +1,7 @@
 /** Independent-project notice and repository link pinned to the bottom of the application shell. */
 import { useWording } from "../shared/useWording";
 
+/** Render the application notice and repository link. */
 export function AppFooter({ repositoryUrl }: { repositoryUrl: string }) {
   const { t } = useWording();
   return (

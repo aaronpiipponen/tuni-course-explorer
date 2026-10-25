@@ -82,7 +82,7 @@ Choice 7 reads one configuration file and saves one key of it. The machine comma
 
 The entry lists the registered subsystem files in composition order with the environment file last, prints the listing, and asks for a file the listing carries. It then prints every key of the chosen file as that file holds it and asks for a key the report carries. The value prompt takes one JSON literal that matches the broad type the key holds, and the entry does not strip or echo it.
 
-A save draws one confirmation titled `Save configuration <file> key <key>?` with **1 Save** and **0 Cancel**. The title names the file and the key and no value. Only **1 Save** runs the save, and the writer's report is printed as it returns. `0` at the file prompt or the key prompt cancels the entry, an answer outside either prompt writes nothing, and a value the owning settings family refuses prints the shared safe failure and guidance. One save writes one key, so a file with several edits takes one save per key.
+A save draws one confirmation titled `Save configuration <file> key <key>?` with **1 Save** and **0 Cancel**. The title names the file and the key and no value. Only **1 Save** runs the save, and the writer's report is printed as it returns. `0` at the file prompt or the key prompt cancels the entry, an answer outside either prompt writes nothing, and a value the owning settings family refuses prints the shared safe failure and guidance. One save writes one key, so a file with several edits takes one save per key. The entry edits the keys the read displays, so it writes a key the chosen file already carries and appends nothing. The machine command accepts one more case: `config set` appends an absent environment alias that a settings family owns for that file as one quoted assignment that leaves every other byte as it is, and it refuses an absent subsystem-file key or an absent environment key that no settings family owns.
 
 > [!CAUTION]
 > The read prints every value of the chosen file in plain text, the environment file included.
@@ -101,12 +101,12 @@ The command runs four steps in this order, and the first failure stops it.
 
 1. The frontend build, `npm --prefix web run build`, in the checkout. It builds from the installed dependencies.
 2. The two prepared containers, `docker compose up -d --wait --force-recreate --no-build --pull never db embedding`. The step uses the prepared images, and the data volumes and databases are left as they are.
-3. `systemctl --user restart` of the site's own web unit.
+3. A restart of the site's own web unit through the manager `ADMIN_SITE_WEB_SERVICE_SCOPE` names: `systemctl --user restart` in the user manager, or `sudo -n /usr/bin/systemctl restart` in the system manager. A system-manager restart needs the exact passwordless grant the host installs for that one unit and command.
 4. The bind check: the restarted process's main PID must own the configured `127.0.0.1:PORT` listener within `ADMIN_STARTUP_ATTEMPTS` polls spaced by `ADMIN_POLL_INTERVAL_SECONDS`. A listener that same process owns on an address that is not a loopback address fails at once. Listeners that another process owns on the same port belong to that process and are left alone.
 
 Each step is bounded by `ADMIN_STOP_TIMEOUT_SECONDS`. The report names the four steps and the verified bind, and it is the transient acknowledgment of the run. A failed step prints the shared safe failure and the rebuild guidance, and no further step runs. The rebuild leaves the checkout's Git state as it is, reaches no worker, and restarts only the site's own web unit.
 
-The command validates the site's own loaded web unit, running from this checkout and executing this checkout's `scripts/run_web.sh`, before its first step. `ADMIN_SITE_WEB_SERVICE_UNIT` in the environment file names that unit.
+The command validates the site's own loaded web unit, running from this checkout and executing this checkout's `scripts/run_web.sh`, before its first step. `ADMIN_SITE_WEB_SERVICE_UNIT` in the environment file names that unit, and `ADMIN_SITE_WEB_SERVICE_SCOPE` names the manager that owns it.
 
 Choice 10 builds the administration frontend alone and then queues the restart of this checkout's own administration unit. The machine commands are `uv run python scripts/admin.py rebuild-admin` and `uv run python scripts/admin.py restart-admin`, and the entry runs the first and then the second.
 
@@ -280,7 +280,7 @@ The report holds the window bounds, the request count, the mean duration and one
 
 `USAGE_RETENTION_DAYS` of `config/web.toml` bounds the window and the file: a count that is not positive or is longer than the retention in hours fails the command before it opens the file, and the same read keeps every record from the current hour back the retention in days and drops the older ones. A malformed line fails the command without rewriting the file, and no line's content reaches the failure line.
 
-[Web server](/docs/backend/interfaces/web-server.md#the-request-usage-record) describes the records the serving middleware appends, and [Command line](/docs/backend/interfaces/command-line.md#the-request-usage-report) states the window and the report fields.
+[Web server](/docs/backend/interfaces/web-server.md#the-request-usage-record) describes the records the front router appends, and [Command line](/docs/backend/interfaces/command-line.md#the-request-usage-report) states the window and the report fields.
 
 The menu entry asks `Hours (0 to cancel): ` and runs the same command once. A cancel, an end of input, an interrupt and an answer that is not a positive whole number each write nothing and prune nothing.
 
@@ -339,7 +339,7 @@ The [Operations](/docs/operations/README.md#the-two-operator-surfaces) overview 
 
 | Operation | Requires before it runs |
 |---|---|
-| `setup datasets` | A reachable configured database and a checkout on a branch |
+| `setup datasets` | A reachable configured database and a checkout with a readable HEAD for first enrollment |
 | `setup worker` | The configured origin matching the server checkout origin, a clean worker checkout on a branch, and passwordless `sudo` on the worker |
 | `preflight` | The prepared checkout and the worker connection |
 | `migrate datasets` | Every stage idle, a selected dataset, and the running server database service |
@@ -354,7 +354,7 @@ The [Operations](/docs/operations/README.md#the-two-operator-surfaces) overview 
 | `backups delete NAME` | A regular file from the listing, and access to it |
 | `config list` | Nothing, because the listing reads no file |
 | `config read FILE` | A listed regular file |
-| `config set FILE KEY VALUE` | A listed regular file, a key that file carries, a JSON literal of the broad type the key holds, and readable valid candidate inputs |
+| `config set FILE KEY VALUE` | A listed regular file, a key that file carries or an environment key a settings family owns, a JSON literal of the broad type the key holds, and readable valid candidate inputs |
 | `password --username USERNAME` | A nonblank username, a terminal that hides the entry, and write access to the administration state directory |
 | `dispose inference ...` | Every stage idle, a verified returned selected dataset, and the current schema head |
 | `target inference ...` | Every stage idle, a verified returned selected dataset, and the current schema head |
@@ -364,7 +364,7 @@ The [Operations](/docs/operations/README.md#the-two-operator-surfaces) overview 
 | `logs read` | A listed session of the chosen stage, the recorded worker session when one exists, and the worker connection for a worker source with a receipt |
 | `logs embedding` | The Compose services of this checkout, and passwordless `sudo` for Compose |
 | `usage --hours HOURS` | A positive hour count at most the configured retention, and write access to the usage file (an absent file reports an empty window) |
-| `rebuild` | The prepared frontend, the two prepared container images, the site's own loaded web unit from this checkout, and passwordless `sudo` for Compose |
+| `rebuild` | The prepared frontend, the two prepared container images, the site's own loaded web unit from this checkout, the manager that owns that unit with its passwordless grant when the manager is the system manager, and passwordless `sudo` for Compose |
 | `rebuild-admin` | The installed administration frontend dependencies, and the loaded administration unit of this checkout named by `ADMIN_SITE_ADMIN_SERVICE_UNIT` |
 | `restart-admin` | The loaded administration unit of this checkout named by `ADMIN_SITE_ADMIN_SERVICE_UNIT`, and the systemd user manager that owns it |
 | `hubs` | The selected dataset with complete current embedding coverage |

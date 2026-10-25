@@ -4,7 +4,7 @@ The comparison service turns two courses' stored chunk vectors into five percent
 
 ## Chunk carriers and centring
 
-`TeachingEmbeddingChunk` in `src/course_explorer/embeddings/read.py` is the request-local carrier: `group_id`, `field`, `language`, `chunk_index`, `text_origin`, `character_count`, and `embedding`. `TeachingEmbeddingRepository.get_chunks(represented, *, embedding_configuration_hash)` returns the completed, vector-backed rows whose `(group_id, sisu_course_unit_id, representative_source_hash)` triple matches a requested record and whose configuration hash equals the digest. An empty request returns before opening a session, and a requested identity with no compatible row contributes no chunk.
+`TeachingEmbeddingChunk` in `src/course_explorer/embeddings/read.py` is the request-local carrier: `group_id`, `field`, `language`, `chunk_index`, `text_origin`, `character_count`, and `embedding`. `TeachingEmbeddingRepository.get_chunks(represented, *, embedding_configuration_hash, descriptive_only=False, cache=None)` returns the completed, vector-backed rows whose `(group_id, sisu_course_unit_id, representative_source_hash)` triple matches a requested record and whose configuration hash equals the digest. With `descriptive_only` the statement keeps only the content and outcomes rows, and the comparison command reads every field and passes no cache. An empty request returns before opening a session, and a requested identity with no compatible row contributes no chunk.
 
 `centre_chunks(chunks, hub, *, outcomes_hub=None)` in the same module replaces each chunk's vector with `subtract_hub(vector, hub)`, and with `subtract_hub_for_field` when an outcomes hub is supplied, so an outcomes chunk is centred on the outcomes hub and every other chunk on the embedding hub.
 
@@ -46,7 +46,7 @@ The weight of a field that one side lacks is left out of both sums and out of th
 
 ## Directional overlap and the verdict
 
-`_DESCRIPTIVE_FIELDS` is `(CONTENT, OUTCOMES)`, so a name chunk takes no part in an overlap. `_prepare_descriptive_chunks(chunks)` groups those chunks by language into `(unit(chunk.embedding), chunk.character_count)` pairs, and `PreparedTeachingOverlap(chunks)` holds that projection for the side that stays fixed across comparisons.
+`DESCRIPTIVE_TEACHING_TEXT_FIELDS` is `(CONTENT, OUTCOMES)`, so a name chunk takes no part in an overlap. `_prepare_descriptive_chunks(chunks)` groups those chunks by language into `(unit(chunk.embedding), chunk.character_count)` pairs, and `PreparedTeachingOverlap(chunks)` holds that projection for the side that stays fixed across comparisons.
 
 `PreparedTeachingOverlap.compare(chunks, *, floor, ceiling)` returns one `DirectionalOverlap`. For each language with descriptive chunks on both sides:
 
@@ -86,7 +86,7 @@ and it raises `ValueError` when `ceiling <= floor`.
 6. It sets `uses_derived_text` by testing every chunk of both sides for `text_origin is TeachingTextOrigin.DERIVED`.
 7. It returns a `CourseComparisonReport` carrying both `CourseSummary` values, the meters, the verdict, and the flag.
 
-`scripts/compare_courses.py` is the `argparse` adapter that prints `report.model_dump_json()`, and `POST /api/comparison` returns the same serialized report. A site whose `WEB_EMBEDDINGS_ENABLED` is false answers that route with status 403 and the detail `Feature disabled` before the command runs.
+`scripts/compare_courses.py` is the `argparse` adapter that prints `report.model_dump_json()`, and `POST /api/comparison` returns the report with the serving dataset identity. A site whose `WEB_EMBEDDINGS_ENABLED` is false answers that route with status 403 and the detail `Feature disabled` before the command runs.
 
 ## Settings
 

@@ -1,10 +1,20 @@
 /** Wiki header with native home/app links and the local docs search. */
+import { useRef, type MouseEvent } from "react";
 import { DocsSearch } from "./DocsSearch";
 import { DOCS_REPOSITORY_URL } from "./registry";
 import { GITHUB_MARK } from "../../shared/icons";
-import type { MouseEvent } from "react";
+import { useHeaderHeight } from "../../shared/useHeaderHeight";
 
-export function DocsHeader({ returnToApp }: { returnToApp: () => void }) {
+/** Render the wiki header and its desktop search and repository controls. */
+export function DocsHeader({
+  returnToApp,
+  mobile,
+}: {
+  returnToApp: () => void;
+  mobile: boolean;
+}) {
+  const headerRef = useRef<HTMLElement>(null);
+  useHeaderHeight(headerRef, "--docs-header-height");
   const returnOnOrdinaryClick = (event: MouseEvent<HTMLAnchorElement>) => {
     if (
       event.button !== 0 ||
@@ -18,41 +28,45 @@ export function DocsHeader({ returnToApp }: { returnToApp: () => void }) {
     returnToApp();
   };
   return (
-    <header className="docs-header">
-      <div className="docs-brand">
-        <a className="docs-logo" href="/" onClick={returnOnOrdinaryClick}>
-          <i>T</i>TUNI Course Explorer
-        </a>
-        <a
-          className="docs-home-link"
-          href="/docs#home"
-          onClick={(event) => {
-            if (
-              event.button !== 0 ||
-              event.metaKey ||
-              event.ctrlKey ||
-              event.shiftKey ||
-              event.altKey
-            )
-              return;
-            event.preventDefault();
-            window.location.hash = "home";
-          }}
-        >
-          Docs
-        </a>
+    <header className="docs-header" ref={headerRef}>
+      <div className="docs-header-start">
+        <div className="docs-brand">
+          <a className="docs-logo" href="/" onClick={returnOnOrdinaryClick}>
+            <i>T</i>TUNI Course Explorer
+          </a>
+          <a
+            className="docs-home-link"
+            href="/docs#home"
+            onClick={(event) => {
+              if (
+                event.button !== 0 ||
+                event.metaKey ||
+                event.ctrlKey ||
+                event.shiftKey ||
+                event.altKey
+              )
+                return;
+              event.preventDefault();
+              window.location.hash = "home";
+            }}
+          >
+            Docs
+          </a>
+        </div>
+        {!mobile && <DocsSearch />}
       </div>
-      <DocsSearch />
       <div className="docs-right">
-        <a
-          className="docs-button docs-github"
-          href={DOCS_REPOSITORY_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          {GITHUB_MARK}
-          GitHub
-        </a>
+        {!mobile && (
+          <a
+            className="docs-button docs-github"
+            href={DOCS_REPOSITORY_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {GITHUB_MARK}
+            GitHub
+          </a>
+        )}
         <a
           className="docs-button primary"
           href="/"

@@ -13,10 +13,12 @@ import type { KeyboardEvent, Ref } from "react";
 import type { SearchMethod, UnifiedCourseSearchResult } from "../../api/types";
 import { CourseCard } from "../../shared/course/CourseCard";
 
+/** The imperative handle of one search tier: its focus operation and its result count. */
 export type SearchTierListHandle = {
   focusCourse: (index: number, lastControl: boolean) => void;
   count: number;
 };
+/** One tier's method, results, scroll element and boundary handler. */
 export type SearchTierListProps = {
   method: SearchMethod;
   results: readonly UnifiedCourseSearchResult[];
@@ -82,27 +84,32 @@ function SearchTierListView({
     const paneRect = scrollElement.getBoundingClientRect();
     const listRect = listRef.current.getBoundingClientRect();
     const offset = listRect.top - paneRect.top + scrollElement.scrollTop;
-    const card =
-      listRef.current.querySelector<HTMLElement>(".course-card-shell");
-    const measured = card
-      ? Number.parseFloat(
-          getComputedStyle(card).getPropertyValue("--course-row-height"),
-        )
-      : 38;
-    setListOffset(offset);
-    if (measured > 0 && measured !== rowHeight) {
-      setRowHeight(measured);
-      virtualizer.measure();
-    }
-  }, [scrollElement, rowHeight, virtualizer]);
+    setListOffset((previous) =>
+      Math.abs(previous - offset) < 0.5 ? previous : offset,
+    );
+  }, [scrollElement]);
   useLayoutEffect(() => {
-    observeGeometry();
-    if (!scrollElement) return;
-    const observer = new ResizeObserver(observeGeometry);
+    if (!scrollElement || !listRef.current) return;
+    const measureRow = () => {
+      const row = listRef.current?.querySelector<HTMLElement>(
+        ".search-virtual-row",
+      );
+      const measured = row?.getBoundingClientRect().height ?? 0;
+      if (measured > 0 && Math.abs(measured - rowHeight) > 0.5) {
+        setRowHeight(measured);
+        virtualizer.measure();
+      }
+    };
+    const measure = () => {
+      observeGeometry();
+      measureRow();
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
     observer.observe(scrollElement);
-    if (listRef.current) observer.observe(listRef.current);
+    observer.observe(listRef.current);
     return () => observer.disconnect();
-  }, [observeGeometry, scrollElement]);
+  }, [observeGeometry, scrollElement, results, method, rowHeight, virtualizer]);
   const focusBoundary = useCallback(
     (event: KeyboardEvent<HTMLDivElement>, index: number) => {
       const direction = event.shiftKey ? -1 : 1;
@@ -183,6 +190,7 @@ function SearchTierListView({
             <CourseCard
               course={result.course}
               matchSources={result.match_sources}
+              cardClassName="compact-result-card"
               isFirst={item.index === 0}
               isLast={item.index === results.length - 1}
               onInteractionChange={(active) =>
@@ -196,6 +204,7 @@ function SearchTierListView({
   );
 }
 
+/** Render one virtualized search tier. */
 export const SearchTierList = forwardRef<
   SearchTierListHandle,
   Omit<SearchTierListProps, "ref">

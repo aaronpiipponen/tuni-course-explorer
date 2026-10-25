@@ -2,6 +2,7 @@
 import { motion } from "framer-motion";
 import { useReducedMotion } from "../../shared/useReducedMotion";
 
+/** Render one percentage measurement for a discovery result. */
 export function DiscoverMeter({
   label,
   value,
@@ -14,20 +15,20 @@ export function DiscoverMeter({
   const reducedMotion = useReducedMotion();
   const percentage = Math.round(value);
   return (
-    <div
+    <span
       className="discover-meter"
       title={title}
       aria-label={`${label}: ${percentage}%`}
     >
       <span>{label}</span>
-      <div className="discover-meter-track" aria-hidden="true">
+      <span className="discover-meter-track" aria-hidden="true">
         <motion.i
           initial={reducedMotion ? false : { width: 0 }}
           animate={{ width: `${value}%` }}
           transition={reducedMotion ? { duration: 0 } : { duration: 0.55 }}
         />
-      </div>
+      </span>
       <b>{percentage}%</b>
-    </div>
+    </span>
   );
 }

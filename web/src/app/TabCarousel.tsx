@@ -1,5 +1,15 @@
-/** Animated cyclic carousel over the served tabs with keyboard navigation and inert offscreen panes. */
-import { useEffect, useState, type ComponentType } from "react";
+/**
+ * Animated cyclic carousel over the served tabs with touch swipe navigation, keyboard navigation
+ * and inert offscreen panes.
+ */
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ComponentType,
+  type MouseEvent,
+  type PointerEvent,
+} from "react";
 import { AnimatePresence } from "framer-motion";
 import { setActiveTab, useActiveTab } from "./sessionTab";
 import { effectiveTab, visibleTabs } from "./tabs";
@@ -15,6 +25,8 @@ import { ErrorNotice } from "../shared/ErrorNotice";
 import { useWording } from "../shared/useWording";
 import { useWebFeatures } from "./useWebFeatures";
 import { AnimatedTabPane } from "./AnimatedTabPane";
+import { useMediaQuery } from "../shared/useMediaQuery";
+import { OVERLAY_SELECTORS, PHONE_SHELL_QUERY } from "../shared/viewport";
 
 const PANES: Record<TabId, ComponentType> = {
   search: SearchPane,
@@ -24,6 +36,20 @@ const PANES: Record<TabId, ComponentType> = {
   structure: StructurePane,
 };
 
+// A touch gesture starts as a swipe only after this much travel and with this horizontal dominance.
+const SWIPE_TRAVEL = 8;
+const SWIPE_DOMINANCE = 1.5;
+// A release travels this far to select the neighbouring tab.
+const SWIPE_DISTANCE = 48;
+
+type Swipe = {
+  pointerId: number;
+  startX: number;
+  startY: number;
+  horizontal: boolean;
+};
+
+/** Render the animated tab carousel and handle keyboard or touch navigation. */
 export function TabCarousel() {
   const storedTab = useActiveTab();
   const { embeddings_enabled } = useWebFeatures();
@@ -31,6 +57,7 @@ export function TabCarousel() {
   const visible = visibleTabs(embeddings_enabled);
   const { runAction, error } = useAction();
   const { language, t } = useWording();
+  const phone = useMediaQuery(PHONE_SHELL_QUERY);
   const active = visible.findIndex((tab) => tab.id === activeTab);
   const Pane = PANES[activeTab];
   const [presentation, setPresentation] = useState({
@@ -52,6 +79,91 @@ export function TabCarousel() {
     runAction(() =>
       setActiveTab(visible[(index + visible.length) % visible.length].id),
     );
+  const swipe = useRef<Swipe | null>(null);
+  const committed = useRef(false);
+  const releaseSwipe = (target: HTMLDivElement | null) => {
+    const current = swipe.current;
+    if (current?.horizontal && target?.hasPointerCapture(current.pointerId))
+      target.releasePointerCapture(current.pointerId);
+    swipe.current = null;
+  };
+  const startSwipe = (event: PointerEvent<HTMLDivElement>) => {
+    committed.current = false;
+    if (event.pointerType !== "touch") return;
+    if (!phone) {
+      releaseSwipe(event.currentTarget);
+      return;
+    }
+    if (swipe.current) {
+      releaseSwipe(event.currentTarget);
+      return;
+    }
+    // The tracked touch owns the gesture, so a secondary contact starts nothing.
+    if (!event.isPrimary) return;
+    const target = event.target;
+    if (
+      target instanceof Element &&
+      target.closest(OVERLAY_SELECTORS.swipeIgnore) !== null
+    )
+      return;
+    if (document.querySelector(OVERLAY_SELECTORS.blocking)) return;
+    swipe.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      horizontal: false,
+    };
+  };
+  const moveSwipe = (event: PointerEvent<HTMLDivElement>) => {
+    const current = swipe.current;
+    if (!current || current.pointerId !== event.pointerId) return;
+    if (!phone) {
+      releaseSwipe(event.currentTarget);
+      return;
+    }
+    if (current.horizontal) return;
+    const dx = event.clientX - current.startX;
+    const dy = event.clientY - current.startY;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < SWIPE_TRAVEL) return;
+    if (Math.abs(dx) < SWIPE_DOMINANCE * Math.abs(dy)) {
+      releaseSwipe(event.currentTarget);
+      return;
+    }
+    current.horizontal = true;
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+  const endSwipe = (event: PointerEvent<HTMLDivElement>) => {
+    const current = swipe.current;
+    if (!current || current.pointerId !== event.pointerId) return;
+    const dx = event.clientX - current.startX;
+    const dy = event.clientY - current.startY;
+    const horizontal = current.horizontal;
+    releaseSwipe(event.currentTarget);
+    if (
+      !horizontal ||
+      !phone ||
+      document.querySelector(OVERLAY_SELECTORS.blocking)
+    )
+      return;
+    if (
+      Math.abs(dx) < SWIPE_DISTANCE ||
+      Math.abs(dx) < SWIPE_DOMINANCE * Math.abs(dy)
+    )
+      return;
+    committed.current = true;
+    select(active + (dx < 0 ? 1 : -1));
+  };
+  const cancelSwipe = (event: PointerEvent<HTMLDivElement>) => {
+    if (swipe.current?.pointerId === event.pointerId)
+      releaseSwipe(event.currentTarget);
+  };
+  // The release of a committed swipe produces a click on the painted pane, and it selects nothing.
+  const suppressClick = (event: MouseEvent<HTMLDivElement>) => {
+    if (!committed.current || event.detail === 0) return;
+    committed.current = false;
+    event.preventDefault();
+    event.stopPropagation();
+  };
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
       if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
@@ -73,7 +185,19 @@ export function TabCarousel() {
     <SearchSessionProvider>
       <section className="carousel-frame" aria-label={t("Course tools")}>
         <div className="carousel">
-          <div className="carousel-window">
+          <div
+            className="carousel-window"
+            onPointerDown={startSwipe}
+            onPointerMove={moveSwipe}
+            onPointerUp={endSwipe}
+            onPointerCancel={cancelSwipe}
+            // A descendant handing its implicit capture to this window keeps the tracked
+            // gesture, so only this window's own capture loss cancels it.
+            onLostPointerCapture={(event) => {
+              if (event.target === event.currentTarget) cancelSwipe(event);
+            }}
+            onClickCapture={suppressClick}
+          >
             <AnimatePresence initial={false} custom={presentation.direction}>
               <AnimatedTabPane
                 key={activeTab}

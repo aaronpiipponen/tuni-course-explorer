@@ -19,6 +19,7 @@ from course_explorer.comparison.service import (
     comparison_verdict,
 )
 from course_explorer.config import (
+    DatabaseSettings,
     load_database_settings,
     load_embedding_settings,
     load_search_settings,
@@ -44,7 +45,9 @@ class CourseComparisonReport(BaseModel):
     uses_derived_text: bool
 
 
-def run_course_comparison_command(course_a: str, course_b: str) -> CourseComparisonReport:
+def run_course_comparison_command(
+    course_a: str, course_b: str, *, database_settings: DatabaseSettings | None = None
+) -> CourseComparisonReport:
     """Compare two courses (canonical id or exact code) and return one report in caller A/B order."""
     if not course_a.strip():
         raise ValueError("course_a must be nonblank")
@@ -52,7 +55,10 @@ def run_course_comparison_command(course_a: str, course_b: str) -> CourseCompari
         raise ValueError("course_b must be nonblank")
     search_settings = load_search_settings()
     embedding_settings = load_embedding_settings()
-    with _database_context(load_database_settings()) as factory:
+    resolved_settings = (
+        database_settings if database_settings is not None else load_database_settings()
+    )
+    with _database_context(resolved_settings) as factory:
         curriculum = CurriculumRepository(factory)
         lookup = CourseLookupService(curriculum, search_settings)
         resolved = lookup.resolve_courses((course_a, course_b))

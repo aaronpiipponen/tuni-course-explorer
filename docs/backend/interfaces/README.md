@@ -4,7 +4,9 @@ The interfaces chapter covers the HTTP read surface, the command line, the admin
 
 ## The HTTP read surface
 
-The web server answers 10 fixed dataset read commands plus one feature read under `/api/` and serves the browser application, whose `/docs` address opens the documentation wiki. Each dataset command answers a POST request with a closed JSON body, delegates once to one package command, and returns its report, and the feature read reports the site's two serving switches. The browser sends its state as request inputs, and no route writes data, starts a stage, or reaches the worker. [Web API](/docs/backend/interfaces/web-api.md) lists the routes and the failure outcomes, and [Web server](/docs/backend/interfaces/web-server.md) describes the application and its launcher.
+The web server answers eight fixed dataset read commands plus one feature read under `/api/` and serves the browser application, whose `/docs` address opens the documentation wiki. Each dataset command answers a POST request with a closed JSON body, resolves one serving connection, delegates once to one package command, and returns its report with the connection's dataset identity. The feature read reports the site's two serving switches and that identity. The browser sends its state as request inputs, and no route writes data, starts a stage, or reaches the worker. [Web API](/docs/backend/interfaces/web-api.md) lists the routes and the failure outcomes, and [Web server](/docs/backend/interfaces/web-server.md) describes the application and its launcher.
+
+With `ADMISSION_ENABLED` true in `config/admission.toml`, the front router gives each POST to a fixed API path a free, light or heavy class before it forwards the read, and with it off every request is forwarded without a class or a limit. [Admission control](/docs/backend/interfaces/admission-control.md) states the bounds, the regimes and the refusals an operator relies on.
 
 ## The command line
 
@@ -12,7 +14,7 @@ The feature read scripts call package commands and print one JSON report each. T
 
 ## Command ownership and the browser boundary
 
-A dataset read surface accepts one input shape and calls one owner once, so a rule lives in a package command. Nine of the 10 dataset HTTP reads answer a command that also has a script adapter, and the feature read runs no command. The administration rebuild runs one build and then queues one restart. The user state belongs to the browser and reaches the server only as the inputs of one request. [System boundaries](/docs/architecture/boundaries.md) and [Configuration](/docs/backend/configuration.md) describe the settings each surface reads.
+A dataset read surface accepts one input shape and calls one owner once, so a rule lives in a package command. Six of the eight dataset HTTP reads answer a command that also has a script adapter. The structure read answers a batch command whose single-root form has the script adapter, the summary read answers its batch command alone, and the feature read runs no command. The administration rebuild runs one build and then queues one restart. The user state belongs to the browser and reaches the server only as the inputs of one request. [System boundaries](/docs/architecture/boundaries.md) and [Configuration](/docs/backend/configuration.md) describe the settings each surface reads.
 
 ## The administration backend
 

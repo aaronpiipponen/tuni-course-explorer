@@ -7,6 +7,7 @@ import { ErrorNotice } from "../../../shared/ErrorNotice";
 import { Disclosure } from "../../../shared/Disclosure";
 import { useWording } from "../../../shared/useWording";
 
+/** Render the member list of one module or requirement disclosure box. */
 export function MemberPanel({
   node,
   onClose,

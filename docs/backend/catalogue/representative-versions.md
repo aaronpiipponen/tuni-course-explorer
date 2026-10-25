@@ -38,7 +38,9 @@ The active state is stored with the canonical course record, together with the f
 
 A module read takes an academic year and selects one module version from that module's versions. A version takes part when it is a member of that exact academic year's curriculum periods.
 
-When a module has no version with that exact membership, a reader also accepts a version with no period membership whose own validity bounds contain the requested year. An empty candidate set means the module has no version for that year, and more than one candidate is ambiguous. The structure of studies requires exactly one candidate and fails with the requested year when the set is empty or holds more than one version. Module search fails when the query matches a module that holds more than one candidate version for the academic year.
+When a module has no version with that exact membership, a reader also accepts a version with no period membership whose own validity bounds contain the requested year. An empty candidate set means the module has no version for that year, and more than one candidate is ambiguous. The structure of studies projects a root only from exactly one candidate or one explicit version selection, and a batch read reports a root with several candidates and no selection as `version_selection_required` instead of guessing. A module nested inside a projected tree with several candidates and no selection is reported as an unresolved node.
+
+Module [narrowing](/docs/reference/glossary.md#courses-and-the-catalogue) filters the minimal official catalogue by module name and code in the browser. [Search](/docs/backend/search-and-discovery/search.md#the-minimal-official-catalogue) states which candidate a matched group displays, the order of the rows, and that the row carries every eligible candidate.
 
 The [Prerequisite graph](/docs/backend/prerequisites/prerequisite-graph.md) is the one reader that also accepts a single nearest dated version when the strict candidate set is empty, and the graph discloses that fallback.
 

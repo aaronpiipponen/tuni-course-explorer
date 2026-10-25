@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { useReducedMotion } from "../../shared/useReducedMotion";
 import { useWording } from "../../shared/useWording";
 
+/** Render the row that starts adding one top-level programme. */
 export function AddProgrammeRow({
   onAdd,
   disabled,

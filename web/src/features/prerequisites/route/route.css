@@ -87,17 +87,106 @@
   top: 16px;
   right: 16px;
   display: flex;
-  width: min(400px, calc(100% - 24px));
+  width: min(640px, calc(100% - 24px));
   max-height: 75%;
   flex-direction: column;
   gap: 0;
   overflow: auto;
   scrollbar-width: none;
+  overscroll-behavior: contain;
   pointer-events: none;
   border-style: none;
+  filter: drop-shadow(0 30px 45px rgb(0 0 0 / 85%))
+    drop-shadow(0 0 25px rgb(78 0 142 / 50%));
 }
 .route-stack::-webkit-scrollbar {
   display: none;
+}
+/* The expanded route panel fills its stack at every width. The breakpoint blocks add the
+   desktop insets and scrollbar and the phone insets and sheet layout. */
+.route-stack:has(> .route-panel.expanded) {
+  max-height: none;
+  overflow: hidden;
+}
+.route-stack:has(> .route-panel.expanded) > .route-panel.open {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+.route-panel.expanded.open > .panelclip {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+}
+.route-panel.expanded .route-panel-content {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+.route-panel.expanded .route-head {
+  flex: none;
+}
+.route-panel.expanded .route-list-disclosure {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+.route-panel.expanded .route-list-disclosure > .panelclip {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.route-panel.expanded .route-foot {
+  flex: none;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgb(255 255 255 / 12%);
+}
+.route-panel.expanded .route-foot .route-add {
+  width: 100%;
+  margin-top: 0;
+}
+@media (min-width: 681px) {
+  .route-stack:has(> .route-panel.expanded) {
+    top: 16px;
+    right: 16px;
+    bottom: 16px;
+  }
+  .route-panel.expanded .route-panel-content {
+    overflow: hidden;
+  }
+  .route-panel.expanded .route-list-disclosure > .panelclip {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(176 123 232 / 55%) transparent;
+  }
+  .route-panel.expanded .route-list-disclosure > .panelclip::-webkit-scrollbar {
+    width: 8px;
+  }
+  .route-panel.expanded
+    .route-list-disclosure
+    > .panelclip::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .route-panel.expanded
+    .route-list-disclosure
+    > .panelclip::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background: rgb(176 123 232 / 55%);
+    background-clip: padding-box;
+  }
+  .route-panel.expanded
+    .route-list-disclosure
+    > .panelclip::-webkit-scrollbar-thumb:hover {
+    background: rgb(176 123 232 / 80%);
+    background-clip: padding-box;
+  }
 }
 .route-stack > .disclosure.open {
   pointer-events: auto;
@@ -122,9 +211,6 @@
   border: 1px solid #b07be8;
   border-radius: 14px;
   background: #0a0a0f;
-  box-shadow:
-    0 30px 90px rgb(0 0 0 / 85%),
-    0 0 60px -10px rgb(78 0 142 / 50%);
 }
 .route-head {
   border-style: none;
@@ -265,6 +351,10 @@
   padding: 8px 16px;
   font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
+.route-panel .route-list .course-list-row.open {
+  background: rgb(176 123 232 / 12%);
+  box-shadow: inset 2px 0 0 #b07be8;
+}
 .graph-panel.route {
   background-color: #0a0a0f;
 }
@@ -339,10 +429,206 @@
     top: auto;
     right: 12px;
     bottom: 12px;
-    width: min(400px, calc(100% - 24px));
+    width: min(640px, calc(100% - 24px));
     max-height: 62%;
   }
   .route-add {
     white-space: normal;
+  }
+}
+.route-error {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.route-clear {
+  display: none;
+}
+@media (max-width: 680px) {
+  .routebox {
+    position: absolute;
+    top: auto;
+    right: 12px;
+    bottom: 12px;
+    left: 12px;
+    z-index: 6;
+    transition: opacity 0.2s ease;
+  }
+  .routebox .rbtn {
+    width: 100%;
+    max-width: 100%;
+    min-height: 48px;
+    gap: 10px;
+    padding: 10px 12px;
+  }
+  .routebox .rbtn > svg,
+  .routebox .rbtn > .route-control-spinner {
+    flex: none;
+  }
+  .routebox .rbtn > span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .route-stack {
+    position: absolute;
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 9;
+    width: auto;
+    max-height: min(46dvh, 420px);
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 8px 12px 12px;
+    border-top: 1px solid rgb(255 255 255 / 18%);
+    border-radius: 16px 16px 0 0;
+    background: #0a0a0f;
+    box-shadow: 0 -20px 60px rgb(0 0 0 / 70%);
+    pointer-events: auto;
+    touch-action: pan-y;
+  }
+  .route-stack:not(:has(.disclosure.open)) {
+    display: none;
+  }
+  .route-stack > .disclosure {
+    flex: none;
+  }
+  .route-stack > .member-panel {
+    width: 100%;
+  }
+  .route-head {
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+  .route-total {
+    min-width: 0;
+    flex: 1 1 0;
+    overflow-wrap: anywhere;
+  }
+  .route-expand {
+    flex: none;
+    margin-left: 0;
+  }
+  .route-clear {
+    display: inline-flex;
+    width: 44px;
+    height: 44px;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 1px solid rgb(255 255 255 / 25%);
+    border-radius: 999px;
+    color: #fff;
+    background: transparent;
+  }
+  /* The phone sheet is one surface: the route and member content drop their own card box. */
+  .route-stack .route-panel-content,
+  .route-stack .member-panel > .panelclip > aside {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+  .route-stack > .route-panel.open {
+    margin-bottom: 0;
+  }
+  .route-stack .course-list-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .route-stack .course-list-code {
+    grid-row: 1;
+    grid-column: 1;
+  }
+  .route-stack .course-list-credit {
+    grid-row: 1;
+    grid-column: 2;
+  }
+  .route-stack .course-list-name {
+    grid-row: 2;
+    grid-column: 1 / -1;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .member-panel-top {
+    gap: 8px;
+  }
+  .member-panel-top > div {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .member-panel-top > .pill-btn {
+    flex: none;
+  }
+  .member-add {
+    width: 100%;
+    white-space: normal;
+  }
+}
+
+@media (max-width: 680px) {
+  .route-stack:has(> .route-panel.expanded) {
+    top: 8px;
+    right: 8px;
+    bottom: 8px;
+    left: 8px;
+    width: auto;
+    padding: 8px;
+    border: 1px solid rgb(255 255 255 / 18%);
+    border-radius: 16px;
+  }
+  .route-panel.expanded .route-head {
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+  .route-panel.expanded .route-total {
+    flex: 1 1 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow-wrap: normal;
+  }
+  .route-panel.expanded .route-expand {
+    margin-left: auto;
+  }
+  .route-panel.expanded .route-list-disclosure > .panelclip {
+    touch-action: pan-y pinch-zoom;
+  }
+  .route-panel.expanded .route-list {
+    gap: 6px;
+    margin-top: 8px;
+    padding-bottom: 8px;
+    overflow: visible;
+    background: transparent;
+  }
+  .route-panel.expanded .route-list .course-list-row {
+    border: 1px solid rgb(255 255 255 / 12%);
+    border-radius: 10px;
+    background: #0a0a0f;
+  }
+  .route-panel.expanded .route-list .course-list-row.open {
+    border-color: #b07be8;
+    background: rgb(176 123 232 / 12%);
+    box-shadow: inset 2px 0 0 #b07be8;
+  }
+  .route-stack .course-list-row.has-markers {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .route-stack .course-list-row.has-markers > .course-list-markers {
+    grid-row: 1;
+    grid-column: 2;
+    justify-self: end;
+  }
+}
+
+@media (max-width: 680px) {
+  .prereq-stage:has(.route-panel.open) .routebox {
+    opacity: 0;
+    pointer-events: none;
   }
 }

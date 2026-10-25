@@ -6,8 +6,10 @@ import { HelpTip } from "../../shared/HelpTip";
 import { useWording } from "../../shared/useWording";
 import type { UiTextKey } from "../../shared/wording";
 import { useWebFeatures } from "../../app/useWebFeatures";
+import { showPhoneTabs } from "../../shared/phoneTabs";
 
-export function DiscoverControls({
+/** Render the available discovery report tabs. */
+export function DiscoverListTabs({
   options,
   onChange,
 }: {
@@ -15,7 +17,7 @@ export function DiscoverControls({
   onChange: (patch: Partial<DiscoverState>) => void;
 }) {
   const { t } = useWording();
-  const { embeddings_enabled, inference_enabled } = useWebFeatures();
+  const { embeddings_enabled } = useWebFeatures();
   const lists: readonly (readonly [DiscoverState["list"], UiTextKey])[] =
     embeddings_enabled
       ? [
@@ -23,10 +25,49 @@ export function DiscoverControls({
           ["recommended", "Recommended"],
         ]
       : [["next", "Next courses"]];
+  return (
+    <div
+      className="discover-tabs"
+      role="tablist"
+      aria-label={t("Discovery list")}
+    >
+      {lists.map(([value, labelKey]) => (
+        <button
+          key={value}
+          type="button"
+          role="tab"
+          aria-selected={options.list === value}
+          className={`discover-tab${options.list === value ? " on" : ""}`}
+          onClick={() => {
+            if (value !== options.list) {
+              onChange({ list: value });
+              showPhoneTabs();
+            }
+          }}
+        >
+          {t(labelKey)}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Render discovery scope, basis and report controls. */
+export function DiscoverControls({
+  options,
+  onChange,
+  showTabs = true,
+}: {
+  options: DiscoverState;
+  onChange: (patch: Partial<DiscoverState>) => void;
+  showTabs?: boolean;
+}) {
+  const { t } = useWording();
+  const { inference_enabled } = useWebFeatures();
   const modeHelp = {
-    term: t("All / At least one"),
+    term: t("All / Partially covered"),
     text: t(
-      "All proposes a course only when all of its prerequisites are covered by your courses. At least one proposes a course when any one prerequisite is covered, ranked by how much of it is covered.",
+      "The All mode proposes a course only when your courses cover all of its prerequisites. The Partially covered mode proposes a course when any prerequisite is covered, including courses whose prerequisites are all covered, ranked by coverage.",
     ),
   };
   const sharedHelp = [
@@ -66,32 +107,11 @@ export function DiscoverControls({
   ];
   return (
     <>
-      <div
-        className="discover-tabs"
-        role="tablist"
-        aria-label={t("Discovery list")}
-      >
-        {lists.map(([value, labelKey]) => (
-          <button
-            key={value}
-            type="button"
-            role="tab"
-            aria-selected={options.list === value}
-            className={`discover-tab${options.list === value ? " on" : ""}`}
-            onClick={() => {
-              if (value !== options.list) {
-                onChange({ list: value });
-              }
-            }}
-          >
-            {t(labelKey)}
-          </button>
-        ))}
-      </div>
+      {showTabs && <DiscoverListTabs options={options} onChange={onChange} />}
       <div className="discover-controls">
         {options.list === "next" && (
           <TwoOptionSwitch
-            labels={[t("All"), t("At least one")]}
+            labels={[t("All"), t("Partially covered")]}
             firstSelected={options.mode === "all"}
             onChange={(all) => onChange({ mode: all ? "all" : "at_least_one" })}
             ariaLabel={t("Prerequisite mode")}
@@ -143,6 +163,10 @@ export function DiscoverControls({
             },
             { heading: t("marks"), items: marksHelp },
           ]}
+          guide={{
+            href: "/docs#guide-discover",
+            label: t("Discovering courses"),
+          }}
         />
       </div>
     </>

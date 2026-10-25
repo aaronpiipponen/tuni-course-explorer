@@ -35,22 +35,12 @@ from course_explorer.ingestion.normalization import normalize_curriculum
 from course_explorer.ingestion.normalization_repository import NormalizationRepository
 from course_explorer.ingestion.repository import CaptureRepository
 from course_explorer.prerequisite import commands as prerequisite_command_module
-from course_explorer.prerequisite.domain import (
-    CardinalityRequirement,
-    CourseCountRequirement,
-    CreditRequirement,
-    ModuleBlockRequirement,
-)
 from course_explorer.prerequisite.graph import (
     PrerequisiteGraphCompiler,
 )
-from course_explorer.prerequisite.path import (
-    PrerequisitePathState,
-    calculate_minimum_new_credits,
-)
 from course_explorer.prerequisite.satisfaction import (
     PrerequisiteSatisfactionState,
-    evaluate_prerequisite_expression,
+    evaluate_prerequisite_piece,
     evaluate_prerequisite_satisfaction,
 )
 from course_explorer.search import lookup_commands as lookup_command_module
@@ -63,6 +53,7 @@ from tests.ingestion._normalization_repository_support import (
     build_completed_fixture_store,
     fixture_bytes,
 )
+from tests.prerequisite._path_support import solve_route
 from tests.support import settings_factory
 
 pytestmark = [
@@ -363,7 +354,10 @@ def test_teaching_inputs_match_scoped_representative_texts(normalized_curriculum
 
 
 def test_projected_reads_avoid_full_orm_and_prerequisite_payloads(normalized_curriculum) -> None:
-    """Projected reads match the full reads without loading entities or prerequisite payloads."""
+    """Repeated projected reads produce the same results without loading full ORM entities.
+
+    The reads load no prerequisite or substitution payloads.
+    """
     engine, _, repository = normalized_curriculum
     summaries = repository.list_represented_summaries()
     requested_summary_ids = tuple(record.summary.group_id for record in summaries) + (
@@ -382,7 +376,7 @@ def test_projected_reads_avoid_full_orm_and_prerequisite_payloads(normalized_cur
     module_lookup = repository.list_module_lookup()
     code_identities = repository.list_course_code_identities()
 
-    # Every shared projected read matches the full read exactly over its selected columns. The shared
+    # The repeated projected reads return the same results with no full ORM load. The shared
     # representative selector's necessary membership/period joins are allowed.
     loaded_full: list[object] = []
 
@@ -436,7 +430,8 @@ def test_projected_reads_avoid_full_orm_and_prerequisite_payloads(normalized_cur
     )
     # The projected module lookup never queries rule nodes and loads no module ORM entity.
     assert not any("module_rule" in statement for statement in statements)
-    # Each shared projected read returns the same result as before with no full ORM load.
+    # The repeated projected reads return the same results, and the getters agree with the list
+    # reads. No read loads a full ORM entity.
     assert summaries_window == summaries
     assert activities_window == activities
     assert inputs_window == inputs
@@ -497,50 +492,52 @@ def test_teaching_course_projection_matches_full_read_and_activity(normalized_cu
     assert "course-group-future" in {course.group_id for course in teaching}
 
 
-def test_course_lookup_command_uses_real_summary_projection(
+def test_catalogue_command_uses_real_summary_projection(
     normalized_curriculum,
 ) -> None:
-    """The course lookup command consumes the actual normalized summary projection."""
-    course_report = lookup_command_module.run_course_lookup_command("cs.", display_language="fi")
-    assert course_report.query == "cs."
-    assert course_report.display_language == "fi"
-    assert course_report.include_inactive is True
-    assert [summary.group_id for summary in course_report.results] == [
-        "course-group-a",
-        "course-group-inactive",
-    ]
-    assert [summary.is_active for summary in course_report.results] == [True, False]
-    active_report = lookup_command_module.run_course_lookup_command(
-        "cs.", display_language="fi", include_inactive=False
+    """The catalogue command consumes the actual normalized summary and module projections."""
+    _, _, repository = normalized_curriculum
+    report = lookup_command_module.run_catalogue_command()
+
+    courses = {course.group_id: course for course in report.courses}
+    summaries = {
+        record.summary.group_id: record.summary
+        for record in repository.list_represented_summaries()
+    }
+    assert set(courses) == set(summaries)
+    assert [course.group_id for course in report.courses] == sorted(courses)
+    active = courses["course-group-a"]
+    inactive = courses["course-group-inactive"]
+    assert (active.name_fi, active.name_en, active.code) == (
+        summaries["course-group-a"].name_fi,
+        summaries["course-group-a"].name_en,
+        summaries["course-group-a"].code,
     )
-    assert active_report.include_inactive is False
-    assert [summary.group_id for summary in active_report.results] == ["course-group-a"]
+    assert (active.credits_min, active.credits_max) == (
+        summaries["course-group-a"].credits_min,
+        summaries["course-group-a"].credits_max,
+    )
+    assert active.is_active is True
+    assert inactive.is_active is False
+    # The narrow projection carries no official URL, representative identity or teaching text.
+    assert set(active.model_dump()) == {
+        "group_id",
+        "code",
+        "name_fi",
+        "name_en",
+        "credits_min",
+        "credits_max",
+        "is_active",
+    }
 
-
-def test_module_lookup_command_uses_real_identity_projection(
-    normalized_curriculum,
-) -> None:
-    """The module lookup command selects current module identities from the real repository."""
-    module_report = lookup_command_module.run_module_lookup_command("DP.A", display_language="en")
-    assert module_report.academic_year_start == 2026
-    assert module_report.display_language == "en"
-    assert [(summary.group_id, summary.sisu_module_id) for summary in module_report.results] == [
-        ("module-group-degree", "module-group-degree-v1")
+    modules = {module.group_id: module for module in report.modules}
+    degree = modules["module-group-degree"].candidates
+    assert [(candidate.module_type, candidate.code, candidate.name_en) for candidate in degree] == [
+        (ModuleType.DEGREE_PROGRAMME, "DP.A", "Degree")
     ]
-    assert module_report.results[0].module_type.value == "DegreeProgramme"
-    assert module_report.results[0].code == "DP.A"
-    assert module_report.results[0].name_en == "Degree"
-    assert [
-        summary.group_id
-        for summary in lookup_command_module.run_module_lookup_command(
-            "study", display_language="en"
-        ).results
-    ] == ["module-group-study"]
+    assert [candidate.code for candidate in modules["module-group-study"].candidates] == ["SM.A"]
     # The grouping module's only version is tied to 2027, so it has no eligible 2026 candidate.
-    assert (
-        lookup_command_module.run_module_lookup_command("grouping", display_language="en").results
-        == ()
-    )
+    assert "module-group-grouping" not in modules
 
 
 def test_catalogue_summary_matches_sql_aggregates(normalized_curriculum) -> None:
@@ -599,7 +596,10 @@ def test_resolver_rejects_historical_and_unrepresented_codes(normalized_curricul
 
 
 def test_prerequisite_graph_expands_normalized_module_rules(
-    database: tuple[object, object], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    database: tuple[object, object],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    solver_bundle: None,
 ) -> None:
     """A source-shaped stored module prerequisite draws one identified module node."""
     _, factory = database
@@ -645,94 +645,106 @@ def test_prerequisite_graph_expands_normalized_module_rules(
     compilation = compiler.compile(
         "course-group-a", include_recommended=False, include_inferred=False
     )
-    tree = compilation.tree
-    # The root's persisted activity context selects the period-2026 grouping-version membership.
-    assert tree.academic_year_start == 2026
-    assert "course-group-inactive" in {course.group_id for course in tree.courses}
+    structure = compilation.solver
+    display = compilation.display
+    assert display is not None
+    pieces = {piece.piece_id: piece for piece in structure.pieces}
+    uses = {use.use_id: use for use in structure.uses}
+    assert structure.academic_year_start == 2026
+    assert "course-group-inactive" in {course.group_id for course in structure.courses}
 
-    # The numeric and unrestricted rule structure is the calculation authority. It is reached
-    # through the module boundary, where the module node stands in for the drawing subtree.
-    boundary = tree.requirements
-    assert isinstance(boundary, ModuleBlockRequirement)
-    requirements = boundary.child
-    assert isinstance(requirements, CardinalityRequirement)
+    # The native calculation structure is the sole authority: the module boundary holds the
+    # stored grouping rule's cardinality and its numeric and course-count children.
+    assert structure.root_use_id is not None
+    boundary = pieces[uses[structure.root_use_id].piece_id]
+    assert boundary.kind == "module_block"
+    assert boundary.module_group_id == "module-group-grouping"
+    requirements = pieces[boundary.children[0]]
+    assert requirements.kind == "cardinality"
     assert (requirements.require_min, requirements.require_max) == (1, 3)
-    credits = requirements.children[0]
-    assert isinstance(credits, CreditRequirement)
+    credits = pieces[requirements.children[0]]
+    assert credits.kind == "credits"
     assert (credits.credits_min, credits.credits_max) == (Decimal("5"), None)
-    count = credits.child
-    assert isinstance(count, CourseCountRequirement)
+    count = pieces[credits.children[0]]
+    assert count.kind == "course_count"
     assert (count.count_min, count.count_max) == (1, 2)
     # The two unrestricted source rules are ignored in calculation and disclosed, never free positions.
-    assert [part.kind.value for part in tree.ignored_parts] == ["free_choice", "free_choice"]
+    free_choice = tuple(
+        diagnostic for diagnostic in structure.diagnostics if diagnostic.kind == "free_choice"
+    )
+    assert len(free_choice) == 2
 
-    # The grouping module is one identified module node. Its inactive course-unit member is a card,
+    # The grouping module is one identified drawn node. Its inactive course-unit member is a card,
     # not a standalone graph node, and the persisted study module's self CourseUnitRule is dropped.
-    assert [(occ.occurrence_id, occ.module.group_id) for occ in tree.module_occurrences] == [
-        ("r", "module-group-grouping")
-    ]
-    occurrence = tree.module_occurrences[0]
-    assert occurrence.module.sisu_module_id == "module-group-grouping-v1"
-    assert occurrence.module.module_type is ModuleType.GROUPING_MODULE
-    assert occurrence.module.name_fi == "Ryhmä"
-    assert occurrence.module.name_en == "Grouping"
-    assert occurrence.member_group_ids == ("course-group-inactive",)
-    graph = compilation.graph
-    assert [node.course.group_id for node in graph.course_nodes] == ["course-group-a"]
-    assert graph.connector_nodes == ()
-    assert [node.node_id for node in graph.module_nodes] == ["module:r"]
-    assert graph.module_nodes[0].module.group_id == "module-group-grouping"
-    assert [card.group_id for card in graph.module_nodes[0].member_courses] == [
-        "course-group-inactive"
-    ]
+    module = next(
+        module for module in structure.modules if module.group_id == "module-group-grouping"
+    )
+    assert module.sisu_module_id == "module-group-grouping-v1"
+    assert module.module_type is ModuleType.GROUPING_MODULE
+    assert module.name_fi == "Ryhmä"
+    assert module.name_en == "Grouping"
+    module_nodes = tuple(node for node in display.nodes if node.kind == "module")
+    assert len(module_nodes) == 1
+    drawn_module = module_nodes[0]
+    assert drawn_module.module_group_id == "module-group-grouping"
+    assert drawn_module.member_group_ids == ("course-group-inactive",)
+    drawn_courses = tuple(node for node in display.nodes if node.kind == "course")
+    assert [node.course_group_id for node in drawn_courses] == ["course-group-a"]
+    assert [node.is_root for node in drawn_courses] == [True]
+    ignored_nodes = tuple(node for node in display.nodes if node.kind == "ignored")
+    ignored_ids = {node.node_id for node in ignored_nodes}
     base_edges = [
         (edge.source_node_id, edge.target_node_id)
-        for edge in graph.edges
-        if not edge.target_node_id.startswith("ignored:")
+        for edge in display.edges
+        if edge.target_node_id not in ignored_ids
     ]
-    assert base_edges == [("course:course-group-a", "module:r")]
-    # The two free-choice leaves are disclosed once and drawn as ignored annotations on the module.
-    assert [part.kind.value for part in tree.ignored_parts] == ["free_choice", "free_choice"]
-    assert [node.node_id for node in graph.ignored_nodes] == [
-        part.part_id for part in tree.ignored_parts
-    ]
-    assert all(
-        edge.source_node_id == "module:r"
-        for edge in graph.edges
-        if edge.target_node_id.startswith("ignored:")
+    assert (f"course:{structure.root_group_id}", drawn_module.node_id) in base_edges
+    assert not any(
+        edge.target_node_id == f"course:{structure.root_group_id}" for edge in display.edges
     )
+    assert "node_states" not in display.model_dump()
 
-    # The persisted study module's CourseUnitRule references the immediate owning root course, so
-    # its occurrence is dropped before any cycle issue or graph edge: the seeded root holds and no
-    # requirement edge targets it.
-    assert tree.issues == ()
-    assert not any(edge.target_node_id == "course:course-group-a" for edge in graph.edges)
+    # The two free-choice leaves are disclosed once and located on the drawn module.
+    assert {node.reason for node in ignored_nodes} == {"free_choice"}
+    assert {diagnostic_id for node in ignored_nodes for diagnostic_id in node.diagnostic_ids} == {
+        diagnostic.diagnostic_id for diagnostic in free_choice
+    }
+    assert all(
+        edge.source_node_id == drawn_module.node_id
+        for edge in display.edges
+        if edge.target_node_id in ignored_ids
+    )
 
     # The real normalized module tree is unsatisfied: the surviving 5-credit numeric child exceeds the
     # inactive 3-credit member under all-courses scope, so ignoring the unrestricted positions is
     # a no-solution rather than a fabricated zero-cost satisfaction.
-    evaluation = evaluate_prerequisite_satisfaction(compilation.tree, [])
+    evaluation = evaluate_prerequisite_satisfaction(structure, [])
     assert evaluation.requirements_state is PrerequisiteSatisfactionState.UNSATISFIED
 
     # Direct-many associates the same separate category roots on the real module fixture: the
     # compulsory module-rule cardinality is the only enabled pool.
     direct = compiler.compile_direct_many(("course-group-a",), active_only=False)
-    assert [entry.tree.root.group_id for entry in direct] == ["course-group-a"]
+    assert [entry.solver.root_group_id for entry in direct] == ["course-group-a"]
     direct_entry = direct[0]
-    assert direct_entry.required == boundary
-    assert direct_entry.recommended is None
+    direct_uses = {use.use_id: use for use in direct_entry.solver.uses}
+    direct_pieces = {piece.piece_id: piece for piece in direct_entry.solver.pieces}
+    assert direct_entry.required_use_id is not None
+    assert direct_entry.recommended_use_id is None
+    required_piece = direct_pieces[direct_uses[direct_entry.required_use_id].piece_id]
+    assert required_piece.kind == "module_block"
+    assert required_piece.module_group_id == "module-group-grouping"
     assert (
-        evaluate_prerequisite_expression(direct_entry.tree, direct_entry.required, [])
+        evaluate_prerequisite_piece(direct_entry.solver, required_piece.piece_id, [])
         is PrerequisiteSatisfactionState.UNSATISFIED
     )
     # The inactive 3-credit module member cannot satisfy the stored 5-credit numeric child, so the
     # numeric known-child route is unsatisfied rather than being reported satisfied.
-    numeric_child = direct_entry.required.child.children[0]
-    assert isinstance(numeric_child, CreditRequirement)
+    numeric_child = direct_pieces[direct_pieces[required_piece.children[0]].children[0]]
+    assert numeric_child.kind == "credits"
     assert (
-        evaluate_prerequisite_expression(
-            direct_entry.tree,
-            numeric_child,
+        evaluate_prerequisite_piece(
+            direct_entry.solver,
+            numeric_child.piece_id,
             ["course-group-inactive"],
         )
         is PrerequisiteSatisfactionState.UNSATISFIED
@@ -740,51 +752,63 @@ def test_prerequisite_graph_expands_normalized_module_rules(
 
     # Pathing returns a no-solution for the impossible surviving numeric position and fabricates
     # no course.
-    path_result = calculate_minimum_new_credits(compilation.tree, [])
-    assert path_result.state is PrerequisitePathState.NO_SOLUTION
-    assert path_result.new_courses == ()
-    assert path_result.total_new_credits is None
-    assert path_result.blockers == ()
-    assert path_result.shortfalls == ()
+    path_result = solve_route(structure, [])
+    assert path_result["state"] == "no_solution"
+    assert path_result["new_courses"] == []
+    assert path_result["total_new_credits"] is None
+    assert path_result["problems"]
+    assert {problem["state"] for problem in path_result["problems"]} == {"no_solution"}
+    assert {problem["reason"] for problem in path_result["problems"]} <= {
+        "too_few_positions",
+        "unreachable_bound",
+    }
+    drawn_node_ids = {node.node_id for node in display.nodes}
+    assert all(problem["node_id"] in drawn_node_ids for problem in path_result["problems"])
+    assert all(problem["support_id"] is not None for problem in path_result["problems"])
+    assert path_result["shortfalls"] == []
 
-    # The real command composes the same tree and normalized drawing over the real repositories and
-    # serializes the module identity/list without any extra report shape.
+    # The real command composes the same native structure and drawing over the real repositories
+    # and serializes the module identity and member list without any extra report shape.
     monkeypatch.setattr(
         prerequisite_command_module,
         "load_search_settings",
         lambda: settings_factory(SearchSettings),
     )
     report = prerequisite_command_module.run_prerequisite_command("CS.A2")
-    assert report.compilation.tree == tree
-    command_graph = report.compilation.graph
-    assert command_graph.node_states
-    assert command_graph.connector_nodes == graph.connector_nodes
-    assert command_graph.edges == graph.edges
-    assert command_graph.course_nodes == graph.course_nodes
-    assert command_graph.module_nodes == graph.module_nodes
+    assert report.solver == structure
+    assert report.display == display
     assert "path" not in type(report).model_fields
     payload = json.loads(report.model_dump_json())
-    module_payload = payload["compilation"]["graph"]["module_nodes"]
-    assert [
-        (node["module"]["group_id"], node["module"]["sisu_module_id"]) for node in module_payload
-    ] == [("module-group-grouping", "module-group-grouping-v1")]
-    assert [card["group_id"] for card in module_payload[0]["member_courses"]] == [
-        "course-group-inactive"
+    assert payload["solver"] == structure.model_dump(mode="json")
+    assert payload["display"] == display.model_dump(mode="json")
+    assert "node_states" not in payload["display"]
+    module_payload = payload["solver"]["modules"]
+    assert [(node["group_id"], node["sisu_module_id"]) for node in module_payload] == [
+        ("module-group-grouping", "module-group-grouping-v1")
     ]
-    ignored_payload = payload["compilation"]["tree"]["ignored_parts"]
-    assert [part["kind"] for part in ignored_payload] == ["free_choice", "free_choice"]
-    assert [node["node_id"] for node in payload["compilation"]["graph"]["ignored_nodes"]] == [
-        part["part_id"] for part in ignored_payload
+    drawn_module_payload = next(
+        node for node in payload["display"]["nodes"] if node["kind"] == "module"
+    )
+    assert drawn_module_payload["module_group_id"] == "module-group-grouping"
+    assert drawn_module_payload["member_group_ids"] == ["course-group-inactive"]
+    ignored_payload = [
+        diagnostic
+        for diagnostic in payload["solver"]["diagnostics"]
+        if diagnostic["kind"] == "free_choice"
     ]
+    assert len(ignored_payload) == 2
+    assert {
+        node_id for node in payload["display"]["nodes"] for node_id in node["diagnostic_ids"]
+    } == {diagnostic["diagnostic_id"] for diagnostic in ignored_payload}
     assert "path" not in payload
 
     # The separate explicit route operation returns the same authoritative no-solution result without
     # returning or projecting any second drawing.
     route = prerequisite_command_module.run_minimum_route_command("CS.A2")
     assert route == path_result
-    assert route.state is PrerequisitePathState.NO_SOLUTION
-    assert route.new_courses == ()
-    assert route.total_new_credits is None
+    assert route["state"] == "no_solution"
+    assert route["new_courses"] == []
+    assert route["total_new_credits"] is None
 
     # The structure command reads the same stored degree version over the real repository and
     # projects its official containers, rule kinds and course cards without any graph traversal.

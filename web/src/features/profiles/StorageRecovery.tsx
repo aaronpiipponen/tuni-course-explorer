@@ -9,7 +9,9 @@ import { useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { ErrorNotice } from "../../shared/ErrorNotice";
 import { useAction } from "../../shared/useAction";
+import { usePhoneTabsOnClose } from "../../shared/usePhoneTabsOnClose";
 
+/** Render the recovery screen for unreadable saved browser data. */
 export function StorageRecovery({
   error,
   onExport,
@@ -20,6 +22,7 @@ export function StorageRecovery({
   onReset(): void;
 }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
+  usePhoneTabsOnClose(confirmOpen);
   const { runAction, error: exportError } = useAction();
   const { runAction: runReset, error: resetError } = useAction();
   return (

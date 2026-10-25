@@ -1,7 +1,7 @@
 """Product-neutral prerequisite expression and inferred-set contracts.
 
 This module owns the one closed vocabulary official-compilation, inferred publication,
-satisfaction, pathing, and graph projection share: strict frozen Pydantic nodes with
+satisfaction, discovery coverage, and graph projection share: strict frozen Pydantic nodes with
 official/inferred/composed provenance, explicit composed AND/OR roles, an explicit
 per-occurrence inferred required/recommended category, and the current inferred-set
 publication/read DTOs. It keeps official university facts separate from
@@ -498,90 +498,6 @@ class UnresolvedRequirement(_RequirementBase):
         return self
 
 
-class PrerequisiteNodeOccurrence(_PrerequisiteModel):
-    """One request-local prerequisite node occurrence and its stable action identity.
-
-    `occurrence_id` is the positional drawing/calculation occurrence. `action_key` is the stable
-    structural identity a caller uses to mark or exclude that node, independent of drawing position.
-    `manual_credits_min` carries an attested source credit extent for a graph-only manual completion
-    when one is known, otherwise `None`. It is request context, never a durable store.
-    """
-
-    occurrence_id: str
-    action_key: str
-    manual_credits_min: Decimal | None = Field(default=None, ge=0)
-
-    @field_validator("occurrence_id", "action_key")
-    @classmethod
-    def reject_blank_identity(cls, value: str) -> str:
-        """Require a nonblank occurrence and action identity."""
-        return _nonblank(value, "node occurrence identity")
-
-
-class PrerequisiteGraphNodeState(_PrerequisiteModel):
-    """One request-local node's aggregated action state, keyed by stable action identity.
-
-    `occurrence_ids` are every occurrence that shares this action identity. The boolean flags keep
-    manual, automatic and current-basis states separate: `manually_completed` is a graph-only
-    attestation, `completed_by_courses` is shared course history, and `satisfied_by_basis` is the
-    selected calculation basis. It is a derived request result for UI, never a completion store.
-    """
-
-    action_key: str
-    occurrence_ids: tuple[str, ...]
-    is_excluded: bool
-    manually_completed: bool
-    completed_by_courses: bool
-    satisfied_by_basis: bool
-
-    @field_validator("action_key")
-    @classmethod
-    def reject_blank_action_key(cls, value: str) -> str:
-        """Require a nonblank stable action identity."""
-        return _nonblank(value, "node state action_key")
-
-    @field_validator("occurrence_ids")
-    @classmethod
-    def require_unique_occurrences(cls, value: tuple[str, ...]) -> tuple[str, ...]:
-        """Require distinct nonblank occurrence identities."""
-        for occurrence_id in value:
-            _nonblank(occurrence_id, "node state occurrence_id")
-        return _unique_ids(value, "node state occurrence IDs")
-
-
-class PrerequisiteNodeProblem(_PrerequisiteModel):
-    """One located prerequisite node failure with an explainable reason.
-
-    `state` is the local outcome (`no_solution`, `unresolved`, or `shortfall`). `reason` is a
-    concise factual explanation. `detail` is short and factual.
-    """
-
-    occurrence_id: str
-    action_key: str
-    state: Literal["no_solution", "unresolved", "shortfall"]
-    reason: str
-    origin: PrerequisiteOrigin
-    official_kind: OfficialPrerequisiteKind | None = None
-    inferred_category: InferredPrerequisiteCategory | None = None
-    inference: InferenceNodeMetadata | None = None
-    referenced_group_id: str | None = None
-    detail: str | None = None
-
-    @field_validator("occurrence_id", "action_key", "reason")
-    @classmethod
-    def reject_blank_problem_text(cls, value: str) -> str:
-        """Require nonblank located identity and reason text."""
-        return _nonblank(value, "node problem text")
-
-    @field_validator("referenced_group_id", "detail")
-    @classmethod
-    def reject_blank_optional_text(cls, value: str | None) -> str | None:
-        """Reject a provided-but-blank optional diagnostic field."""
-        if value is not None:
-            _nonblank(value, "node problem diagnostic text")
-        return value
-
-
 PrerequisiteExpression = Annotated[
     CourseRequirement
     | ModuleRequirement
@@ -621,17 +537,7 @@ def dump_prerequisite_expression(expression: PrerequisiteExpression) -> dict[str
 
 
 def expression_course_leaf_group_ids(expression: PrerequisiteExpression | None) -> set[str]:
-    """Return the distinct canonical course-leaf IDs one expression references.
-
-    The final-store validator and inference diagnostics share this one traversal so the course-leaf
-    notion cannot drift between them. A `CourseRequirement` contributes its group id.
-    `AndRequirement`/`OrRequirement`/`CardinalityRequirement` extend their logical children. The
-    numeric `CreditRequirement`/`CourseCountRequirement` wrappers append their single child and the
-    `ModuleBlockRequirement` boundary descends its child, so a nested wrapper never hides its
-    canonical course leaves. `ModuleRequirement`, `OpaqueCreditRequirement` and
-    `UnresolvedRequirement` contribute no leaf and are not expanded here.
-    A `None` expression yields an empty set.
-    """
+    """Return the distinct canonical course-leaf IDs one expression references."""
     leaves: set[str] = set()
     if expression is None:
         return leaves
@@ -647,6 +553,38 @@ def expression_course_leaf_group_ids(expression: PrerequisiteExpression | None) 
         elif isinstance(node, ModuleBlockRequirement):
             stack.append(node.child)
     return leaves
+
+
+class PrerequisiteNodeProblem(_PrerequisiteModel):
+    """One located prerequisite node failure with an explainable reason.
+
+    `node_id` is the drawn box a reader sees, `support_id` the scoped calculation support that
+    failed and `fact_id` its provenance fact when one applies. `state` is the local outcome
+    (`no_solution`, `unresolved`, or `shortfall`). `reason` and `detail` stay short and factual.
+    A synthetic root failure has null support/fact and the root course node ID.
+    """
+
+    node_id: str
+    support_id: str | None = None
+    fact_id: str | None = None
+    state: Literal["no_solution", "unresolved", "shortfall"]
+    reason: str
+    referenced_group_id: str | None = None
+    detail: str | None = None
+
+    @field_validator("node_id", "reason")
+    @classmethod
+    def reject_blank_problem_text(cls, value: str) -> str:
+        """Require nonblank located identity and reason text."""
+        return _nonblank(value, "node problem text")
+
+    @field_validator("support_id", "fact_id", "referenced_group_id", "detail")
+    @classmethod
+    def reject_blank_optional_text(cls, value: str | None) -> str | None:
+        """Reject a provided-but-blank optional diagnostic field."""
+        if value is not None:
+            _nonblank(value, "node problem optional text")
+        return value
 
 
 class InferredSetCoverage(_PrerequisiteModel):
@@ -888,7 +826,7 @@ class EquivalenceGroupPublisher(Protocol):
 
 
 class InferredSetRead(Protocol):
-    """Read-only boundary graph/path consumers depend on instead of ORM models."""
+    """Read-only boundary the graph compiler depends on instead of ORM models."""
 
     def read(self, target_group_id: str) -> InferredSetReadResult: ...
 

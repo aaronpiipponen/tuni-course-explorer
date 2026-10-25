@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from course_explorer.config import SearchSettings
 from course_explorer.prerequisite import commands as command_module
 from course_explorer.prerequisite.domain import (
@@ -9,16 +11,17 @@ from course_explorer.prerequisite.domain import (
     OfficialPrerequisiteKind,
     PrerequisiteOrigin,
 )
-from course_explorer.prerequisite.graph import (
-    PrerequisiteCalculationTree,
+from course_explorer.prerequisite.projection import (
     PrerequisiteGraphCompilation,
     project_prerequisite_graph,
 )
-from course_explorer.prerequisite.path import (
-    MinimumCreditPathEvaluation,
-    calculate_minimum_new_credits,
+from course_explorer.prerequisite.structure import PrerequisiteSolverStructure
+from tests.prerequisite._expression_support import (
+    course_summary,
+    fixture_structure,
+    official_course,
 )
-from tests.prerequisite._expression_support import course_summary, official_course
+from tests.prerequisite._path_support import solve_route
 from tests.support import settings_factory
 
 
@@ -34,38 +37,27 @@ def compilation_for(
     is_active: bool = True,
     active_only: bool = False,
 ) -> PrerequisiteGraphCompilation:
-    """Build one valid compilation whose root requires the prerequisite course."""
+    """Build one valid native compilation whose root requires the prerequisite course."""
     root = course_summary(root_id)
     prerequisite = course_summary(prerequisite_id, is_active=is_active)
-    tree = PrerequisiteCalculationTree(
+    requirements = official_course(prerequisite_id)
+    structure = fixture_structure(
+        requirements,
         root=root,
-        academic_year_start=2026,
-        requirements=official_course(prerequisite_id),
-        courses=tuple(
-            sorted((root, prerequisite), key=lambda course: course.group_id),
-        ),
-        include_recommended=False,
-        include_inferred=False,
+        courses=(root, prerequisite),
         active_only=active_only,
-        inferred_coverage=(),
-        issues=(),
     )
-    return PrerequisiteGraphCompilation(tree=tree, graph=project_prerequisite_graph(tree))
+    return project_prerequisite_graph(structure)
 
 
 def graph_report_for(
     compilation: PrerequisiteGraphCompilation,
-    *,
-    excluded_group_ids: tuple[str, ...] = (),
 ) -> command_module.PrerequisiteGraphReport:
     """Build one graph-only report from a real compilation, without any route result."""
     return command_module.PrerequisiteGraphReport(
-        compilation=compilation,
-        selected_group_ids=(),
-        completed_group_ids=(),
-        basis=command_module.PrerequisiteCalculationBasis.COMPLETED,
-        excluded_group_ids=excluded_group_ids,
-        drawing=command_module.prerequisite_drawing_allowance(compilation.graph, max_elements=None),
+        solver=compilation.solver,
+        display=compilation.display,
+        drawing=compilation.drawing,
     )
 
 
@@ -74,60 +66,47 @@ def report_for(root_id: str = "root", prerequisite_id: str = "prereq"):
     return graph_report_for(compilation_for(root_id, prerequisite_id))
 
 
-def _shortfall_tree() -> PrerequisiteCalculationTree:
-    """Build the real active-only module-shortfall tree over one unavailable member."""
+def _shortfall_structure() -> PrerequisiteSolverStructure:
+    """Build the real active-only module-shortfall structure over one unavailable member."""
     root = course_summary("root")
     unavailable = course_summary("inactive-unit", credits_min="4", is_active=False)
-    return PrerequisiteCalculationTree(
+    requirements = CourseRequirement(
+        type="course",
+        origin=PrerequisiteOrigin.OFFICIAL,
+        official_kind=OfficialPrerequisiteKind.MODULE_RULE,
+        course_group_id="inactive-unit",
+    )
+    return fixture_structure(
+        requirements,
         root=root,
-        academic_year_start=2026,
-        requirements=CourseRequirement(
-            type="course",
-            origin=PrerequisiteOrigin.OFFICIAL,
-            official_kind=OfficialPrerequisiteKind.MODULE_RULE,
-            course_group_id="inactive-unit",
-        ),
-        courses=tuple(sorted((root, unavailable), key=lambda course: course.group_id)),
-        include_recommended=False,
-        include_inferred=False,
+        courses=(root, unavailable),
         active_only=True,
-        inferred_coverage=(),
-        issues=(),
     )
 
 
-def shortfall_report_for() -> MinimumCreditPathEvaluation:
-    """Build one real active-only module-shortfall route result from the real path service."""
-    return calculate_minimum_new_credits(_shortfall_tree(), [])
+def shortfall_report_for() -> dict[str, Any]:
+    """Build one real active-only module-shortfall route result through the Node solver."""
+    return solve_route(_shortfall_structure(), [])
 
 
-def _excluded_tree() -> PrerequisiteCalculationTree:
-    """Build the real tree whose drawn excluded node blocks the only route."""
+def _excluded_structure() -> PrerequisiteSolverStructure:
+    """Build the real structure whose drawn excluded node blocks the only route."""
     root = course_summary("root")
     blocked = course_summary("blocked")
-    return PrerequisiteCalculationTree(
+    requirements = official_course("blocked")
+    return fixture_structure(
+        requirements,
         root=root,
-        academic_year_start=2026,
-        requirements=official_course("blocked"),
-        courses=tuple(sorted((root, blocked), key=lambda course: course.group_id)),
-        include_recommended=False,
-        include_inferred=False,
-        active_only=False,
-        inferred_coverage=(),
-        issues=(),
+        courses=(root, blocked),
         excluded_group_ids=("blocked",),
     )
 
 
-def excluded_report_for() -> MinimumCreditPathEvaluation:
+def excluded_report_for() -> dict[str, Any]:
     """Build one real no-solution route result whose excluded node blocks the only route."""
-    return calculate_minimum_new_credits(_excluded_tree(), [])
+    return solve_route(_excluded_structure(), [])
 
 
 def excluded_graph_report_for() -> command_module.PrerequisiteGraphReport:
-    """Build the matching graph-only report whose drawn excluded node is marked."""
-    tree = _excluded_tree()
-    return graph_report_for(
-        PrerequisiteGraphCompilation(tree=tree, graph=project_prerequisite_graph(tree)),
-        excluded_group_ids=("blocked",),
-    )
+    """Build the matching graph-only report whose excluded course is drawn."""
+    return graph_report_for(project_prerequisite_graph(_excluded_structure()))

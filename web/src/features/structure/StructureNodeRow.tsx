@@ -18,6 +18,7 @@ import type { DisplayContents } from "./display";
 import { useWording } from "../../shared/useWording";
 import { uiText } from "../../shared/wording";
 
+/** Render one collapsible Structure node row. */
 export function StructureNodeRow({
   resolved,
   courses,

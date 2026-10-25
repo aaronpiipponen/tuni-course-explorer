@@ -31,10 +31,12 @@ export type SisuCourse = {
   name: string;
   completed: boolean;
 };
-/** One captured module or programme with its catalogue group id, or null when unresolved, and its children in plan order. */
+/** One captured module or programme with its catalogue group id, its exact version id, or nulls when unresolved, and its children in plan order. */
 export type SisuModule = {
   kind: "module";
   groupId: string | null;
+  /** The exact official version read from the capture's status-cell id, when the group resolved. */
+  versionId: string | null;
   code: string | null;
   name: string;
   children: SisuItem[];
@@ -89,9 +91,11 @@ function captureNullableIdentity(value: unknown): string | null {
 function planModule(value: unknown): SisuModule {
   const saved = captureObject(value);
   if (saved.kind !== "module") throw new Error(INVALID_CAPTURE);
+  if (!Object.hasOwn(saved, "versionId")) throw new Error(INVALID_CAPTURE);
   return {
     kind: "module",
     groupId: captureNullableIdentity(saved.groupId),
+    versionId: captureNullableIdentity(saved.versionId),
     code: captureNullableIdentity(saved.code),
     name: captureIdentity(saved.name),
     children: planItems(saved.children),
@@ -202,9 +206,16 @@ function requiredText(module: Element, selector: string): string {
 
 function parseModule(element: Element, capture: SisuLookups): SisuModule {
   const statusId = own(element, ".status [id]")[0]?.id;
+  const groupId = statusId
+    ? singleIdentity(capture.modules[statusId] ?? [])
+    : null;
   return {
     kind: "module",
-    groupId: statusId ? singleIdentity(capture.modules[statusId] ?? []) : null,
+    groupId,
+    versionId:
+      groupId !== null && statusId !== undefined
+        ? statusId.replace(/-statuscell.*$/, "")
+        : null,
     code: ownText(element, '[ng-bind=":: $ctrl.module.code"]'),
     name: requiredText(element, '[data-cy="plan-module-name"]'),
     children: parseChildren(element, capture),
@@ -305,8 +316,9 @@ export function parseSisuCapture(value: unknown): SisuCaptureFile {
 
 /**
  * Build the profile one capture imports into: every resolved course is selected, a course captured
- * as completed is completed, and the top-level programmes keep their capture order. The hierarchy
- * waits in `pendingSisuImport` until Structure's first read places it.
+ * as completed is completed, the top-level programmes keep their capture order, and every resolved
+ * module version is recorded before any structure read. The hierarchy waits in `pendingSisuImport`
+ * until Structure's first read places it.
  */
 export function prepareSisuProfile(
   capture: SisuPlan,
@@ -316,9 +328,16 @@ export function prepareSisuProfile(
   const base = initialProfileState();
   const selected: string[] = [];
   const completed = new Set<string>();
+  const moduleVersions: Record<string, string> = {};
   const collect = (items: readonly SisuItem[]) => {
     for (const item of items) {
       if (item.kind === "module") {
+        if (item.groupId !== null && item.versionId !== null) {
+          const stored = moduleVersions[item.groupId];
+          if (stored !== undefined && stored !== item.versionId)
+            throw new Error("Sisu plan selects two versions of a module");
+          moduleVersions[item.groupId] = item.versionId;
+        }
         collect(item.children);
         continue;
       }
@@ -340,10 +359,32 @@ export function prepareSisuProfile(
         programmeGroupIds: capture.programmes.flatMap((programme) =>
           programme.groupId === null ? [] : [programme.groupId],
         ),
+        moduleVersions,
       },
       pendingSisuImport: structuredClone(capture),
     },
   };
+}
+
+/**
+ * Return whether one profile holds a waiting Sisu capture beside saved structure edits.
+ *
+ * A saved choice or place and a waiting capture are both profile data, so the capture cannot be
+ * placed without discarding the other. A choice entry counts even when its list is empty, and a
+ * placement counts even when its target is `null`, because both are saved edits. Programme
+ * identities, version selections and the shared course sets alone do not count, because a
+ * prepared capture fills them without an edit.
+ */
+export function sisuImportBlocked(
+  state: Pick<ProfileState, "pendingSisuImport" | "structure">,
+): boolean {
+  if (state.pendingSisuImport === null) return false;
+  return (
+    Object.keys(state.structure.choices).length > 0 ||
+    Object.keys(state.structure.coursePlacements).length > 0 ||
+    Object.keys(state.structure.modulePlacements).length > 0 ||
+    state.structure.placedCourseIds.length > 0
+  );
 }
 
 /** Return every resolved module identity of one capture, in capture order, for the pending reads. */
@@ -420,7 +461,9 @@ function scopeOf(node: StructureNode): Scope {
  *
  * Returns null while a pending import exists whose official content has not settled: every
  * resolved captured module identity needs a report or a recorded unavailable module, and every
- * selected identity needs a summary or a recorded unavailable course. A captured module the
+ * selected identity needs a summary or a recorded unavailable course. It returns null as well
+ * while the profile holds saved edits beside the waiting capture, so placement never rewrites a
+ * restored profile. A captured module the
  * parent's rule does not name joins that parent as an added module of its own report, and a module
  * with no report is named and its courses are kept loose. The change clears the pending record and
  * removes exactly the captured identities that no catalogue course represents. This function is
@@ -433,6 +476,7 @@ export function resolveSisuImport(
 ): { change: StructureChange; issues: SisuImportIssue[] } | null {
   const capture = state.pendingSisuImport;
   if (!capture) return null;
+  if (sisuImportBlocked(state)) return null;
   const unavailableModules = new Set(unavailable.moduleIds);
   const unavailableCourses = new Set(unavailable.courseIds);
   for (const id of captureModuleIds(capture))
@@ -592,6 +636,7 @@ export function resolveSisuImport(
       next: {
         programmeGroupIds: available.map((programme) => programme.groupId!),
         ...edits,
+        moduleVersions: { ...state.structure.moduleVersions },
         placedCourseIds: projection.subtree.map((course) => course.group_id),
       },
       removedCourseIds: [...removed],

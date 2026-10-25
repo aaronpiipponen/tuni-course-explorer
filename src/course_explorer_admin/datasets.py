@@ -258,8 +258,8 @@ def initialize_selected_dataset(*, runner: mechanics.ProcessRunner) -> DatasetRe
     repository head and enrolled with the zero dataset id. An enrollment interrupted after the
     initial receipt but before the pointer is republished from that retained receipt alone: a
     matching zero-id initial receipt for the same database name proves the verification, so the
-    pointer is written without re-migrating or re-verifying. A checkout revision change alone is
-    not a mismatch.
+    pointer is written without re-migrating, re-verifying, or reading the checkout revision. A
+    checkout revision change alone is not a mismatch.
     """
     settings = load_administrative_dataset_settings()
     root = admin_state_root(settings)
@@ -272,7 +272,6 @@ def initialize_selected_dataset(*, runner: mechanics.ProcessRunner) -> DatasetRe
             return existing
         raw = load_raw_database_settings()
         require_droppable_database(raw.postgres_db)
-        _, revision = mechanics.require_prepared_checkout(runner, repository_root())
         retained = read_optional_dataset_receipt(root, _INITIAL_DATASET_ID)
         if retained is not None:
             if (
@@ -283,6 +282,7 @@ def initialize_selected_dataset(*, runner: mechanics.ProcessRunner) -> DatasetRe
                 raise ValueError("retained initial dataset receipt does not match this setup")
             _write_pointer(root, retained.dataset_id)
             return retained
+        revision = mechanics.current_revision(runner, repository_root())
         timeout = settings.database_operation_timeout_seconds
         mechanics.ensure_prepared_services(
             lambda argv: runner.run(tuple(argv), cwd=repository_root(), timeout=timeout).stdout,

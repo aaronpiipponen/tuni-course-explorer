@@ -17,13 +17,13 @@ The repository tracks the templates a copy is set up from under `examples/`. Git
 
 | Template | Working path | Holds |
 |---|---|---|
-| `examples/config/database.toml`, `curriculum.toml`, `search.toml`, `translation.toml`, `inference.toml`, `worker.toml`, `admin_web.toml`, `web.toml` | `config/` | The registered subsystem files, one per subsystem, each holding that subsystem's portable keys |
+| `examples/config/database.toml`, `curriculum.toml`, `search.toml`, `translation.toml`, `inference.toml`, `worker.toml`, `admin_web.toml`, `web.toml`, `admission.toml` | `config/` | The registered subsystem files, one per subsystem, each holding that subsystem's portable keys |
 | `examples/config/wiki.json` | `config/wiki.json` | The pages the documentation wiki renders, and the repository the compiler links to for a page it does not render |
 | `examples/config/derived/embedding-hub.json`, `embedding-outcomes-hub.json` | `config/derived/` | The two hub vectors that search, comparison, and recommendations subtract before measuring similarity |
-| `examples/.env.example` | `.env` | The machine-local values: the database password, the three worker connection keys, and the two systemd user unit identities |
+| `examples/.env.example` | `.env` | The machine-local values: the database password, the three worker connection keys, and the two site unit identities with the scope that selects the web unit's manager |
 | `examples/docker-compose.yml` | `docker-compose.yml` | The PostgreSQL database with pgvector and the embedding service |
 | `examples/deploy/Caddyfile` | `deploy/Caddyfile` | The HTTPS site template for a host that serves the copy over a domain |
-| `examples/deploy/systemd/tuni-course-explorer-web.service.in` | `deploy/` | The systemd user unit template for the web server |
+| `examples/deploy/systemd/tuni-course-explorer-web.service.in` | `deploy/` | The systemd unit template for the web server, rendered as a user unit by default or as a system unit at self-hosting |
 
 `config/search.toml` names the two hub files by path, so the settings owner resolves each vector from the file under `config/derived/`. [Configuration](/docs/backend/configuration.md) describes how the settings owner reads the subsystem files and the environment file.
 
@@ -54,17 +54,18 @@ The repository tracks the templates a copy is set up from under `examples/`. Git
 
    The result is a checkout that holds its own `config/`, `.env`, `docker-compose.yml`, and `deploy/` beside the tracked `examples/`.
 
-3. Build the browser apps.
+3. Build the browser apps and the solver bundle.
 
    > [!IMPORTANT]
    > The site build compiles the documentation wiki from `config/wiki.json`, so it runs after the copy step. A build without that file fails with `Wiki build: cannot read config/wiki.json (read failed)`.
 
    ```bash
    npm --prefix web run build
+   npm --prefix web run solver:build
    npm --prefix admin-web run build
    ```
 
-   The builds write `web/dist`, the directory the web server serves as the shell document and its assets, and `admin-web/dist`, the directory the administration backend serves as the console shell and its assets.
+   The two app builds write `web/dist`, the directory the web server serves as the shell document and its assets, and `admin-web/dist`, the directory the administration backend serves as the console shell and its assets. `solver:build` writes the bundle `web/.solver-cli/cli.js`. The browser build and the web server neither produce nor run that bundle, and the machine route command of `scripts/prerequisites.py` runs it through Node.
 
 4. Restrict `.env` to its owner, then set the local values.
 
@@ -74,7 +75,7 @@ The repository tracks the templates a copy is set up from under `examples/`. Git
 
    Set `POSTGRES_PASSWORD` to a password for the local database. The three worker connection keys name the worker that the remote stages reach, and the steps on this page do not read them.
 
-   `ADMIN_SITE_WEB_SERVICE_UNIT` is read by the server status report and the app rebuild, and `ADMIN_SITE_ADMIN_SERVICE_UNIT` by the administration rebuild and its restart. Each read needs the named unit loaded. The steps on this page run both processes in the foreground and read neither value. [Self-hosting](/docs/getting-started/self-hosting.md#the-site-unit-identities) installs both units and states their identities.
+   The three site keys name two unit identities and one manager. `ADMIN_SITE_WEB_SERVICE_UNIT` is the feature web unit, and `ADMIN_SITE_WEB_SERVICE_SCOPE` is `user` or `system` and selects the manager that owns that unit. `ADMIN_SITE_ADMIN_SERVICE_UNIT` is the administration unit, and it belongs to the user manager. The server status report and the app rebuild read the web unit through its scope, and the administration rebuild reads and restarts the administration unit through the user manager. Each read needs a loaded unit that runs from the checkout and carries the checkout's launcher. The steps on this page run both processes in the foreground and read none of these values. [The site web unit](/docs/getting-started/self-hosting.md#the-site-web-unit) installs the web server under the user manager and gives the system unit alternative, and [the site unit identities](/docs/getting-started/self-hosting.md#the-site-unit-identities) state the three values.
 
    > [!WARNING]
    > Credentials belong in the ignored `.env`, and file mode 0600 gives the file owner-only access. The subsystem files hold portable settings, and their tracked templates are credential-free. The database password and the worker connection values reach a process from that file, and a value set under the same name in the process environment takes precedence over the file. A deployment's administration account is separate: the operator stores its argon2id hash over SSH with `uv run python scripts/admin.py password --username USERNAME`, so no plaintext password is written into the environment file or a subsystem file.

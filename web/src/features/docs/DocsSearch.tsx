@@ -28,7 +28,8 @@ function matchPages(query: string): { id: DocsPageId; snippet: string }[] {
     .map(({ id, snippet }) => ({ id, snippet }));
 }
 
-export function DocsSearch() {
+/** Render title-ranked documentation search with an optional keyboard shortcut. */
+export function DocsSearch({ shortcut = true }: { shortcut?: boolean }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
@@ -46,7 +47,12 @@ export function DocsSearch() {
         target instanceof HTMLElement &&
         (target.isContentEditable ||
           /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
-      if (event.key === "/" && !editable && target !== input.current) {
+      if (
+        shortcut &&
+        event.key === "/" &&
+        !editable &&
+        target !== input.current
+      ) {
         event.preventDefault();
         input.current?.focus();
       }
@@ -61,7 +67,7 @@ export function DocsSearch() {
       document.removeEventListener("click", outside);
       document.removeEventListener("keydown", keys);
     };
-  }, []);
+  }, [shortcut]);
 
   return (
     <div className="docs-search" ref={root}>
@@ -83,7 +89,6 @@ export function DocsSearch() {
         autoComplete="off"
         aria-label="Search the docs"
       />
-      <kbd>/</kbd>
       <div className={`docs-results${open && value ? " open" : ""}`}>
         {matches.length ? (
           matches.map(({ id, snippet }) => (

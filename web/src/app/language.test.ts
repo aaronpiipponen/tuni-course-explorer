@@ -16,12 +16,36 @@ import { WebFeaturesContext } from "./webFeaturesContext";
 const FOOTER =
   "This is an independent project that is not affiliated with Tampere University.";
 
+const originalMedia = globalThis.matchMedia;
+const originalObserver = globalThis.ResizeObserver;
+
+function restore(target: object, name: string, value: unknown) {
+  if (value === undefined) Reflect.deleteProperty(target, name);
+  else Reflect.set(target, name, value);
+}
+
 describe("shell language", () => {
   let container: HTMLDivElement;
   let root: Root;
   let store: BrowserStore;
 
   beforeEach(() => {
+    // jsdom has no layout observer or media queries, and the shell measures its header at mount.
+    globalThis.matchMedia = ((query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia;
+    globalThis.ResizeObserver = class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    } as unknown as typeof ResizeObserver;
     localStorage.clear();
     sessionStorage.clear();
     container = document.createElement("div");
@@ -33,6 +57,8 @@ describe("shell language", () => {
   afterEach(() => {
     act(() => root.unmount());
     container.remove();
+    restore(globalThis, "matchMedia", originalMedia);
+    restore(globalThis, "ResizeObserver", originalObserver);
   });
 
   it("switches shell wording with the profile language without changing study state", () => {
@@ -50,7 +76,13 @@ describe("shell language", () => {
           { value: store },
           createElement(
             WebFeaturesContext.Provider,
-            { value: { embeddings_enabled: true, inference_enabled: true } },
+            {
+              value: {
+                embeddings_enabled: true,
+                inference_enabled: true,
+                dataset_identity: "synthetic-dataset",
+              },
+            },
             createElement(TopBar, { openDocs: () => {} }),
             createElement(AppFooter, {
               repositoryUrl: "https://github.com/owner/repo",

@@ -1,11 +1,11 @@
 """Edit one validated key of a subsystem file or environment file.
 
 This module lists the configuration files, reads every key of one file as that file holds it, and
-replaces one key with one validated candidate. A write renders only the chosen key's text, preserves
-every other byte, comment and line ending of the file, validates the whole candidate through the
-settings owner's own families with the local values read freshly from their file, and publishes the
-file atomically. The read report is the one operator output, and the write acknowledgment carries the
-file and the key alone.
+replaces or appends one key with one validated candidate. A write renders only the chosen key's text,
+preserves every other byte, comment and line ending of the file, validates the whole candidate
+through the settings owner's own families with the local values read freshly from their file, and
+publishes the file atomically. The read report is the one operator output, and the write
+acknowledgment carries the file and the key alone.
 """
 
 from __future__ import annotations
@@ -272,6 +272,41 @@ def _render_environment(payload: str, key: str, value: str) -> str:
     raise ValueError(f"configuration key is not present in {_ENVIRONMENT_FILE}")
 
 
+def _environment_newline(payload: str) -> str:
+    """Return the first line ending the environment file holds, or ``\\n`` when it holds none."""
+    first = payload.find("\n")
+    if first <= 0:
+        return "\n"
+    return "\r\n" if payload[first - 1] == "\r" else "\n"
+
+
+def _append_environment_binding(payload: str, key: str, value: str) -> str:
+    """Return the environment-file text with one quoted assignment appended.
+
+    The append preserves every input byte in order and places the quoted assignment after them.
+    The assignment uses the first line ending the file holds, and a nonempty text without a final
+    line ending gains that separator before the assignment.
+    """
+    newline = _environment_newline(payload)
+    separator = newline if payload and payload[-1] not in "\r\n" else ""
+    return f"{payload}{separator}{key}={_quote_environment_value(value)}{newline}"
+
+
+def _owned_environment_alias(
+    key: str, settings_families: tuple[type[ConfiguredSettings], ...]
+) -> str:
+    """Return the configured spelling of one owned environment key, or refuse an unowned key."""
+    families = _owning_families(key, settings_families)
+    if not families:
+        raise ValueError(f"configuration key is not present in {_ENVIRONMENT_FILE}")
+    return next(
+        alias
+        for family in families
+        for alias in _settings_aliases(family)
+        if alias.lower() == key.lower()
+    )
+
+
 def _owning_families(
     key: str, settings_families: tuple[type[ConfiguredSettings], ...]
 ) -> tuple[type[ConfiguredSettings], ...]:
@@ -350,8 +385,10 @@ def set_configuration_value(
     """Save one key of one listed configuration file after validating the candidate.
 
     ``value`` is one JSON literal over the broad type the key holds. Only the chosen key's text
-    changes. A subsystem file is published with its own permission bits, and the environment file as
-    mode 0600. A refused candidate writes no file. The acknowledgment names the file and the key.
+    changes. An environment key that a settings family owns may be absent, and the save then
+    appends one quoted assignment. A subsystem file is published with its own permission bits, and
+    the environment file as mode 0600. A refused candidate writes no file. The acknowledgment names
+    the file and the key.
     """
     listed = _require_listed_file(file)
     root = repository_root()
@@ -361,13 +398,15 @@ def set_configuration_value(
     payload = _read_text(path)
     decoded = _decode_json_value(value)
     if listed == _ENVIRONMENT_FILE:
+        if not isinstance(decoded, str):
+            raise ValueError("an environment-file value must be a JSON string")
         existing = parse_local_configuration(payload)
         stored_key = next((name for name in existing if name.lower() == key.lower()), None)
         if stored_key is None:
-            raise ValueError(f"configuration key is not present in {_ENVIRONMENT_FILE}")
-        if not isinstance(decoded, str):
-            raise ValueError("an environment-file value must be a JSON string")
-        rendered = _render_environment(payload, stored_key, decoded)
+            alias = _owned_environment_alias(key, settings_families)
+            rendered = _append_environment_binding(payload, alias, decoded)
+        else:
+            rendered = _render_environment(payload, stored_key, decoded)
         candidate_local = parse_local_configuration(rendered)
         documents = read_configuration_documents(root)
     else:

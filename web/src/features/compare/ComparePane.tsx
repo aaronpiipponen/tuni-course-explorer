@@ -1,6 +1,6 @@
 /** Compare composition: persisted unique slots, transient requests and an accessible floating picker. */
 import { useEffect, useRef, useState } from "react";
-import type { CourseSummary } from "../../api/types";
+import type { CatalogueCourse } from "../../api/types";
 import { useProfileSelector } from "../../state/useProfileSelector";
 import { useAction } from "../../shared/useAction";
 import { ErrorNotice } from "../../shared/ErrorNotice";
@@ -11,20 +11,22 @@ import { CompareSlot } from "./CompareSlot";
 import { ComparePicker } from "./ComparePicker";
 import { ComparisonResults } from "./ComparisonResults";
 import { useComparison } from "./useComparison";
+import { usePhoneTabsOnClose } from "../../shared/usePhoneTabsOnClose";
 
+/** Render the comparison slots, picker and backend comparison result. */
 export function ComparePane() {
   const { store, value: slots } = useProfileSelector(
     (state) => state.compare.slots,
   );
-  const {
-    courses,
-    loading: hydrationLoading,
-    error: hydrationError,
-  } = useCourseSummaries(slots.filter((id): id is string => id !== null));
+  const summaryA = useCourseSummaries(slots[0] ? [slots[0]] : []);
+  const summaryB = useCourseSummaries(slots[1] ? [slots[1]] : []);
+  const slotSummaries = [summaryA, summaryB] as const;
+  const hydrationError = summaryA.error ?? summaryB.error;
   const { report, loading, error } = useComparison(slots);
   const { runAction, error: actionError } = useAction();
   const { language, t } = useWording();
   const [target, setTarget] = useState<0 | 1 | null>(null);
+  usePhoneTabsOnClose(target !== null);
   const wrapperRefs = useRef<(HTMLDivElement | null)[]>([]);
   const opener = useRef<HTMLElement | null>(null);
   const pendingFocus = useRef<0 | 1 | null>(null);
@@ -36,7 +38,7 @@ export function ComparePane() {
     setTarget(null);
     if (restoreFocus) requestAnimationFrame(() => opener.current?.focus());
   };
-  const pick = (course: CourseSummary) => {
+  const pick = (course: CatalogueCourse) => {
     const current = target;
     if (current === null) return;
     runAction(() => replaceComparisonSlot(store, course.group_id, current));
@@ -52,7 +54,7 @@ export function ComparePane() {
       trigger.focus();
       pendingFocus.current = null;
     }
-  }, [courses, slots]);
+  }, [slotSummaries[0].courses, slotSummaries[1].courses, slots]);
   useEffect(() => {
     if (target === null) return;
     const outside = (event: PointerEvent) => {
@@ -85,7 +87,6 @@ export function ComparePane() {
       document.removeEventListener("keydown", keydown, true);
     };
   }, [target]);
-  const summaries = new Map(courses.map((course) => [course.group_id, course]));
   return (
     <main
       className="pane-content compare-pane"
@@ -99,6 +100,10 @@ export function ComparePane() {
         <div className="compare-slots" inert={target !== null}>
           {([0, 1] as const).map((slot) => {
             const id = slots[slot];
+            const summary = slotSummaries[slot];
+            const course = id
+              ? (summary.courses.find((item) => item.group_id === id) ?? null)
+              : null;
             return (
               <div
                 key={slot}
@@ -110,10 +115,8 @@ export function ComparePane() {
                 <CompareSlot
                   slot={slot}
                   occupied={id !== null}
-                  course={id ? (summaries.get(id) ?? null) : null}
-                  loading={
-                    id !== null && hydrationLoading && !summaries.has(id)
-                  }
+                  course={course}
+                  loading={id !== null && summary.loading && course === null}
                   targeted={target === slot}
                   onChoose={(element) => openPicker(slot, element)}
                   onRemove={() => {

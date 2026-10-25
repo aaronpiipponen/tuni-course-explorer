@@ -3,22 +3,30 @@ import { useEffect, useRef, useState } from "react";
 import { useReducedMotion } from "../../shared/useReducedMotion";
 import { useWording } from "../../shared/useWording";
 
+/** Render one animated comparison measurement. */
 export function ComparisonMeter({
   label,
   description,
   value,
   pending,
+  loading,
 }: {
   label: string;
   description: string;
   value: number | null;
   pending: boolean;
+  loading: boolean;
 }) {
   const { t } = useWording();
   const reducedMotion = useReducedMotion();
-  const target = value ?? 0;
+  const [target, setTarget] = useState(value ?? 0);
   const [shown, setShown] = useState(0);
   const displayed = useRef(0);
+  // A replacement pair keeps the held meter positions until its report settles.
+  useEffect(() => {
+    if (loading) return;
+    setTarget(value ?? 0);
+  }, [loading, value]);
   useEffect(() => {
     if (reducedMotion) {
       displayed.current = target;

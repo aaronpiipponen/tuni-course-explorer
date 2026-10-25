@@ -21,7 +21,11 @@ from pydantic import BaseModel, ConfigDict
 
 from course_explorer.config import SearchSettings
 from course_explorer.embeddings.read import TeachingEmbeddingChunk, centre_chunks
-from course_explorer.enums import TeachingTextField, TeachingTextLanguage
+from course_explorer.enums import (
+    DESCRIPTIVE_TEACHING_TEXT_FIELDS,
+    TeachingTextField,
+    TeachingTextLanguage,
+)
 
 ComparisonVerdict = Literal[
     "heavily_overlapping",
@@ -30,8 +34,6 @@ ComparisonVerdict = Literal[
     "loosely_related",
     "unrelated",
 ]
-
-_DESCRIPTIVE_FIELDS = (TeachingTextField.CONTENT, TeachingTextField.OUTCOMES)
 
 
 class _ComparisonModel(BaseModel):
@@ -186,7 +188,7 @@ def _prepare_descriptive_chunks(
     """Normalize descriptive chunks once and group their vectors and character weights."""
     grouped: dict[TeachingTextLanguage, list[tuple[tuple[float, ...], int]]] = {}
     for chunk in chunks:
-        if chunk.field in _DESCRIPTIVE_FIELDS:
+        if chunk.field in DESCRIPTIVE_TEACHING_TEXT_FIELDS:
             grouped.setdefault(chunk.language, []).append(
                 (_unit(chunk.embedding), chunk.character_count)
             )

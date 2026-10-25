@@ -1,45 +1,47 @@
-"""Database-backed composition for the two machine-readable prerequisite operations.
+"""Database-backed composition for the machine-readable prerequisite graph and route operations.
 
-This module owns the process-level orchestration behind `scripts/prerequisites.py`, the fixed web
-`/api/prerequisites` graph read and the fixed web `/api/minimum-route` read. One
-preparation resolves caller-supplied target/selected/completed/excluded canonical group IDs or
-exact official codes through the official lookup owner and compiles the authoritative
-calculation tree exactly once with the caller's independent recommended/inferred visibility inputs,
-the activity scope, the compile-time retention and display set, the canonical exclusions, and the
-caller's graph-node marks. Both public operations consume that one immutable preparation:
-`run_prerequisite_command` returns the normalized drawing graph and its node presentation states,
-while `run_minimum_route_command` returns the exact-or-approximate minimum-new-credit result. The
-command is read-only toward official, inferred, and accepted equivalence-group storage. Every
-fail-loud service error propagates.
+This module owns the process-level orchestration behind `scripts/prerequisites.py` and the fixed
+web `/api/prerequisites` graph read. One preparation resolves caller inputs through the official
+lookup owner, compiles the native calculation structure exactly once, projects the one drawing
+through its configured allowance, and shares that preparation between the graph presentation and
+the machine route calculation. The route operation runs the shared TypeScript solver through Node
+outside the serving path. The command is read-only toward official, inferred and accepted
+equivalence-group storage. Every service error propagates.
 """
 
 from __future__ import annotations
 
+import json
+import re
+import subprocess
 from collections.abc import Collection
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import Any
 
-from course_explorer.config import load_database_settings, load_search_settings
+from course_explorer.administration import repository_root
+from course_explorer.config import DatabaseSettings, load_database_settings, load_search_settings
 from course_explorer.curriculum_repository import CurriculumRepository
 from course_explorer.db.session import database_context as _database_context
 from course_explorer.prerequisite._helpers import _PrerequisiteModel
 from course_explorer.prerequisite.equivalence_repository import InferredEquivalenceRepository
-from course_explorer.prerequisite.graph import (
-    PrerequisiteCalculationTree,
+from course_explorer.prerequisite.graph import PrerequisiteGraphCompiler
+from course_explorer.prerequisite.projection import (
+    PrerequisiteDrawingAllowance,
     PrerequisiteDrawingGraph,
-    PrerequisiteGraphCompilation,
-    PrerequisiteGraphCompiler,
     project_prerequisite_graph,
 )
-from course_explorer.prerequisite.path import (
-    MinimumCreditPathEvaluation,
-    calculate_minimum_new_credits,
-)
 from course_explorer.prerequisite.repository import InferredPrerequisiteRepository
-from course_explorer.prerequisite.satisfaction import evaluate_prerequisite_node_states
+from course_explorer.prerequisite.source_cache import (
+    PrerequisiteSourceFactCache,
+    ReusingCurriculumGraphRead,
+)
+from course_explorer.prerequisite.structure import PrerequisiteSolverStructure
 from course_explorer.search.lookup import CourseLookupService
 
-_SUPPORTED_NODE_PREFIXES = ("course:", "module:", "requirement:", "opaque:")
+_BOX_KEY = re.compile(r"^s:.+:d:[0-9a-f]{24}$")
+
+_NODE_SOLVER_BUILD_COMMAND = "npm --prefix web run solver:build"
 
 
 class PrerequisiteCalculationBasis(StrEnum):
@@ -49,70 +51,21 @@ class PrerequisiteCalculationBasis(StrEnum):
     SELECTED = "selected"
 
 
-class PrerequisiteDrawingAllowance(_PrerequisiteModel):
-    """Request-local counts for the drawing surface, separate from calculation."""
-
-    allowed: bool
-    limit: int | None
-    course_count: int
-    node_count: int
-    edge_count: int
-    element_count: int
-
-
-def prerequisite_drawing_allowance(
-    graph: PrerequisiteDrawingGraph, *, max_elements: int | None
-) -> PrerequisiteDrawingAllowance:
-    """Count every node and edge the browser presents.
-
-    A caller without a drawing surface passes no limit, so drawing is always allowed.
-    """
-    node_count = (
-        len(graph.course_nodes)
-        + len(graph.module_nodes)
-        + len(graph.ignored_nodes)
-        + len(graph.connector_nodes)
-    )
-    edge_count = len(graph.edges)
-    element_count = node_count + edge_count
-    return PrerequisiteDrawingAllowance(
-        allowed=max_elements is None or element_count <= max_elements,
-        limit=max_elements,
-        course_count=len(graph.course_nodes),
-        node_count=node_count,
-        edge_count=edge_count,
-        element_count=element_count,
-    )
-
-
 class PrerequisiteGraphReport(_PrerequisiteModel):
-    """One prerequisite graph report embedding the authoritative compilation and drawing.
+    """One prerequisite graph report carrying the native structure and its permitted display."""
 
-    `selected_group_ids`/`completed_group_ids`/`excluded_group_ids` preserve the caller's full
-    canonical input sets. `completed_node_keys`/`excluded_node_keys` preserve the caller's graph
-    marks. These are request context, and no route result is embedded: a minimum route is a
-    separate explicit operation with its own result.
-    """
-
-    compilation: PrerequisiteGraphCompilation
-    selected_group_ids: tuple[str, ...]
-    completed_group_ids: tuple[str, ...]
-    basis: PrerequisiteCalculationBasis
-    excluded_group_ids: tuple[str, ...] = ()
-    completed_node_keys: tuple[str, ...] = ()
-    excluded_node_keys: tuple[str, ...] = ()
+    solver: PrerequisiteSolverStructure
+    display: PrerequisiteDrawingGraph | None = None
     drawing: PrerequisiteDrawingAllowance
 
 
 @dataclass(frozen=True)
 class _PrerequisiteCommandContext:
-    """One ephemeral prepared command input shared by both public prerequisite operations.
+    """One ephemeral prepared command input shared by both public prerequisite operations."""
 
-    It carries the compiled immutable calculation tree and the canonical caller inputs both
-    operations need. It is never persisted, cached, or returned as a second report or store.
-    """
-
-    tree: PrerequisiteCalculationTree
+    solver: PrerequisiteSolverStructure
+    display: PrerequisiteDrawingGraph | None
+    drawing: PrerequisiteDrawingAllowance
     basis: PrerequisiteCalculationBasis
     selected_group_ids: tuple[str, ...]
     completed_group_ids: tuple[str, ...]
@@ -123,13 +76,13 @@ class _PrerequisiteCommandContext:
 
 
 def _validate_node_keys(keys: Collection[str], *, label: str) -> tuple[str, ...]:
-    """Require nonblank supported-prefix action keys, rejecting course keys in a completion set."""
+    """Require complete current graph-box keys, rejecting every incompatible shape."""
     normalized: list[str] = []
     for key in keys:
-        if not key.strip():
-            raise ValueError(f"{label} node key must not be blank")
-        if not key.startswith(_SUPPORTED_NODE_PREFIXES):
-            raise ValueError(f"{label} node key {key!r} has an unsupported prefix")
+        if not _BOX_KEY.fullmatch(key):
+            raise ValueError(
+                f"{label} node key {key!r} is not a current graph-box key (s:<owner>:d:<24 hex>)"
+            )
         normalized.append(key)
     return tuple(sorted(set(normalized)))
 
@@ -146,32 +99,27 @@ def _prepare_prerequisite_command(
     basis: str = "completed",
     completed_node_keys: Collection[str] = (),
     excluded_node_keys: Collection[str] = (),
+    max_drawing_elements: int | None = None,
+    include_display: bool = True,
+    database_settings: DatabaseSettings | None = None,
+    source_cache: PrerequisiteSourceFactCache | None = None,
 ) -> _PrerequisiteCommandContext:
-    """Resolve one request's canonical inputs and compile its authoritative calculation tree.
+    """Resolve one request's canonical inputs and compile and project its native structure once.
 
-    Selected, completed and excluded canonical IDs or exact official codes are resolved in the one
-    bulk id-or-code lookup. The canonical selected set is the compile-time retention and display set.
-    The chosen basis (completed subset or selected set) is the sole calculation basis. When no selected
-    codes are supplied the canonical completed set is also the selected set, so the selected basis
-    never fails for omitted selected input. Excluded IDs or codes resolve in the same bulk call and
-    reach the compiler as canonical exclusions. They are never subtracted from selected/completed or
-    their subset checks. Graph-node marks are opaque report-issued action keys: a course key in
-    `excluded_node_keys` is canonical exclusion, and a course key in `completed_node_keys` is
-    rejected with guidance to use the shared completed course input. The database context is disposed
-    before the immutable tree is returned.
+    A supplied source cache answers the compiler's raw course and module reads with the facts it
+    retains for this dataset.
     """
     normalized_basis = PrerequisiteCalculationBasis(basis)
     normalized_completed_node_keys = _validate_node_keys(completed_node_keys, label="completed")
-    if any(key.startswith("course:") for key in normalized_completed_node_keys):
-        raise ValueError(
-            "completed course nodes use the shared completed course input, not --completed-node"
-        )
     normalized_excluded_node_keys = _validate_node_keys(excluded_node_keys, label="excluded")
     completed_inputs = tuple(completed_codes)
     selected_inputs = tuple(selected_codes)
     excluded_inputs = tuple(excluded_codes)
     search_settings = load_search_settings()
-    with _database_context(load_database_settings()) as factory:
+    connection_settings = (
+        database_settings if database_settings is not None else load_database_settings()
+    )
+    with _database_context(connection_settings) as factory:
         curriculum = CurriculumRepository(factory)
         lookup = CourseLookupService(curriculum, search_settings)
         resolved = lookup.resolve_courses(
@@ -202,8 +150,13 @@ def _prepare_prerequisite_command(
         )
         inferred_sets = InferredPrerequisiteRepository(factory)
         equivalence_groups = InferredEquivalenceRepository(factory)
-        compiler = PrerequisiteGraphCompiler(curriculum, inferred_sets, equivalence_groups)
-        tree = compiler.compile_tree(
+        graph_read = (
+            ReusingCurriculumGraphRead(curriculum, source_cache)
+            if source_cache is not None
+            else curriculum
+        )
+        compiler = PrerequisiteGraphCompiler(graph_read, inferred_sets, equivalence_groups)
+        structure = compiler.compile_structure(
             target_group_id,
             include_recommended=include_recommended,
             include_inferred=include_inferred,
@@ -213,8 +166,15 @@ def _prepare_prerequisite_command(
             completed_node_keys=normalized_completed_node_keys,
             excluded_node_keys=normalized_excluded_node_keys,
         )
+    compilation = project_prerequisite_graph(
+        structure,
+        max_drawing_elements=max_drawing_elements,
+        include_display=include_display,
+    )
     return _PrerequisiteCommandContext(
-        tree=tree,
+        solver=compilation.solver,
+        display=compilation.display,
+        drawing=compilation.drawing,
         basis=normalized_basis,
         selected_group_ids=effective_selected,
         completed_group_ids=canonical_completed,
@@ -222,6 +182,51 @@ def _prepare_prerequisite_command(
         basis_group_ids=calculation_basis,
         completed_node_keys=normalized_completed_node_keys,
         excluded_node_keys=normalized_excluded_node_keys,
+    )
+
+
+def _run_node_solver(request: dict[str, Any]) -> Any:
+    """Run the bundled TypeScript solver once and return its one JSON result.
+
+    The bundle is a build artifact and is never built here. A missing bundle raises
+    `FileNotFoundError`, and a nonzero exit or unparsable output raises `RuntimeError` carrying the
+    process's standard error.
+    """
+    bundle = repository_root() / "web" / ".solver-cli" / "cli.js"
+    if not bundle.is_file():
+        raise FileNotFoundError(
+            f"the TypeScript solver bundle {bundle} is missing; run `{_NODE_SOLVER_BUILD_COMMAND}`"
+        )
+    completed = subprocess.run(
+        ["node", str(bundle)],
+        input=json.dumps(request),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if completed.returncode != 0:
+        raise RuntimeError(
+            f"the TypeScript solver exited with status {completed.returncode}: "
+            f"{completed.stderr.strip()}"
+        )
+    try:
+        return json.loads(completed.stdout)
+    except json.JSONDecodeError as error:
+        raise RuntimeError(
+            f"the TypeScript solver returned malformed output: {error}; "
+            f"standard error: {completed.stderr.strip()}"
+        ) from error
+
+
+def _node_route(context: _PrerequisiteCommandContext) -> dict[str, Any]:
+    """Run the TypeScript route solver over one prepared context."""
+    return _run_node_solver(
+        {
+            "operation": "route",
+            "structure": context.solver.model_dump(mode="json"),
+            "basis_group_ids": list(context.basis_group_ids),
+            "max_compact_nodes": load_search_settings().prerequisite_path_max_compact_nodes,
+        }
     )
 
 
@@ -238,13 +243,10 @@ def run_prerequisite_command(
     completed_node_keys: Collection[str] = (),
     excluded_node_keys: Collection[str] = (),
     max_drawing_elements: int | None = None,
+    database_settings: DatabaseSettings | None = None,
+    source_cache: PrerequisiteSourceFactCache | None = None,
 ) -> PrerequisiteGraphReport:
-    """Compose one lookup, one compile, one node-state evaluation and one projection into a report.
-
-    `max_drawing_elements` is the caller's browser-drawing limit. Omitted, drawing is never refused.
-    The operation returns the normalized backend-owned drawing with its node states and never
-    calculates, schedules or fabricates a minimum-route result.
-    """
+    """Compose one lookup, one compile and one projection of the permitted drawing."""
     context = _prepare_prerequisite_command(
         target_code,
         completed_codes=completed_codes,
@@ -256,20 +258,14 @@ def run_prerequisite_command(
         basis=basis,
         completed_node_keys=completed_node_keys,
         excluded_node_keys=excluded_node_keys,
+        max_drawing_elements=max_drawing_elements,
+        database_settings=database_settings,
+        source_cache=source_cache,
     )
-    node_states = evaluate_prerequisite_node_states(
-        context.tree, context.basis_group_ids, completed_group_ids=context.completed_group_ids
-    )
-    graph = project_prerequisite_graph(context.tree, node_states=node_states)
     return PrerequisiteGraphReport(
-        compilation=PrerequisiteGraphCompilation(tree=context.tree, graph=graph),
-        selected_group_ids=context.selected_group_ids,
-        completed_group_ids=context.completed_group_ids,
-        basis=context.basis,
-        excluded_group_ids=context.excluded_group_ids,
-        completed_node_keys=context.completed_node_keys,
-        excluded_node_keys=context.excluded_node_keys,
-        drawing=prerequisite_drawing_allowance(graph, max_elements=max_drawing_elements),
+        solver=context.solver,
+        display=context.display,
+        drawing=context.drawing,
     )
 
 
@@ -285,13 +281,11 @@ def run_minimum_route_command(
     basis: str = "completed",
     completed_node_keys: Collection[str] = (),
     excluded_node_keys: Collection[str] = (),
-) -> MinimumCreditPathEvaluation:
-    """Compose one lookup, one compile and one bounded minimum-new-credit calculation.
+) -> dict[str, Any]:
+    """Compose one lookup and one compile, then solve through the bundled TypeScript solver.
 
-    The result is exact by default. It uses the configured compact-allocation limit to mark
-    approximate routes and size-triggered `search_too_large` failures, and may report a guarded
-    module shortfall under active-only scope. The operation never projects or returns a drawing
-    graph and never evaluates graph-node presentation states.
+    The result is the JSON object the Node process wrote, without a drawing. The size limit is the
+    configured `prerequisite_path_max_compact_nodes`, read here and passed to the solver.
     """
     context = _prepare_prerequisite_command(
         target_code,
@@ -304,9 +298,6 @@ def run_minimum_route_command(
         basis=basis,
         completed_node_keys=completed_node_keys,
         excluded_node_keys=excluded_node_keys,
+        include_display=False,
     )
-    return calculate_minimum_new_credits(
-        context.tree,
-        context.basis_group_ids,
-        max_compact_nodes=load_search_settings().prerequisite_path_max_compact_nodes,
-    )
+    return _node_route(context)

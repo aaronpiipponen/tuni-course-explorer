@@ -396,6 +396,11 @@ def require_prepared_checkout(runner: ProcessRunner, root: Path) -> tuple[str, s
     return read_prepared_checkout(lambda argv: runner.run(tuple(argv), cwd=root).stdout)
 
 
+def current_revision(runner: ProcessRunner, root: Path) -> str:
+    """Return the checkout HEAD revision without a branch or cleanliness requirement."""
+    return runner.run(("git", "rev-parse", "HEAD"), cwd=root).stdout.decode().strip()
+
+
 def runtime_checkout_directory(revision: str) -> Path:
     """Return the one convention-owned local llama.cpp checkout directory for a runtime revision."""
     return Path.home() / ".local" / "src" / f"llama.cpp-{revision}"

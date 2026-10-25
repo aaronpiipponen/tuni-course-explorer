@@ -8,6 +8,7 @@ import { ErrorNotice } from "../../shared/ErrorNotice";
 import { useWording } from "../../shared/useWording";
 import { CourseTile } from "../../shared/course/CourseTile";
 
+/** Render one Structure course tile with its menu and completion control. */
 export function StructureCard({
   course,
   completed,

@@ -6,7 +6,7 @@ A search query matches courses through the lexical and semantic methods a site s
 
 [Unified search](/docs/reference/glossary.md#search-and-comparison) runs every method a site serves for one query and merges their results into one entry per course, so a course that several methods match appears once with the list of methods that matched it. The methods are Exact code, Substring, Fuzzy search, and Semantic, and a site that serves embedding features runs all four.
 
-One request carries the query, the app language, a minimum score for each scored method, and whether inactive courses take part. The request reads the represented courses once and shares that read between the methods, so every method describes the same catalogue.
+One request carries the query, the app language, a minimum score for each scored method, and whether inactive courses take part. A serving process takes one normalized row set for the requested activity scope from its dataset lookup projection, or reads the represented courses once when it holds no projection, and shares those rows between the lexical methods, so every method describes the same catalogue. The semantic method pairs its hits with the represented records of the same request.
 
 The semantic method needs a vector for the query, and it embeds the query through the same service that produced the stored vectors. [Embeddings](/docs/backend/text-and-vectors/embeddings.md) describes that service and the vectors it stores.
 
@@ -93,15 +93,13 @@ The search refuses a blank query, an app language other than Finnish or English,
 
 ## Other reads over official identity
 
-Three reads serve the other tabs: the course lookup, the module lookup, and the id-or-code resolver. Each one matches official identity directly and returns one entry per canonical course or module, so a picker or a stored identity gets its answer from one read.
+Two reads serve the other tabs: the minimal official catalogue and the id-or-code resolver.
 
-### Course lookup
+### The minimal official catalogue
 
-The course lookup returns every represented course whose displayed official name or official code contains the query, ignoring case. It takes the app language and its own setting for inactive courses, and it refuses a blank query and an unsupported app language before it reads any settings.
+The catalogue read returns every represented course's canonical identity, code, FI and EN names, credits and activity flag, and every canonical module's eligible version candidates for the current academic year with their exact version identity, kind, code, FI and EN names, validity bounds and curriculum-period memberships. It carries no official URL, course representative source identity, teaching text, description or prerequisite, and it applies no activity filter to the module candidates. A module with no eligible candidate is absent.
 
-### Module lookup
-
-The module lookup returns the modules of the current academic year whose displayed official name or code contains the query, ignoring case. Degree programmes come first, then the other modules, ordered by displayed name and code. Modules carry no activity flag, so no scope applies, and every matching module is returned. A module with more than one version for the current academic year makes the lookup fail when it matches, so no version is chosen silently.
+The browser's narrowing boxes filter that one list locally. The matching is the substring rule above: a course matches when its displayed official name or code contains the normalized query, and a module candidate matches when its displayed name or code does. Two orders apply to module rows. The matching candidates of one group are compared by displayed name and code and then by exact version identity, so that order picks the candidate whose code and name the row displays. Result groups are compared with degree programmes before other modules, then by the row's displayed name and code, then by canonical group identity. Neither order selects a version for the structure. A canonical group appears as one row when any of its eligible candidates matches, the row shows the displayed candidate's code and name, and it carries the group's full eligible candidate list. The version picker of the group offers a candidate the query does not match.
 
 ### The id-or-code resolver
 

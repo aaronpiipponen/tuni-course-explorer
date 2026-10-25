@@ -8,6 +8,7 @@ import { ErrorNotice } from "../../shared/ErrorNotice";
 import { useWording } from "../../shared/useWording";
 import { DiscoverResultRow } from "./DiscoverResultRow";
 
+/** Render discovery loading, error, empty and result states. */
 export function DiscoverResults({
   next,
   similarity,

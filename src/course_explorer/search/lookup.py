@@ -1,16 +1,15 @@
 """Non-semantic official course lookup: fuzzy displayed name, exact multi-code, substring, and canonical id-or-code resolution.
 
 This module owns the separately callable string-matching methods that compose into the
-unified single-query entry point. The query methods read the projected represented-course summary
-seam once, unless their caller supplies the sequence a unified search already read. The id-or-code
-resolvers instead read a scoped subset through the same seam and the whole-catalogue two-column
-`(group_id, code)` projection. Every method maps only represented courses through the shared
-`CourseSummary` and returns every qualifying represented course. Matching uses the caller-selected
-`display_language`.
+unified single-query entry point. The query methods consume the normalized lookup rows of one
+activity scope, taken from the dataset projection when the caller supplies one and read once
+otherwise. The id-or-code resolvers instead read a scoped subset through the represented-summary seam
+and the whole-catalogue two-column `(group_id, code)` projection. Every method maps only represented
+courses through the shared `CourseSummary` and returns every qualifying represented course. Matching
+uses the caller-selected `display_language`.
 
-The same normalization, official-name resolution and ordering also drive the programme/module
-substring lookup over the narrow projected module identity read. Modules have no activity flag and
-no result cap.
+The same normalization, official-name resolution and ordering also drive any caller that narrows
+official courses or modules over a supplied projection.
 
 `DisplayLanguage` is caller-owned because the shared summary retains both official
 localized names. A requested official name is used first and the other official name is only a
@@ -22,7 +21,6 @@ blended with the semantic search score scale.
 from __future__ import annotations
 
 import re
-import unicodedata
 from collections.abc import Collection, Sequence
 from typing import Literal
 
@@ -36,9 +34,13 @@ from course_explorer.curriculum import (
     CurriculumRead,
     ModuleSummary,
     RepresentedCourseSummary,
-    module_version_candidates,
 )
-from course_explorer.enums import ModuleType
+from course_explorer.search.projection import (
+    CourseLookupRow,
+    LookupProjectionCache,
+    build_lookup_rows,
+    normalized_text,
+)
 
 DisplayLanguage = Literal["fi", "en"]
 
@@ -52,11 +54,6 @@ class FuzzyCourseResult(BaseModel):
     score: float
 
 
-def _normalized(value: str) -> str:
-    """Apply NFKC, casefolding, and outer trimming only, without other text rewriting."""
-    return unicodedata.normalize("NFKC", value).casefold().strip()
-
-
 def official_display_name(
     summary: CourseSummary | ModuleSummary | CatalogueModuleVersionIdentity,
     display_language: DisplayLanguage,
@@ -68,31 +65,55 @@ def official_display_name(
     return summary.name_en if display_language == "fi" else summary.name_fi
 
 
+def _ordered_name_code_key(
+    display_name: str | None, name_key: str | None, code_key: str, group_id: str
+) -> tuple[bool, str, str, str]:
+    """Order a course or module by displayed official name then code without fabricating either."""
+    return (display_name is None, name_key or "", code_key, group_id)
+
+
 def name_code_key(
     summary: CourseSummary | ModuleSummary, display_name: str | None
 ) -> tuple[bool, str, str, str]:
     """Order a course or module by displayed official name then code without fabricating either."""
-    code = summary.code if summary.code is not None else ""
-    return (
-        display_name is None,
-        _normalized(display_name) if display_name is not None else "",
-        _normalized(code),
+    return _ordered_name_code_key(
+        display_name,
+        None if display_name is None else normalized_text(display_name),
+        normalized_text(summary.code if summary.code is not None else ""),
         summary.group_id,
     )
 
 
+def _row_display_name_key(row: CourseLookupRow, display_language: DisplayLanguage) -> str | None:
+    """Return one row's normalized displayed official name with the other-language fallback."""
+    requested = row.name_fi_key if display_language == "fi" else row.name_en_key
+    if requested is not None:
+        return requested
+    return row.name_en_key if display_language == "fi" else row.name_fi_key
+
+
+def _row_name_code_key(
+    row: CourseLookupRow, display_language: DisplayLanguage
+) -> tuple[bool, str, str, str]:
+    """Order one row by its normalized displayed official name, code and canonical group."""
+    display_name_key = _row_display_name_key(row, display_language)
+    return _ordered_name_code_key(
+        display_name_key, display_name_key, row.code_key, row.summary.group_id
+    )
+
+
 def _alphabetical_key(
-    course: CourseSummary, display_name: str | None
+    row: CourseLookupRow, display_language: DisplayLanguage
 ) -> tuple[bool, bool, str, str, str]:
     """Order active named courses by displayed official name without fabricating a name."""
-    return (not course.is_active, *name_code_key(course, display_name))
+    return (not row.summary.is_active, *_row_name_code_key(row, display_language))
 
 
-def _substring_matches(normalized_query: str, display_name: str | None, code: str | None) -> bool:
+def _substring_matches(normalized_query: str, display_name_key: str | None, code_key: str) -> bool:
     """Return whether the normalized query is contained in the displayed name or official code."""
-    if code is not None and normalized_query in _normalized(code):
+    if normalized_query in code_key:
         return True
-    return display_name is not None and normalized_query in _normalized(display_name)
+    return display_name_key is not None and normalized_query in display_name_key
 
 
 def _fuzzy_name_scores(
@@ -142,26 +163,52 @@ def _fuzzy_name_scores(
     return scores
 
 
+def _scoped_rows(
+    rows: Sequence[CourseLookupRow], include_inactive: bool
+) -> tuple[CourseLookupRow, ...]:
+    """Return the rows of one activity scope."""
+    return tuple(row for row in rows if include_inactive or row.summary.is_active)
+
+
 class CourseLookupService:
     """Fuzzy, exact multi-code, and substring lookup over the official course read seam."""
 
-    def __init__(self, curriculum: CurriculumRead, search_settings: SearchSettings) -> None:
+    def __init__(
+        self,
+        curriculum: CurriculumRead,
+        search_settings: SearchSettings,
+        *,
+        projection_cache: LookupProjectionCache | None = None,
+    ) -> None:
         self._curriculum = curriculum
         self._search_settings = search_settings
+        self._projection_cache = projection_cache
 
-    def _represented_summaries(
+    def lookup_rows(
         self,
+        *,
         include_inactive: bool,
         represented: Sequence[RepresentedCourseSummary] | None = None,
-    ) -> list[RepresentedCourseSummary]:
-        """Return represented summaries, reading once only when the caller supplied none."""
-        if represented is not None:
-            return list(represented)
-        return list(
-            self._curriculum.list_represented_summaries(
-                active_only=None if include_inactive else True
+    ) -> tuple[CourseLookupRow, ...]:
+        """Return the normalized rows of one activity scope.
+
+        A supplied projection cache answers first. Otherwise a supplied represented sequence is
+        normalized without a read, and without either one represented-summary read supplies the rows.
+        """
+        if self._projection_cache is not None:
+            rows = self._projection_cache.get(self._curriculum).courses
+        elif represented is not None:
+            rows = build_lookup_rows(tuple(record.summary for record in represented))
+        else:
+            rows = build_lookup_rows(
+                tuple(
+                    record.summary
+                    for record in self._curriculum.list_represented_summaries(
+                        active_only=None if include_inactive else True
+                    )
+                )
             )
-        )
+        return _scoped_rows(rows, include_inactive)
 
     def fuzzy_name_search(
         self,
@@ -170,41 +217,42 @@ class CourseLookupService:
         display_language: DisplayLanguage,
         min_score: float | None = None,
         include_inactive: bool = True,
-        represented: Sequence[RepresentedCourseSummary] | None = None,
+        rows: Sequence[CourseLookupRow] | None = None,
     ) -> tuple[FuzzyCourseResult, ...]:
-        """Return every represented course whose displayed official name is similar enough."""
-        threshold = self._search_settings.fuzzy_search_min_score if min_score is None else min_score
-        normalized_query = _normalized(query)
+        """Return every represented course whose displayed official name is similar enough.
 
-        named: list[tuple[CourseSummary, str]] = []
-        for record in self._represented_summaries(include_inactive, represented):
-            course = record.summary
-            display_name = official_display_name(course, display_language)
-            if display_name is None:
+        Supplied rows already belong to the requested activity scope, so they are searched as they are.
+        """
+        threshold = self._search_settings.fuzzy_search_min_score if min_score is None else min_score
+        normalized_query = normalized_text(query)
+        scoped = rows if rows is not None else self.lookup_rows(include_inactive=include_inactive)
+
+        named: list[tuple[CourseLookupRow, str]] = []
+        for row in scoped:
+            display_name_key = _row_display_name_key(row, display_language)
+            if display_name_key is None:
                 continue
-            named.append((course, display_name))
+            named.append((row, display_name_key))
         scores = _fuzzy_name_scores(
             normalized_query,
-            [_normalized(name) for _, name in named],
+            [name_key for _, name_key in named],
             threshold=threshold,
             token_weight=self._search_settings.fuzzy_token_match_weight,
         )
         scored = [
-            (course, name, score)
-            for (course, name), score in zip(named, scores, strict=True)
+            (row, score)
+            for (row, _name_key), score in zip(named, scores, strict=True)
             if score >= threshold
         ]
 
         scored.sort(
             key=lambda item: (
-                not item[0].is_active,
-                -item[2],
-                _normalized(item[1]),
-                _normalized(item[0].code),
-                item[0].group_id,
+                not item[0].summary.is_active,
+                -item[1],
+                _row_name_code_key(item[0], display_language),
             )
         )
-        return tuple(FuzzyCourseResult(course=course, score=score) for course, _, score in scored)
+        return tuple(FuzzyCourseResult(course=row.summary, score=score) for row, score in scored)
 
     def exact_code_search(
         self,
@@ -212,26 +260,22 @@ class CourseLookupService:
         *,
         display_language: DisplayLanguage,
         include_inactive: bool = True,
-        represented: Sequence[RepresentedCourseSummary] | None = None,
+        rows: Sequence[CourseLookupRow] | None = None,
     ) -> tuple[CourseSummary, ...]:
-        """Return represented courses whose official code exactly matches one input token (OR)."""
+        """Return represented courses whose official code exactly matches one input token (OR).
+
+        Supplied rows already belong to the requested activity scope, so they are matched as they are.
+        """
         tokens = {
             normalized
             for token in re.split(r"[,\s]+", query.strip())
-            if (normalized := _normalized(token))
+            if (normalized := normalized_text(token))
         }
+        scoped = rows if rows is not None else self.lookup_rows(include_inactive=include_inactive)
 
-        matches = [
-            record.summary
-            for record in self._represented_summaries(include_inactive, represented)
-            if _normalized(record.summary.code) in tokens
-        ]
-        matches.sort(
-            key=lambda course: _alphabetical_key(
-                course, official_display_name(course, display_language)
-            )
-        )
-        return tuple(matches)
+        matches = [row for row in scoped if row.code_key in tokens]
+        matches.sort(key=lambda row: _alphabetical_key(row, display_language))
+        return tuple(row.summary for row in matches)
 
     def substring_search(
         self,
@@ -239,24 +283,24 @@ class CourseLookupService:
         *,
         display_language: DisplayLanguage,
         include_inactive: bool = True,
-        represented: Sequence[RepresentedCourseSummary] | None = None,
+        rows: Sequence[CourseLookupRow] | None = None,
     ) -> tuple[CourseSummary, ...]:
-        """Return represented courses whose displayed name or official code contains the query."""
-        normalized_query = _normalized(query)
+        """Return represented courses whose displayed name or official code contains the query.
 
-        matches = []
-        for record in self._represented_summaries(include_inactive, represented):
-            course = record.summary
+        Supplied rows already belong to the requested activity scope, so they are matched as they are.
+        """
+        normalized_query = normalized_text(query)
+        scoped = rows if rows is not None else self.lookup_rows(include_inactive=include_inactive)
+
+        matches = [
+            row
+            for row in scoped
             if _substring_matches(
-                normalized_query, official_display_name(course, display_language), course.code
-            ):
-                matches.append(course)
-        matches.sort(
-            key=lambda course: _alphabetical_key(
-                course, official_display_name(course, display_language)
+                normalized_query, _row_display_name_key(row, display_language), row.code_key
             )
-        )
-        return tuple(matches)
+        ]
+        matches.sort(key=lambda row: _alphabetical_key(row, display_language))
+        return tuple(row.summary for row in matches)
 
     def resolve_courses(self, identifiers: Collection[str]) -> tuple[RepresentedCourseSummary, ...]:
         """Resolve each input to exactly one canonical represented course record.
@@ -302,13 +346,13 @@ class CourseLookupService:
 
         by_normalized_code: dict[str, list[RepresentedCourseSummary]] = {}
         if remaining:
-            requested_tokens = {_normalized(identifier) for _, identifier in remaining}
+            requested_tokens = {normalized_text(identifier) for _, identifier in remaining}
             candidate_group_ids: list[str] = []
             seen_candidates: set[str] = set()
             for group_id, code in self._curriculum.list_course_code_identities(
                 active_only=active_only
             ):
-                if _normalized(code) in requested_tokens and group_id not in seen_candidates:
+                if normalized_text(code) in requested_tokens and group_id not in seen_candidates:
                     seen_candidates.add(group_id)
                     candidate_group_ids.append(group_id)
             missing = [group_id for group_id in candidate_group_ids if group_id not in by_group_id]
@@ -321,7 +365,9 @@ class CourseLookupService:
                 if record is None:
                     # An unrepresented canonical course has no current representative code.
                     continue
-                by_normalized_code.setdefault(_normalized(record.summary.code), []).append(record)
+                by_normalized_code.setdefault(normalized_text(record.summary.code), []).append(
+                    record
+                )
 
         resolved: list[RepresentedCourseSummary] = []
         for index, identifier in enumerate(materialized):
@@ -329,7 +375,7 @@ class CourseLookupService:
             if canonical is not None:
                 resolved.append(canonical)
                 continue
-            matches = by_normalized_code.get(_normalized(identifier), [])
+            matches = by_normalized_code.get(normalized_text(identifier), [])
             if not matches:
                 raise ValueError(f"unknown official course code {identifier!r}")
             if len(matches) > 1:
@@ -340,65 +386,3 @@ class CourseLookupService:
                 )
             resolved.append(matches[0])
         return tuple(resolved)
-
-
-class ModuleLookupService:
-    """Substring lookup over the narrow canonical module identity projection.
-
-    It reads `list_module_lookup()` once, selects each canonical module's eligible version through
-    the shared `module_version_candidates` rule, matches the displayed official name or code, and
-    returns one shared `ModuleSummary` per matching module in canonical order. A module with no
-    eligible version is absent, exactly like an unrepresented course. A module with more than one
-    eligible versions fail loudly when any eligible version matches, so no version is silently guessed.
-    Modules have no activity scope and the result is never capped.
-    """
-
-    def __init__(self, curriculum: CurriculumRead, *, academic_year_start: int) -> None:
-        self._curriculum = curriculum
-        self._academic_year_start = academic_year_start
-
-    def substring_search(
-        self, query: str, *, display_language: DisplayLanguage
-    ) -> tuple[ModuleSummary, ...]:
-        """Return every eligible canonical module whose displayed name or code contains the query."""
-        normalized_query = _normalized(query)
-
-        scored: list[tuple[str | None, ModuleSummary]] = []
-        for module in self._curriculum.list_module_lookup():
-            candidates = module_version_candidates(
-                module.versions, academic_year_start=self._academic_year_start
-            )
-            if not candidates:
-                continue
-            matching = tuple(
-                version
-                for version in candidates
-                if _substring_matches(
-                    normalized_query, official_display_name(version, display_language), version.code
-                )
-            )
-            if not matching:
-                continue
-            if len(candidates) > 1:
-                raise ValueError(
-                    f"ambiguous module {module.group_id}: multiple versions for academic year "
-                    f"{self._academic_year_start}"
-                )
-            version = matching[0]
-            summary = ModuleSummary(
-                group_id=module.group_id,
-                sisu_module_id=version.sisu_module_id,
-                module_type=version.module_type,
-                code=version.code,
-                name_fi=version.name_fi,
-                name_en=version.name_en,
-            )
-            scored.append((official_display_name(summary, display_language), summary))
-
-        scored.sort(
-            key=lambda item: (
-                item[1].module_type is not ModuleType.DEGREE_PROGRAMME,
-                *name_code_key(item[1], item[0]),
-            )
-        )
-        return tuple(summary for _, summary in scored)

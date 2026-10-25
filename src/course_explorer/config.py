@@ -1,4 +1,4 @@
-"""Validated database, source, capture, web, administration, usage, normalization, embedding, search, translation, and inference config."""
+"""Validated database, source, capture, web, administration, usage, admission, normalization, embedding, search, translation, and inference config."""
 
 import json
 import math
@@ -150,18 +150,35 @@ class ConfiguredSettings(BaseSettings):
 
 
 class WebSettings(ConfiguredSettings):
-    """Validated loopback bind, process count, drawing and served-feature settings for HTTP serving."""
+    """Validated loopback bind, process count, child respawn limits, drawing, served-feature and
+    retained-cache budget settings for HTTP serving."""
 
     model_config = SettingsConfigDict(extra="ignore", env_prefix="")
 
     web_host: str = Field(validation_alias="WEB_HOST")
     web_port: int = Field(validation_alias="WEB_PORT")
     web_workers: int = Field(validation_alias="WEB_WORKERS", gt=0)
+    web_respawn_exit_limit: int = Field(validation_alias="WEB_RESPAWN_EXIT_LIMIT", gt=0)
+    web_respawn_window_seconds: int = Field(validation_alias="WEB_RESPAWN_WINDOW_SECONDS", gt=0)
     prerequisite_graph_max_elements: int = Field(
         validation_alias="PREREQUISITE_GRAPH_MAX_ELEMENTS", gt=0
     )
     embeddings_enabled: bool = Field(validation_alias="WEB_EMBEDDINGS_ENABLED")
     inference_enabled: bool = Field(validation_alias="WEB_INFERENCE_ENABLED")
+    web_retained_cache_aggregate_bytes: int = Field(
+        validation_alias="WEB_RETAINED_CACHE_AGGREGATE_BYTES", gt=0
+    )
+    web_lookup_projection_cache_bytes: int = Field(
+        validation_alias="WEB_LOOKUP_PROJECTION_CACHE_BYTES", gt=0
+    )
+    web_prerequisite_source_cache_entries: int = Field(
+        validation_alias="WEB_PREREQUISITE_SOURCE_CACHE_ENTRIES", gt=0
+    )
+    web_prerequisite_source_cache_entry_bytes: int = Field(
+        validation_alias="WEB_PREREQUISITE_SOURCE_CACHE_ENTRY_BYTES", gt=0
+    )
+    web_chunk_cache_entries: int = Field(validation_alias="WEB_CHUNK_CACHE_ENTRIES", gt=0)
+    web_chunk_cache_entry_bytes: int = Field(validation_alias="WEB_CHUNK_CACHE_ENTRY_BYTES", gt=0)
 
     @field_validator("web_host")
     @classmethod
@@ -175,10 +192,215 @@ class WebSettings(ConfiguredSettings):
         """Require a valid TCP port."""
         return _require_tcp_port(value, setting_name="WEB_PORT")
 
+    @model_validator(mode="after")
+    def require_retained_cache_shares_within_aggregate(self) -> Self:
+        """Refuse a retained share whose product with the process count exceeds the aggregate."""
+        share = (
+            self.web_lookup_projection_cache_bytes
+            + self.web_prerequisite_source_cache_entries
+            * self.web_prerequisite_source_cache_entry_bytes
+            + self.web_chunk_cache_entries * self.web_chunk_cache_entry_bytes
+        )
+        if self.web_workers * share > self.web_retained_cache_aggregate_bytes:
+            raise ValueError(
+                "WEB_WORKERS times the retained cache share "
+                f"{share} bytes exceeds WEB_RETAINED_CACHE_AGGREGATE_BYTES "
+                f"{self.web_retained_cache_aggregate_bytes}"
+            )
+        return self
+
 
 def load_web_settings() -> WebSettings:
-    """Read web bind, drawing and served-feature settings through the automatic composition."""
+    """Read web bind, child supervision, drawing, served-feature and retained-cache budget settings
+    through the automatic composition.
+    """
     return WebSettings()
+
+
+class AdmissionSettings(ConfiguredSettings):
+    """The front router's admission policy and its counter lifetimes.
+
+    Every cost value is total server core-seconds, covering the serving process, the database and
+    the embedding service, and a graph's cost is its measured elapsed seconds. The load regime
+    follows one score over the configured window: the sum of the whole host's CPU utilisation
+    times its weight and the light and heavy admissions counted in that window times their
+    weights. The ``web_workers`` field reads the same ``WEB_WORKERS`` value as the web settings,
+    and the policy caps the heavy slots at one fewer than it. The router holds the policy's
+    counters, activity timestamps, tickets and graph costs in process memory. The identity
+    lifetime is the seconds of idleness after which one cookie's light and heavy counters become
+    removable, while the cookie's own max-age is a separate value. A cookie that runs a request or
+    holds a ticket keeps its counters past that mark, and the front router sweeps the counters for
+    expiry once per lifetime.
+    """
+
+    model_config = SettingsConfigDict(extra="ignore", env_prefix="")
+
+    web_workers: int = Field(validation_alias="WEB_WORKERS", gt=0)
+    admission_enabled: bool = Field(validation_alias="ADMISSION_ENABLED")
+    admission_identity_ttl_seconds: int = Field(
+        validation_alias="ADMISSION_IDENTITY_TTL_SECONDS", gt=0
+    )
+    admission_cookie_max_age_seconds: int = Field(
+        validation_alias="ADMISSION_COOKIE_MAX_AGE_SECONDS", gt=0
+    )
+    admission_retry_after_seconds: int = Field(
+        validation_alias="ADMISSION_RETRY_AFTER_SECONDS", gt=0
+    )
+    admission_window_seconds: int = Field(validation_alias="ADMISSION_WINDOW_SECONDS", gt=0)
+    admission_load_window_seconds: int = Field(
+        validation_alias="ADMISSION_LOAD_WINDOW_SECONDS", gt=0
+    )
+    admission_score_cpu_weight: float = Field(
+        validation_alias="ADMISSION_SCORE_CPU_WEIGHT", ge=0, allow_inf_nan=False
+    )
+    admission_score_light_weight: float = Field(
+        validation_alias="ADMISSION_SCORE_LIGHT_WEIGHT", ge=0, allow_inf_nan=False
+    )
+    admission_score_heavy_weight: float = Field(
+        validation_alias="ADMISSION_SCORE_HEAVY_WEIGHT", ge=0, allow_inf_nan=False
+    )
+    admission_score_headroom: float = Field(
+        validation_alias="ADMISSION_SCORE_HEADROOM", gt=0, allow_inf_nan=False
+    )
+    admission_score_saturation: float = Field(
+        validation_alias="ADMISSION_SCORE_SATURATION", gt=0, allow_inf_nan=False
+    )
+    admission_score_release: float = Field(
+        validation_alias="ADMISSION_SCORE_RELEASE", ge=0, allow_inf_nan=False
+    )
+    admission_light_load_floor: float = Field(
+        validation_alias="ADMISSION_LIGHT_LOAD_FLOOR", gt=0, le=1
+    )
+    admission_light_operations_per_minute: float = Field(
+        validation_alias="ADMISSION_LIGHT_OPERATIONS_PER_MINUTE", gt=0
+    )
+    admission_light_burst: int = Field(validation_alias="ADMISSION_LIGHT_BURST", gt=0)
+    admission_light_concurrency: int = Field(validation_alias="ADMISSION_LIGHT_CONCURRENCY", gt=0)
+    admission_heavy_budget_core_seconds: float = Field(
+        validation_alias="ADMISSION_HEAVY_BUDGET_CORE_SECONDS", gt=0
+    )
+    admission_heavy_budget_saturated_core_seconds: float = Field(
+        validation_alias="ADMISSION_HEAVY_BUDGET_SATURATED_CORE_SECONDS", gt=0
+    )
+    admission_heavy_slots: int = Field(validation_alias="ADMISSION_HEAVY_SLOTS", gt=0)
+    admission_heavy_queue_headroom_limit: int = Field(
+        validation_alias="ADMISSION_HEAVY_QUEUE_HEADROOM_LIMIT", gt=0
+    )
+    admission_heavy_queue_middle_limit: int = Field(
+        validation_alias="ADMISSION_HEAVY_QUEUE_MIDDLE_LIMIT", gt=0
+    )
+    admission_heavy_queue_saturated_limit: int = Field(
+        validation_alias="ADMISSION_HEAVY_QUEUE_SATURATED_LIMIT", gt=0
+    )
+    admission_recommendation_active_heavy_basis: int = Field(
+        validation_alias="ADMISSION_RECOMMENDATION_ACTIVE_HEAVY_BASIS", gt=0
+    )
+    admission_recommendation_inactive_heavy_basis: int = Field(
+        validation_alias="ADMISSION_RECOMMENDATION_INACTIVE_HEAVY_BASIS", gt=0
+    )
+    admission_next_courses_active_heavy_basis: int = Field(
+        validation_alias="ADMISSION_NEXT_COURSES_ACTIVE_HEAVY_BASIS", gt=0
+    )
+    admission_next_courses_inactive_heavy_basis: int = Field(
+        validation_alias="ADMISSION_NEXT_COURSES_INACTIVE_HEAVY_BASIS", gt=0
+    )
+    admission_graph_heavy_seconds: float = Field(
+        validation_alias="ADMISSION_GRAPH_HEAVY_SECONDS", gt=0
+    )
+    admission_search_inactive_cost_core_seconds: float = Field(
+        validation_alias="ADMISSION_SEARCH_INACTIVE_COST_CORE_SECONDS", gt=0
+    )
+    admission_recommendation_origin_basis: int = Field(
+        validation_alias="ADMISSION_RECOMMENDATION_ORIGIN_BASIS", ge=0
+    )
+    admission_recommendation_knee_basis: int = Field(
+        validation_alias="ADMISSION_RECOMMENDATION_KNEE_BASIS", gt=0
+    )
+    admission_recommendation_active_origin_cost: float = Field(
+        validation_alias="ADMISSION_RECOMMENDATION_ACTIVE_ORIGIN_COST", ge=0
+    )
+    admission_recommendation_active_slope: float = Field(
+        validation_alias="ADMISSION_RECOMMENDATION_ACTIVE_SLOPE", ge=0
+    )
+    admission_recommendation_active_tail_cost: float = Field(
+        validation_alias="ADMISSION_RECOMMENDATION_ACTIVE_TAIL_COST", ge=0
+    )
+    admission_recommendation_active_tail_slope: float = Field(
+        validation_alias="ADMISSION_RECOMMENDATION_ACTIVE_TAIL_SLOPE", ge=0
+    )
+    admission_recommendation_inactive_origin_cost: float = Field(
+        validation_alias="ADMISSION_RECOMMENDATION_INACTIVE_ORIGIN_COST", ge=0
+    )
+    admission_recommendation_inactive_slope: float = Field(
+        validation_alias="ADMISSION_RECOMMENDATION_INACTIVE_SLOPE", ge=0
+    )
+    admission_recommendation_inactive_tail_cost: float = Field(
+        validation_alias="ADMISSION_RECOMMENDATION_INACTIVE_TAIL_COST", ge=0
+    )
+    admission_recommendation_inactive_tail_slope: float = Field(
+        validation_alias="ADMISSION_RECOMMENDATION_INACTIVE_TAIL_SLOPE", ge=0
+    )
+    admission_next_courses_origin_basis: int = Field(
+        validation_alias="ADMISSION_NEXT_COURSES_ORIGIN_BASIS", ge=0
+    )
+    admission_next_courses_knee_basis: int = Field(
+        validation_alias="ADMISSION_NEXT_COURSES_KNEE_BASIS", gt=0
+    )
+    admission_next_courses_active_origin_cost: float = Field(
+        validation_alias="ADMISSION_NEXT_COURSES_ACTIVE_ORIGIN_COST", ge=0
+    )
+    admission_next_courses_active_slope: float = Field(
+        validation_alias="ADMISSION_NEXT_COURSES_ACTIVE_SLOPE", ge=0
+    )
+    admission_next_courses_active_tail_cost: float = Field(
+        validation_alias="ADMISSION_NEXT_COURSES_ACTIVE_TAIL_COST", ge=0
+    )
+    admission_next_courses_active_tail_slope: float = Field(
+        validation_alias="ADMISSION_NEXT_COURSES_ACTIVE_TAIL_SLOPE", ge=0
+    )
+    admission_next_courses_inactive_origin_cost: float = Field(
+        validation_alias="ADMISSION_NEXT_COURSES_INACTIVE_ORIGIN_COST", ge=0
+    )
+    admission_next_courses_inactive_slope: float = Field(
+        validation_alias="ADMISSION_NEXT_COURSES_INACTIVE_SLOPE", ge=0
+    )
+    admission_next_courses_inactive_tail_cost: float = Field(
+        validation_alias="ADMISSION_NEXT_COURSES_INACTIVE_TAIL_COST", ge=0
+    )
+    admission_next_courses_inactive_tail_slope: float = Field(
+        validation_alias="ADMISSION_NEXT_COURSES_INACTIVE_TAIL_SLOPE", ge=0
+    )
+
+    @model_validator(mode="after")
+    def require_consistent_policy(self) -> Self:
+        """Refuse a policy whose thresholds contradict its shape or that leaves no spare worker."""
+        if self.admission_enabled and self.web_workers < 2:
+            raise ValueError(
+                "ADMISSION_ENABLED requires WEB_WORKERS of at least 2, because one worker is "
+                "always kept free of heavy work"
+            )
+        if not (
+            self.admission_score_headroom
+            <= self.admission_score_release
+            < self.admission_score_saturation
+        ):
+            raise ValueError(
+                "ADMISSION_SCORE_HEADROOM must be at most ADMISSION_SCORE_RELEASE and "
+                "ADMISSION_SCORE_RELEASE must be below ADMISSION_SCORE_SATURATION"
+            )
+        for curve in ("RECOMMENDATION", "NEXT_COURSES"):
+            origin = getattr(self, f"admission_{curve.lower()}_origin_basis")
+            knee = getattr(self, f"admission_{curve.lower()}_knee_basis")
+            if knee <= origin:
+                raise ValueError(
+                    f"ADMISSION_{curve}_KNEE_BASIS must be above ADMISSION_{curve}_ORIGIN_BASIS"
+                )
+        return self
+
+
+def load_admission_settings() -> AdmissionSettings:
+    """Read the admission policy through the automatic public/local configuration composition."""
+    return AdmissionSettings()
 
 
 class UsageSettings(ConfiguredSettings):
@@ -411,22 +633,29 @@ def load_raw_database_settings() -> DatabaseSettings:
     return DatabaseSettings()
 
 
-def load_database_settings() -> DatabaseSettings:
-    """Read database settings through the automatic public/local configuration composition.
+def load_database_settings_with_identity() -> tuple[DatabaseSettings, str | None]:
+    """Resolve one database connection together with the selected dataset identity.
 
-    With ``SELECTED_DATASET_ENABLED=0`` the raw configured database is returned. Otherwise the
-    selected dataset is resolved through its repository-relative admin state root and its
-    database name replaces ``POSTGRES_DB``. The raw name alone never opts out, and no dotenv or
-    process-global value is mutated.
+    With ``SELECTED_DATASET_ENABLED=0`` the raw configured database is returned with no identity.
+    Otherwise the selected dataset is resolved once through its repository-relative admin state
+    root, and its database name replaces ``POSTGRES_DB``. The raw name alone never opts out, and no
+    dotenv or process-global value is mutated.
     """
     settings = DatabaseSettings()
     if not settings.selected_dataset_enabled:
-        return settings
+        return settings, None
     from course_explorer.administration import repository_root
     from course_explorer.datasets import resolve_selected_dataset
 
     receipt = resolve_selected_dataset(repository_root() / settings.admin_state_root)
-    return settings.model_copy(update={"postgres_db": receipt.database_name})
+    resolved = settings.model_copy(update={"postgres_db": receipt.database_name})
+    return resolved, receipt.dataset_id
+
+
+def load_database_settings() -> DatabaseSettings:
+    """Read the resolved database settings, discarding any selected dataset identity."""
+    settings, _ = load_database_settings_with_identity()
+    return settings
 
 
 class CaptureSettings(ConfiguredSettings):
@@ -2031,20 +2260,24 @@ _ADMIN_SITE_UNIT_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.@-]*\.service$")
 
 
 class AdministrativeSiteSettings(ConfiguredSettings):
-    """Validated identity of the systemd user units that run this site's own processes.
+    """Validated identity of the systemd units that run this site's own processes.
 
     ``web_service_unit`` names the unit the site's course-exploration web process runs as, and
     ``admin_service_unit`` names the unit its administration process runs as. Each name belongs to
     one site, so each device or site sets its own values. Only a plain service basename is
     accepted: a path, an option, whitespace and a command are refused, so each value is one
-    syntactically valid unit name. Loading composes the tracked public TOML and the device-local
-    ignored ``.env`` automatically. There is no code default.
+    syntactically valid unit name. ``web_service_scope`` selects the manager that owns the web
+    unit, ``user`` or ``system``, and the administration unit always belongs to the user manager.
+    Loading composes the tracked public TOML and the device-local ignored ``.env`` automatically.
     """
 
     model_config = SettingsConfigDict(extra="ignore", env_prefix="")
 
     web_service_unit: str = Field(validation_alias="ADMIN_SITE_WEB_SERVICE_UNIT")
     admin_service_unit: str = Field(validation_alias="ADMIN_SITE_ADMIN_SERVICE_UNIT")
+    web_service_scope: Literal["user", "system"] = Field(
+        default="user", validation_alias="ADMIN_SITE_WEB_SERVICE_SCOPE"
+    )
 
     @field_validator("web_service_unit", "admin_service_unit")
     @classmethod
@@ -2056,7 +2289,7 @@ class AdministrativeSiteSettings(ConfiguredSettings):
 
 
 def load_administrative_site_settings() -> AdministrativeSiteSettings:
-    """Read both site unit identities through the automatic public/local composition."""
+    """Read both site unit identities and the web unit's manager scope through the automatic composition."""
     return AdministrativeSiteSettings()
 
 
@@ -2219,6 +2452,7 @@ def load_search_settings() -> SearchSettings:
 CONFIGURATION_SETTINGS_FAMILIES: tuple[type[ConfiguredSettings], ...] = (
     WebSettings,
     UsageSettings,
+    AdmissionSettings,
     AdminWebSettings,
     DatabaseSettings,
     AdministrativeDatasetSettings,

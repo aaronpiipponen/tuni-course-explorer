@@ -12,8 +12,10 @@ from course_explorer.curriculum import CatalogueCurriculumPeriod, CatalogueModul
 from course_explorer.enums import ModuleRuleType, ModuleType
 from course_explorer.study_structure.service import (
     StudyStructureModule,
+    StudyStructureRootUnavailable,
     StudyStructureRule,
     StudyStructureService,
+    StudyStructureVersionSelectionRequired,
 )
 from tests.prerequisite._graph_support import (
     catalogue_module,
@@ -33,14 +35,18 @@ class _InMemoryStructureRead:
     ) -> None:
         self._modules = tuple(sorted(modules, key=lambda module: module.group_id))
         self._summaries = {summary.group_id: summary for summary in summaries}
+        self.module_calls: list[tuple[str, ...]] = []
+        self.summary_calls: list[tuple[str, ...]] = []
 
     def get_modules(self, group_ids) -> tuple[CatalogueModule, ...]:
         """Return only the requested supplied modules, in canonical group order."""
         wanted = set(group_ids)
+        self.module_calls.append(tuple(sorted(wanted)))
         return tuple(module for module in self._modules if module.group_id in wanted)
 
     def get_course_summaries(self, group_ids) -> tuple[CourseSummary, ...]:
         """Return only the requested supplied summaries, in canonical group order."""
+        self.summary_calls.append(tuple(sorted(set(group_ids))))
         return tuple(
             self._summaries[group_id]
             for group_id in sorted(set(group_ids))
@@ -190,7 +196,25 @@ def _assert_projection_matches(source: object, projected: StudyStructureRule) ->
 
 def _assert_full_structure(selection: str) -> None:
     read = _standard_read(selection)
-    root = StudyStructureService(read, academic_year_start=YEAR).read("module-group-degree")
+    service = StudyStructureService(read, academic_year_start=YEAR)
+    batch = service.read_many(("module-group-degree", "module-group-study"))
+    degree, study_root = batch.roots
+    root = degree
+    assert batch.unavailable_root_group_ids == ()
+    assert study_root.module.group_id == "module-group-study"
+    assert study_root.rule.course is not None
+    assert study_root.rule.course.group_id == "course-group-inactive"
+    # Both roots share one module read and one summary map, so the later root reads no identity
+    # the earlier root already loaded.
+    assert read.module_calls == [("module-group-degree", "module-group-study")]
+    # The later root finds every course card in the shared summary map, so its only read is the
+    # empty scoped request the repository answers without I/O.
+    assert read.summary_calls == [
+        ("course-group-a", "course-group-b", "course-group-c"),
+        ("course-group-inactive",),
+        (),
+    ]
+    assert service.read("module-group-study") == study_root
 
     assert root.module.group_id == "module-group-degree"
     assert root.module.sisu_module_id == "module-group-degree-v1"
@@ -379,10 +403,11 @@ def _assert_ancestor_cycle() -> None:
 
 
 def _assert_unknown_root() -> None:
-    with pytest.raises(ValueError):
-        StudyStructureService(_InMemoryStructureRead((), ()), academic_year_start=YEAR).read(
-            "module-group-absent"
-        )
+    service = StudyStructureService(_InMemoryStructureRead((), ()), academic_year_start=YEAR)
+    with pytest.raises(StudyStructureRootUnavailable):
+        service.read("module-group-absent")
+    batch = service.read_many(("module-group-absent",), allow_unavailable=True)
+    assert (batch.roots, batch.unavailable_root_group_ids) == ((), ("module-group-absent",))
 
 
 def _assert_ambiguous_root() -> None:
@@ -401,10 +426,14 @@ def _assert_ambiguous_root() -> None:
             ),
         ),
     )
-    with pytest.raises(ValueError):
-        StudyStructureService(_InMemoryStructureRead((module,), ()), academic_year_start=YEAR).read(
-            "module-group-root"
-        )
+    service = StudyStructureService(_InMemoryStructureRead((module,), ()), academic_year_start=YEAR)
+    with pytest.raises(StudyStructureVersionSelectionRequired):
+        service.read("module-group-root")
+    batch = service.read_many(("module-group-root",), allow_unavailable=True)
+    # A root that needs an explicit version is neither projected nor reported unavailable.
+    assert batch.roots == ()
+    assert batch.unavailable_root_group_ids == ()
+    assert batch.version_selection_required == ("module-group-root",)
 
 
 @pytest.mark.parametrize(
@@ -436,3 +465,107 @@ def test_structure_preserves_official_containers_rules_and_courses(scenario: str
         _assert_unknown_root()
     else:
         _assert_ambiguous_root()
+
+
+def test_explicit_versions_resolve_root_and_nested_structure() -> None:
+    """One explicit selection per group picks that exact root and nested version content."""
+    nested_rule = module_rule(ModuleRuleType.MODULE_RULE, referenced_group_id="module-group-nested")
+    root_rule = module_rule(
+        ModuleRuleType.COMPOSITE_RULE,
+        all_mandatory=True,
+        children=(
+            module_rule(
+                ModuleRuleType.COURSE_UNIT_RULE,
+                referenced_group_id="course-group-root",
+            ),
+            nested_rule,
+        ),
+    )
+    modules = (
+        catalogue_module(
+            "module-group-root",
+            (
+                module_version(
+                    "root-v1",
+                    rule=root_rule,
+                    curriculum_periods=_periods("exact_year"),
+                ),
+                module_version(
+                    "root-v2",
+                    rule=root_rule,
+                    curriculum_periods=_periods("exact_year"),
+                ),
+            ),
+        ),
+        catalogue_module(
+            "module-group-nested",
+            (
+                module_version(
+                    "nested-v1",
+                    rule=module_rule(
+                        ModuleRuleType.COURSE_UNIT_RULE,
+                        referenced_group_id="course-group-nested-v1",
+                    ),
+                    curriculum_periods=_periods("exact_year"),
+                ),
+                module_version(
+                    "nested-v2",
+                    rule=module_rule(
+                        ModuleRuleType.COURSE_UNIT_RULE,
+                        referenced_group_id="course-group-nested-v2",
+                    ),
+                    curriculum_periods=_periods("exact_year"),
+                ),
+            ),
+        ),
+    )
+    read = _InMemoryStructureRead(
+        modules,
+        (
+            course_summary("course-group-root"),
+            course_summary("course-group-nested-v1"),
+            course_summary("course-group-nested-v2"),
+        ),
+    )
+    service = StudyStructureService(read, academic_year_start=YEAR)
+
+    root = service.read(
+        "module-group-root",
+        module_versions={"module-group-root": "root-v2", "module-group-nested": "nested-v2"},
+    )
+
+    assert root.module.sisu_module_id == "root-v2"
+    nested = root.rule.children[1].module
+    assert nested is not None
+    assert nested.module.sisu_module_id == "nested-v2"
+    assert nested.rule.course is not None
+    assert nested.rule.course.group_id == "course-group-nested-v2"
+
+
+@pytest.mark.parametrize("selected", ["foreign-v1", "root-v0"])
+def test_explicit_version_outside_eligible_group_is_refused(selected: str) -> None:
+    """An explicit id outside the group's eligible set is refused even when collecting unavailable."""
+    earlier = (CatalogueCurriculumPeriod(id="period-2025", academic_year_start=YEAR - 1),)
+    module = catalogue_module(
+        "module-group-root",
+        (
+            module_version(
+                "root-v1",
+                rule=module_rule(ModuleRuleType.ANY_MODULE_RULE),
+                curriculum_periods=_periods("exact_year"),
+            ),
+            module_version(
+                "root-v0",
+                rule=module_rule(ModuleRuleType.ANY_MODULE_RULE),
+                curriculum_periods=earlier,
+            ),
+        ),
+    )
+    service = StudyStructureService(_InMemoryStructureRead((module,), ()), academic_year_start=YEAR)
+
+    with pytest.raises(ValueError):
+        service.read_many(
+            ("module-group-root",),
+            allow_unavailable=True,
+            module_versions={"module-group-root": selected},
+        )

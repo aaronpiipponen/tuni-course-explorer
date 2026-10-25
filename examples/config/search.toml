@@ -51,7 +51,8 @@ COMPARISON_HEAVY_OVERLAP_PERCENT = 70
 COMPARISON_PARTIAL_OVERLAP_PERCENT = 30
 COMPARISON_SAME_AREA_PERCENT = 35
 COMPARISON_LOOSE_RELATED_PERCENT = 20
-# Maximum combined compact nodes for exact PATH before scalar greedy approximation.
+# Maximum combined compact nodes the exact minimum route search may build. A larger search restarts
+# once with the greedy search, which this limit does not bound.
 PREREQUISITE_PATH_MAX_COMPACT_NODES = 700000
 # Whole-basis similarity recommendation policy. The candidate pool is a raw-cosine index-backed
 # retrieval. The returned list is cut off only by the hub-centred relatedness floor (no result-count

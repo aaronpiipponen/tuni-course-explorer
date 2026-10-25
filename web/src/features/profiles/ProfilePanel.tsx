@@ -8,9 +8,11 @@ import { ErrorNotice } from "../../shared/ErrorNotice";
 import { TRASH } from "../../shared/icons";
 import { useReducedMotion } from "../../shared/useReducedMotion";
 import { useWording } from "../../shared/useWording";
+import { usePhoneTabsOnClose } from "../../shared/usePhoneTabsOnClose";
 import { ProfileNotice } from "./ProfileNotice";
 import { ProfileTransfer } from "./ProfileTransfer";
 
+/** Render the profile list with its rename, delete, copy and file-transfer controls. */
 export function ProfilePanel({
   profiles,
   currentProfileId,
@@ -41,6 +43,8 @@ export function ProfilePanel({
   const [renameName, setRenameName] = useState("");
   const [renameFailed, setRenameFailed] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  usePhoneTabsOnClose(renameOpen);
+  usePhoneTabsOnClose(deleteOpen);
   const [deleting, setDeleting] = useState({
     id: "",
     name: "",

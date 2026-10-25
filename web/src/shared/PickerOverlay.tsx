@@ -1,7 +1,9 @@
 /** Shared animated overlay for course and structure-root substring pickers. */
 import { useEffect, type ReactNode } from "react";
 import { useWording } from "./useWording";
+import { usePhoneTabsOnClose } from "./usePhoneTabsOnClose";
 
+/** Render the shared overlay around one course or structure-root picker. */
 export function PickerOverlay({
   open,
   onClose,
@@ -17,6 +19,7 @@ export function PickerOverlay({
   children: ReactNode;
 }) {
   const { t } = useWording();
+  usePhoneTabsOnClose(open);
   useEffect(() => {
     if (!open) return;
     const outside = (event: PointerEvent) => {

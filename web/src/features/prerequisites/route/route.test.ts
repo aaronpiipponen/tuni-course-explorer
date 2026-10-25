@@ -1,19 +1,21 @@
-/** Route projection guarantees from graph-issued occurrences and route-only results. */
+/** Route projection guarantees from native display identities and route-only results. */
 import { describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import type {
-  GraphEdge,
-  GraphEdgeRelationship,
+  GraphDisplayNode,
   PrerequisiteGraphReport,
   PrerequisitePath,
 } from "../../../api/types";
 import { buildGraphModel } from "../graph/model";
 import { buildRouteSummary, buildRouteView } from "./route";
 import { uiText } from "../../../shared/wording";
+import { ReadCacheContext } from "../../../app/readCacheContext";
+import { READ_CACHE_CAPACITY, ReadCache } from "../../../app/readCache";
 import { StoreContext } from "../../../state/context";
 import { createBrowserStore } from "../../../state/store";
 import { WebFeaturesContext } from "../../../app/webFeaturesContext";
+import { NoticeProvider } from "../../../shared/NoticeProvider";
 import { RoutePanel } from "./RoutePanel";
 import type { MinimumRouteSession } from "./useMinimumRoute";
 
@@ -27,118 +29,125 @@ const course = (group_id: string, credits_min: string) => ({
   is_active: true,
   official_url: "https://example.invalid",
 });
-const relationship = (
-  occurrence_ids: string[],
-  condition_occurrence_ids: string[] = [],
-): GraphEdgeRelationship => ({
-  origin: "official",
-  official_kind: "compulsory",
-  inferred_category: null,
-  inference: null,
-  occurrence_ids,
-  condition_occurrence_ids,
+const orNode = "s:root:d:aaaaaaaaaaaaaaaaaaaaaaaa";
+const displayNode = (node: Partial<GraphDisplayNode>): GraphDisplayNode => ({
+  node_id: "",
+  kind: "or",
+  owner_group_id: "root",
+  course_group_id: null,
+  module_group_id: null,
+  require_min: null,
+  require_max: null,
+  credits_min: null,
+  credits_max: null,
+  count_min: null,
+  count_max: null,
+  referenced_group_id: null,
+  reason: null,
+  detail: null,
+  member_group_ids: [],
+  diagnostic_ids: [],
+  is_root: false,
+  via_inferred: false,
+  via_recommended: false,
+  has_official_provenance: true,
+  has_inferred_provenance: false,
+  display_as_inferred: false,
+  markable: false,
+  ...node,
 });
-const edge = (
-  source_node_id: string,
-  target_node_id: string,
-  relationships: GraphEdgeRelationship[],
-): GraphEdge => ({
-  source_node_id,
-  target_node_id,
-  relationships,
-});
+const courseNode = (group_id: string, is_root = false): GraphDisplayNode =>
+  displayNode({
+    node_id: `course:${group_id}`,
+    kind: "course",
+    course_group_id: group_id,
+    is_root,
+    owner_group_id: null,
+  });
 const graphReport = (
-  groupedMembers: GraphEdgeRelationship[] = [
-    relationship(["chosen"]),
-    relationship(["alt-chosen"], ["gate"]),
-  ],
+  members: readonly string[] = ["m:first"],
+  displayAllowed = true,
 ): PrerequisiteGraphReport =>
   ({
     drawing: {
-      allowed: true,
+      allowed: displayAllowed,
       limit: 200,
       course_count: 4,
       node_count: 5,
       edge_count: 4,
       element_count: 9,
     },
-    selected_group_ids: [],
-    completed_group_ids: [],
-    basis: "completed",
-    excluded_group_ids: [],
-    completed_node_keys: [],
-    excluded_node_keys: [],
-    compilation: {
-      tree: {
-        root: course("root", "5"),
-        courses: [
-          course("new", "3"),
-          course("covered", "4"),
-          course("unused", "8"),
-        ],
-        ignored_parts: [],
-        issues: [],
-        excluded_group_ids: [],
-      },
-      graph: {
-        course_nodes: [
-          {
-            node_id: "course:root",
-            action_key: "course:root",
-            course: course("root", "5"),
-            is_root: true,
-            display_as_inferred: false,
-          },
-          {
-            node_id: "course:new",
-            action_key: "course:new",
-            course: course("new", "3"),
-            is_root: false,
-            display_as_inferred: false,
-          },
-          {
-            node_id: "course:covered",
-            action_key: "course:covered",
-            course: course("covered", "4"),
-            is_root: false,
-            display_as_inferred: false,
-          },
-          {
-            node_id: "course:unused",
-            action_key: "course:unused",
-            course: course("unused", "8"),
-            is_root: false,
-            display_as_inferred: false,
-          },
-        ],
-        connector_nodes: [
-          {
-            node_id: "connector:or",
-            action_key: "connector:or",
-            kind: "or",
-            require_min: null,
-            require_max: null,
-            credits_min: null,
-            credits_max: null,
-            count_min: null,
-            count_max: null,
-            referenced_group_id: null,
-            unresolved_reason: null,
-            detail: null,
-            member_group_ids: [],
-          },
-        ],
-        module_nodes: [],
-        ignored_nodes: [],
-        node_states: [],
-        edges: [
-          edge("course:root", "connector:or", [relationship(["root-or"])]),
-          edge("connector:or", "course:new", groupedMembers),
-          edge("connector:or", "course:covered", [relationship(["covered"])]),
-          edge("connector:or", "course:unused", [relationship(["unused"])]),
-        ],
-      },
+    dataset_identity: "synthetic-dataset",
+    max_compact_nodes: 10000,
+    solver: {
+      root_group_id: "root",
+      academic_year_start: 2026,
+      root_use_id: null,
+      pieces: [],
+      uses: [],
+      facts: [],
+      diagnostics: [],
+      root_diagnostic_ids: [],
+      courses: [
+        course("root", "5"),
+        course("new", "3"),
+        course("covered", "4"),
+        course("unused", "8"),
+      ],
+      modules: [],
+      include_recommended: false,
+      include_inferred: false,
+      active_only: false,
+      inferred_coverage: [],
+      excluded_group_ids: [],
+      completed_node_keys: [],
+      excluded_node_keys: [],
+      bindings: [],
+      projection_root_context_id: null,
+      projection_contexts: [],
+      members: [],
     },
+    display: displayAllowed
+      ? {
+          nodes: [
+            courseNode("root", true),
+            courseNode("new"),
+            courseNode("covered"),
+            courseNode("unused"),
+            displayNode({ node_id: orNode }),
+          ],
+          edges: [
+            {
+              edge_id: "e:root-or",
+              source_node_id: "course:root",
+              target_node_id: orNode,
+              member_ids: ["m:root"],
+              inferred_only: false,
+            },
+            {
+              edge_id: "e:or-new",
+              source_node_id: orNode,
+              target_node_id: "course:new",
+              member_ids: members,
+              inferred_only: false,
+            },
+            {
+              edge_id: "e:or-covered",
+              source_node_id: orNode,
+              target_node_id: "course:covered",
+              member_ids: ["m:covered"],
+              inferred_only: false,
+            },
+            {
+              edge_id: "e:or-unused",
+              source_node_id: orNode,
+              target_node_id: "course:unused",
+              member_ids: ["m:unused"],
+              inferred_only: false,
+            },
+          ],
+        }
+      : null,
   }) as unknown as PrerequisiteGraphReport;
 const path = (
   state: string,
@@ -149,7 +158,10 @@ const path = (
     new_courses: [],
     total_new_credits: null,
     new_opaque_work: [],
-    selected_occurrence_ids: [],
+    selected_nodes: [],
+    lit_members: [],
+    covered_courses: [],
+    facts: [],
     shortfalls: [],
     blocked_excluded_group_ids: [],
     blocked_excluded_node_keys: [],
@@ -158,33 +170,28 @@ const path = (
   }) as unknown as PrerequisitePath;
 
 describe("minimum-route projection", () => {
-  it("lights only edges with a selected occurrence and sums new plus basis-covered route credits", () => {
+  it("lights returned members and sums new plus covered credits without a drawing", () => {
     for (const language of ["en", "fi"] as const) {
       const graph = graphReport();
       const route = path("exact", {
-        new_courses: [
-          { course: course("new", "3"), occurrence_ids: ["chosen"] },
-        ],
+        new_courses: [{ course: course("new", "3"), node_ids: ["course:new"] }],
         total_new_credits: "3",
-        selected_occurrence_ids: ["root-or", "chosen", "covered"],
+        selected_nodes: ["course:root", orNode, "course:new", "course:covered"],
+        lit_members: ["m:root", "m:first", "m:covered"],
+        covered_courses: [course("covered", "4")],
       });
-      const model = buildGraphModel(graph, language);
+      const model = buildGraphModel(graph, language, []);
       const summary = buildRouteSummary(graph, route, language);
-      const view = buildRouteView(graph, route, model, summary);
+      const view = buildRouteView(route, model, summary);
       expect([...view.lit.edges]).toEqual([
-        "course:root>connector:or-0",
-        "connector:or>course:new-1",
-        "connector:or>course:covered-2",
+        "e:root-or",
+        "e:or-new",
+        "e:or-covered",
       ]);
       expect(view.lit.nodes).toEqual(
-        new Set([
-          "course:root",
-          "connector:or",
-          "course:new",
-          "course:covered",
-        ]),
+        new Set(["course:root", orNode, "course:new", "course:covered"]),
       );
-      expect(view.lit.edges.has("connector:or>course:unused-3")).toBe(false);
+      expect(view.lit.edges.has("e:or-unused")).toBe(false);
       expect(view.lit.levels.get("course:new")).toBe(2);
       expect(view.newCredits).toBe(
         uiText(language, "{value} cr", { value: 3 }),
@@ -192,10 +199,6 @@ describe("minimum-route projection", () => {
       expect(view.fullCredits).toBe(
         uiText(language, "{value} cr", { value: 7 }),
       );
-      expect(summary.fullCredits).toBe(
-        uiText(language, "{value} cr", { value: 7 }),
-      );
-      expect(summary.rows).toEqual(view.rows);
       expect(
         view.rows.map(
           (row) => row.kind === "course" && [row.course.group_id, row.covered],
@@ -204,68 +207,55 @@ describe("minimum-route projection", () => {
         ["new", false],
         ["covered", true],
       ]);
+      // A refused drawing still produces the identical totals, rows and titles.
+      const refused = graphReport(["m:first"], false);
+      const refusedSummary = buildRouteSummary(refused, route, language);
+      expect(refusedSummary.newCredits).toBe(summary.newCredits);
+      expect(refusedSummary.fullCredits).toBe(summary.fullCredits);
+      expect(refusedSummary.rows).toEqual(summary.rows);
+      expect(refused.display).toBeNull();
     }
   });
 
-  it("lights a grouped connection only through a complete member relationship", () => {
-    const graph = graphReport([
-      relationship(["chosen"], ["gate-a"]),
-      relationship(["alt-chosen"], ["gate-b1", "gate-b2"]),
-    ]);
-    const model = buildGraphModel(graph, "en");
-    const connection = "connector:or>course:new-1";
-    const build = (selected: string[]) => {
+  it("lights one connection when any returned member is lit", () => {
+    const graph = graphReport(["m:first", "m:second"]);
+    const model = buildGraphModel(graph, "en", []);
+    const build = (members: string[]) => {
       const route = path("exact", {
-        new_courses: [
-          { course: course("new", "3"), occurrence_ids: ["chosen"] },
-        ],
+        new_courses: [{ course: course("new", "3"), node_ids: ["course:new"] }],
         total_new_credits: "3",
-        selected_occurrence_ids: selected,
+        selected_nodes: ["course:root", orNode, "course:new"],
+        lit_members: members,
       });
       return buildRouteView(
-        graph,
         route,
         model,
         buildRouteSummary(graph, route, "en"),
       );
     };
-
-    // One supplied connection produces exactly one model edge, never one per relationship member.
-    expect(model.edges).toHaveLength(4);
-    expect(model.edges.filter((edge) => edge.id === connection)).toHaveLength(
+    expect(model.edges.filter((edge) => edge.id === "e:or-new")).toHaveLength(
       1,
     );
-
-    // Each differently gated member lights the same connection through its own complete relationship.
-    expect(build(["chosen", "gate-a"]).lit.edges.has(connection)).toBe(true);
-    expect(
-      build(["alt-chosen", "gate-b1", "gate-b2"]).lit.edges.has(connection),
-    ).toBe(true);
-    // A terminal whose own gate chain is incomplete is dark, and one member's terminal never
-    // borrows the other member's gates.
-    expect(build(["alt-chosen", "gate-b1"]).lit.edges.has(connection)).toBe(
-      false,
-    );
-    expect(
-      build(["chosen", "gate-b1", "gate-b2"]).lit.edges.has(connection),
-    ).toBe(false);
+    expect(build(["m:first"]).lit.edges.has("e:or-new")).toBe(true);
+    expect(build(["m:second"]).lit.edges.has("e:or-new")).toBe(true);
+    expect(build([]).lit.edges.has("e:or-new")).toBe(false);
   });
 
   it("presents each of the six path states with its own rows, problems and missing course ids", () => {
     const courseEntry = {
       course: course("new", "3"),
-      occurrence_ids: ["chosen"],
+      node_ids: ["course:new"],
     };
     const exactInput = path("exact", {
       new_courses: [courseEntry],
       total_new_credits: "3",
-      selected_occurrence_ids: ["chosen"],
+      selected_nodes: ["course:new"],
+      lit_members: ["m:first"],
     });
     const build = (graph: PrerequisiteGraphReport, route: PrerequisitePath) =>
       buildRouteView(
-        graph,
         route,
-        buildGraphModel(graph, "en"),
+        buildGraphModel(graph, "en", []),
         buildRouteSummary(graph, route, "en"),
       );
     const graph = graphReport();
@@ -275,17 +265,18 @@ describe("minimum-route projection", () => {
     const approximateInput = path("approximate", {
       new_courses: [courseEntry],
       total_new_credits: "3",
-      selected_occurrence_ids: ["chosen"],
+      selected_nodes: ["course:new"],
+      lit_members: ["m:first"],
     });
     const approximateView = build(graph, approximateInput);
     expect(approximateView.state).toBe("approximate");
     expect(approximateView.rows).toHaveLength(1);
-    expect(approximateView.missingCourseIds).toEqual(["new"]);
     const failed = path("approximation_failed", {
       problems: [
         {
-          action_key: "connector:or",
-          occurrence_id: "timeout-occurrence",
+          node_id: orNode,
+          support_id: null,
+          fact_id: null,
           state: "unresolved",
           reason: "search_too_large",
           detail: null,
@@ -294,17 +285,14 @@ describe("minimum-route projection", () => {
       ],
     });
     const failedView = build(graph, failed);
-    expect(failedView.problems[0]).toMatchObject({
-      occurrenceId: "timeout-occurrence",
-      actionKey: "connector:or",
-    });
+    expect(failedView.problems[0]).toMatchObject({ nodeId: orNode });
     expect(failedView.rows).toEqual([]);
     expect(failedView.newCredits).toBeNull();
-    expect(failedView.missingCourseIds).toEqual([]);
     expect(failedView.lit.nodes).toEqual(new Set(["course:root"]));
     const blocked = {
-      action_key: "course:unused",
-      occurrence_id: "unused",
+      node_id: "course:unused",
+      support_id: null,
+      fact_id: null,
       state: "no_solution",
       reason: "excluded_node",
       detail: null,
@@ -312,7 +300,7 @@ describe("minimum-route projection", () => {
     };
     const noSolution = path("no_solution", {
       blocked_excluded_group_ids: ["unused"],
-      blocked_excluded_node_keys: ["connector:or"],
+      blocked_excluded_node_keys: [orNode],
       problems: [blocked, blocked],
     });
     const noSolutionView = build(graph, noSolution);
@@ -321,7 +309,7 @@ describe("minimum-route projection", () => {
     expect(noSolutionView.problems).toHaveLength(1);
     expect(noSolutionView.newCredits).toBeNull();
     expect(noSolutionView.lit.nodes).toEqual(
-      new Set(["course:root", "course:unused", "connector:or"]),
+      new Set(["course:root", "course:unused", orNode]),
     );
     const renderPanel = (view: ReturnType<typeof buildRouteSummary>) => {
       const session: MinimumRouteSession = {
@@ -339,8 +327,24 @@ describe("minimum-route projection", () => {
           { value: createBrowserStore(localStorage) },
           createElement(
             WebFeaturesContext.Provider,
-            { value: { embeddings_enabled: true, inference_enabled: true } },
-            createElement(RoutePanel, { view, route: session }),
+            {
+              value: {
+                embeddings_enabled: true,
+                inference_enabled: true,
+                dataset_identity: "synthetic-dataset",
+              },
+            },
+            createElement(
+              ReadCacheContext.Provider,
+              {
+                value: new ReadCache("synthetic-dataset", READ_CACHE_CAPACITY),
+              },
+              createElement(
+                NoticeProvider,
+                null,
+                createElement(RoutePanel, { view, route: session }),
+              ),
+            ),
           ),
         ),
       );
@@ -352,33 +356,46 @@ describe("minimum-route projection", () => {
       renderPanel(noSolutionView).querySelector(".route-problems")!;
     expect(problemList.textContent).toContain("unused");
     expect(problemList.querySelectorAll("li")).toHaveLength(1);
-    expect(problemList.closest(".route-list-disclosure")).toBeNull();
     const unresolved = path("unresolved", {
       problems: [
-        { ...blocked, action_key: "connector:or", state: "unresolved" },
-        { ...blocked, action_key: "connector:or", state: "unresolved" },
         {
           ...blocked,
-          action_key: "connector:or",
+          node_id: orNode,
           state: "unresolved",
-          occurrence_id: "second-location",
+        },
+        {
+          ...blocked,
+          node_id: orNode,
+          state: "unresolved",
+        },
+        {
+          ...blocked,
+          node_id: orNode,
+          state: "unresolved",
+          detail: "second location",
         },
       ],
     });
-    expect(
-      build(graph, unresolved).problems.map((problem) => problem.identity),
-    ).toEqual([
-      "unused|connector:or|excluded_node",
-      "second-location|connector:or|excluded_node",
+    const unresolvedView = build(graph, unresolved);
+    expect(unresolvedView.problems.map((problem) => problem.identity)).toEqual([
+      `${orNode}|excluded_node|`,
+      `${orNode}|excluded_node|second location`,
     ]);
+    expect(unresolvedView.problems.map((problem) => problem.title)).toEqual([
+      "OR",
+      "OR",
+    ]);
+    expect(unresolvedView.lit.nodes.has(orNode)).toBe(true);
     const shortfall = path("shortfall", {
       new_courses: [courseEntry],
       total_new_credits: "3",
-      selected_occurrence_ids: ["chosen"],
+      selected_nodes: ["course:new"],
+      lit_members: ["m:first"],
       shortfalls: [
         {
           kind: "cardinality",
-          occurrence_id: "or",
+          node_id: orNode,
+          support_id: null,
           required_count: 2,
           achieved_count: 1,
           required_credits: null,
@@ -395,10 +412,7 @@ describe("minimum-route projection", () => {
     expect(
       renderPanel(shortfallView).querySelector(".route-problems")?.textContent,
     ).toContain("1 of 2 courses");
-    const zero = path("exact", {
-      total_new_credits: "0",
-      selected_occurrence_ids: [],
-    });
+    const zero = path("exact", { total_new_credits: "0" });
     expect(build(graph, zero).rows).toEqual([]);
   });
 });

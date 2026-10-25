@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from datetime import date
 
 import pytest
 
+from course_explorer.config import DatabaseSettings
 from course_explorer.curriculum import (
     CatalogueCurriculumPeriod,
     CatalogueModuleLookup,
@@ -14,9 +16,10 @@ from course_explorer.curriculum import (
     course_summary,
 )
 from course_explorer.enums import ModuleType
-from course_explorer.search.lookup import ModuleLookupService
+from course_explorer.search import lookup_commands as catalogue_module
+from course_explorer.search.projection import build_lookup_rows
 from tests.search._lookup_support import course, service, version
-from tests.support import FakeCurriculum
+from tests.support import FakeCurriculum, settings_factory
 
 
 def test_fuzzy_name_search_uses_config_or_override_and_orders_active_by_score() -> None:
@@ -222,7 +225,11 @@ def test_supplied_represented_summaries_skip_the_curriculum_read() -> None:
 
     assert [
         result.course.group_id
-        for result in lookup.fuzzy_name_search("beeta", display_language="fi", represented=supplied)
+        for result in lookup.fuzzy_name_search(
+            "beeta",
+            display_language="fi",
+            rows=build_lookup_rows(tuple(record.summary for record in supplied)),
+        )
     ] == ["group-beta"]
     assert curriculum.calls == []
 
@@ -329,8 +336,10 @@ def _module(group_id: str, *versions: CatalogueModuleVersionIdentity) -> Catalog
     return CatalogueModuleLookup(group_id=group_id, versions=versions)
 
 
-def test_module_substring_lookup_uses_official_displayed_names_and_canonical_order() -> None:
-    """Module lookup matches official name/code, honors fallback, and orders canonically."""
+def test_catalogue_command_selects_strict_module_candidates(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The catalogue keeps every strict-year module candidate and omits the ineligible groups."""
     period_2026 = (CatalogueCurriculumPeriod(id="period-2026", academic_year_start=2026),)
     period_2027 = (CatalogueCurriculumPeriod(id="period-2027", academic_year_start=2027),)
 
@@ -340,37 +349,8 @@ def test_module_substring_lookup_uses_official_displayed_names_and_canonical_ord
             "degree-v1",
             module_type=ModuleType.DEGREE_PROGRAMME,
             code="MOD.A",
-            name_fi="Zulu moduuli",
-            name_en="Alpha module",
-            curriculum_periods=period_2026,
-        ),
-    )
-    study = _module(
-        "module-study",
-        _module_version(
-            "study-v1",
-            code="MOD.B",
-            name_fi="Beeta moduuli",
-            name_en="Beta module",
-            curriculum_periods=period_2026,
-        ),
-    )
-    grouping = _module(
-        "module-grouping",
-        _module_version(
-            "grouping-v1",
-            module_type=ModuleType.GROUPING_MODULE,
-            name_fi="Gamma moduuli",
-            name_en="Gamma module",
-            curriculum_periods=period_2026,
-        ),
-    )
-    fallback = _module(
-        "module-fallback",
-        _module_version(
-            "fallback-v1",
-            code="FALL.1",
-            name_en="Fallback English",
+            name_fi="Ohjelma",
+            name_en="Degree",
             curriculum_periods=period_2026,
         ),
     )
@@ -388,18 +368,8 @@ def test_module_substring_lookup_uses_official_displayed_names_and_canonical_ord
         _module_version(
             "absent-v1",
             code="ABS.1",
-            name_fi="Puuttuva",
             name_en="Absent",
             curriculum_periods=period_2027,
-        ),
-    )
-    hidden = _module(
-        "module-hidden",
-        _module_version(
-            "hidden-v1",
-            name_fi="Salaperäinen",
-            name_en="Hidden English",
-            curriculum_periods=period_2026,
         ),
     )
     ambiguous = _module(
@@ -417,59 +387,44 @@ def test_module_substring_lookup_uses_official_displayed_names_and_canonical_ord
             curriculum_periods=period_2026,
         ),
     )
-
-    lookup = ModuleLookupService(
-        FakeCurriculum(
-            (),
-            module_lookup=(
-                degree,
-                study,
-                grouping,
-                fallback,
-                validity,
-                absent,
-                hidden,
-                ambiguous,
-            ),
-        ),
-        academic_year_start=2026,
+    curriculum = FakeCurriculum(
+        (),
+        summaries_by_activity={None: ()},
+        module_lookup=(degree, validity, absent, ambiguous),
     )
 
-    # Programmes precede modules even when their official displayed name sorts later.
-    # An ambiguous module the query does not touch never breaks an unrelated lookup.
-    matches = lookup.substring_search("moduuli", display_language="fi")
-    assert [summary.group_id for summary in matches] == [
+    @contextmanager
+    def _context(_settings: DatabaseSettings):
+        yield object()
+
+    monkeypatch.setattr(catalogue_module, "CurriculumRepository", lambda _factory: curriculum)
+    monkeypatch.setattr(catalogue_module, "_database_context", _context)
+    monkeypatch.setattr(
+        catalogue_module, "load_database_settings", lambda: settings_factory(DatabaseSettings)
+    )
+
+    report = catalogue_module.run_catalogue_command()
+
+    assert [module.group_id for module in report.modules] == [
+        "module-ambiguous",
         "module-degree",
-        "module-study",
-        "module-grouping",
+        "module-validity",
     ]
-    assert matches[0].sisu_module_id == "degree-v1"
-    assert matches[0].module_type is ModuleType.DEGREE_PROGRAMME
-    assert matches[0].name_fi == "Zulu moduuli"
-    assert matches[1].module_type is ModuleType.STUDY_MODULE
-    assert matches[2].code is None
-    assert matches[2].module_type is ModuleType.GROUPING_MODULE
-
-    # Official code containment is case-insensitive and selects a membership-free validity match.
+    # The report lists every eligible candidate of one canonical group with its exact identity and
+    # name, so both versions appear.
     assert [
-        summary.group_id for summary in lookup.substring_search("mod.a", display_language="fi")
-    ] == ["module-degree"]
-    assert [
-        summary.group_id for summary in lookup.substring_search("val.1", display_language="en")
-    ] == ["module-validity"]
-
-    # The requested official name wins. The other is fallback only and never matched while hidden.
-    assert lookup.substring_search("alpha module", display_language="fi") == ()
-    assert [
-        summary.group_id
-        for summary in lookup.substring_search("fallback english", display_language="fi")
-    ] == ["module-fallback"]
-    assert lookup.substring_search("hidden english", display_language="fi") == ()
-
-    # A version tied only to another academic year is absent by name or code.
-    assert lookup.substring_search("absent", display_language="en") == ()
-    assert lookup.substring_search("abs.1", display_language="en") == ()
-
-    # Ambiguity is based on the eligible set, even when only one version matches the query.
-    with pytest.raises(ValueError):
-        lookup.substring_search("amb.1", display_language="fi")
+        (candidate.sisu_module_id, candidate.code, candidate.name_fi)
+        for candidate in report.modules[0].candidates
+    ] == [
+        ("ambiguous-v1", "AMB.1", "Yhteinen kuvaus"),
+        ("ambiguous-v2", "AMB.2", "Yhteinen kuvaus"),
+    ]
+    assert report.modules[0].candidates[0].curriculum_periods == period_2026
+    assert report.modules[0].candidates[0].validity_start is None
+    assert report.modules[1].candidates[0].module_type is ModuleType.DEGREE_PROGRAMME
+    assert report.modules[1].candidates[0].sisu_module_id == "degree-v1"
+    # A version tied only to another academic year is absent, while a membership-free version
+    # inside its own validity bounds is eligible.
+    assert [candidate.code for candidate in report.modules[2].candidates] == ["VAL.1"]
+    assert report.modules[2].candidates[0].validity_start == date(2020, 1, 1)
+    assert report.modules[2].candidates[0].curriculum_periods == ()

@@ -1,4 +1,4 @@
-/** Logical/numeric/unresolved node presentation, with actions only on numeric constraints. */
+/** Logical/numeric/unresolved node presentation, with actions only on markable constraints. */
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { useProfileSelector } from "../../../state/useProfileSelector";
 import { toggleNodeCompleted, toggleNodeExcluded } from "../actions";
@@ -7,13 +7,20 @@ import type { GraphNodeData } from "./CourseNode";
 import { ErrorNotice } from "../../../shared/ErrorNotice";
 import { useWording } from "../../../shared/useWording";
 
+/** Render one logical, numeric or unresolved node in the prerequisite drawing. */
 export function ConnectorNode({ data }: NodeProps & { data: GraphNodeData }) {
-  const { store, value: manuallyCompleted } = useProfileSelector((state) =>
-    state.prerequisites.completedNodeKeys.includes(data.actionKey),
+  const markKey = data.markKey;
+  const { value: completedAny } = useProfileSelector(
+    (state) =>
+      markKey !== null &&
+      state.prerequisites.completedNodeKeys.includes(markKey),
   );
-  const { value: excluded } = useProfileSelector((state) =>
-    state.prerequisites.excludedNodeKeys.includes(data.actionKey),
+  const { value: excluded, store } = useProfileSelector(
+    (state) =>
+      markKey !== null &&
+      state.prerequisites.excludedNodeKeys.includes(markKey),
   );
+  const manuallyCompleted = completedAny && !excluded;
   const { runAction, error } = useAction();
   const { language, t } = useWording();
   const content = (
@@ -34,7 +41,8 @@ export function ConnectorNode({ data }: NodeProps & { data: GraphNodeData }) {
             className={manuallyCompleted ? "is-done" : ""}
             aria-pressed={manuallyCompleted}
             onClick={() =>
-              runAction(() => toggleNodeCompleted(store, data.actionKey))
+              markKey !== null &&
+              runAction(() => toggleNodeCompleted(store, markKey))
             }
           >
             {t(manuallyCompleted ? "Completed (course)" : "Complete (course)")}
@@ -44,7 +52,8 @@ export function ConnectorNode({ data }: NodeProps & { data: GraphNodeData }) {
             className={excluded ? "is-excl" : ""}
             aria-pressed={excluded}
             onClick={() =>
-              runAction(() => toggleNodeExcluded(store, data.actionKey))
+              markKey !== null &&
+              runAction(() => toggleNodeExcluded(store, markKey))
             }
           >
             {t(excluded ? "Excluded" : "Exclude")}

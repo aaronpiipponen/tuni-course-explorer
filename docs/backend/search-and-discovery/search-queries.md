@@ -1,31 +1,37 @@
 # Search queries and merge
 
-The search package turns one query into ordered course summaries through the match methods a site serves, one merge, and one shared read of the represented courses.
+The search package turns one query into ordered course summaries through the match methods a site serves, one merge, and one shared normalized lookup row set.
 
 ## The package and its services
 
 | Module | Symbols |
 |---|---|
-| `src/course_explorer/search/lookup.py` | `CourseLookupService`, `ModuleLookupService`, `DisplayLanguage`, `FuzzyCourseResult`, `official_display_name`, `name_code_key`, `_normalized`, `_substring_matches`, `_fuzzy_name_scores`, `_alphabetical_key` |
+| `src/course_explorer/search/lookup.py` | `CourseLookupService`, `DisplayLanguage`, `FuzzyCourseResult`, `official_display_name`, `name_code_key`, `_substring_matches`, `_fuzzy_name_scores`, `_alphabetical_key` |
+| `src/course_explorer/search/projection.py` | `normalized_text`, `CourseLookupRow`, `LookupProjection`, `build_lookup_rows`, `build_lookup_projection`, `LookupProjectionCache` |
 | `src/course_explorer/search/service.py` | `CourseSearchService`, `SemanticCourseScore`, `CourseSearchResult`, `SemanticSearchRead` |
 | `src/course_explorer/search/unified.py` | `UnifiedCourseSearchService`, `UnifiedCourseSearchResult`, `UnifiedSearchReport` |
 | `src/course_explorer/search/repository.py` | `SemanticSearchRepository` |
 | `src/course_explorer/search/commands.py` | `run_search_command` |
-| `src/course_explorer/search/lookup_commands.py` | `run_course_lookup_command`, `run_module_lookup_command`, `run_course_summaries_command`, `CourseLookupReport`, `ModuleLookupReport`, `CourseSummariesReport`, `_validate_lookup_input` |
+| `src/course_explorer/search/lookup_commands.py` | `run_catalogue_command`, `run_course_summaries_command`, `CatalogueReport`, `NarrowingCourse`, `NarrowingModule`, `NarrowingModuleVersion`, `CourseSummariesReport` |
 
-`UnifiedCourseSearchService` holds a `CurriculumRead`, a `CourseSearchService` or `None` when the site serves no semantic matching, a `CourseLookupService`, and `SearchSettings`. `CourseSearchService` holds the same `CurriculumRead`, a `SemanticSearchRead` repository, an `EmbeddingProvider`, `EmbeddingSettings`, and `SearchSettings`. `CourseLookupService` holds a `CurriculumRead` and `SearchSettings`, and `ModuleLookupService` holds a `CurriculumRead` and the current academic year.
+`UnifiedCourseSearchService` holds a `CurriculumRead`, a `CourseSearchService` or `None` when the site serves no semantic matching, a `CourseLookupService`, and `SearchSettings`. `CourseSearchService` holds the same `CurriculumRead`, a `SemanticSearchRead` repository, an `EmbeddingProvider`, `EmbeddingSettings`, and `SearchSettings`. `CourseLookupService` holds a `CurriculumRead`, `SearchSettings`, and an optional `LookupProjectionCache`.
 
 Every result DTO is frozen and closed: `FuzzyCourseResult(course, score)`, `CourseSearchResult(course, score)`, `SemanticCourseScore(group_id, sisu_course_unit_id, representative_source_hash, score)`, and `UnifiedCourseSearchResult(course, match_sources, fuzzy_score, semantic_score)`. `UnifiedSearchReport` carries the display language, the two effective thresholds, the activity scope, `semantic_available`, the effective tier order, and the merged results.
 
 ## Normalization and ordering
 
-`_normalized(value)` is `unicodedata.normalize("NFKC", value).casefold().strip()`, so case, compatibility forms, and outer whitespace never decide a match. `official_display_name(summary, display_language)` returns the official name of the requested language and falls back to the other official name only when the requested one is absent, so a hidden second name is never matched.
+`normalized_text(value)` in `src/course_explorer/search/projection.py` is `unicodedata.normalize("NFKC", value).casefold().strip()`, so case, compatibility forms, and outer whitespace never decide a match. `build_lookup_rows(records)` retains one `CourseLookupRow(summary, code_key, name_fi_key, name_en_key)` per summary, so a matcher normalizes each name and code once per dataset. `official_display_name(summary, display_language)` returns the official name of the requested language and falls back to the other official name only when the requested one is absent, so a hidden second name is never matched.
 
-`name_code_key(summary, display_name)` orders by `(display_name is None, _normalized(display_name), _normalized(code), summary.group_id)`, using `""` where a name or code is absent. `_alphabetical_key` prepends `not course.is_active`, and `exact_code_search` and `substring_search` both sort with it.
+`name_code_key(summary, display_name)` orders by `(display_name is None, normalized display name, normalized code, summary.group_id)`, using `""` where a name is absent. `_alphabetical_key` prepends `not row.summary.is_active`, and `exact_code_search` and `substring_search` both sort with it.
 
-`exact_code_search` splits the query with `re.split(r"[,\s]+", query.strip())`, normalizes every token into a set, and matches a represented course whose `_normalized(code)` is in that set, so a repeated or unmatched token changes nothing. `substring_search` matches `_substring_matches(normalized_query, display_name, code)`, which tests code containment first and then displayed-name containment.
+```text
+query = normalized_text(input)
+row   = CourseLookupRow(summary, code_key, name_fi_key, name_en_key)
+```
 
-`fuzzy_name_search` skips a course with no displayed name, collects the normalized displayed names of the rest, calls `_fuzzy_name_scores` once for the whole sequence, keeps `score >= threshold`, and sorts by `(not is_active, -score, _normalized(display_name), _normalized(code), group_id)`. The cutoff is `SearchSettings.fuzzy_search_min_score` unless the caller supplies `min_score`, and the token weight is `SearchSettings.fuzzy_token_match_weight`.
+`exact_code_search` splits the query with `re.split(r"[,\s]+", query.strip())`, normalizes every token into a set, and matches a row whose retained `code_key` is in that set, so a repeated or unmatched token changes nothing. `substring_search` matches `_substring_matches(normalized_query, display_name_key, code_key)`, which tests code containment first and then displayed-name containment.
+
+`fuzzy_name_search` skips a row with no displayed name key, collects the normalized displayed names of the rest, calls `_fuzzy_name_scores` once for the whole sequence, keeps `score >= threshold`, and sorts by `(not is_active, -score, normalized display name, code key, group_id)`. The cutoff is `SearchSettings.fuzzy_search_min_score` unless the caller supplies `min_score`, and the token weight is `SearchSettings.fuzzy_token_match_weight`.
 
 `_fuzzy_name_scores(query, names, *, threshold, token_weight)` returns one `0-100` score per name in one call, reads no database, and holds no state beyond that call:
 
@@ -75,11 +81,13 @@ When `include_inactive` is false the statement adds `AND courses.is_active IS TR
 6. Keeps a score only when its `sisu_course_unit_id` and `representative_source_hash` equal the record's, so a score whose stored version or representative source hash differs from the record's is dropped.
 7. Returns `CourseSearchResult` rows sorted by `(not is_active, -score, group_id)`.
 
-The caller-supplied `represented` sequence is what lets one unified query read the represented courses once. `tests/search/test_search_service.py` proves the identity filtering, the supplied-summary reuse, the configured and overridden thresholds, the active-only scope, and the absence of a result cap.
+The caller-supplied `represented` sequence is what lets one unified query pair the semantic scores with the current representatives, and `tests/search/test_search_service.py` proves the identity filtering, the supplied-summary reuse, the configured and overridden thresholds, the active-only scope, and the absence of a result cap.
 
 ## The merge
 
-`UnifiedCourseSearchService.search` performs one `list_represented_summaries` read and passes the result to every method it runs as `represented`. It then calls `exact_code_search`, `substring_search`, and `fuzzy_name_search` once each with the same query, display language, `include_inactive`, and the optional score overrides. Its semantic tuple and availability start empty and false, and it calls `search_courses` with the same inputs, inside a `try` block that catches `EmbeddingRequestError` alone, only when it holds a semantic service: that exception leaves an empty semantic tuple and `semantic_available` false, every other failure propagates, and a returned semantic tuple leaves availability true, whether or not it holds a result.
+`UnifiedCourseSearchService.search` reads `list_represented_summaries(active_only=None if include_inactive else True)` once when it holds a semantic service, so that method can pair its scores with the current representatives. It obtains one normalized row set from `CourseLookupService.lookup_rows(include_inactive=..., represented=represented)` and passes it to every lexical method as `rows`. A supplied projection cache answers that row set. Otherwise the represented sequence of the one semantic read supplies it, and a site without a semantic service passes none, so the lookup service reads the represented summaries once itself when it holds neither.
+
+It then calls `exact_code_search`, `substring_search`, and `fuzzy_name_search` once each with the same query, display language, `include_inactive`, and the optional score overrides. Its semantic tuple and availability start empty and false, and it calls `search_courses` with the same inputs, inside a `try` block that catches `EmbeddingRequestError` alone, only when it holds a semantic service: that exception leaves an empty semantic tuple and `semantic_available` false, every other failure propagates, and a returned semantic tuple leaves availability true, whether or not it holds a result.
 
 The call resolves the two effective thresholds from the supplied override or from `SearchSettings`, and returns one `UnifiedSearchReport` with the display language, the effective thresholds, the activity scope, availability, the effective tier order, and the merged results. Without a semantic service the effective tier order is the configured `search_tier_priority` without its `semantic` member, while the configured tuple itself holds the validated four members. `_merge` registers the method tuples in a fixed sequence, exact code, substring, fuzzy name, then semantic, whatever order the configured tier priority holds. The configured order decides the order of each result's sources, which source is primary, and the tier position that sorts the merged results. Registration works as follows:
 
@@ -97,37 +105,37 @@ For each merged group, `_merge` builds `tier_position = {method: index}` from `s
 
 The override ranges are read from the model metadata rather than repeated: `_SEMANTIC_SCORE_ADAPTER` and `_FUZZY_SCORE_ADAPTER` are `TypeAdapter`s built from `Annotated[float, *SearchSettings.model_fields[name].metadata]`, so a change to the `Field` bounds in `SearchSettings` changes the overrides the command allows too. `tests/search/test_search_command.py` proves that an invalid input reaches no settings load and no I/O.
 
-After validation, the command loads the search settings and opens one database context. It composes the curriculum repository, the lookup service and the unified service.
+After validation, the command loads the search settings and opens one database context. It composes the curriculum repository, the lookup service and the unified service. A supplied projection cache is handed to the lookup service, so the lexical methods read its rows and issue no catalogue read.
 
 Only when `include_semantic` is true does it load the embedding settings, build the semantic repository and the semantic service, and enter the request's one `EmbeddingProvider` through an `ExitStack` that owns the provider lifetime. A command run with `include_semantic` false therefore loads no embedding settings, builds no provider, reads no stored vector, and hands the unified service no semantic service.
 
 When the provider is composed it receives the query-local projection: `SEARCH_EMBEDDING_REQUEST_TIMEOUT_SECONDS` and `SEARCH_EMBEDDING_MAX_ATTEMPTS` replace the loaded timeout and attempt count on a `model_copy` of the validated embedding settings, so the query embedding request follows the search policy. The semantic service receives the loaded embedding settings, so the configuration hash and the hub vector the read uses come from those loaded settings. The hash covers the embedding model, the artifact hash, the dimension, the pooling, the normalization, and the runtime revision, so the two projected values do not enter it. The command returns the service's report, and the engine lifetime of a request holds at most one provider and one database context.
 
-`_validate_lookup_input(query, display_language)` refuses a query whose `_normalized` form is empty and a display language outside `("fi", "en")` before the lookup commands load settings. `run_course_lookup_command` and `run_module_lookup_command` each call it, and `run_course_summaries_command` returns an empty report for an empty input without loading anything.
+`run_course_summaries_command` returns an empty report for an empty input without loading anything. `run_catalogue_command` reads the configured academic year once, then either takes the course rows and module identities of a supplied lookup projection or reads the represented summaries and the projected module identities once inside one database lifetime. It maps only the narrowing fields, and selects each module's strict candidates through `module_version_candidates`.
 
-`scripts/search.py`, `scripts/course_lookup.py`, and `scripts/module_lookup.py` are thin `argparse` adapters over those commands. The search adapter maps `--active-only` to `include_inactive=not args.active_only` and prints `report.model_dump_json()`. The web API adapters `POST /api/search`, `POST /api/course-lookup`, `POST /api/module-lookup`, and `POST /api/course-summaries` do the same through their request models.
+`scripts/search.py` and `scripts/catalogue.py` are thin `argparse` adapters over those commands. The search adapter maps `--active-only` to `include_inactive=not args.active_only` and prints `report.model_dump_json()`, and the catalogue adapter takes no argument and prints its report. The web API adapters `POST /api/search`, `POST /api/catalogue`, and `POST /api/course-summaries` do the same through their request models.
 
-## Resolving identities and modules
+## Identity resolution and browser narrowing
 
 `CourseLookupService.resolve_courses` materializes the identifiers and returns `()` for an empty input before any read. Otherwise it runs `_resolve_represented_records`:
 
 1. One scoped `get_represented_summaries` read over the outer-trimmed identifiers fills `by_group_id`, and each identifier that matches a canonical group id resolves there. An all-canonical call skips the code projection entirely.
-2. For each other identifier, one `list_course_code_identities` read collects the `(group_id, code)` pairs of the whole catalogue, a shared `_normalized` comparison collects the candidate canonical ids, and a second scoped `get_represented_summaries` read loads only those candidates.
+2. For each other identifier, one `list_course_code_identities` read collects the `(group_id, code)` pairs of the whole catalogue, a shared `normalized_text` comparison collects the candidate canonical ids, and a second scoped `get_represented_summaries` read loads only those candidates.
 3. `by_normalized_code` maps each candidate's current representative code to its record, so a stored version's code is not matched on its own.
 4. Each input resolves in caller order, and a repeated input repeats the same record object. An unknown input raises `ValueError` naming the identifier, and a code held by more than one canonical course raises `ValueError` listing the canonical ids.
 
-`ModuleLookupService.substring_search` reads `list_module_lookup()` once, selects each canonical module's eligible versions through `module_version_candidates(versions, academic_year_start=...)`, skips a module with no candidate, matches `_substring_matches` over the displayed name and code of the candidates, and raises `ValueError` when the eligible set holds more than one version and any of them matches. It builds one `ModuleSummary` per match and sorts by `(module_type is not ModuleType.DEGREE_PROGRAMME, *name_code_key(...))`, so degree programmes come first.
+`web/src/shared/course/narrowing.ts` ports that matching to the browser over the catalogue. `narrowCourses` applies the same NFKC, casefold and trim rule through `normalizeLookup`, the displayed-name fallback and the `(not is_active, *name_code_key)` order with a code-point comparison. `narrowModules` returns one row per canonical group that has a matching eligible candidate. The row holds the group's full eligible candidate list and the displayed candidate's kind, code and names, which follow the displayed-name and code order with the exact version identity as the tie-break, so no version is guessed and a matching sibling never narrows the group. The local filter never caps the result.
 
 ## Tests
 
 | File | Covers |
 |---|---|
-| `tests/search/test_unified_search.py` | One dispatch per method with identical inputs, the single shared represented read, per-method source tagging with both scores kept apart, the configured tier order over activity and primary-method position, a reordered `SEARCH_TIER_PRIORITY`, the absence of a cap, the effective thresholds of the report, the partial report of a failed query embedding request with its lexical matches kept, and the propagation of every other failure from the semantic seam. |
+| `tests/search/test_unified_search.py` | One dispatch per method with identical inputs, the single row set shared by the three lexical methods, the one represented read when a semantic service is present, per-method source tagging with both scores kept apart, the configured tier order over activity and primary-method position, a reordered `SEARCH_TIER_PRIORITY`, the absence of a cap, the effective thresholds of the report, the partial report of a failed query embedding request with its lexical matches kept, and the propagation of every other failure from the semantic seam. |
 | `tests/search/test_search_service.py` | The shared summary mapping, the configured threshold, the one provider call, current-representative identity filtering, active-first order, the override and active-only forwarding, and the supplied-summary path that reads nothing. |
-| `tests/search/test_course_lookup.py` | The fuzzy cutoff, the token-coverage score of a misspelled query, the whole-name score above a token-only score, the fuzzy ordering, hidden-name exclusion, the exact multi-code split, substring name and code containment without a cap, the canonical-first resolver with its order, repeats and failures, and the module lookup with programmes first and ambiguity failing. |
+| `tests/search/test_course_lookup.py` | The fuzzy cutoff, the token-coverage score of a misspelled query, the whole-name score above a token-only score, the fuzzy ordering, hidden-name exclusion, the exact multi-code split, substring name and code containment without a cap, the canonical-first resolver with its order, repeats and failures, and the catalogue's strict module candidate selection. |
 | `tests/search/test_search_command.py` | The composition of both services in one engine lifetime, the query-local embedding projection the provider receives while the semantic service is composed with the loaded settings, the command returning the service's own report object, the single short-timeout query embedding request, the lexical-only run that reaches no embedding settings, provider or semantic repository and reports an effective tier order without semantic, and the validation that reaches no settings load. |
-| `tests/search/test_lookup_commands.py` | Both lookup commands refusing blank and unsupported input before settings, the empty summary request, both CLI adapters, and the API rejection of a blank query. |
-| `tests/search/test_semantic_search_repository.py` | Opt-in PostgreSQL proofs of the exact best-chunk read, the lifecycle and configuration filters, the inactive scope, the threshold, the scoped vector read, and the comparison command over the same data. |
+| `tests/search/test_lookup_commands.py` | The catalogue command's minimal projection and module kind, the no-argument catalogue adapter, and the empty summary request. |
+| `tests/search/test_semantic_search_repository.py` | Opt-in PostgreSQL proofs of the exact best-chunk read, the lifecycle and configuration filters, the inactive scope, the threshold, the scoped vector read, the descriptive subset in the full read's order, the retained descriptive triples that answer a repeated read with no statement, and the comparison command over the same data. |
 
 `tests/search/_service_support.py`, `_lookup_support.py`, and `_repository_support.py` supply the recording fakes and the catalogue builders the tests share.
 
@@ -136,9 +144,9 @@ When the provider is composed it receives the query-local projection: `SEARCH_EM
 - Adding a match method to the package: add the token to `SearchMethod` and `_SEARCH_METHODS` in `src/course_explorer/config.py` for the tier order, dispatch it in `UnifiedCourseSearchService.search`, and register it in `_merge`.
 - The merged order: `_merge` in `src/course_explorer/search/unified.py`.
 - The semantic statement and its filters: `SemanticSearchRepository.search` in `src/course_explorer/search/repository.py`.
-- Name or code normalization and the string methods: `_normalized`, `official_display_name`, and the three methods of `CourseLookupService` in `src/course_explorer/search/lookup.py`.
-- Caller input rules: `run_search_command` in `src/course_explorer/search/commands.py` and `_validate_lookup_input` in `src/course_explorer/search/lookup_commands.py`.
+- Name or code normalization and the string methods: `normalized_text` in `src/course_explorer/search/projection.py`, `official_display_name`, and the three methods of `CourseLookupService` in `src/course_explorer/search/lookup.py`. The browser port is `normalizeLookup`, `narrowCourses` and `narrowModules` in `web/src/shared/course/`.
+- Caller input rules: `run_search_command` in `src/course_explorer/search/commands.py`.
 - The query embedding request policy: the two `SEARCH_EMBEDDING_*` fields of `SearchSettings` in `src/course_explorer/config.py` and the projection `run_search_command` builds from them.
 - The optional semantic composition and the effective tier order: `run_search_command` in `src/course_explorer/search/commands.py` and `UnifiedCourseSearchService.search` in `src/course_explorer/search/unified.py`.
 
-The four methods, the tier order, and the three reads over official identity are described in [Search](/docs/backend/search-and-discovery/search.md).
+The four methods, the tier order, and the two reads over official identity are described in [Search](/docs/backend/search-and-discovery/search.md).

@@ -1,24 +1,36 @@
 /** Compact prerequisite-module boundary with graph-only marks and member expansion. */
 import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { useRef } from "react";
 import { useProfileSelector } from "../../../state/useProfileSelector";
 import { toggleNodeCompleted, toggleNodeExcluded } from "../actions";
 import { useAction } from "../../../shared/useAction";
 import type { GraphNodeData } from "./CourseNode";
 import { ErrorNotice } from "../../../shared/ErrorNotice";
 import { useWording } from "../../../shared/useWording";
+import { useGraphNodeHeight } from "./usePhoneGraphSizes";
 
+/** Render one module boundary node with its marks and member expansion. */
 export function ModuleNode({ data }: NodeProps & { data: GraphNodeData }) {
-  const { store, value: manuallyCompleted } = useProfileSelector((state) =>
-    state.prerequisites.completedNodeKeys.includes(data.actionKey),
+  const markKey = data.markKey;
+  const rootRef = useRef<HTMLDivElement>(null);
+  useGraphNodeHeight(rootRef, data.phone, data.id, data.onNodeHeight);
+  const { value: completedAny } = useProfileSelector(
+    (state) =>
+      markKey !== null &&
+      state.prerequisites.completedNodeKeys.includes(markKey),
   );
-  const { value: excluded } = useProfileSelector((state) =>
-    state.prerequisites.excludedNodeKeys.includes(data.actionKey),
+  const { value: excluded, store } = useProfileSelector(
+    (state) =>
+      markKey !== null &&
+      state.prerequisites.excludedNodeKeys.includes(markKey),
   );
+  const manuallyCompleted = completedAny && !excluded;
   const { runAction, error } = useAction();
   const { language, t } = useWording();
   const state = data.state;
   return (
     <div
+      ref={rootRef}
       inert={data.interactionDisabled}
       className={`graph-module${manuallyCompleted || state?.completed_by_courses ? " done" : ""}${excluded ? " excl" : ""}`}
     >
@@ -45,7 +57,8 @@ export function ModuleNode({ data }: NodeProps & { data: GraphNodeData }) {
           className={manuallyCompleted ? "is-done" : ""}
           aria-pressed={manuallyCompleted}
           onClick={() =>
-            runAction(() => toggleNodeCompleted(store, data.actionKey))
+            markKey !== null &&
+            runAction(() => toggleNodeCompleted(store, markKey))
           }
         >
           {t(manuallyCompleted ? "Completed (course)" : "Complete (course)")}
@@ -55,7 +68,8 @@ export function ModuleNode({ data }: NodeProps & { data: GraphNodeData }) {
           className={excluded ? "is-excl" : ""}
           aria-pressed={excluded}
           onClick={() =>
-            runAction(() => toggleNodeExcluded(store, data.actionKey))
+            markKey !== null &&
+            runAction(() => toggleNodeExcluded(store, markKey))
           }
         >
           {t(excluded ? "Excluded" : "Exclude")}

@@ -1,14 +1,36 @@
-# Portable loopback bind, process count, browser-drawing and served-feature policy for read-only
-# HTTP serving.
+# Portable loopback bind, process supervision, browser-drawing and served-feature policy for
+# read-only HTTP serving.
 WEB_HOST = "127.0.0.1"
 WEB_PORT = 8037
 WEB_WORKERS = 2
+# The supervisor replaces an exited router or worker on the same listening socket. This many
+# exits of the same role inside the window stop the unit for systemd to restart.
+WEB_RESPAWN_EXIT_LIMIT = 3
+WEB_RESPAWN_WINDOW_SECONDS = 60
 # Maximum report-graph drawing nodes plus edges before the browser refuses layout.
 PREREQUISITE_GRAPH_MAX_ELEMENTS = 500
 # Serve semantic matching, comparison and recommendations, and their browser surfaces.
 WEB_EMBEDDINGS_ENABLED = true
 # Serve inferred prerequisite data and the Inferred controls on every surface.
 WEB_INFERENCE_ENABLED = true
+# Retained serving caches. Byte values are bytes and entry keys are entry counts.
+# WEB_RETAINED_CACHE_AGGREGATE_BYTES is the ceiling for WEB_WORKERS times one process's
+# retained share, where that share is the sum of the three per-process shares below. One serving
+# process retains the normalized lookup projection, raw prerequisite source facts and descriptive
+# chunk tuples. The aggregate calculation is WEB_WORKERS *
+# (WEB_LOOKUP_PROJECTION_CACHE_BYTES + WEB_PREREQUISITE_SOURCE_CACHE_ENTRIES *
+# WEB_PREREQUISITE_SOURCE_CACHE_ENTRY_BYTES + WEB_CHUNK_CACHE_ENTRIES *
+# WEB_CHUNK_CACHE_ENTRY_BYTES).
+WEB_RETAINED_CACHE_AGGREGATE_BYTES = 1073741824
+# Bytes the normalized course and module lookup projection is accounted at.
+WEB_LOOKUP_PROJECTION_CACHE_BYTES = 33554432
+# Raw course and module source facts one process retains, and the bytes each is accounted at.
+WEB_PREREQUISITE_SOURCE_CACHE_ENTRIES = 8000
+WEB_PREREQUISITE_SOURCE_CACHE_ENTRY_BYTES = 7006
+# Descriptive chunk tuples one process retains, and the bytes each is accounted at. The per-entry
+# value estimates the retained size of one cached chunk tuple.
+WEB_CHUNK_CACHE_ENTRIES = 497
+WEB_CHUNK_CACHE_ENTRY_BYTES = 137794
 # Retention in days for the per-request usage records. The usage report keeps records from the
 # current hour back this many days. A requested hour window longer than this retention is refused.
 USAGE_RETENTION_DAYS = 30

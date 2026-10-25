@@ -1,23 +1,29 @@
-/** "?" button with a side drawer that explains one screen's options. */
+/** "?" button with a side drawer that explains one screen's options and links its guide. */
 import { useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { CLOSE } from "./icons";
 import { useWording } from "./useWording";
+import { usePhoneTabsOnClose } from "./usePhoneTabsOnClose";
 
+/** One explained group of options: its heading and its term entries. */
 export type HelpSection = {
   heading: string;
   items: readonly { term: string; text: string; tag?: boolean }[];
 };
 
+/** Render the help button that opens one screen's explanation drawer. */
 export function HelpTip({
   title,
   sections,
+  guide,
 }: {
   title?: string;
   sections: readonly HelpSection[];
+  /** One native link to the guide of the explained screen, opened in the current tab. */
+  guide?: { href: string; label: string };
 }) {
   const [open, setOpen] = useState(false);
   const { t } = useWording();
+  usePhoneTabsOnClose(open);
   return (
     <Dialog.Root open={open} modal={false} onOpenChange={setOpen}>
       <Dialog.Trigger asChild>
@@ -36,8 +42,8 @@ export function HelpTip({
             <Dialog.Title className="dt">
               {title ?? t("About these options")}
             </Dialog.Title>
-            <Dialog.Close className="dx" aria-label={t("Close")}>
-              {CLOSE}
+            <Dialog.Close className="pill-btn" aria-label={t("Close")}>
+              {t("Close")}
             </Dialog.Close>
           </header>
           <div className="help-body">
@@ -56,6 +62,11 @@ export function HelpTip({
                 </dl>
               </section>
             ))}
+            {guide && (
+              <a className="help-guide" href={guide.href}>
+                {guide.label}
+              </a>
+            )}
           </div>
         </Dialog.Content>
       </Dialog.Portal>

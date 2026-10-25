@@ -4,7 +4,7 @@ Search and discovery turn a query, a course pair, or a chosen course set into or
 
 ## Query search
 
-One query runs every match method a site serves: Exact code, Substring, Fuzzy search, and, on a site that serves the embedding features, Semantic. A site that serves no embedding features runs the three lexical methods. The merge keeps one entry per course with the methods that matched it. Merged results follow the configured tier order, with active courses before inactive ones. The same package answers the course lookup, the module lookup, and the id-or-code resolver that the other tabs use to turn a stored identity into a course. [Search](/docs/backend/search-and-discovery/search.md) describes the methods, their cutoffs, and the tier order.
+One query runs every match method a site serves: Exact code, Substring, Fuzzy search, and, on a site that serves the embedding features, Semantic. A site that serves no embedding features runs the three lexical methods. The merge keeps one entry per course with the methods that matched it. Merged results follow the configured tier order, with active courses before inactive ones. The same package answers the minimal catalogue the narrowing boxes filter locally and the id-or-code resolver that the other tabs use to turn a stored identity into a course. [Search](/docs/backend/search-and-discovery/search.md) describes the methods, their cutoffs, and the tier order.
 
 ## Comparing two courses
 

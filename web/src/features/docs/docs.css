@@ -1,4 +1,4 @@
-/** Wiki-only style system. Every declaration is scoped below the docs canvas. */
+/** Wiki-only style system for the docs route and its open menu state. */
 .docs-shell {
   --docs-bg: #13141b;
   --docs-panel: #181a22;
@@ -11,6 +11,11 @@
   --docs-accent: #a98ae0;
   --docs-accent-bg: rgb(169 138 224 / 12%);
   --docs-tuni: #4e008e;
+  --docs-layout-max: 1380px;
+  --docs-sidebar-width: 272px;
+  --docs-nav-padding-end: 14px;
+  --docs-nav-border-width: 1px;
+  --docs-header-gap: 24px;
   position: relative;
   z-index: 1;
   min-height: 100vh;
@@ -60,7 +65,7 @@
 }
 .docs-active {
   scroll-behavior: smooth;
-  scroll-padding-top: 84px;
+  scroll-padding-top: calc(var(--docs-header-height, 58px) + 26px);
 }
 .docs-shell .docs-header {
   position: sticky;
@@ -69,11 +74,14 @@
   height: 58px;
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: var(--docs-header-gap);
   padding: 0 28px;
   background: rgb(19 20 27 / 92%);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--docs-line);
+}
+.docs-shell .docs-header-start {
+  display: contents;
 }
 .docs-shell .docs-brand {
   display: flex;
@@ -133,7 +141,7 @@
   border: 1px solid var(--docs-line2);
   border-radius: 9px;
   outline: 0;
-  padding: 0 54px 0 36px;
+  padding: 0 12px 0 36px;
   background: var(--docs-panel);
   color: var(--docs-head);
   font:
@@ -154,18 +162,6 @@
   fill: none;
   stroke: var(--docs-muted);
   stroke-width: 1.7;
-}
-.docs-shell .docs-search > kbd {
-  position: absolute;
-  right: 10px;
-  top: 8px;
-  border: 1px solid var(--docs-line2);
-  border-radius: 5px;
-  padding: 1px 7px;
-  color: var(--docs-muted);
-  font:
-    11px ui-monospace,
-    monospace;
 }
 .docs-shell .docs-results {
   position: absolute;
@@ -250,17 +246,17 @@
 }
 .docs-shell .docs-layout {
   display: grid;
-  grid-template-columns: 272px minmax(0, 1fr) 220px;
-  max-width: 1380px;
+  grid-template-columns: var(--docs-sidebar-width) minmax(0, 1fr) 220px;
+  max-width: var(--docs-layout-max);
   margin: 0 auto;
 }
 .docs-shell .docs-nav {
   position: sticky;
-  top: 58px;
-  height: calc(100vh - 58px);
+  top: var(--docs-header-height, 58px);
+  height: calc(100dvh - var(--docs-header-height, 58px));
   overflow-y: auto;
-  padding: 26px 14px 40px 28px;
-  border-right: 1px solid var(--docs-line);
+  padding: 26px var(--docs-nav-padding-end) 40px 28px;
+  border-right: var(--docs-nav-border-width) solid var(--docs-line);
   scrollbar-width: thin;
   scrollbar-color: var(--docs-line2) transparent;
 }
@@ -378,23 +374,9 @@
   font-weight: 500;
 }
 .docs-shell .docs-nav a.home {
-  padding: 6px 10px;
-  border-color: transparent;
+  padding-inline: 10px;
   border-radius: 8px;
-  background: linear-gradient(
-    100deg,
-    rgb(78 0 142 / 28%),
-    rgb(169 138 224 / 8%)
-  );
   color: var(--docs-head);
-  box-shadow: inset 2px 0 0 var(--docs-tuni);
-}
-.docs-shell .docs-nav a.home:hover {
-  background: linear-gradient(
-    100deg,
-    rgb(78 0 142 / 40%),
-    rgb(169 138 224 / 12%)
-  );
 }
 .docs-shell .docs-nav a.on {
   border-left-color: var(--docs-accent);
@@ -604,8 +586,8 @@
 }
 .docs-shell .docs-toc {
   position: sticky;
-  top: 58px;
-  height: calc(100vh - 58px);
+  top: var(--docs-header-height, 58px);
+  height: calc(100dvh - var(--docs-header-height, 58px));
   overflow-y: auto;
   padding: 36px 20px 40px 8px;
 }
@@ -695,7 +677,7 @@
   opacity: 1;
 }
 .docs-shell .docs-markdown h2 {
-  scroll-margin-top: 84px;
+  scroll-margin-top: calc(var(--docs-header-height, 58px) + 26px);
 }
 .docs-shell .docs-markdown code {
   padding: 1px 6px;
@@ -820,41 +802,399 @@
   line-height: 1.65;
 }
 @media (max-width: 1180px) {
+  .docs-shell {
+    --docs-sidebar-width: 250px;
+  }
   .docs-shell .docs-layout {
-    grid-template-columns: 250px minmax(0, 1fr);
+    grid-template-columns: var(--docs-sidebar-width) minmax(0, 1fr);
   }
   .docs-shell .docs-toc {
     display: none;
   }
 }
 @media (max-width: 760px) {
-  .docs-shell .docs-header {
-    height: auto;
-    min-height: 58px;
-    flex-wrap: wrap;
-    gap: 10px 16px;
-    padding: 10px 16px;
-  }
   .docs-shell .docs-search {
-    order: 3;
-    flex-basis: 100%;
-    max-width: none;
-    margin-left: 0;
+    min-width: 0;
+  }
+  .docs-shell .docs-nav {
+    border-bottom: 1px solid var(--docs-line);
   }
   .docs-shell .docs-layout {
     grid-template-columns: minmax(0, 1fr);
-  }
-  .docs-shell .docs-nav {
-    position: static;
-    height: auto;
-    max-height: 260px;
-    border-right: 0;
-    border-bottom: 1px solid var(--docs-line);
   }
   .docs-shell main {
     padding: 28px 24px 60px;
   }
   .docs-shell article {
     overflow-x: auto;
+  }
+}
+/* The header group ends where the centered layout's sidebar content ends, and the search fills it. */
+@media (min-width: 2560px) {
+  .docs-shell .docs-header-start {
+    display: flex;
+    align-items: center;
+    gap: var(--docs-header-gap);
+    flex: none;
+    min-width: 0;
+    width: calc(
+      (100% - var(--docs-layout-max)) / 2 + var(--docs-sidebar-width) -
+        var(--docs-nav-padding-end) - var(--docs-nav-border-width)
+    );
+  }
+  .docs-shell .docs-header-start .docs-brand {
+    flex: none;
+  }
+  .docs-shell .docs-header-start .docs-search {
+    min-width: 0;
+    max-width: none;
+  }
+}
+
+/* Mobile documentation menu, which replaces the desktop header, sidebar, header search and GitHub
+   link below the phone breakpoint. */
+.docs-menu-open {
+  overflow: hidden;
+}
+@media (max-width: 760px) {
+  .docs-shell .docs-header {
+    height: calc(58px + env(safe-area-inset-top));
+    min-height: 0;
+    padding: env(safe-area-inset-top) 12px 0;
+  }
+  .docs-shell .docs-brand {
+    min-width: 0;
+    gap: 8px;
+  }
+  .docs-shell .docs-right {
+    min-width: 0;
+    margin-left: auto;
+    justify-content: flex-end;
+  }
+  .docs-shell .docs-header {
+    gap: 6px;
+  }
+  .docs-shell .docs-logo {
+    gap: 6px;
+    font-size: 12px;
+    line-height: 1;
+  }
+  .docs-shell .docs-logo i {
+    width: 22px;
+    height: 22px;
+    font-size: 10px;
+  }
+  .docs-shell .docs-home-link {
+    padding-left: 6px;
+    font-size: 12px;
+  }
+  .docs-shell .docs-button {
+    height: 30px;
+    flex: none;
+    padding: 0 7px;
+    font-size: 11.5px;
+    white-space: nowrap;
+  }
+  .docs-page-tools {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .docs-page-tools .docs-search {
+    width: auto;
+    max-width: none;
+    flex: 1;
+    margin: 0;
+  }
+  .docs-shell .docs-menu-trigger {
+    display: grid;
+    width: 30px;
+    height: 30px;
+    flex: none;
+    place-items: center;
+    padding: 0;
+    border: 1px solid var(--docs-line2);
+    border-radius: 7px;
+    background: var(--docs-panel);
+    cursor: pointer;
+    transition:
+      border-color 0.2s,
+      background 0.2s;
+  }
+  .docs-shell .docs-menu-trigger:hover,
+  .docs-shell .docs-menu-trigger[aria-expanded="true"] {
+    border-color: var(--docs-accent);
+    background: var(--docs-accent-bg);
+  }
+  .docs-shell .docs-menu-trigger svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: var(--docs-head);
+    stroke-width: 1.5;
+    stroke-linecap: round;
+  }
+  .docs-menu-scrim {
+    position: fixed;
+    z-index: 30;
+    top: var(--docs-header-height, 58px);
+    right: 0;
+    bottom: 0;
+    left: 0;
+    background: rgb(0 0 0 / 42%);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+  .docs-menu-scrim.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .docs-menu {
+    position: fixed;
+    z-index: 31;
+    top: var(--docs-header-height, 58px);
+    right: 0;
+    bottom: 0;
+    display: flex;
+    width: min(380px, 100vw);
+    flex-direction: column;
+    overflow: hidden;
+    border-left: 1px solid var(--docs-line2);
+    background: var(--docs-bg);
+    box-shadow: -24px 0 70px rgb(0 0 0 / 45%);
+    visibility: hidden;
+    transform: translateX(100%);
+    transition:
+      transform 0.32s cubic-bezier(0.22, 0.8, 0.2, 1),
+      visibility 0s linear 0.32s;
+  }
+  .docs-menu.open {
+    visibility: visible;
+    transform: none;
+    transition:
+      transform 0.32s cubic-bezier(0.22, 0.8, 0.2, 1),
+      visibility 0s;
+  }
+  .docs-menu-search {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--docs-line);
+  }
+  .docs-menu .docs-search {
+    width: auto;
+    max-width: none;
+    flex: 1;
+    margin: 0;
+  }
+  .docs-menu-search .docs-menu-close {
+    height: 26px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    font:
+      11.5px "JetBrains Mono",
+      ui-monospace,
+      monospace;
+  }
+  .docs-menu-body {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    overscroll-behavior: contain;
+  }
+  .docs-shell .docs-menu .docs-nav {
+    position: static;
+    top: auto;
+    height: auto;
+    max-height: none;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+    padding: 12px 8px 20px;
+    border-right: 0;
+  }
+  .docs-shell .docs-menu .docs-nav a {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .docs-shell .docs-menu .docs-nav a.sub {
+    padding-left: 30px;
+  }
+  .docs-shell .docs-menu .docs-nav a.sub[data-depth="3"] {
+    padding-left: 48px;
+  }
+  .docs-shell .docs-menu .docs-nav a.sub[data-depth="2"] {
+    margin-left: 14px;
+    padding-left: 16px;
+  }
+  .docs-shell .docs-menu .docs-nav a.sub[data-depth="3"] {
+    margin-left: 32px;
+    padding-left: 16px;
+  }
+  .docs-menu-foot {
+    flex: none;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--docs-line);
+  }
+  .docs-menu-foot .docs-github {
+    width: 100%;
+    justify-content: center;
+  }
+  .docs-shell .docs-nav h6 .docs-section-title {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 7px 16px;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    letter-spacing: inherit;
+    text-align: left;
+    text-transform: inherit;
+    cursor: pointer;
+  }
+  .docs-shell .docs-nav h6 .docs-section-title i {
+    font-size: 12px;
+    font-style: normal;
+    transition: transform 0.2s;
+  }
+  .docs-shell .docs-nav h6 .docs-section-title[aria-expanded="true"] i {
+    transform: rotate(90deg);
+  }
+  .docs-shell .docs-nav .docs-branch-title {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 1px 0;
+    padding: 6px 16px;
+    border: 0;
+    border-left: 2px solid transparent;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--docs-text);
+    font: inherit;
+    font-size: 14.5px;
+    line-height: 1.45;
+    text-align: left;
+    cursor: pointer;
+    transition:
+      background 0.25s,
+      color 0.25s,
+      border-color 0.25s;
+  }
+  .docs-shell .docs-nav .docs-branch-title.sub {
+    padding-left: 30px;
+    color: var(--docs-muted);
+    font-size: 14px;
+  }
+  .docs-shell .docs-nav .docs-branch-title.sub[data-depth="3"] {
+    padding-left: 48px;
+  }
+  .docs-shell .docs-nav .docs-branch-title:hover,
+  .docs-shell .docs-nav .docs-branch-title.open {
+    background: var(--docs-panel);
+    color: var(--docs-head);
+  }
+  .docs-shell .docs-nav .docs-branch-title i {
+    color: var(--docs-muted);
+    font-size: 11px;
+    font-style: normal;
+    transition: transform 0.2s;
+  }
+  .docs-shell .docs-nav .docs-branch-title[aria-expanded="true"] i {
+    transform: rotate(90deg);
+  }
+  .docs-shell .docs-nav h6 > button:not(.docs-section-title) {
+    padding-left: 16px;
+  }
+}
+
+/* Navigation row height and highlight geometry shared by the desktop sidebar and the phone menu. */
+.docs-shell .docs-nav a {
+  min-height: 33px;
+}
+.docs-shell .docs-nav h6 {
+  min-height: 33px;
+}
+.docs-shell .docs-nav .docs-branch-title {
+  min-height: 33px;
+}
+
+/* Home is a normal bordered button until its page is open. */
+.docs-shell .docs-nav a.home {
+  padding-block: 5px;
+  border: 1px solid var(--docs-line2);
+  background: var(--docs-panel);
+  box-shadow: none;
+}
+.docs-shell .docs-nav a.home:hover {
+  border-color: var(--docs-accent);
+  background: var(--docs-raised);
+}
+.docs-shell .docs-nav a.home.on {
+  border-color: transparent;
+  background: linear-gradient(
+    100deg,
+    rgb(78 0 142 / 28%),
+    rgb(169 138 224 / 8%)
+  );
+  box-shadow: inset 2px 0 0 var(--docs-tuni);
+}
+
+/* A double-nested row starts at its vertical guide, so its normal rounded highlight and accent
+   begin on that line rather than leaving the guide detached to the left. */
+.docs-shell .docs-nav a.sub[data-depth="2"] {
+  margin-left: 14px;
+  padding-left: 12px;
+}
+.docs-shell .docs-nav a.sub[data-depth="2"]::before {
+  left: 0;
+}
+/* Keep the first-nesting guide running alongside the double-nested rows. */
+.docs-shell .docs-nav a.sub[data-depth="2"]::after {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -14px;
+  border-left: 1px solid var(--docs-line2);
+  content: "";
+}
+.docs-shell .docs-nav a.sub[data-depth="3"] {
+  margin-left: 32px;
+  padding-left: 12px;
+}
+.docs-shell .docs-nav a.sub[data-depth="3"]::before {
+  left: 0;
+}
+
+/* The first nesting level starts on its own guide, so single-nested highlights begin on a line. */
+.docs-shell .docs-nav a[data-depth="1"] {
+  position: relative;
+}
+.docs-shell .docs-nav a[data-depth="1"]::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  border-left: 1px solid var(--docs-line2);
+  content: "";
+}
+
+/* The desktop section title and chevron sit on the highlight's vertical centre. */
+@media (min-width: 761px) {
+  .docs-shell .docs-nav h6 a {
+    transform: translateY(2.5px);
   }
 }

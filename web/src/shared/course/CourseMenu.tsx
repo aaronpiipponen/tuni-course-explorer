@@ -1,4 +1,4 @@
-/** One accessible shared course-action menu and replacement-dialog owner. */
+/** One accessible shared course-action menu and its replacement and completion dialogs. */
 import { useEffect, useRef, useState, type ReactElement } from "react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import type { CourseSummary } from "../../api/types";
@@ -6,13 +6,15 @@ import { addToComparison } from "../../features/compare/actions";
 import { ComparisonReplaceDialog } from "../../features/compare/ComparisonReplaceDialog";
 import { openPrerequisites } from "../../app/actions";
 import { useWebFeatures } from "../../app/useWebFeatures";
-import { toggleCompleted } from "../../state/course-actions";
 import { useFreeChoiceAdd } from "../../features/structure/useFreeChoiceAdd";
 import { useProfileSelector } from "../../state/useProfileSelector";
 import { ErrorNotice } from "../ErrorNotice";
 import { useAction } from "../useAction";
 import { useWording } from "../useWording";
+import { courseCredits, courseName } from "./presentation";
+import { useCourseCompletion } from "./useCourseCompletion";
 
+/** Render one course action menu and its replacement and completion dialogs. */
 export function CourseMenu({
   course,
   children,
@@ -38,11 +40,15 @@ export function CourseMenu({
   const [replaceOpen, setReplaceOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const freeChoice = useFreeChoiceAdd();
+  const completion = useCourseCompletion(course, () =>
+    triggerRef.current?.focus(),
+  );
   const onInteractionChangeRef = useRef(onInteractionChange);
   onInteractionChangeRef.current = onInteractionChange;
   useEffect(
-    () => onInteractionChangeRef.current?.(open || replaceOpen),
-    [open, replaceOpen],
+    () =>
+      onInteractionChangeRef.current?.(open || replaceOpen || completion.open),
+    [open, replaceOpen, completion.open],
   );
   const addComparison = () =>
     runAction(() => {
@@ -54,7 +60,12 @@ export function CourseMenu({
   return (
     <>
       <DropdownMenu.Root modal={false} open={open} onOpenChange={onOpenChange}>
-        <DropdownMenu.Trigger ref={triggerRef} asChild>
+        {/* The card click opens the menu, so a scroll gesture that starts on it stays a scroll. */}
+        <DropdownMenu.Trigger
+          ref={triggerRef}
+          asChild
+          onPointerDown={(event) => event.preventDefault()}
+        >
           {children}
         </DropdownMenu.Trigger>
         <DropdownMenu.Portal>
@@ -63,10 +74,29 @@ export function CourseMenu({
             side="bottom"
             align="center"
             sideOffset={3}
+            updatePositionStrategy="always"
             onCloseAutoFocus={(event) => {
-              if (replaceOpen) event.preventDefault();
+              if (replaceOpen || completion.open) event.preventDefault();
             }}
           >
+            <DropdownMenu.Label className="course-menu-title">
+              <span className="course-menu-facts">
+                <span className="course-menu-code">{course.code}</span>
+                <span className="course-credit">
+                  {courseCredits(course, language)}
+                </span>
+                <span
+                  className={`course-activity ${course.is_active ? "active" : "inactive"}`}
+                >
+                  <i aria-hidden="true" />
+                  {t(course.is_active ? "active" : "inactive")}
+                </span>
+              </span>
+              <span className="course-menu-name">
+                {courseName(course, language)}
+              </span>
+            </DropdownMenu.Label>
+            <DropdownMenu.Separator />
             {embeddings_enabled && (
               <DropdownMenu.Item
                 disabled={inComparison}
@@ -102,7 +132,7 @@ export function CourseMenu({
             </DropdownMenu.Item>
             <DropdownMenu.Item
               onSelect={() => {
-                runAction(() => toggleCompleted(store, course.group_id));
+                completion.toggle();
                 onOpenChange(false);
               }}
             >
@@ -124,6 +154,7 @@ export function CourseMenu({
         </DropdownMenu.Portal>
       </DropdownMenu.Root>
       {error && <ErrorNotice error={error} language={language} />}
+      {completion.dialog}
       {embeddings_enabled && (
         <ComparisonReplaceDialog
           course={course}

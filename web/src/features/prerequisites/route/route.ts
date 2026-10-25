@@ -1,7 +1,7 @@
-/** Route summary from authoritative graph/route data and renderer-specific route lighting. */
+/** Route summary from the native graph/route data and renderer-specific route lighting. */
 import type { DisplayLanguage } from "../../../state/types";
 import type {
-  GraphEdgeRelationship,
+  GraphDisplayNode,
   PrerequisiteGraphReport,
   PrerequisitePath,
   PrerequisitePathState,
@@ -9,7 +9,7 @@ import type {
 import type { GraphModel, ModelNode } from "../graph/model";
 import { connectorLabel } from "../graph/model";
 import { localizedName } from "../../../shared/course/presentation";
-import { diagnosticText, uiText } from "../../../shared/wording";
+import { diagnosticText, reasonText, uiText } from "../../../shared/wording";
 
 type RouteRow =
   | {
@@ -18,6 +18,7 @@ type RouteRow =
       covered: boolean;
     }
   | { kind: "opaque"; key: string; credits: string };
+/** One route rendered as its state, credits, rows, problems and shortfalls. */
 export type RouteSummary = {
   state: PrerequisitePathState;
   newCredits: string | null;
@@ -28,8 +29,7 @@ export type RouteSummary = {
   blockedNodeTitles: string[];
   problems: {
     identity: string;
-    actionKey: string;
-    occurrenceId: string;
+    nodeId: string;
     courseId: string | null;
     title: string | null;
     reason: string;
@@ -47,81 +47,127 @@ const routeStates = new Set<PrerequisitePathState>([
   "shortfall",
 ]);
 
-/** One drawing connection lights when any single member's own terminal-and-all-gates predicate holds. */
-export function edgeLights(
-  relationships: readonly GraphEdgeRelationship[],
-  selected: ReadonlySet<string>,
-): boolean {
-  return relationships.some(
-    (relationship) =>
-      relationship.occurrence_ids.some((id) => selected.has(id)) &&
-      relationship.condition_occurrence_ids.every((id) => selected.has(id)),
-  );
-}
-
 function courseLabel(
   graph: PrerequisiteGraphReport,
   id: string,
   language: DisplayLanguage,
 ): string | null {
-  const course =
-    graph.compilation.graph.course_nodes.find(
-      (node) => node.course.group_id === id,
-    )?.course ??
-    graph.compilation.tree.courses.find((item) => item.group_id === id);
+  const course = graph.solver.courses.find((item) => item.group_id === id);
   if (!course) return null;
   return uiText(language, "{code} {name}", {
     code: course.code,
     name: localizedName(language, course.name_fi, course.name_en, ""),
   }).trim();
 }
-function actionTitle(
+function displayNode(
   graph: PrerequisiteGraphReport,
-  action: string,
+  nodeId: string,
+): GraphDisplayNode | null {
+  return graph.display?.nodes.find((node) => node.node_id === nodeId) ?? null;
+}
+function pieceLabel(
+  graph: PrerequisiteGraphReport,
+  pieceId: string,
   language: DisplayLanguage,
 ): string | null {
-  if (action.startsWith("course:"))
-    return courseLabel(graph, action.slice("course:".length), language);
-  const module = graph.compilation.graph.module_nodes.find(
-    (item) => item.action_key === action,
-  );
-  if (module)
-    return localizedName(
-      language,
-      module.module.name_fi,
-      module.module.name_en,
-      module.module.code,
+  const piece = graph.solver.pieces.find((item) => item.piece_id === pieceId);
+  if (!piece) return null;
+  if (piece.kind === "module_block" && piece.module_group_id !== null) {
+    const module = graph.solver.modules.find(
+      (item) => item.group_id === piece.module_group_id,
     );
-  const connector = graph.compilation.graph.connector_nodes.find(
-    (item) => item.action_key === action,
-  );
-  return connector ? connectorLabel(connector, language) : null;
+    if (module)
+      return localizedName(
+        language,
+        module.name_fi,
+        module.name_en,
+        module.code ?? uiText(language, "module"),
+      );
+  }
+  const value = (min: string | number | null, max: string | number | null) => {
+    if (min === null) return "";
+    const a = Number(min);
+    const b = max === null ? a : Number(max);
+    return a === b ? `${a}` : `${a} to ${b}`;
+  };
+  switch (piece.kind) {
+    case "and":
+      return uiText(language, "AND");
+    case "or":
+    case "expanded_course":
+    case "course_alternatives":
+      return uiText(language, "OR");
+    case "cardinality":
+      return uiText(language, "pick {range}", {
+        range: value(piece.require_min, piece.require_max),
+      });
+    case "credits":
+      return uiText(language, "{value} cr", {
+        value: value(piece.credits_min, piece.credits_max),
+      });
+    case "course_count": {
+      const count = value(piece.count_min, piece.count_max);
+      return count === "1"
+        ? uiText(language, "1 course")
+        : uiText(language, "{value} courses", { value: count });
+    }
+    case "opaque_credits":
+      return uiText(language, "{value} cr other", {
+        value: value(piece.credits_min, piece.credits_max),
+      });
+    case "unresolved":
+      return reasonText(piece.reason ?? "unresolved", language);
+    default:
+      return null;
+  }
 }
+function nodeTitle(
+  graph: PrerequisiteGraphReport,
+  nodeId: string,
+  language: DisplayLanguage,
+  supportId: string | null = null,
+): string | null {
+  if (nodeId.startsWith("course:"))
+    return courseLabel(graph, nodeId.slice("course:".length), language);
+  const node = displayNode(graph, nodeId);
+  if (node !== null) {
+    if (node.kind === "module" && node.module_group_id !== null) {
+      const module = graph.solver.modules.find(
+        (item) => item.group_id === node.module_group_id,
+      );
+      if (module)
+        return localizedName(
+          language,
+          module.name_fi,
+          module.name_en,
+          module.code ?? uiText(language, "module"),
+        );
+    }
+    if (node.kind === "ignored")
+      return reasonText(node.reason ?? "ignored", language);
+    return connectorLabel(node, language);
+  }
+  const binding =
+    (supportId === null
+      ? undefined
+      : graph.solver.bindings.find((item) => item.support_id === supportId)) ??
+    graph.solver.bindings.find((item) => item.node_ids.includes(nodeId));
+  return binding ? pieceLabel(graph, binding.piece_id, language) : null;
+}
+/** Return the display summary of one route result. */
 export function buildRouteSummary(
   graph: PrerequisiteGraphReport,
   path: PrerequisitePath,
   language: DisplayLanguage,
 ): RouteSummary {
-  const selected = new Set(path.selected_occurrence_ids);
-  const courseIds = new Set<string>();
-  for (const edge of graph.compilation.graph.edges) {
-    if (!edgeLights(edge.relationships, selected)) continue;
-    for (const endpoint of [edge.source_node_id, edge.target_node_id])
-      if (endpoint.startsWith("course:"))
-        courseIds.add(endpoint.slice("course:".length));
-  }
   const newIds = new Set(path.new_courses.map(({ course }) => course.group_id));
   const rows: RouteRow[] = [];
   if (routeStates.has(path.state)) {
     for (const entry of path.new_courses)
       rows.push({ kind: "course", course: entry.course, covered: false });
-    for (const item of graph.compilation.graph.course_nodes)
-      if (
-        !item.is_root &&
-        courseIds.has(item.course.group_id) &&
-        !newIds.has(item.course.group_id)
-      )
-        rows.push({ kind: "course", course: item.course, covered: true });
+    for (const course of path.covered_courses)
+      if (!newIds.has(course.group_id))
+        rows.push({ kind: "course", course, covered: true });
     for (const item of path.new_opaque_work)
       rows.push({
         kind: "opaque",
@@ -129,66 +175,46 @@ export function buildRouteSummary(
         credits: format(Number(item.credits_min), language),
       });
   }
-  const coveredCredits = graph.compilation.graph.course_nodes
-    .filter(
-      (item) =>
-        !item.is_root &&
-        courseIds.has(item.course.group_id) &&
-        !newIds.has(item.course.group_id),
-    )
-    .reduce((sum, item) => sum + Number(item.course.credits_min), 0);
+  const coveredCredits = path.covered_courses
+    .filter((course) => !newIds.has(course.group_id))
+    .reduce((sum, course) => sum + Number(course.credits_min), 0);
   const total =
     path.total_new_credits === null ? null : Number(path.total_new_credits);
   const blockedCourseIds = [...path.blocked_excluded_group_ids];
   const blockedNodeTitles = path.blocked_excluded_node_keys.map(
-    (key) => actionTitle(graph, key, language) ?? key,
+    (key) => nodeTitle(graph, key, language) ?? key,
   );
   const seen = new Set<string>();
   const problems = path.problems.flatMap((problem) => {
     const identity = [
-      problem.occurrence_id,
-      problem.action_key,
+      problem.node_id,
       problem.reason,
+      problem.detail ?? "",
     ].join("|");
     if (seen.has(identity)) return [];
     seen.add(identity);
-    const courseId = problem.action_key.startsWith("course:")
-      ? problem.action_key.slice(7)
+    const courseId = problem.node_id.startsWith("course:")
+      ? problem.node_id.slice("course:".length)
       : null;
     return [
       {
         identity,
-        actionKey: problem.action_key,
-        occurrenceId: problem.occurrence_id,
+        nodeId: problem.node_id,
         courseId,
-        title: actionTitle(graph, problem.action_key, language),
+        title: nodeTitle(graph, problem.node_id, language, problem.support_id),
         reason: diagnosticText(problem.reason, problem.detail, language),
       },
     ];
   });
   const shortfalls = path.shortfalls.map((item) => {
-    const title = graph.compilation.graph.module_nodes.find(
-      (module) => module.node_id === `module:${item.occurrence_id}`,
-    );
-    const connector = graph.compilation.graph.connector_nodes.find(
-      (node) => node.node_id === `connector:${item.occurrence_id}`,
-    );
-    const label = title
-      ? localizedName(
-          language,
-          title.module.name_fi,
-          title.module.name_en,
-          title.module.code,
-        )
-      : connector
-        ? connectorLabel(connector, language)
-        : item.occurrence_id;
+    const label =
+      nodeTitle(graph, item.node_id, language, item.support_id) ?? item.node_id;
     const count =
       item.kind === "all_mandatory" ||
       item.kind === "cardinality" ||
       item.kind === "course_count";
     return {
-      title: label ?? item.occurrence_id,
+      title: label,
       text: count
         ? uiText(language, "{achieved} of {required} courses", {
             achieved: item.achieved_count ?? 0,
@@ -214,38 +240,25 @@ export function buildRouteSummary(
   };
 }
 
+/** Return the drawn route lighting of one route result. */
 export function buildRouteView(
-  graph: PrerequisiteGraphReport,
   path: PrerequisitePath,
   model: GraphModel,
   summary: RouteSummary,
 ): RouteView {
-  const selected = new Set(path.selected_occurrence_ids);
-  const litEdges = new Set(
-    routeStates.has(path.state)
-      ? model.edges
-          .filter((edge) => edgeLights(edge.relationships, selected))
-          .map((edge) => edge.id)
-      : [],
-  );
   const litNodes = new Set<string>([model.rootId]);
-  if (path.state === "no_solution" || path.state === "unresolved") {
-    const actions = new Set([
-      ...path.problems.map((problem) => problem.action_key),
-      ...path.blocked_excluded_node_keys,
-    ]);
-    const blockedCourses = new Set(path.blocked_excluded_group_ids);
-    for (const node of graph.compilation.graph.course_nodes)
-      if (blockedCourses.has(node.course.group_id))
-        actions.add(node.action_key);
-    for (const node of model.nodes)
-      if (actions.has(node.actionKey)) litNodes.add(node.id);
-  } else if (path.state !== "approximation_failed") {
+  const litEdges = new Set<string>();
+  if (routeStates.has(path.state)) {
+    for (const nodeId of path.selected_nodes) litNodes.add(nodeId);
+    const members = new Set(path.lit_members);
     for (const edge of model.edges)
-      if (litEdges.has(edge.id)) {
-        litNodes.add(edge.source);
-        litNodes.add(edge.target);
+      if (edge.memberIds.some((memberId) => members.has(memberId))) {
+        litEdges.add(edge.id);
       }
+  } else if (path.state === "no_solution" || path.state === "unresolved") {
+    for (const nodeId of path.problems.map((problem) => problem.node_id))
+      litNodes.add(nodeId);
+    for (const nodeId of path.blocked_excluded_node_keys) litNodes.add(nodeId);
   }
   const levels = new Map<string, number>([[model.rootId, 0]]);
   const children = new Map<string, string[]>();

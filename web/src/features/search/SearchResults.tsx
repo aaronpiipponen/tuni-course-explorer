@@ -9,6 +9,7 @@ import { useWording } from "../../shared/useWording";
 import { searchMethodLabel } from "../../shared/wording";
 import { useWebFeatures } from "../../app/useWebFeatures";
 import { SearchTierList, type SearchTierListHandle } from "./SearchTierList";
+import { SearchCount } from "./SearchCount";
 
 type Tier = { method: SearchMethod; results: UnifiedCourseSearchResult[] };
 
@@ -72,8 +73,7 @@ function SearchResultsView({
       )}
       <div className="head">
         <div className="eyebrow">
-          // <b>{report.results.length}</b>{" "}
-          {t(report.results.length === 1 ? "course" : "courses")}
+          <SearchCount count={report.results.length} />
         </div>
       </div>
       {report.results.length === 0 ? (
@@ -114,4 +114,5 @@ function SearchResultsView({
   );
 }
 
+/** Render the grouped search tiers of one report. */
 export const SearchResults = memo(SearchResultsView);

@@ -4,6 +4,7 @@ import type { ProfileState } from "./types";
 import type { BrowserStore } from "./store";
 import { StoreContext } from "./context";
 
+/** Subscribe to one selected value from the current profile. */
 export function useProfileSelector<T>(selector: (state: ProfileState) => T): {
   store: BrowserStore;
   value: T;

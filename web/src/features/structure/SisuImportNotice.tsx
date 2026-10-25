@@ -14,6 +14,7 @@ const REASON_KEYS: Record<SisuImportIssue["reason"], UiTextKey> = {
     "This course is not in the catalogue, so it was left out together with its completion.",
 };
 
+/** Render the transient result of one Sisu import. */
 export function SisuImportNotice({
   issues,
   onDismiss,

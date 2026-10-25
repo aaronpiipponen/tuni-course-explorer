@@ -233,7 +233,7 @@ class ConfigSetInput(BaseModel):
     @field_validator("key")
     @classmethod
     def validate_key(cls, value: str) -> str:
-        """Require one nonblank, NUL-free key the owning file carries."""
+        """Require one nonblank, NUL-free configuration key."""
         return require_text(value, "configuration key")
 
     @field_validator("value")

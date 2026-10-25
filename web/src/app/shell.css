@@ -1,4 +1,47 @@
 /** App shell, tab chrome, docs route and shell-only motion/layout styles. */
+:root {
+  --phone-tabbar-space: calc(56px + env(safe-area-inset-bottom, 0px));
+}
+body.phone-tabs-hidden {
+  --phone-tabbar-space: 0px;
+}
+.toast {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  z-index: 30;
+  padding: 10px 18px;
+  transform: translateX(-50%);
+  border: 1px solid #b07be8;
+  border-radius: 12px;
+  background: #0a0a0f;
+  font:
+    12px "JetBrains Mono",
+    ui-monospace,
+    monospace;
+  animation: toast-in 0.3s;
+}
+.toast-action {
+  margin-left: 12px;
+  padding: 0;
+  border: 0;
+  color: #d9c6f5;
+  background: transparent;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.toast-action:focus-visible {
+  outline: 2px solid #b07be8;
+  outline-offset: 3px;
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+}
 .app-shell {
   display: grid;
   height: 100dvh;
@@ -221,6 +264,7 @@
 html.app-active,
 html.app-active body {
   height: 100%;
+  min-height: 0;
   overflow: hidden;
 }
 .carousel {
@@ -316,25 +360,341 @@ body.structure-drawer-open .carousel-arrow.next {
     padding-inline: 56px;
   }
 }
-@media (max-width: 760px) {
+@media (min-width: 761px) and (max-width: 960px) {
   .topbar {
     height: auto;
-    min-height: 60px;
     flex-wrap: wrap;
-    gap: 10px 18px;
-    padding: 12px 18px 0;
+    gap: 0 18px;
+    padding: 8px 20px 0;
   }
   .topbar nav {
+    flex: 1 1 100%;
     order: 3;
-    flex-basis: 100%;
-    height: 42px;
-    overflow-x: auto;
+    min-height: 56px;
+    gap: 24px;
   }
-  .topbar-actions {
-    margin-left: auto;
+  .topbar .topbar-actions {
+    order: 2;
+    gap: 20px;
+  }
+  .topbar .error-notice {
+    flex-basis: 100%;
+    order: 4;
+  }
+  .nav-tab {
+    font-size: 14px;
+  }
+}
+.phone-tabbar,
+.phone-tabbar-error,
+.phone-more-scrim,
+.phone-more-sheet {
+  display: none;
+}
+@media (max-width: 760px) {
+  .topbar {
+    height: env(safe-area-inset-top, 0px);
+    min-height: 0;
+    overflow: hidden;
+    padding: 0;
+    border-bottom: 0;
+    gap: 0;
+  }
+  .topbar .brand,
+  .topbar nav,
+  .topbar .topbar-actions {
+    display: none;
+  }
+  .app-shell {
+    height: 100svh;
+    overflow: hidden;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+  /* The document holds the shell's small-viewport height, so it carries no scroll range beside
+     the shell. */
+  html.app-active,
+  html.app-active body {
+    height: 100svh;
+  }
+  .app-footer {
+    display: none;
   }
   .tab-pane {
-    padding-inline: 48px;
+    padding: 12px;
+  }
+  .carousel-window,
+  .tab-pane {
+    touch-action: pan-y pinch-zoom;
+  }
+  .carousel-arrow {
+    display: none;
+  }
+  .phone-tabbar {
+    position: relative;
+    z-index: 30;
+    display: grid;
+    height: var(--phone-tabbar-space);
+    min-height: 0;
+    padding-bottom: env(safe-area-inset-bottom);
+    overflow: hidden;
+    transition:
+      height 0.24s cubic-bezier(0.22, 0.8, 0.2, 1),
+      opacity 0.18s ease,
+      transform 0.24s cubic-bezier(0.22, 0.8, 0.2, 1),
+      border-color 0.18s ease,
+      visibility 0s linear;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    border-top: 1px solid rgb(255 255 255 / 12%);
+    background: #0a0a0f;
+  }
+  .phone-tab {
+    position: relative;
+    display: flex;
+    min-width: 0;
+    min-height: 56px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 4px 2px;
+    border: 0;
+    color: rgb(255 255 255 / 55%);
+    background: transparent;
+    font:
+      500 10px/1.15 Inter,
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      "Segoe UI",
+      sans-serif;
+    text-align: center;
+    cursor: pointer;
+  }
+  .phone-tab svg {
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+  }
+  .phone-tab > span {
+    min-width: 0;
+    max-width: 100%;
+    white-space: nowrap;
+  }
+  .phone-tab.active {
+    color: #fff;
+  }
+  .phone-tab.active svg {
+    stroke: #b07be8;
+  }
+  .phone-tab.active::before {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 2px;
+    background: #b07be8;
+    content: "";
+  }
+  .phone-tab:focus-visible,
+  .phone-more-docs:focus-visible,
+  .phone-more-sheet .profile-trigger:focus-visible {
+    outline: 2px solid #b07be8;
+    outline-offset: -2px;
+  }
+  body.phone-tabs-hidden .phone-tabbar {
+    height: 0;
+    padding-bottom: 0;
+    opacity: 0;
+    transform: translateY(100%);
+    visibility: hidden;
+    border-top-width: 0;
+    transition:
+      height 0.24s cubic-bezier(0.22, 0.8, 0.2, 1),
+      opacity 0.18s ease,
+      transform 0.24s cubic-bezier(0.22, 0.8, 0.2, 1),
+      border-color 0.18s ease,
+      visibility 0s linear 0.24s;
+  }
+  .phone-tabbar-error {
+    position: fixed;
+    right: 12px;
+    bottom: calc(var(--phone-tabbar-space) + 8px);
+    left: 12px;
+    z-index: 31;
+    display: block;
+    transition: bottom 0.24s cubic-bezier(0.22, 0.8, 0.2, 1);
+  }
+  .toast {
+    bottom: calc(var(--phone-tabbar-space) + 12px);
+    width: max-content;
+    max-width: calc(100vw - 24px);
+    white-space: normal;
+    transition: bottom 0.24s cubic-bezier(0.22, 0.8, 0.2, 1);
+  }
+  .phone-more-scrim {
+    position: fixed;
+    inset: 0 0 var(--phone-tabbar-space) 0;
+    z-index: 32;
+    display: block;
+    background: rgb(0 0 0 / 45%);
+    transition: bottom 0.24s cubic-bezier(0.22, 0.8, 0.2, 1);
+  }
+  .phone-more-sheet {
+    position: fixed;
+    right: 0;
+    bottom: var(--phone-tabbar-space);
+    left: 0;
+    z-index: 33;
+    display: block;
+    max-height: calc(
+      100dvh - var(--phone-tabbar-space) - env(safe-area-inset-top) - 12px
+    );
+    overflow-y: auto;
+    padding: 12px;
+    overscroll-behavior: contain;
+    border-top: 1px solid rgb(255 255 255 / 18%);
+    border-radius: 16px 16px 0 0;
+    background: #0a0a0f;
+    box-shadow: 0 -20px 60px rgb(0 0 0 / 70%);
+    touch-action: pan-y;
+    transition:
+      bottom 0.24s cubic-bezier(0.22, 0.8, 0.2, 1),
+      max-height 0.24s cubic-bezier(0.22, 0.8, 0.2, 1);
+  }
+  .phone-more-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgb(255 255 255 / 12%);
+  }
+  .phone-more-head .pill-btn {
+    min-height: 44px;
+  }
+  .phone-more-row {
+    display: flex;
+    min-height: 48px;
+    align-items: center;
+  }
+  .phone-more-row > * {
+    width: 100%;
+    min-width: 0;
+  }
+  .phone-more-row + .phone-more-row,
+  .phone-more-utilities {
+    border-top: 1px solid rgb(255 255 255 / 10%);
+  }
+  .phone-more-secondary {
+    display: grid;
+    grid-template-rows: 1fr;
+    opacity: 1;
+    transition:
+      grid-template-rows 0.3s cubic-bezier(0.22, 0.8, 0.2, 1),
+      opacity 0.2s ease;
+  }
+  .phone-more-secondary-inner {
+    min-height: 0;
+    overflow: hidden;
+  }
+  .phone-more-utilities {
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .phone-more-utilities > * {
+    width: auto;
+  }
+  .phone-more-docs {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 16px;
+    border: 1px solid #b07be8;
+    border-radius: 999px;
+    color: #fff;
+    background: rgb(78 0 142 / 55%);
+    font:
+      12px ui-monospace,
+      SFMono-Regular,
+      Menlo,
+      monospace;
+    text-decoration: none;
+    transition: 0.2s;
+  }
+  .phone-more-sheet .language-control {
+    display: flex;
+    min-height: 48px;
+    align-items: center;
+  }
+  .phone-more-sheet .language-switch {
+    min-height: 44px;
+  }
+  .phone-more-sheet .language-switch > span {
+    display: grid;
+    min-height: 40px;
+    align-items: center;
+    padding-inline: 16px;
+  }
+  /* An open My plan panel hides the utility row and disclaimer with the sheet's motion, while
+     the sheet keeps its content height instead of stretching through the empty screen below it. */
+  .phone-more-sheet:has(.profile-menu[data-state="open"])
+    .phone-more-secondary {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+  .phone-more-sheet .profile-menu {
+    display: grid;
+    grid-template-rows: 1fr;
+    overflow: hidden;
+  }
+  .phone-more-sheet .profile-menu-inner {
+    min-height: 0;
+    overflow: hidden;
+  }
+  .phone-more-sheet .profile-menu[data-state="open"] {
+    animation: profile-mobile-in 0.3s cubic-bezier(0.22, 0.8, 0.2, 1) both;
+  }
+  .phone-more-sheet .profile-menu[data-state="closed"] {
+    animation: profile-mobile-out 0.3s cubic-bezier(0.22, 0.8, 0.2, 1) both;
+  }
+  @keyframes profile-mobile-in {
+    from {
+      grid-template-rows: 0fr;
+      margin-top: 0;
+      opacity: 0;
+      transform: translateY(-6px);
+    }
+    to {
+      grid-template-rows: 1fr;
+      margin-top: 8px;
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes profile-mobile-out {
+    from {
+      grid-template-rows: 1fr;
+      margin-top: 8px;
+      opacity: 1;
+      transform: none;
+    }
+    to {
+      grid-template-rows: 0fr;
+      margin-top: 0;
+      opacity: 0;
+      transform: translateY(-6px);
+    }
+  }
+  .phone-more-sheet .app-footer {
+    display: block;
+    padding: 12px 4px 0;
+    border-top: 1px solid var(--color-line);
+    font-size: 11px;
   }
 }
 @media (max-width: 600px) {

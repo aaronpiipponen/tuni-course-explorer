@@ -1,7 +1,7 @@
-"""One exact zero-suppressed family core shared by satisfaction and pathing.
+"""One exact zero-suppressed family core for prerequisite satisfaction.
 
-Both fixed-basis satisfaction and minimum-credit pathing carry exact sets of canonical-course
-identities through a zero-suppressed decision DAG. This module owns that one generic core:
+Fixed-basis satisfaction carries exact sets of canonical-course identities through a
+zero-suppressed decision DAG. This module owns that one generic core:
 interned nodes with zero suppression, family union, union-product join, inclusive weighted
 lower/upper bound filtering, existential variable projection, exact membership, a
 strictly-below-budget maximum, exact set intersection, single-variable presence restriction, and
@@ -9,9 +9,8 @@ the exact inverses of the union-product join and predicate projection, over call
 orderable variables and weights, with invocation-local operation memos. The inverse/restriction
 operations reconstruct the members of an operand that can produce an allowed output, so a
 consumer can derive exact provenance backwards from one selected identity instead of carrying
-forward evidence for every derivation. `satisfaction._WitnessFamilies` and `path._PathFamilies`
-subclass it and add only their own variable/weight glue, so the two consumers cannot drift into
-two near-duplicate DAGs.
+forward evidence for every derivation. The satisfaction evaluator supplies its variable and weight
+semantics through this core.
 
 A family is a set of finite subsets of variables. Terminal `ZERO` is the empty family and terminal
 `ONE` holds exactly the empty subset. An internal `(variable, low, high)` node splits a family by
@@ -36,9 +35,9 @@ _MISS = object()
 class _Families[V: Hashable]:
     """One transient zero-suppressed decision DAG over subsets of orderable variables.
 
-    The operation memos live for the owner's lifetime (one satisfaction session or one path
-    calculation) so repeated union/join of the same handles are memoized. They never outlive the
-    owner and are never a curriculum cache.
+    The operation memos live for the owner's lifetime, one satisfaction session, so repeated
+    union/join of the same handles are memoized. They never outlive the owner and are never a
+    curriculum cache.
     """
 
     ZERO = _ZERO

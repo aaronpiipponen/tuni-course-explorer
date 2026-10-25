@@ -1026,11 +1026,11 @@ describe("signed-in tab session", () => {
     for (const transition of TAB_TRANSITIONS.slice(1)) {
       expect(headingIsHidden(container, transition.panel)).toBe(true);
     }
-    // The header carries GitHub, Wiki, the App address and the sign-out control, and no account
+    // The header carries GitHub, Docs, the App address and the sign-out control, and no account
     // name.
     const header = container.querySelector("header");
     expect(header?.textContent).toContain(wording.github);
-    expect(header?.textContent).toContain(wording.wiki);
+    expect(header?.textContent).toContain(wording.docs);
     expect(header?.textContent).toContain(wording.app);
     expect(header?.textContent).toContain(wording.signOut);
     expect(header?.textContent).not.toContain(OPERATOR);
@@ -1041,7 +1041,7 @@ describe("signed-in tab session", () => {
     expect(githubLink?.getAttribute("href")).toBe(REPOSITORY_URL);
     expect(githubLink?.getAttribute("target")).toBe("_blank");
     const wikiLink = headerLinks.find((link) =>
-      link.textContent?.includes(wording.wiki),
+      link.textContent?.includes(wording.docs),
     );
     expect(wikiLink?.getAttribute("href")).toBe(`${APP_URL}docs#home`);
     expect(markerOf(container, wording.dashboard.serving)).not.toContain(

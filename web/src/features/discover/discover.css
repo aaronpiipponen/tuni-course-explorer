@@ -115,11 +115,26 @@ button.discover-chip {
   margin: 0 0 8px;
 }
 .discover-basis-list {
-  max-height: 300px;
-  overflow: auto;
+  display: flex;
+  max-height: min(50vh, 420px);
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  margin-top: 8px;
+  padding-bottom: 8px;
+  overscroll-behavior: contain;
 }
 .discover-basis-list .course-list-row {
+  flex: none;
   min-width: 0;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 10px;
+  background: #0a0a0f;
+}
+.discover-basis-list .course-list-row.open {
+  border-color: #b07be8;
+  background: rgb(176 123 232 / 12%);
+  box-shadow: inset 2px 0 0 #b07be8;
 }
 .discover-loading {
   margin-top: 20px;
@@ -179,31 +194,59 @@ button.discover-chip {
 }
 .discover-result-row {
   display: grid;
+  width: 100%;
+  min-width: 0;
   grid-template-columns: minmax(0, 1fr) minmax(230px, 0.48fr);
   align-items: stretch;
   gap: 12px;
   padding: 8px;
   border: 1px solid rgb(255 255 255 / 12%);
   border-radius: 12px;
-  background: #0a0a0f;
+  color: #fff;
+  text-align: left;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+.discover-result-row:focus-visible {
+  outline: 2px solid #b07be8;
+  outline-offset: -2px;
 }
 /* A next-course row keeps the two-meter row geometry with one, both or no meter shown. */
 .discover-result-row.next-course {
   min-height: 60px;
 }
-/* All lists only fully covered courses, so its row holds the card alone and widens its title. */
+/* An All next-course row has no coverage meters, so the row holds the card alone and widens its
+   title. */
 .discover-result-row.no-coverage {
   grid-template-columns: minmax(0, 1fr);
 }
-.discover-result-row > .course-card-shell {
-  align-self: center;
+.discover-result-list > .course-card-shell.course-row {
   margin: 0;
   border: 0;
-  background: transparent;
+  border-radius: 12px;
+  background: #0a0a0f;
+  box-shadow: none;
 }
-.discover-result-row > .course-card-shell .course-card {
-  grid-template-columns: 34px 100px minmax(0, 1fr) 240px 80px 0;
-  padding: 0 8px;
+.discover-result-list > .course-card-shell.course-row:hover {
+  background-image: linear-gradient(
+    rgb(255 255 255 / 4%),
+    rgb(255 255 255 / 4%)
+  );
+}
+.discover-result-list > .course-card-shell.course-row.open {
+  background-image: linear-gradient(
+    rgb(176 123 232 / 12%),
+    rgb(176 123 232 / 12%)
+  );
+  box-shadow: inset 2px 0 0 #b07be8;
+}
+@media (min-width: 1200px) {
+  .discover-result-row > .course-card {
+    align-self: center;
+    grid-template-columns: 34px 100px minmax(0, 1fr) 240px 80px 0;
+    padding: 0 8px;
+  }
 }
 .discover-result-meters {
   display: flex;
@@ -242,6 +285,11 @@ button.discover-chip {
   font-weight: 500;
   text-align: right;
 }
+@media (max-width: 1199px) {
+  .discover-result-meters {
+    padding-inline: 12px;
+  }
+}
 .discover-empty {
   padding: 60px 0;
   color: rgb(255 255 255 / 55%);
@@ -263,27 +311,117 @@ button.discover-chip {
     border-left: 0;
   }
 }
-@media (max-width: 680px) {
-  .discover-result-row.next-course {
-    min-height: 203px;
-  }
-}
 @media (max-width: 560px) {
-  .discover-main {
-    padding: 30px 12px 90px;
-  }
-  .discover-tab {
-    padding: 10px 12px;
-    font-size: 15px;
-  }
   .discover-controls {
     align-items: flex-start;
   }
-  .discover-result-row > .course-card-shell .course-card {
-    grid-template-columns: 22px minmax(75px, auto) minmax(0, 1fr) 72px 0 0;
-    gap: 0 6px;
+}
+@media (min-width: 681px) {
+  .discover-main {
+    max-width: 1400px;
   }
-  .discover-meter {
-    grid-template-columns: 82px minmax(30px, 1fr) 38px;
+}
+@media (max-width: 680px) {
+  .discover-basis-summary .discover-chip:not(.more) {
+    font-size: 0;
+  }
+  .discover-basis-summary .discover-chip:not(.more) b {
+    margin-right: 0;
+    font-size: 10.5px;
+  }
+  .tab-pane[data-tab="discover"] {
+    padding: 0;
+  }
+  .discover-main {
+    padding: 0;
+  }
+  .discover-phone-head {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    border-bottom: 1px solid rgb(255 255 255 / 14%);
+    background: #0a0a0f;
+  }
+  .discover-phone-head .discover-tabs {
+    flex: 1;
+    gap: 4px;
+    margin: 0;
+    border: 0;
+  }
+  .discover-phone-head .discover-tab {
+    min-height: 40px;
+    padding: 0 10px;
+    font-size: 13px;
+  }
+  .discover-settings-trigger {
+    width: 40px;
+    padding: 0;
+    flex: none;
+    justify-content: center;
+  }
+  .phone-sheet .discover-controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 10px;
+    align-items: stretch;
+    margin: 0;
+  }
+  .phone-sheet .discover-controls > .activity-switch {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+  .phone-sheet .discover-controls > .activity-switch > button {
+    flex: 1;
+    justify-content: center;
+  }
+  .phone-sheet .discover-controls .help-tip {
+    grid-column: 2;
+    justify-self: end;
+  }
+  .discover-result-meters {
+    border-top: 1px solid rgb(255 255 255 / 12%);
+  }
+  .discover-tabs {
+    flex-wrap: wrap;
+  }
+  .discover-result-row.next-course {
+    min-height: 0;
+  }
+  .discover-chip {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+  .discover-basis-list .course-list-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .discover-basis-list .course-list-code {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .discover-basis-list .course-list-credit {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+  }
+  .discover-basis-list .course-list-name {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+  .discover-main .root-picker-card {
+    max-height: none;
+    overflow: hidden;
+  }
+  .discover-main .discover-basis-list {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
   }
 }

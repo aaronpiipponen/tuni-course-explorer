@@ -1,19 +1,19 @@
-"""Shared closed request model for both explicit prerequisite operations."""
+"""Closed request model for the structural prerequisite graph read."""
 
 from pydantic import BaseModel, ConfigDict
 
 
-class PrerequisitesRequest(BaseModel):
-    """Prerequisite command inputs shared by the graph and minimum-route adapters."""
+class PrerequisiteGraphRequest(BaseModel):
+    """Structural prerequisite graph inputs.
+
+    An active-only read keeps an inactive selected course where the graph reaches it, and it draws
+    the target course whether or not that course is active.
+    """
 
     model_config = ConfigDict(extra="forbid")
     target_code: str
-    completed_codes: tuple[str, ...] = ()
     selected_codes: tuple[str, ...] = ()
-    excluded_codes: tuple[str, ...] = ()
+    completed_codes: tuple[str, ...] = ()
     include_recommended: bool = False
     include_inferred: bool = False
     active_only: bool = False
-    basis: str = "completed"
-    completed_node_keys: tuple[str, ...] = ()
-    excluded_node_keys: tuple[str, ...] = ()

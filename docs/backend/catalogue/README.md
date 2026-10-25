@@ -16,6 +16,6 @@ A course and a module each have one canonical identity that all of their officia
 
 ## The official structure projection
 
-[Structure of studies in the catalogue](/docs/backend/catalogue/study-structure.md) projects the official rule tree of one selected module version into modules, courses, and rules exactly as the university states them, so it runs no inference and applies no activity filter.
+[Structure of studies in the catalogue](/docs/backend/catalogue/study-structure.md) projects the official rule trees of the requested roots into modules, courses, and rules exactly as the university states them, so it runs no inference and applies no activity filter. The minimal official catalogue read serves the one list that the browser's narrowing boxes filter locally, and the structure read projects several roots over one shared module and summary map.
 
 The capture and normalization internals, the read seam, the table detail, and the projection traversal are described in [Capture and normalization](/docs/backend/catalogue/capture-and-normalization.md), [Curriculum reads](/docs/backend/catalogue/curriculum-reads.md), [Tables and migrations](/docs/backend/catalogue/tables-and-migrations.md), and [Structure projection](/docs/backend/catalogue/structure-projection.md).

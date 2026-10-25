@@ -32,6 +32,7 @@ function cells(
   return ["", entry.node.title ?? "", entry.node.rule];
 }
 
+/** Render one official choice option row with its course completion button. */
 export function DrawerOptionRow({
   option,
   selected,

@@ -5,6 +5,7 @@ import {
   useSelectionGeometry,
 } from "./selectionGeometry";
 
+/** Render one measured two-option sliding switch. */
 export function TwoOptionSwitch({
   labels,
   firstSelected,

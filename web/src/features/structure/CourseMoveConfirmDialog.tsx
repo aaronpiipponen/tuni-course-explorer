@@ -8,6 +8,7 @@ import { ErrorNotice } from "../../shared/ErrorNotice";
 import { moduleName } from "./presentation";
 import type { PulledCourse } from "./edits";
 import { useWording } from "../../shared/useWording";
+import { usePhoneTabsOnClose } from "../../shared/usePhoneTabsOnClose";
 
 /** One later-addition or reset operation's holder, its pulled courses and its optional module source. */
 export type CourseMoveRequest = {
@@ -68,6 +69,7 @@ export function CourseMoveConfirmDialog({
   returnFocus(): void;
 }) {
   const { language, t } = useWording();
+  usePhoneTabsOnClose(request !== null);
   const name = request ? moduleName(request.holder, language) : "";
   const count = request?.moves.length ?? 0;
   const moves = count > 0;

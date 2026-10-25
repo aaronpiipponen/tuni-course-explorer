@@ -95,10 +95,11 @@ def test_automatic_configuration_and_override_precedence(
     assert SearchSettings().search_embedding_max_attempts == 1
     assert load_worker_gpu_reboot_settings().worker_gpu_reboot_interval_minutes == 120
     assert LocalLifecycleSettings().poll_interval_seconds == 0.5
-    # Both site unit identities are machine identity, so they compose from the environment file
-    # beside the worker connection values.
+    # Both site unit identities and the web unit's manager scope are machine identity, so they
+    # compose from the environment file beside the worker connection values.
     assert load_administrative_site_settings().web_service_unit == "replace-with-web.service"
     assert load_administrative_site_settings().admin_service_unit == "replace-with-admin.service"
+    assert load_administrative_site_settings().web_service_scope == "user"
 
     # An explicit process override wins over both files.
     monkeypatch.setenv("EMBEDDING_PORT", "18080")
@@ -111,6 +112,7 @@ def test_automatic_configuration_and_override_precedence(
     monkeypatch.setenv("USAGE_RETENTION_DAYS", "7")
     monkeypatch.setenv("ADMIN_SITE_WEB_SERVICE_UNIT", "synthetic-site-web.service")
     monkeypatch.setenv("ADMIN_SITE_ADMIN_SERVICE_UNIT", "synthetic-site-admin.service")
+    monkeypatch.setenv("ADMIN_SITE_WEB_SERVICE_SCOPE", "system")
     monkeypatch.setenv("ADMIN_WEB_PORT", "18027")
     monkeypatch.setenv("ADMIN_WEB_SESSION_IDLE_MINUTES", "5")
     monkeypatch.setenv("ADMIN_WEB_POLL_SECONDS", "3")
@@ -127,6 +129,7 @@ def test_automatic_configuration_and_override_precedence(
     assert AdminWebSettings().admin_web_poll_seconds == 3
     assert load_administrative_site_settings().web_service_unit == "synthetic-site-web.service"
     assert load_administrative_site_settings().admin_service_unit == "synthetic-site-admin.service"
+    assert load_administrative_site_settings().web_service_scope == "system"
 
     # A candidate configuration supplies its own WebSettings port in front of both files and in
     # front of the process override the handoff marker would otherwise admit.

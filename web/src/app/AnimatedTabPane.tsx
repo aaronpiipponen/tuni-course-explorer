@@ -4,6 +4,7 @@ import { motion, useIsPresent } from "framer-motion";
 import type { TabId } from "../state/types";
 import { useReducedMotion } from "../shared/useReducedMotion";
 
+/** Render one tab pane with directional enter and exit motion. */
 export function AnimatedTabPane({
   tab,
   direction,

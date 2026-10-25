@@ -1,12 +1,10 @@
-"""Drawing-graph projection, deduplication, wrapper collapse, and connector pruning."""
+"""Native drawing projection: sharing, marks, members and display identity."""
 
 from __future__ import annotations
 
 from decimal import Decimal
 
-from course_explorer.curriculum import (
-    CatalogueCurriculumPeriod,
-)
+from course_explorer.curriculum import CatalogueCurriculumPeriod
 from course_explorer.enums import (
     ModuleRuleType,
     ModuleType,
@@ -14,257 +12,539 @@ from course_explorer.enums import (
 )
 from course_explorer.prerequisite.domain import (
     AndRequirement,
-    CardinalityRequirement,
     ComposedAndRole,
     ComposedOrRole,
-    CourseCountRequirement,
-    CourseRequirement,
-    CreditRequirement,
-    InferenceEvidenceKind,
-    InferenceEvidenceReference,
     InferenceNodeMetadata,
     InferredPrerequisiteCategory,
     ModuleBlockRequirement,
     OfficialPrerequisiteKind,
-    OpaqueCreditRequirement,
     OrRequirement,
     PrerequisiteOrigin,
     UnresolvedPrerequisiteReason,
     UnresolvedRequirement,
-    expression_course_leaf_group_ids,
 )
-from course_explorer.prerequisite.graph import (
-    DirectPrerequisiteReadContext,
-    PrerequisiteCalculationTree,
-    PrerequisiteDrawingGraph,
-    PrerequisiteGraphCompiler,
-    PrerequisiteGraphConnectorKind,
-    _iter_expression_occurrences,
-    is_expanded_course_branch,
-    project_prerequisite_graph,
-)
-from course_explorer.prerequisite.path import (
-    PrerequisitePathState,
-    calculate_minimum_new_credits,
-)
-from course_explorer.prerequisite.satisfaction import (
-    evaluate_prerequisite_node_states,
-)
+from course_explorer.prerequisite.graph import PrerequisiteGraphCompiler
+from course_explorer.prerequisite.projection import project_prerequisite_graph
+from course_explorer.prerequisite.structure import support_id
 from tests.prerequisite._graph_support import (
-    INFERENCE_METADATA,
     FakeCurriculumRead,
     RecordingEquivalenceGroupRead,
     RecordingInferredSetRead,
     catalogue_course,
     catalogue_module,
-    course_summary,
+    child_uses,
+    course_version,
     current_result,
-    inferred_course,
-    make_tree,
+    fact_of,
+    ignored_parts,
+    leaf_group_ids,
     module_rule,
     module_version,
-    official_course,
+    piece_of,
     prerequisite_course_member,
     prerequisite_module_member,
     prerequisite_option,
     substitution_option,
 )
+from tests.prerequisite._path_support import (
+    course_summary,
+    expanded_course,
+    inferred_course,
+    make_compilation,
+    module_cardinality,
+    official_and,
+    official_course,
+    official_or,
+    solve_route,
+)
+
+
+def _module(group_id: str, child) -> ModuleBlockRequirement:
+    """Build one official module boundary over a compiled child shape."""
+    return ModuleBlockRequirement(
+        type="module_block",
+        origin=PrerequisiteOrigin.OFFICIAL,
+        official_kind=OfficialPrerequisiteKind.COMPULSORY,
+        module_group_id=group_id,
+        child=child,
+    )
+
+
+def _reachable_node_ids(display) -> set[str]:
+    """Return every display node reachable from the root course."""
+    adjacency: dict[str, set[str]] = {}
+    for edge in display.edges:
+        adjacency.setdefault(edge.source_node_id, set()).add(edge.target_node_id)
+    root = next(node.node_id for node in display.nodes if node.is_root)
+    seen = {root}
+    stack = [root]
+    while stack:
+        current = stack.pop()
+        for target in adjacency.get(current, ()):
+            if target not in seen:
+                seen.add(target)
+                stack.append(target)
+    return seen
+
+
+def _endpoint_pairs(display) -> list[tuple[str, str]]:
+    """Return every directed endpoint pair in display order."""
+    return [(edge.source_node_id, edge.target_node_id) for edge in display.edges]
+
+
+def _expanded_head_groups(structure, use_id: str | None) -> list[str]:
+    """Return every expanded-course head occurrence through ordered child slots."""
+    if use_id is None:
+        return []
+    groups: list[str] = []
+
+    def walk(current: str, path: frozenset[str]) -> None:
+        if current in path:
+            return
+        piece = piece_of(structure, current)
+        if piece.kind == "expanded_course":
+            head = piece_of(structure, child_uses(structure, current)[0])
+            groups.append(head.course_group_id or "")
+        next_path = path | {current}
+        for child in child_uses(structure, current):
+            walk(child, next_path)
+
+    walk(use_id, frozenset())
+    return groups
+
+
+def _nodes(display, kind: str):
+    """Return every display node of one kind."""
+    return [node for node in display.nodes if node.kind == kind]
+
+
+def _root_piece(structure):
+    """Return the primary root piece, or `None` for a rootless structure."""
+    if structure.root_use_id is None:
+        return None
+    return piece_of(structure, structure.root_use_id)
 
 
 def test_projection_deduplicates_canonical_courses_and_exact_edges_only() -> None:
-    """Projection shares canonical nodes, merges exact edges, and keeps scoped connectors."""
+    """A canonical course is one node and one endpoint pair is one connection."""
     root = course_summary("root")
+    requirements = official_and("a", "b", "a")
+    compilation = make_compilation(root, requirements, (course_summary("a"), course_summary("b")))
+    display = compilation.display
+    assert display is not None
+    course_ids = [node.node_id for node in display.nodes if node.kind == "course"]
+    assert sorted(course_ids) == ["course:a", "course:b", "course:root"]
+    endpoint_pairs = _endpoint_pairs(display)
+    assert len(endpoint_pairs) == len(set(endpoint_pairs))
+    assert len(display.edges) == 3
+    assert _reachable_node_ids(display) == {node.node_id for node in display.nodes}
+
+
+def test_projection_shares_identical_logical_subtrees_independent_of_provenance() -> None:
+    """Reversed official and inferred OR children share one drawn box."""
+    metadata = InferenceNodeMetadata(confidence=Decimal("0.9"))
+    first = official_or("a", "b")
+    second = OrRequirement(
+        type="or",
+        origin=PrerequisiteOrigin.INFERRED,
+        inferred_category=InferredPrerequisiteCategory.REQUIRED,
+        inference=metadata,
+        children=(
+            inferred_course("b", inference=metadata),
+            inferred_course("a", inference=metadata),
+        ),
+    )
     requirements = AndRequirement(
+        type="and",
+        origin=PrerequisiteOrigin.COMPOSED,
+        composed_role=ComposedAndRole.LOGICAL,
+        children=(first, second),
+    )
+    compilation = make_compilation(
+        course_summary("root"),
+        requirements,
+        (course_summary("a"), course_summary("b")),
+        include_inferred=True,
+    )
+    display = compilation.display
+    assert display is not None
+    assert len(display.nodes) == 4
+    or_nodes = [node for node in display.nodes if node.kind == "or"]
+    assert len(or_nodes) == 1
+    shared_or = or_nodes[0]
+    assert shared_or.via_inferred is True
+    assert shared_or.markable is False
+    # Both ordered parent slots draw the same OR, so the parent AND collapses into that one box.
+    assert [node for node in display.nodes if node.kind == "and"] == []
+    assert set(_endpoint_pairs(display)) == {
+        ("course:root", shared_or.node_id),
+        (shared_or.node_id, "course:a"),
+        (shared_or.node_id, "course:b"),
+    }
+    assert len(_endpoint_pairs(display)) == 3
+    # The calculation holds the AND with its two ordered, distinct child pieces.
+    root_use = compilation.solver.root_use_id
+    assert root_use is not None
+    assert piece_of(compilation.solver, root_use).kind == "and"
+    root_children = child_uses(compilation.solver, root_use)
+    assert len(root_children) == 2
+    root_piece_ids = [piece_of(compilation.solver, use).piece_id for use in root_children]
+    assert root_piece_ids[0] != root_piece_ids[1]
+    # The one drawn box binds both ordered pieces, and its a connection holds both origins.
+    assert {
+        binding.piece_id
+        for binding in compilation.solver.bindings
+        if shared_or.node_id in binding.node_ids
+    } == set(root_piece_ids)
+    a_edge = next(edge for edge in display.edges if edge.target_node_id == "course:a")
+    a_member_fact_ids = {
+        member.fact_id
+        for member in compilation.solver.members
+        if member.member_id in a_edge.member_ids
+    }
+    assert {
+        fact.origin for fact in compilation.solver.facts if fact.fact_id in a_member_fact_ids
+    } == {PrerequisiteOrigin.OFFICIAL, PrerequisiteOrigin.INFERRED}
+
+
+def test_projection_shares_identical_numeric_subtrees_with_all_source_marks(
+    solver_bundle: None,
+) -> None:
+    """Two module parents share one numeric drawing backed by distinct ordered slots."""
+    requirements = AndRequirement(
+        type="and",
+        origin=PrerequisiteOrigin.COMPOSED,
+        composed_role=ComposedAndRole.LOGICAL,
+        children=(
+            # The same drawn set in a different order is a distinct ordered calculation slot.
+            _module("m1", module_cardinality(2, 2, "p", "q", "r")),
+            _module("m2", module_cardinality(2, 2, "r", "q", "p")),
+        ),
+    )
+    compilation = make_compilation(
+        course_summary("root"),
+        requirements,
+        (course_summary("p"), course_summary("q"), course_summary("r")),
+    )
+    display = compilation.display
+    assert display is not None
+    numeric = [node for node in display.nodes if node.kind == "cardinality"]
+    assert len(numeric) == 1
+    box = numeric[0]
+    assert box.markable is True
+    bindings = [
+        binding for binding in compilation.solver.bindings if box.node_id in binding.mark_node_ids
+    ]
+    assert len({binding.piece_id for binding in bindings}) == 2
+    assert sum(len(binding.use_ids) for binding in bindings) >= 2
+    modules = [node for node in display.nodes if node.kind == "module"]
+    assert len(modules) == 2
+    assert len({node.node_id for node in modules}) == 2
+    assert all(node.member_group_ids == ("p", "q", "r") for node in modules)
+
+    # Actual satisfaction reaches every bound piece: p and q fulfill both modules at zero cost.
+    satisfied = solve_route(compilation.solver, ["p", "q"])
+    assert satisfied["state"] == "exact"
+    assert satisfied["new_courses"] == []
+    assert Decimal(satisfied["total_new_credits"]) == Decimal("0")
+
+    # Completing the one shared numeric box manually fulfills both modules without completing members.
+    manual_structure = compilation.solver.model_copy(
+        update={
+            "completed_node_keys": (box.node_id,),
+            "bindings": tuple(
+                binding.model_copy(
+                    update={
+                        "mark_node_ids": tuple(
+                            node_id for node_id in binding.mark_node_ids if node_id == box.node_id
+                        )
+                    }
+                )
+                for binding in compilation.solver.bindings
+            ),
+        }
+    )
+    manual = solve_route(manual_structure, [])
+    assert manual["state"] == "exact"
+    assert Decimal(manual["total_new_credits"]) == Decimal("0")
+
+    # Excluding the shared box denies both module rules.
+    excluded_structure = compilation.solver.model_copy(
+        update={"excluded_node_keys": (box.node_id,)}
+    )
+    excluded = solve_route(excluded_structure, [])
+    assert excluded["state"] == "no_solution"
+
+    # Equal rules under different expanded-course owners stay distinct drawings.
+    independent = AndRequirement(
+        type="and",
+        origin=PrerequisiteOrigin.COMPOSED,
+        composed_role=ComposedAndRole.LOGICAL,
+        children=(
+            expanded_course("a", _module("m", module_cardinality(2, 2, "p", "q"))),
+            expanded_course("b", _module("m", module_cardinality(2, 2, "p", "q"))),
+        ),
+    )
+    independent_compilation = make_compilation(
+        course_summary("root"),
+        independent,
+        (course_summary("a"), course_summary("b"), course_summary("p"), course_summary("q")),
+    )
+    independent_numeric = [
+        node for node in independent_compilation.display.nodes if node.kind == "cardinality"
+    ]
+    assert len(independent_numeric) == 2
+    assert {node.owner_group_id for node in independent_numeric} == {"a", "b"}
+
+
+def test_saved_module_box_key_fulfils_its_calculation_support(solver_bundle: None) -> None:
+    """A saved box key is scoped to its display identity and never converted."""
+    requirements = _module("m", module_cardinality(2, 2, "p", "q"))
+    first = make_compilation(
+        course_summary("root"),
+        requirements,
+        (course_summary("p"), course_summary("q")),
+    )
+    box = next(node for node in first.display.nodes if node.markable)
+    orphan = "s:root:d:" + "0" * 24
+    marked = make_compilation(
+        course_summary("root"),
+        requirements,
+        (course_summary("p"), course_summary("q")),
+        completed_node_keys=(box.node_id, orphan),
+    )
+    assert marked.solver.completed_node_keys == tuple(sorted((box.node_id, orphan)))
+    binding = next(value for value in marked.solver.bindings if box.node_id in value.mark_node_ids)
+    assert binding.owner_group_id == "root"
+    assert support_id(owner_group_id="root", piece_id=binding.piece_id) == binding.support_id
+
+    # The saved box key fulfils its calculation support automatically, without completing the members.
+    manual = solve_route(marked.solver, [])
+    assert manual["state"] == "exact"
+    assert manual["new_courses"] == []
+    assert Decimal(manual["total_new_credits"]) == Decimal("0")
+    selected = solve_route(first.solver, ["p", "q"])
+    assert selected["state"] == "exact"
+    assert Decimal(selected["total_new_credits"]) == Decimal("0")
+    missing = solve_route(first.solver, [])
+    assert missing["state"] == "exact"
+    assert {entry["course"]["group_id"] for entry in missing["new_courses"]} == {"p", "q"}
+
+
+def test_projection_groups_visible_connections_without_losing_relationship_evidence(
+    solver_bundle: None,
+) -> None:
+    """One drawn connection keeps its compulsory and recommended occurrence members apart."""
+    direct = official_course("a")
+    first = AndRequirement(
         type="and",
         origin=PrerequisiteOrigin.OFFICIAL,
         official_kind=OfficialPrerequisiteKind.COMPULSORY,
-        children=(
-            official_course("shared"),
-            official_course("shared"),
-            CardinalityRequirement(
-                type="cardinality",
-                origin=PrerequisiteOrigin.OFFICIAL,
-                official_kind=OfficialPrerequisiteKind.MODULE_RULE,
-                require_min=1,
-                require_max=2,
-                children=(official_course("other"), official_course("shared")),
-            ),
-        ),
+        children=(official_course("a"),),
     )
-    tree = make_tree(
-        root,
-        requirements,
-        (course_summary("shared"), course_summary("other")),
+    second = OrRequirement(
+        type="or",
+        origin=PrerequisiteOrigin.OFFICIAL,
+        official_kind=OfficialPrerequisiteKind.RECOMMENDED,
+        children=(official_course("a", OfficialPrerequisiteKind.RECOMMENDED),),
     )
-    graph = project_prerequisite_graph(tree)
-
-    # Repeated occurrences of one canonical course share one node with one root flag.
-    shared_nodes = [node for node in graph.course_nodes if node.course.group_id == "shared"]
-    assert len(shared_nodes) == 1
-    assert shared_nodes[0].is_root is False
-    assert sum(1 for node in graph.course_nodes if node.is_root) == 1
-
-    # Exact duplicate relationships merge terminal occurrence IDs inside one visible connection.
-    # Distinct connectors stay separate.
-    shared_edges = [
-        edge
-        for edge in graph.edges
-        if edge.target_node_id == "course:shared" and edge.source_node_id == "connector:r"
+    # One independent sibling makes the root OR a drawn box, so the alternatives to `a` are
+    # distinct drawn relationships under it.
+    requirements = OrRequirement(
+        type="or",
+        origin=PrerequisiteOrigin.OFFICIAL,
+        official_kind=OfficialPrerequisiteKind.COMPULSORY,
+        children=(direct, first, second, official_course("c")),
+    )
+    compilation = make_compilation(
+        course_summary("root"), requirements, (course_summary("a"), course_summary("c"))
+    )
+    edges = [edge for edge in compilation.display.edges if edge.target_node_id == "course:a"]
+    assert len(edges) == 1
+    assert len(edges[0].member_ids) == 2
+    members = [
+        member for member in compilation.solver.members if member.member_id in edges[0].member_ids
     ]
-    assert len(shared_edges) == 1
-    assert shared_edges[0].relationships[0].occurrence_ids == ("r.0", "r.1")
-    connector_ids = {node.node_id for node in graph.connector_nodes}
-    assert {"connector:r", "connector:r.2"} <= connector_ids
-    assert not any(node.node_id.startswith("course:module") for node in graph.course_nodes)
-
-    # Deterministic: identical trees project to equal graphs.
-    assert project_prerequisite_graph(tree) == graph
-    assert [node.node_id for node in graph.connector_nodes] == sorted(
-        node.node_id for node in graph.connector_nodes
+    assert len({member.fact_id for member in members}) == 2
+    compulsory = next(
+        member
+        for member in members
+        if next(fact for fact in compilation.solver.facts if fact.fact_id == member.fact_id).origin
+        is PrerequisiteOrigin.OFFICIAL
+        and next(
+            fact for fact in compilation.solver.facts if fact.fact_id == member.fact_id
+        ).official_kind
+        is OfficialPrerequisiteKind.COMPULSORY
     )
-    assert list(graph.edges) == sorted(
-        graph.edges,
-        key=lambda edge: (
-            edge.source_node_id,
-            edge.target_node_id,
-            edge.relationships[0].origin.value,
-            (
-                ""
-                if edge.relationships[0].official_kind is None
-                else edge.relationships[0].official_kind.value
-            ),
-        ),
+    recommended = next(member for member in members if member.member_id != compulsory.member_id)
+    course_c_edge = next(
+        edge for edge in compilation.display.edges if edge.target_node_id == "course:c"
     )
 
-    # Root-only projection when the root has no requirements.
-    empty_tree = make_tree(root, None, ())
-    empty_graph = project_prerequisite_graph(empty_tree)
-    assert len(empty_graph.course_nodes) == 1
-    assert empty_graph.connector_nodes == ()
-    assert empty_graph.edges == ()
+    path = solve_route(compilation.solver, [])
+    assert path["state"] == "exact"
+    assert [entry["course"]["group_id"] for entry in path["new_courses"]] == ["a"]
+    assert Decimal(path["total_new_credits"]) == Decimal("5")
+    lit = set(path["lit_members"])
+    assert compulsory.member_id in lit
+    assert recommended.member_id not in lit
+    assert not lit & set(course_c_edge.member_ids)
 
-    # Unresolved and numeric connectors preserve their scoped diagnostics.
-    unresolved_tree = make_tree(
-        root,
-        CreditRequirement(
-            type="credits",
-            origin=PrerequisiteOrigin.OFFICIAL,
-            official_kind=OfficialPrerequisiteKind.MODULE_RULE,
-            credits_min=Decimal("5"),
-            credits_max=Decimal("10"),
-            child=CourseCountRequirement(
-                type="course_count",
-                origin=PrerequisiteOrigin.OFFICIAL,
-                official_kind=OfficialPrerequisiteKind.MODULE_RULE,
-                count_min=1,
-                count_max=2,
-                child=UnresolvedRequirement(
-                    type="unresolved",
-                    origin=PrerequisiteOrigin.OFFICIAL,
-                    official_kind=OfficialPrerequisiteKind.MODULE_RULE,
-                    reason=UnresolvedPrerequisiteReason.MISSING_MODULE,
+
+def test_returned_category_roots_reference_the_native_structure() -> None:
+    """Direct compilation returns category roots that resolve in its own use table."""
+    courses = (
+        catalogue_course(
+            "root",
+            prerequisite_options=(
+                prerequisite_option(
+                    0,
+                    PrerequisiteRequirementKind.COMPULSORY,
+                    prerequisite_course_member(0, "a"),
+                ),
+                prerequisite_option(
+                    0,
+                    PrerequisiteRequirementKind.RECOMMENDED,
+                    prerequisite_course_member(0, "b"),
                 ),
             ),
         ),
-        (),
+        catalogue_course("a"),
+        catalogue_course("b"),
     )
-    unresolved_graph = project_prerequisite_graph(unresolved_tree)
-    credit_connector = next(
-        node for node in unresolved_graph.connector_nodes if node.node_id == "connector:r"
+    compiler = PrerequisiteGraphCompiler(
+        FakeCurriculumRead(courses),
+        RecordingInferredSetRead(),
+        RecordingEquivalenceGroupRead(),
     )
-    assert credit_connector.kind is PrerequisiteGraphConnectorKind.CREDITS
-    assert credit_connector.credits_min == Decimal("5")
-    assert credit_connector.credits_max == Decimal("10")
-    count_connector = next(
-        node for node in unresolved_graph.connector_nodes if node.node_id == "connector:r.0"
-    )
-    assert count_connector.kind is PrerequisiteGraphConnectorKind.COURSE_COUNT
-    assert count_connector.count_min == 1
-    assert count_connector.count_max == 2
-    assert count_connector.origin is PrerequisiteOrigin.OFFICIAL
-    assert count_connector.official_kind is OfficialPrerequisiteKind.MODULE_RULE
-    unresolved_connector = next(
-        node for node in unresolved_graph.connector_nodes if node.node_id == "connector:r.0.0"
-    )
-    assert unresolved_connector.kind is PrerequisiteGraphConnectorKind.UNRESOLVED
-    assert unresolved_connector.unresolved_reason is UnresolvedPrerequisiteReason.MISSING_MODULE
+    direct = compiler.compile_direct_many(("root",))
+    entry = direct[0]
+    assert entry.required_use_id is not None
+    assert entry.recommended_use_id is not None
+    uses = {use.use_id: use for use in entry.solver.uses}
+    assert entry.required_use_id in uses
+    assert entry.recommended_use_id in uses
+    required = piece_of(entry.solver, entry.required_use_id)
+    recommended = piece_of(entry.solver, entry.recommended_use_id)
+    assert required.kind == "course" and required.course_group_id == "a"
+    assert recommended.kind == "course" and recommended.course_group_id == "b"
 
 
-def test_projection_groups_visible_connections_without_losing_relationship_evidence() -> None:
-    """Equal-endpoint, equal-class relationships draw once while keeping every member's evidence."""
-    first_metadata = InferenceNodeMetadata(
-        confidence=Decimal("0.85"),
-        requirement_ids=("requirement-a",),
-        evidence=(
-            InferenceEvidenceReference(
-                kind=InferenceEvidenceKind.EXPRESSION_PROPOSAL, reference_id="evidence-a"
-            ),
-        ),
+def test_module_cards_hide_member_closure_without_relabeling_independent_occurrences(
+    solver_bundle: None,
+) -> None:
+    """A hidden official member head neither draws nor relabels an independently inferred course."""
+    metadata = InferenceNodeMetadata(confidence=Decimal("0.9"))
+    member_rule = AndRequirement(
+        type="and",
+        origin=PrerequisiteOrigin.OFFICIAL,
+        official_kind=OfficialPrerequisiteKind.MODULE_RULE,
+        children=(official_course("p", OfficialPrerequisiteKind.MODULE_RULE),),
     )
-    second_metadata = InferenceNodeMetadata(
-        confidence=Decimal("0.9"),
-        requirement_ids=("requirement-b",),
-        evidence=(
-            InferenceEvidenceReference(
-                kind=InferenceEvidenceKind.EXPRESSION_PROPOSAL, reference_id="evidence-b"
-            ),
-        ),
-    )
-    requirements = OrRequirement(
-        type="or",
+    requirements = AndRequirement(
+        type="and",
         origin=PrerequisiteOrigin.COMPOSED,
-        composed_role=ComposedOrRole.LOGICAL,
+        composed_role=ComposedAndRole.LOGICAL,
         children=(
-            AndRequirement(
-                type="and",
-                origin=PrerequisiteOrigin.COMPOSED,
-                composed_role=ComposedAndRole.LOGICAL,
-                children=(inferred_course("grouped", inference=first_metadata),),
-            ),
-            AndRequirement(
-                type="and",
-                origin=PrerequisiteOrigin.COMPOSED,
-                composed_role=ComposedAndRole.LOGICAL,
-                children=(inferred_course("grouped", inference=second_metadata),),
-            ),
+            _module("m", member_rule),
+            inferred_course("p", inference=metadata),
         ),
     )
-    tree = make_tree(
+    compilation = make_compilation(
         course_summary("root"),
         requirements,
-        (course_summary("grouped"),),
+        (course_summary("p"),),
         include_inferred=True,
     )
-    graph = project_prerequisite_graph(tree)
+    display = compilation.display
+    assert display is not None
+    p_nodes = [
+        node for node in display.nodes if node.kind == "course" and node.course_group_id == "p"
+    ]
+    assert len(p_nodes) == 1
+    independent_p = p_nodes[0]
+    assert independent_p.display_as_inferred is True
+    assert independent_p.has_inferred_provenance is True
+    assert independent_p.has_official_provenance is False
+    incoming_p = [edge for edge in display.edges if edge.target_node_id == "course:p"]
+    assert incoming_p
+    assert all(edge.inferred_only for edge in incoming_p)
 
-    connections = [
-        edge
-        for edge in graph.edges
-        if edge.source_node_id == "connector:r" and edge.target_node_id == "course:grouped"
-    ]
-    assert len(connections) == 1
-    members = connections[0].relationships
-    assert [(member.occurrence_ids, member.condition_occurrence_ids) for member in members] == [
-        (("r.0.0",), ("r.0",)),
-        (("r.1.0",), ("r.1",)),
-    ]
-    assert [member.inference for member in members] == [first_metadata, second_metadata]
-    assert all(member.origin is PrerequisiteOrigin.INFERRED for member in members)
-    assert all(
-        member.inferred_category is InferredPrerequisiteCategory.REQUIRED for member in members
+    module = next(node for node in display.nodes if node.kind == "module")
+    assert module.member_group_ids == ("p",)
+    assert module.markable is True
+    assert not any(
+        edge.source_node_id == module.node_id and edge.target_node_id == "course:p"
+        for edge in display.edges
     )
-    assert all(member.official_kind is None for member in members)
+    # The hidden member contributes its source use and official fact, bound to its
+    # containing module box and never to a drawn course node of its own.
+    emitted_ids = {node.node_id for node in display.nodes}
+    member_piece_id = next(
+        piece.piece_id
+        for piece in compilation.solver.pieces
+        if piece.kind == "course" and piece.course_group_id == "p" and piece.module_rule
+    )
+    hidden_bindings = [
+        binding for binding in compilation.solver.bindings if binding.piece_id == member_piece_id
+    ]
+    assert len(hidden_bindings) == 1
+    hidden_binding = hidden_bindings[0]
+    assert hidden_binding.node_ids == (module.node_id,)
+    assert set(hidden_binding.node_ids) <= emitted_ids
+    uses_by_id = {use.use_id: use for use in compilation.solver.uses}
+    facts_by_id = {fact.fact_id: fact for fact in compilation.solver.facts}
+    assert {
+        facts_by_id[uses_by_id[use_id].fact_id].origin for use_id in hidden_binding.use_ids
+    } == {PrerequisiteOrigin.OFFICIAL}
 
-    # Deterministic: the same tree projects to the same grouped connection, and each member's full
-    # provenance payload carries through JSON serialization.
-    assert project_prerequisite_graph(tree) == graph
-    assert PrerequisiteDrawingGraph.model_validate_json(graph.model_dump_json()) == graph
+    # An independently visible official occurrence suppresses the marker on the shared card and
+    # leaves both visible-origin flags true.
+    mixed = make_compilation(
+        course_summary("root"),
+        AndRequirement(
+            type="and",
+            origin=PrerequisiteOrigin.COMPOSED,
+            composed_role=ComposedAndRole.LOGICAL,
+            children=(
+                _module("m", member_rule),
+                inferred_course("p", inference=metadata),
+                official_course("p"),
+            ),
+        ),
+        (course_summary("p"),),
+        include_inferred=True,
+    )
+    assert mixed.display is not None
+    mixed_p = next(
+        node
+        for node in mixed.display.nodes
+        if node.kind == "course" and node.course_group_id == "p"
+    )
+    assert mixed_p.display_as_inferred is False
+    assert mixed_p.has_official_provenance is True
+    assert mixed_p.has_inferred_provenance is True
 
 
-def test_single_child_and_or_wrappers_collapse_without_changing_meaning() -> None:
-    """A one-child module-rule AND and a stored inferred AND/OR wrapper collapse to their child."""
-    # A one-child StudyModule all-mandatory AND collapses to its single course child. The outer
-    # DegreeProgramme's singleton ModuleRule reference collapses onto that same surviving object.
+def test_childless_diagnostic_leaf_is_drawn() -> None:
+    """A childless unresolved node is one explicit drawn leaf."""
+    requirements = UnresolvedRequirement(
+        type="unresolved",
+        origin=PrerequisiteOrigin.OFFICIAL,
+        official_kind=OfficialPrerequisiteKind.COMPULSORY,
+        reason=UnresolvedPrerequisiteReason.MISSING_COURSE,
+        referenced_group_id="missing",
+    )
+    compilation = make_compilation(course_summary("root"), requirements, ())
+    node = next(node for node in compilation.display.nodes if node.kind == "unresolved")
+    assert node.reason == "missing_course"
+    assert node.referenced_group_id == "missing"
+
+
+def test_single_child_and_or_wrappers_collapse_without_changing_meaning(
+    solver_bundle: None,
+) -> None:
+    """A singleton module wrapper and a stored inferred wrapper collapse to their child."""
     year_period = (CatalogueCurriculumPeriod(id="period-2026", academic_year_start=2026),)
     singleton_study = catalogue_module(
         "module-single",
@@ -305,52 +585,88 @@ def test_single_child_and_or_wrappers_collapse_without_changing_meaning() -> Non
     )
     module_compilation = PrerequisiteGraphCompiler(
         FakeCurriculumRead(
-            (module_root, catalogue_course("leaf")), (outer_degree, singleton_study)
+            (
+                module_root,
+                catalogue_course(
+                    "leaf",
+                    prerequisite_options=(
+                        prerequisite_option(
+                            0,
+                            PrerequisiteRequirementKind.COMPULSORY,
+                            prerequisite_course_member(0, "external"),
+                        ),
+                    ),
+                ),
+                catalogue_course("external"),
+            ),
+            (outer_degree, singleton_study),
         ),
         RecordingInferredSetRead(),
         RecordingEquivalenceGroupRead(),
     ).compile("module-root")
-    tree = module_compilation.tree
-    degree_boundary = tree.requirements
-    assert isinstance(degree_boundary, ModuleBlockRequirement)
-    assert degree_boundary.module_group_id == "module-degree"
-    single_boundary = degree_boundary.child
-    assert isinstance(single_boundary, ModuleBlockRequirement)
-    assert single_boundary.module_group_id == "module-single"
-    assert single_boundary.child == official_course("leaf", OfficialPrerequisiteKind.MODULE_RULE)
-    # Both selected module boundaries survive on their own wrapper occurrences, outer first.
-    assert [(occ.occurrence_id, occ.module.group_id) for occ in tree.module_occurrences] == [
-        ("r", "module-degree"),
-        ("r.0", "module-single"),
+    module_piece = _root_piece(module_compilation.solver)
+    assert module_piece is not None
+    assert module_piece.kind == "module_block"
+    assert module_piece.module_group_id == "module-degree"
+    single_root = child_uses(module_compilation.solver, module_compilation.solver.root_use_id)[0]
+    assert piece_of(module_compilation.solver, single_root).kind == "module_block"
+    assert piece_of(module_compilation.solver, single_root).module_group_id == "module-single"
+    leaf_use = child_uses(module_compilation.solver, single_root)[0]
+    assert piece_of(module_compilation.solver, leaf_use).kind == "expanded_course"
+    leaf_head, leaf_descendants = child_uses(module_compilation.solver, leaf_use)
+    assert piece_of(module_compilation.solver, leaf_head).course_group_id == "leaf"
+    assert leaf_group_ids(module_compilation.solver, leaf_descendants) == {"external"}
+    # Structural nesting elides: the degree module collects the singleton's leaf card and the leaf's
+    # external prerequisite, with no singleton module node and no independently drawn leaf course.
+    modules = _nodes(module_compilation.display, "module")
+    assert [node.module_group_id for node in modules] == ["module-degree"]
+    degree_node = modules[0]
+    assert degree_node.member_group_ids == ("leaf",)
+    assert {node.course_group_id for node in _nodes(module_compilation.display, "course")} == {
+        "module-root",
+        "external",
+    }
+    assert not _nodes(module_compilation.display, "and")
+    assert not _nodes(module_compilation.display, "or")
+    assert {
+        (edge.source_node_id, edge.target_node_id) for edge in module_compilation.display.edges
+    } == {
+        ("course:module-root", degree_node.node_id),
+        (degree_node.node_id, "course:external"),
+    }
+    route = solve_route(module_compilation.solver, [])
+    assert route["state"] == "exact"
+    assert Decimal(route["total_new_credits"]) == Decimal("10")
+    assert {entry["course"]["group_id"] for entry in route["new_courses"]} == {
+        "leaf",
+        "external",
+    }
+    external_edges = [
+        edge
+        for edge in module_compilation.display.edges
+        if edge.target_node_id == "course:external"
     ]
-    assert [occ.member_group_ids for occ in tree.module_occurrences] == [("leaf",), ("leaf",)]
-    # Exactly one outer module node with one leaf card is drawn, and no internal subtree appears.
-    graph = module_compilation.graph
-    assert [node.node_id for node in graph.module_nodes] == ["module:r"]
-    assert graph.module_nodes[0].module.group_id == "module-degree"
-    assert [card.group_id for card in graph.module_nodes[0].member_courses] == ["leaf"]
-    assert [node.course.group_id for node in graph.course_nodes] == ["module-root"]
-    assert graph.connector_nodes == ()
-    # Positional module metadata carries through calculation-tree serialization, so projection never
-    # depends on live compiler-local object identities.
-    round_tripped = PrerequisiteCalculationTree.model_validate_json(tree.model_dump_json())
-    assert round_tripped == tree
-    assert project_prerequisite_graph(round_tripped) == graph
+    assert len(external_edges) == 1
+    assert set(route["lit_members"]) & set(external_edges[0].member_ids)
+    covered = solve_route(module_compilation.solver, ["leaf"])
+    assert covered["state"] == "exact"
+    assert Decimal(covered["total_new_credits"]) == Decimal("0")
+    assert not (set(covered["lit_members"]) & set(external_edges[0].member_ids))
 
-    # A stored inferred one-child AND wrapping a singleton OR projects to its expanded child and
-    # keeps the inferred origin/inference metadata of the surviving child.
+    # A stored inferred one-child AND wrapping a singleton OR collapses to its inferred child.
+    metadata = InferenceNodeMetadata(confidence=Decimal("0.9"))
     one_child_inferred = AndRequirement(
         type="and",
         origin=PrerequisiteOrigin.INFERRED,
         inferred_category=InferredPrerequisiteCategory.REQUIRED,
-        inference=INFERENCE_METADATA,
+        inference=metadata,
         children=(
             OrRequirement(
                 type="or",
                 origin=PrerequisiteOrigin.INFERRED,
                 inferred_category=InferredPrerequisiteCategory.REQUIRED,
-                inference=INFERENCE_METADATA,
-                children=(inferred_course("solo"),),
+                inference=metadata,
+                children=(inferred_course("solo", inference=metadata),),
             ),
         ),
     )
@@ -364,11 +680,15 @@ def test_single_child_and_or_wrappers_collapse_without_changing_meaning() -> Non
         ),
         RecordingEquivalenceGroupRead(),
     ).compile("wrapper-root", include_inferred=True)
-    assert inferred_wrapper.tree.requirements == inferred_course("solo")
+    inferred_piece = _root_piece(inferred_wrapper.solver)
+    assert inferred_piece is not None
+    assert inferred_piece.kind == "course"
+    assert inferred_piece.course_group_id == "solo"
+    assert fact_of(inferred_wrapper.solver, inferred_wrapper.solver.root_use_id).origin is (
+        PrerequisiteOrigin.INFERRED
+    )
 
-    # A free-only module wrapper and its containing numeric bound are ignored: the neutral leaf
-    # holds, both disclosures draw around the module with no fabricated member card, and the
-    # ignored metadata round-trips through tree serialization and reprojection.
+    # A free-only module wrapper is disclosed and drawn once with no fabricated member cards.
     free_module = catalogue_module(
         "module-free",
         (
@@ -391,6 +711,11 @@ def test_single_child_and_or_wrappers_collapse_without_changing_meaning() -> Non
                 PrerequisiteRequirementKind.COMPULSORY,
                 prerequisite_module_member(0, "module-free"),
             ),
+            prerequisite_option(
+                1,
+                PrerequisiteRequirementKind.COMPULSORY,
+                prerequisite_module_member(0, "module-free"),
+            ),
         ),
     )
     free_compilation = PrerequisiteGraphCompiler(
@@ -398,30 +723,46 @@ def test_single_child_and_or_wrappers_collapse_without_changing_meaning() -> Non
         RecordingInferredSetRead(),
         RecordingEquivalenceGroupRead(),
     ).compile("free-root")
-    free_tree = free_compilation.tree
-    assert isinstance(free_tree.requirements, ModuleBlockRequirement)
-    assert isinstance(free_tree.requirements.child, OpaqueCreditRequirement)
-    assert free_tree.requirements.child.credits_min == Decimal("5")
-    assert [part.kind.value for part in free_tree.ignored_parts] == ["free_choice"]
-    assert [node.node_id for node in free_compilation.graph.module_nodes] == ["module:r"]
-    assert free_compilation.graph.module_nodes[0].member_courses == ()
-    assert [node.node_id for node in free_compilation.graph.ignored_nodes] == [
-        part.part_id for part in free_tree.ignored_parts
-    ]
-    assert all(
-        edge.source_node_id == "module:r"
-        for edge in free_compilation.graph.edges
-        if edge.target_node_id.startswith("ignored:")
+    free_piece = _root_piece(free_compilation.solver)
+    assert free_piece is not None
+    assert free_piece.kind == "or"
+    assert [
+        piece_of(free_compilation.solver, use).kind
+        for use in child_uses(free_compilation.solver, free_compilation.solver.root_use_id)
+    ] == ["module_block", "module_block"]
+    assert [part.kind for part in ignored_parts(free_compilation.solver)] == ["free_choice"]
+    free_modules = _nodes(free_compilation.display, "module")
+    assert len(free_modules) == 1
+    assert free_modules[0].member_group_ids == ()
+    assert len(_nodes(free_compilation.display, "ignored")) == 1
+
+    # Normalized same-operator nesting emits exactly one connector with one edge per endpoint pair.
+    nested = AndRequirement(
+        type="and",
+        origin=PrerequisiteOrigin.OFFICIAL,
+        official_kind=OfficialPrerequisiteKind.COMPULSORY,
+        children=(official_and("a", "b"), official_course("c")),
     )
-    free_round_trip = PrerequisiteCalculationTree.model_validate_json(free_tree.model_dump_json())
-    assert free_round_trip == free_tree
-    assert project_prerequisite_graph(free_round_trip) == free_compilation.graph
+    folded = make_compilation(
+        course_summary("root"),
+        nested,
+        (course_summary("a"), course_summary("b"), course_summary("c")),
+    )
+    assert len(_nodes(folded.display, "and")) == 1
+    assert set(_endpoint_pairs(folded.display)) == {
+        ("course:root", _nodes(folded.display, "and")[0].node_id),
+        (_nodes(folded.display, "and")[0].node_id, "course:a"),
+        (_nodes(folded.display, "and")[0].node_id, "course:b"),
+        (_nodes(folded.display, "and")[0].node_id, "course:c"),
+    }
+    assert [edge.edge_id for edge in folded.display.edges] == sorted(
+        edge.edge_id for edge in folded.display.edges
+    )
+    assert _reachable_node_ids(folded.display) == {node.node_id for node in folded.display.nodes}
 
 
 def test_composed_and_role_distinguishes_logical_join_from_expanded_course() -> None:
     """Only the compiler's expanded-course role qualifies. An identical logical join never does."""
-    # One singleton compulsory option plus one singleton recommended option join as LOGICAL even
-    # though the collapsed result is exactly `AND(course, course)`.
     root = catalogue_course(
         "root",
         prerequisite_options=(
@@ -444,18 +785,23 @@ def test_composed_and_role_distinguishes_logical_join_from_expanded_course() -> 
         RecordingInferredSetRead(),
         RecordingEquivalenceGroupRead(),
     ).compile("root", include_recommended=True)
-    logical = logical_compilation.tree.requirements
-    assert isinstance(logical, AndRequirement)
-    assert logical.origin is PrerequisiteOrigin.COMPOSED
-    assert logical.composed_role is ComposedAndRole.LOGICAL
-    assert logical.children == (
-        official_course("required-a"),
-        official_course("recommended-b", OfficialPrerequisiteKind.RECOMMENDED),
+    logical_piece = _root_piece(logical_compilation.solver)
+    assert logical_piece is not None
+    assert logical_piece.kind == "and"
+    logical_children = child_uses(
+        logical_compilation.solver, logical_compilation.solver.root_use_id
     )
+    assert [
+        (
+            piece_of(logical_compilation.solver, use).course_group_id,
+            fact_of(logical_compilation.solver, use).official_kind,
+        )
+        for use in logical_children
+    ] == [
+        ("required-a", OfficialPrerequisiteKind.COMPULSORY),
+        ("recommended-b", OfficialPrerequisiteKind.RECOMMENDED),
+    ]
 
-    # An active required course with ordinary descendants compiles to the EXPANDED_COURSE wrapper.
-    # A compulsory option holds two members, so its official AND folds into the outer LOGICAL AND
-    # while the course's own alternatives stay a nested OR below the expanded head.
     expanded_root = catalogue_course(
         "expanded-root",
         prerequisite_options=(
@@ -501,82 +847,55 @@ def test_composed_and_role_distinguishes_logical_join_from_expanded_course() -> 
         RecordingInferredSetRead(),
         RecordingEquivalenceGroupRead(),
     ).compile("expanded-root", include_recommended=True)
-    expanded = expanded_compilation.tree.requirements
-    assert isinstance(expanded, AndRequirement)
-    assert expanded.origin is PrerequisiteOrigin.COMPOSED
-    assert expanded.composed_role is ComposedAndRole.LOGICAL
-    compulsory = expanded.children[0]
-    assert isinstance(compulsory, AndRequirement)
-    expanded_course = compulsory.children[0]
-    assert isinstance(expanded_course, AndRequirement)
-    assert expanded_course.composed_role is ComposedAndRole.EXPANDED_COURSE
-    assert expanded_course.children[0] == official_course("course-with-descendant")
-    # The same two-child course-headed shape is discriminated only by the compiler's role.
-    assert logical.children[0] == official_course("required-a")
-    assert logical.composed_role is ComposedAndRole.LOGICAL
+    expanded_piece = _root_piece(expanded_compilation.solver)
+    assert expanded_piece is not None
+    assert expanded_piece.kind == "and"
+    root_children = child_uses(expanded_compilation.solver, expanded_compilation.solver.root_use_id)
+    compulsory_use = root_children[0]
+    assert piece_of(expanded_compilation.solver, compulsory_use).kind == "and"
+    expanded_course_use = child_uses(expanded_compilation.solver, compulsory_use)[0]
+    assert piece_of(expanded_compilation.solver, expanded_course_use).kind == "expanded_course"
+    head_use = child_uses(expanded_compilation.solver, expanded_course_use)[0]
+    assert piece_of(expanded_compilation.solver, head_use).course_group_id == (
+        "course-with-descendant"
+    )
 
-    # Folding the compulsory AND into the root AND reparents only its direct attachments:
-    # the expanded course keeps its own OR and both alternatives as its children.
-    graph = expanded_compilation.graph
-    assert [node.node_id for node in graph.connector_nodes] == [
-        "connector:r",
-        "connector:r.0.0.1",
-    ]
-    edges = {(edge.source_node_id, edge.target_node_id): edge for edge in graph.edges}
-    assert set(edges) == {
-        ("course:expanded-root", "connector:r"),
-        ("connector:r", "course:course-with-descendant"),
-        ("connector:r", "course:required-peer"),
-        ("connector:r", "course:recommended-peer"),
-        ("course:course-with-descendant", "connector:r.0.0.1"),
-        ("connector:r.0.0.1", "course:descendant-a"),
-        ("connector:r.0.0.1", "course:descendant-b"),
+    # A same-operator compulsory AND folds into the root AND: one connector holds the expanded head,
+    # the required peer and the recommended peer. The expanded course keeps its own OR alternatives.
+    connectors = _nodes(expanded_compilation.display, "and")
+    assert len(connectors) == 1
+    root_connector = connectors[0]
+    or_connectors = _nodes(expanded_compilation.display, "or")
+    assert len(or_connectors) == 1
+    alternatives = or_connectors[0]
+    assert {
+        (edge.source_node_id, edge.target_node_id) for edge in expanded_compilation.display.edges
+    } == {
+        ("course:expanded-root", root_connector.node_id),
+        (root_connector.node_id, "course:course-with-descendant"),
+        (root_connector.node_id, "course:required-peer"),
+        (root_connector.node_id, "course:recommended-peer"),
+        ("course:course-with-descendant", alternatives.node_id),
+        (alternatives.node_id, "course:descendant-a"),
+        (alternatives.node_id, "course:descendant-b"),
     }
-    # Folded inbound head/required-peer edges keep the elided compulsory gate. The head->OR and
-    # OR->leaf edges keep empty conditions and their terminal occurrence IDs. Each of these
-    # connections is a singleton, so its first relationship member carries the exact evidence.
-    head_edge = edges[("connector:r", "course:course-with-descendant")].relationships[0]
-    assert head_edge.occurrence_ids == ("r.0.0.0",)
-    assert head_edge.condition_occurrence_ids == ("r.0",)
-    peer_edge = edges[("connector:r", "course:required-peer")].relationships[0]
-    assert peer_edge.occurrence_ids == ("r.0.1",)
-    assert peer_edge.condition_occurrence_ids == ("r.0",)
-    alternatives_edge = edges[("course:course-with-descendant", "connector:r.0.0.1")].relationships[
-        0
-    ]
-    assert alternatives_edge.occurrence_ids == ("r.0.0.1",)
-    assert alternatives_edge.condition_occurrence_ids == ()
-    assert edges[("connector:r.0.0.1", "course:descendant-a")].relationships[0].occurrence_ids == (
-        "r.0.0.1.0",
-    )
-    assert edges[("connector:r.0.0.1", "course:descendant-b")].relationships[0].occurrence_ids == (
-        "r.0.0.1.1",
-    )
-    assert (
-        edges[("connector:r.0.0.1", "course:descendant-a")]
-        .relationships[0]
-        .condition_occurrence_ids
-        == ()
-    )
-    assert (
-        edges[("connector:r.0.0.1", "course:descendant-b")]
-        .relationships[0]
-        .condition_occurrence_ids
-        == ()
-    )
-    assert edges[("course:expanded-root", "connector:r")].relationships[0].occurrence_ids == ("r",)
+    assert _reachable_node_ids(expanded_compilation.display) == {
+        node.node_id for node in expanded_compilation.display.nodes
+    }
 
 
 def test_course_nodes_annotate_official_and_inferred_provenance() -> None:
     """Course nodes label official/inferred occurrence provenance without relabeling connectors."""
     root = course_summary("root")
-    # A bare inferred course occurrence expands to `And(composed EXPANDED_COURSE, (head leaf,
-    # descendants))`, forwarding the inferred path flag to its official descendant occurrence.
+    metadata = InferenceNodeMetadata(confidence=Decimal("0.9"))
     inferred_expanded = AndRequirement(
         type="and",
         origin=PrerequisiteOrigin.COMPOSED,
         composed_role=ComposedAndRole.EXPANDED_COURSE,
-        children=(inferred_course("shared"), official_course("inferred-desc")),
+        children=(
+            inferred_course("shared", inference=metadata),
+            official_course("inferred-desc"),
+        ),
     )
     requirements = AndRequirement(
         type="and",
@@ -584,14 +903,14 @@ def test_course_nodes_annotate_official_and_inferred_provenance() -> None:
         composed_role=ComposedAndRole.LOGICAL,
         children=(
             official_course("official-only"),
-            inferred_course("inferred-only"),
+            inferred_course("inferred-only", inference=metadata),
             official_course("shared"),
             official_course("shared", OfficialPrerequisiteKind.RECOMMENDED),
-            inferred_course("shared", InferredPrerequisiteCategory.RECOMMENDED),
+            inferred_course("shared", InferredPrerequisiteCategory.RECOMMENDED, inference=metadata),
             inferred_expanded,
         ),
     )
-    tree = make_tree(
+    compilation = make_compilation(
         root,
         requirements,
         (
@@ -602,8 +921,11 @@ def test_course_nodes_annotate_official_and_inferred_provenance() -> None:
         ),
         include_inferred=True,
     )
-    graph = project_prerequisite_graph(tree)
-    nodes_by_group = {node.course.group_id: node for node in graph.course_nodes}
+    nodes_by_group = {
+        node.course_group_id: node
+        for node in _nodes(compilation.display, "course")
+        if node.course_group_id is not None
+    }
 
     assert nodes_by_group["root"].has_official_provenance is False
     assert nodes_by_group["root"].has_inferred_provenance is False
@@ -627,131 +949,40 @@ def test_course_nodes_annotate_official_and_inferred_provenance() -> None:
     assert nodes_by_group["shared"].display_as_inferred is False
     assert nodes_by_group["inferred-desc"].display_as_inferred is False
 
-    # The node annotation never touches relationship provenance. The same endpoints keep one
-    # homogeneous connection per official compulsory/recommended and inferred required/recommended
-    # class, and no class ever merges with another.
+    # The node annotation never touches relationship provenance. One endpoint connection holds all
+    # four official compulsory/recommended and inferred required/recommended members, each with its
+    # own fact.
     shared_connections = [
-        edge
-        for edge in graph.edges
-        if edge.source_node_id == "connector:r" and edge.target_node_id == "course:shared"
+        edge for edge in compilation.display.edges if edge.target_node_id == "course:shared"
     ]
-    assert len(shared_connections) == 4
-    assert {
-        (
-            edge.relationships[0].origin,
-            edge.relationships[0].official_kind,
-            edge.relationships[0].inferred_category,
-        )
-        for edge in shared_connections
-    } == {
+    assert len(shared_connections) == 1
+    shared_facts = [
+        next(fact for fact in compilation.solver.facts if fact.fact_id == member.fact_id)
+        for member in compilation.solver.members
+        if member.member_id in shared_connections[0].member_ids
+    ]
+    assert len(shared_facts) == 4
+    assert {(fact.origin, fact.official_kind, fact.inferred_category) for fact in shared_facts} == {
         (PrerequisiteOrigin.OFFICIAL, OfficialPrerequisiteKind.COMPULSORY, None),
         (PrerequisiteOrigin.OFFICIAL, OfficialPrerequisiteKind.RECOMMENDED, None),
         (PrerequisiteOrigin.INFERRED, None, InferredPrerequisiteCategory.REQUIRED),
         (PrerequisiteOrigin.INFERRED, None, InferredPrerequisiteCategory.RECOMMENDED),
     }
-    assert all(
-        {
-            (member.origin, member.official_kind, member.inferred_category)
-            for member in edge.relationships
-        }
-        == {
-            (
-                edge.relationships[0].origin,
-                edge.relationships[0].official_kind,
-                edge.relationships[0].inferred_category,
-            )
-        }
-        for edge in shared_connections
-    )
-    desc_edges = [edge for edge in graph.edges if edge.target_node_id == "course:inferred-desc"]
-    assert {member.origin for edge in desc_edges for member in edge.relationships} == {
-        PrerequisiteOrigin.OFFICIAL
-    }
-
-
-def test_projection_draws_every_represented_node_including_a_childless_diagnostic_connector() -> (
-    None
-):
-    """The projector draws every represented course node and a childless diagnostic connector."""
-    root = course_summary("root")
-
-    # Two represented inactive leaves draw their canonical nodes: the tree is the only input.
-    inactive_leaves = make_tree(
-        root,
-        AndRequirement(
-            type="and",
-            origin=PrerequisiteOrigin.COMPOSED,
-            composed_role=ComposedAndRole.LOGICAL,
-            children=(
-                official_course("inactive-a"),
-                official_course("inactive-b"),
-            ),
-        ),
-        (
-            course_summary("inactive-a", is_active=False),
-            course_summary("inactive-b", is_active=False),
-        ),
-        active_only=True,
-    )
-    inactive_graph = project_prerequisite_graph(inactive_leaves)
-    assert {node.course.group_id for node in inactive_graph.course_nodes} == {
-        "root",
-        "inactive-a",
-        "inactive-b",
-    }
-    assert [node.node_id for node in inactive_graph.connector_nodes] == ["connector:r"]
-    # The calculation denies the inactive leaves outside the basis and reports their locations.
-    inactive_path = calculate_minimum_new_credits(inactive_leaves, [])
-    assert inactive_path.state is PrerequisitePathState.NO_SOLUTION
-    assert {problem.occurrence_id for problem in inactive_path.problems} >= {"r.0", "r.1"}
-
-    # A mixed conjunction draws one connector with both the inactive and the active child.
-    mixed = make_tree(
-        root,
-        AndRequirement(
-            type="and",
-            origin=PrerequisiteOrigin.COMPOSED,
-            composed_role=ComposedAndRole.LOGICAL,
-            children=(official_course("inactive-a"), official_course("active-b")),
-        ),
-        (
-            course_summary("inactive-a", is_active=False),
-            course_summary("active-b"),
-        ),
-        active_only=True,
-    )
-    mixed_graph = project_prerequisite_graph(mixed)
-    assert {node.course.group_id for node in mixed_graph.course_nodes} == {
-        "root",
-        "inactive-a",
-        "active-b",
-    }
-    assert [(edge.source_node_id, edge.target_node_id) for edge in mixed_graph.edges] == [
-        ("connector:r", "course:active-b"),
-        ("connector:r", "course:inactive-a"),
-        ("course:root", "connector:r"),
+    desc_edges = [
+        edge for edge in compilation.display.edges if edge.target_node_id == "course:inferred-desc"
     ]
-
-    # An unresolved diagnostic connector has no children and is visible.
-    diagnostic = make_tree(
-        root,
-        UnresolvedRequirement(
-            type="unresolved",
-            origin=PrerequisiteOrigin.OFFICIAL,
-            official_kind=OfficialPrerequisiteKind.MODULE_RULE,
-            reason=UnresolvedPrerequisiteReason.MISSING_MODULE,
-        ),
-        (),
-        active_only=True,
-    )
-    diagnostic_graph = project_prerequisite_graph(diagnostic)
-    assert any(
-        node.kind is PrerequisiteGraphConnectorKind.UNRESOLVED
-        for node in diagnostic_graph.connector_nodes
-    )
+    desc_facts = [
+        next(fact for fact in compilation.solver.facts if fact.fact_id == member.fact_id)
+        for edge in desc_edges
+        for member in compilation.solver.members
+        if member.member_id in edge.member_ids
+    ]
+    assert {fact.origin for fact in desc_facts} == {PrerequisiteOrigin.OFFICIAL}
 
 
-def test_active_projection_compacts_source_alternatives_with_shared_course_chains() -> None:
+def test_active_projection_compacts_source_alternatives_with_shared_course_chains(
+    solver_bundle: None,
+) -> None:
     """The shared-node drawing comes from real source alternatives."""
     root = catalogue_course(
         "root",
@@ -810,119 +1041,48 @@ def test_active_projection_compacts_source_alternatives_with_shared_course_chain
         RecordingInferredSetRead(),
         RecordingEquivalenceGroupRead(),
     ).compile("root", include_recommended=True, active_only=True)
-    tree = compilation.tree
-    graph = compilation.graph
+    structure = compilation.solver
+    display = compilation.display
+    assert display is not None
 
-    # The unretained inactive substitution alternatives are dropped at compile time, so neither the
-    # tree nor the drawing carries them, and the real route charges the required courses.
-    assert expression_course_leaf_group_ids(tree.requirements) == {
-        "100",
-        "110",
-        "115",
-        "db100",
-    }
+    # The unretained inactive substitution alternatives are dropped at compile time.
+    assert leaf_group_ids(structure, structure.root_use_id) == {"100", "110", "115", "db100"}
 
-    # Each canonical course is drawn once. The recommended pool draws its two real alternatives and
-    # the required pool's unary wrappers fold into their surviving edges.
-    assert [node.node_id for node in graph.course_nodes] == [
+    # Each canonical course is drawn once, and the two logical sources become one AND and one OR.
+    assert [node.node_id for node in _nodes(display, "course")] == [
         "course:100",
         "course:110",
         "course:115",
         "course:db100",
         "course:root",
     ]
-    assert [(node.node_id, node.kind.value) for node in graph.connector_nodes] == [
-        ("connector:r", "and"),
-        ("connector:r.1", "or"),
-        ("connector:r.1.1", "and"),
+    assert sorted(node.kind for node in display.nodes if node.kind in ("and", "or")) == [
+        "and",
+        "and",
+        "or",
     ]
-    assert [(edge.source_node_id, edge.target_node_id) for edge in graph.edges] == [
-        ("connector:r", "connector:r.1"),
-        ("connector:r", "course:110"),
-        ("connector:r.1", "connector:r.1.1"),
-        ("connector:r.1", "course:db100"),
-        ("connector:r.1.1", "course:115"),
-        ("connector:r.1.1", "course:db100"),
-        ("course:110", "course:100"),
-        ("course:115", "course:110"),
-        ("course:root", "connector:r"),
-    ]
-    # Every course edge carries the terminal occurrence IDs of its real source alternative. The
-    # required pool expands 110 and its own prerequisite 100. The 110 occurrence inside the
-    # recommended choice branch through 115 is a bare leaf, because the required pool expands 110, so
-    # 100 has one terminal occurrence.
-    root_pool_edge = next(
-        edge
-        for edge in graph.edges
-        if edge.source_node_id == "connector:r" and edge.target_node_id == "course:110"
-    )
-    assert root_pool_edge.relationships[0].occurrence_ids == ("r.0.0",)
-    choice_edge = next(edge for edge in graph.edges if edge.target_node_id == "course:115")
-    assert choice_edge.relationships[0].occurrence_ids == ("r.1.1.1.0",)
-    assert next(
-        edge
-        for edge in graph.edges
-        if edge.target_node_id == "course:db100" and edge.source_node_id == "connector:r.1"
-    ).relationships[0].occurrence_ids == ("r.1.0",)
-    assert next(
-        edge
-        for edge in graph.edges
-        if edge.target_node_id == "course:100" and edge.source_node_id == "course:110"
-    ).relationships[0].occurrence_ids == ("r.0.1",)
-
-    # Terminal and gate evidence is inside the tree's own occurrence index, and every emitted node is
-    # an edge endpoint reachable from the root: no orphan, placeholder or fabricated course exists.
-    occurrence_by_id = {
-        occurrence.occurrence_id: occurrence for occurrence in tree.node_occurrences
-    }
-    endpoints = {
-        endpoint for edge in graph.edges for endpoint in (edge.source_node_id, edge.target_node_id)
-    }
-    for node in (
-        *graph.course_nodes,
-        *graph.connector_nodes,
-        *graph.module_nodes,
-        *graph.ignored_nodes,
-    ):
-        assert node.node_id in endpoints
-    action_keys = {
-        node.node_id: node.action_key
-        for node in (
-            *graph.course_nodes,
-            *graph.connector_nodes,
-            *graph.module_nodes,
-            *graph.ignored_nodes,
-        )
-    }
-    for edge in graph.edges:
-        for member in edge.relationships:
-            for occurrence_id in (
-                *member.occurrence_ids,
-                *member.condition_occurrence_ids,
-            ):
-                assert occurrence_id in occurrence_by_id
-            terminal_key = occurrence_by_id[member.occurrence_ids[0]].action_key
-            assert terminal_key in (
-                action_keys[edge.source_node_id],
-                action_keys[edge.target_node_id],
-            )
+    pairs = _endpoint_pairs(display)
+    assert len(pairs) == len(set(pairs))
+    assert _reachable_node_ids(display) == {node.node_id for node in display.nodes}
+    assert len(display.edges) == 9
 
     # The drawing changes only presentation, so the real route charges the required courses.
-    path = calculate_minimum_new_credits(tree, [])
-    assert path.state is PrerequisitePathState.EXACT
-    assert [entry.course.group_id for entry in path.new_courses] == ["100", "110", "db100"]
-    assert path.total_new_credits == Decimal("15")
-    assert project_prerequisite_graph(tree) == graph
+    path = solve_route(structure, [])
+    assert path["state"] == "exact"
+    assert [entry["course"]["group_id"] for entry in path["new_courses"]] == [
+        "100",
+        "110",
+        "db100",
+    ]
+    assert Decimal(path["total_new_credits"]) == Decimal("15")
+    assert project_prerequisite_graph(structure).display == display
 
 
-def test_mandatory_position_rule_governs_duplicate_cardinality_open_and_cycle_positions() -> None:
-    """A required course's duplicate occurrence collapses to a bare leaf in a non-mandatory position.
-
-    A course that an enclosing conjunction requires expands once and is a bare leaf in a
-    non-mandatory branch, and two separate mandatory conjunction paths each expand the shared
-    course. A single-child wrapper passes its mandatory flag to its child. A `CardinalityRequirement`
-    child and a course with no mandatory occurrence expand at every position, and a closing cycle
-    occurrence is preserved with its cycle issue.
+def test_mandatory_position_rule_governs_duplicate_cardinality_open_and_cycle_positions(
+    solver_bundle: None,
+) -> None:
+    """A required course expands once, while non-mandatory, bounded and open positions expand
+    each slot.
     """
     root = catalogue_course(
         "redundant-root",
@@ -962,39 +1122,30 @@ def test_mandatory_position_rule_governs_duplicate_cardinality_open_and_cycle_po
         RecordingInferredSetRead(),
         RecordingEquivalenceGroupRead(),
     ).compile("redundant-root", include_recommended=True)
-    requirements = compilation.tree.requirements
-    assert isinstance(requirements, AndRequirement)
-    assert requirements.composed_role is ComposedAndRole.LOGICAL
-    compulsory_branch, recommended_branch = requirements.children
-    # The compulsory occurrence carries the one expanded subtree for the head course.
-    assert is_expanded_course_branch(compulsory_branch)
-    assert compulsory_branch.children[0] == official_course("head")
-    expanded_heads = [
-        expression.children[0].course_group_id
-        for _, expression in _iter_expression_occurrences(requirements)
-        if is_expanded_course_branch(expression)
+    structure = compilation.solver
+    requirements_use = structure.root_use_id
+    assert requirements_use is not None
+    assert piece_of(structure, requirements_use).kind == "and"
+    compulsory_use, recommended_use = child_uses(structure, requirements_use)
+    assert piece_of(structure, compulsory_use).kind == "expanded_course"
+    assert piece_of(structure, child_uses(structure, compulsory_use)[0]).course_group_id == "head"
+    # The duplicate recommended occurrence stays a bare leaf under its recommended OR.
+    assert [
+        piece_of(structure, use).course_group_id for use in child_uses(structure, recommended_use)
+    ] == ["other", "head"]
+    assert _expanded_head_groups(structure, requirements_use) == ["head"]
+    # The drawing holds one connector for the head's own requirement.
+    head_edges = [
+        edge for edge in compilation.display.edges if edge.source_node_id == "course:head"
     ]
-    assert expanded_heads == ["head"]
-    # The duplicate recommended occurrence is a bare leaf.
-    assert isinstance(recommended_branch, OrRequirement)
-    assert recommended_branch.children == (
-        official_course("other", OfficialPrerequisiteKind.RECOMMENDED),
-        official_course("head", OfficialPrerequisiteKind.RECOMMENDED),
-    )
-    # The drawing graph holds one connector for the head's own requirement.
-    head_requirement_edges = [
-        edge
-        for edge in compilation.graph.edges
-        if edge.source_node_id == "course:head" and edge.target_node_id.startswith("connector:")
-    ]
-    assert len(head_requirement_edges) == 1
+    assert len(head_edges) == 1
     assert {
         edge.target_node_id
-        for edge in compilation.graph.edges
-        if edge.source_node_id == head_requirement_edges[0].target_node_id
+        for edge in compilation.display.edges
+        if edge.source_node_id == head_edges[0].target_node_id
     } == {"course:head-a", "course:head-b"}
 
-    # Two separate mandatory conjunction paths each expand the shared course.
+    # Two separate mandatory conjunction paths each carry their own expanded shared slot.
     repeat_root = catalogue_course(
         "repeat-root",
         prerequisite_options=(
@@ -1047,51 +1198,37 @@ def test_mandatory_position_rule_governs_duplicate_cardinality_open_and_cycle_po
         RecordingInferredSetRead(),
         RecordingEquivalenceGroupRead(),
     ).compile("repeat-root")
-    repeat_requirements = repeat_compilation.tree.requirements
-    assert repeat_requirements is not None
-    repeat_expanded_heads = [
-        expression.children[0].course_group_id
-        for _, expression in _iter_expression_occurrences(repeat_requirements)
-        if is_expanded_course_branch(expression)
-    ]
-    assert repeat_expanded_heads == ["via-alpha", "shared", "via-beta", "shared"]
+    repeat_groups = _expanded_head_groups(
+        repeat_compilation.solver, repeat_compilation.solver.root_use_id
+    )
+    assert sorted(repeat_groups) == ["shared", "shared", "via-alpha", "via-beta"]
     shared_edges = [
-        edge for edge in repeat_compilation.graph.edges if edge.source_node_id == "course:shared"
+        edge for edge in repeat_compilation.display.edges if edge.source_node_id == "course:shared"
     ]
     assert len(shared_edges) == 1
-    assert sum(len(member.occurrence_ids) for member in shared_edges[0].relationships) == 2
-    shared_gate = shared_edges[0].target_node_id
-    children = [
-        edge for edge in repeat_compilation.graph.edges if edge.source_node_id == shared_gate
-    ]
-    assert {edge.target_node_id for edge in children} == {
-        "course:shared-base",
-        "course:shared-other",
+    assert {
+        edge.target_node_id
+        for edge in repeat_compilation.display.edges
+        if edge.source_node_id == shared_edges[0].target_node_id
+    } == {"course:shared-base", "course:shared-other"}
+    route = solve_route(repeat_compilation.solver, [])
+    assert Decimal(route["total_new_credits"]) == Decimal("25")
+    # A saved key on the shared logical box is not a markable box identity, so the drawing has one
+    # normalized connector and the minimum route charges 25 new credits.
+    marked_structure = repeat_compilation.solver.model_copy(
+        update={"excluded_node_keys": (shared_edges[0].target_node_id,)}
+    )
+    marked = project_prerequisite_graph(marked_structure)
+    assert marked.display is not None
+    assert {(edge.source_node_id, edge.target_node_id) for edge in marked.display.edges} == {
+        (edge.source_node_id, edge.target_node_id) for edge in repeat_compilation.display.edges
     }
-    assert all(
-        sum(len(member.occurrence_ids) for member in edge.relationships) == 2 for edge in children
-    )
-    before = repeat_compilation.tree.model_dump()
-    route = calculate_minimum_new_credits(repeat_compilation.tree, [])
-    assert route.total_new_credits == Decimal("25")
-    assert project_prerequisite_graph(repeat_compilation.tree) == repeat_compilation.graph
-    assert repeat_compilation.tree.model_dump() == before
-    first_gate = next(
-        occurrence
-        for occurrence in repeat_compilation.tree.node_occurrences
-        if occurrence.occurrence_id in shared_edges[0].relationships[0].occurrence_ids
-    )
-    marked_tree = repeat_compilation.tree.model_copy(
-        update={"excluded_node_keys": (first_gate.action_key,)}
-    )
-    marked_graph = project_prerequisite_graph(marked_tree)
-    assert len([edge for edge in marked_graph.edges if edge.source_node_id == "course:shared"]) == 2
-    assert calculate_minimum_new_credits(marked_tree, []).state is PrerequisitePathState.NO_SOLUTION
+    assert Decimal(solve_route(marked_structure, [])["total_new_credits"]) == Decimal("25")
 
-    # A single-child wrapper at a mandatory position passes the mandatory flag to its child, so a
-    # course expanded inside the wrapper is a mandatory head and its repeated non-mandatory
-    # occurrence collapses. The wrapper is one CourseCountRequirement inside its module boundary.
-    wrapper_year = (CatalogueCurriculumPeriod(id="period-2026", academic_year_start=2026),)
+    # A single-child wrapper at a mandatory position passes the mandatory flag to its child. Module
+    # bodies are their own context: the member head expands inside the module while the independent
+    # recommended occurrence also keeps its closure.
+    wrapper_period = (CatalogueCurriculumPeriod(id="period-2026", academic_year_start=2026),)
     wrapper_module = catalogue_module(
         "module-wrapper",
         (
@@ -1105,7 +1242,7 @@ def test_mandatory_position_rule_governs_duplicate_cardinality_open_and_cycle_po
                         module_rule(ModuleRuleType.COURSE_UNIT_RULE, referenced_group_id="head"),
                     ),
                 ),
-                curriculum_periods=wrapper_year,
+                curriculum_periods=wrapper_period,
             ),
         ),
     )
@@ -1139,16 +1276,11 @@ def test_mandatory_position_rule_governs_duplicate_cardinality_open_and_cycle_po
         RecordingInferredSetRead(),
         RecordingEquivalenceGroupRead(),
     ).compile("wrapper-root", include_recommended=True)
-    wrapper_requirements = wrapper_compilation.tree.requirements
-    assert wrapper_requirements is not None
-    assert [
-        expression.children[0].course_group_id
-        for _, expression in _iter_expression_occurrences(wrapper_requirements)
-        if is_expanded_course_branch(expression)
-    ] == ["head"]
+    assert _expanded_head_groups(
+        wrapper_compilation.solver, wrapper_compilation.solver.root_use_id
+    ) == ["head", "head"]
 
-    # A course reached only through a CardinalityRequirement child is not a mandatory head, so each
-    # of its occurrences expands. The bounded composite compiles to one cardinality node.
+    # A course reached only through a cardinality child is not a mandatory head: both slots expand.
     cardinality_module = catalogue_module(
         "module-cardinality",
         (
@@ -1160,10 +1292,14 @@ def test_mandatory_position_rule_governs_duplicate_cardinality_open_and_cycle_po
                     require_max=1,
                     children=(
                         module_rule(ModuleRuleType.COURSE_UNIT_RULE, referenced_group_id="head"),
-                        module_rule(ModuleRuleType.COURSE_UNIT_RULE, referenced_group_id="other"),
+                        module_rule(
+                            ModuleRuleType.COURSE_UNIT_RULE,
+                            sibling_position=1,
+                            referenced_group_id="other",
+                        ),
                     ),
                 ),
-                curriculum_periods=wrapper_year,
+                curriculum_periods=wrapper_period,
             ),
         ),
     )
@@ -1197,16 +1333,11 @@ def test_mandatory_position_rule_governs_duplicate_cardinality_open_and_cycle_po
         RecordingInferredSetRead(),
         RecordingEquivalenceGroupRead(),
     ).compile("cardinality-root", include_recommended=True)
-    cardinality_requirements = cardinality_compilation.tree.requirements
-    assert cardinality_requirements is not None
-    assert [
-        expression.children[0].course_group_id
-        for _, expression in _iter_expression_occurrences(cardinality_requirements)
-        if is_expanded_course_branch(expression)
-    ] == ["head", "head"]
+    assert _expanded_head_groups(
+        cardinality_compilation.solver, cardinality_compilation.solver.root_use_id
+    ) == ["head", "head"]
 
-    # A course with no mandatory occurrence at all expands in every non-mandatory position. Both
-    # recommended alternatives expand the head course.
+    # A course with no mandatory occurrence expands in every non-mandatory position.
     open_root = catalogue_course(
         "open-root",
         prerequisite_options=(
@@ -1225,16 +1356,12 @@ def test_mandatory_position_rule_governs_duplicate_cardinality_open_and_cycle_po
         RecordingInferredSetRead(),
         RecordingEquivalenceGroupRead(),
     ).compile("open-root", include_recommended=True)
-    open_requirements = open_compilation.tree.requirements
-    assert open_requirements is not None
-    assert [
-        expression.children[0].course_group_id
-        for _, expression in _iter_expression_occurrences(open_requirements)
-        if is_expanded_course_branch(expression)
-    ] == ["head", "head"]
+    assert _expanded_head_groups(open_compilation.solver, open_compilation.solver.root_use_id) == [
+        "head",
+        "head",
+    ]
 
-    # A cycle leaf is a bare course occurrence that the prune preserves, and its cycle issue is
-    # located at that occurrence.
+    # A cycle leaf is preserved with its closing piece and one located course-cycle issue.
     cycle_root = catalogue_course(
         "cycle-root",
         prerequisite_options=(
@@ -1258,22 +1385,23 @@ def test_mandatory_position_rule_governs_duplicate_cardinality_open_and_cycle_po
         RecordingInferredSetRead(),
         RecordingEquivalenceGroupRead(),
     ).compile("cycle-root")
-    cycle_requirements = cycle_compilation.tree.requirements
-    assert is_expanded_course_branch(cycle_requirements)
-    cycle_leaf = cycle_requirements.children[1]
-    assert isinstance(cycle_leaf, CourseRequirement)
-    assert cycle_leaf.course_group_id == "cycle-root"
+    cycle_piece = _root_piece(cycle_compilation.solver)
+    assert cycle_piece is not None and cycle_piece.kind == "expanded_course"
+    closing = [
+        piece
+        for piece in cycle_compilation.solver.pieces
+        if piece.kind == "course" and piece.cycle_closing and piece.course_group_id == "cycle-root"
+    ]
+    assert len(closing) == 1
     assert [
-        issue.occurrence_id
-        for issue in cycle_compilation.tree.issues
-        if issue.reason is UnresolvedPrerequisiteReason.COURSE_CYCLE
-    ] == ["r.1"]
+        issue.kind for issue in cycle_compilation.solver.diagnostics if issue.kind == "course_cycle"
+    ] == ["course_cycle"]
 
 
 def test_a_course_with_a_substitution_expands_at_its_compulsory_and_repeated_recommended_occurrences() -> (
     None
 ):
-    """A course that carries a substitution expands at its compulsory and repeated recommended occurrence."""
+    """A course carrying a substitution expands at both its compulsory and recommended slots."""
     root = catalogue_course(
         "alternatives-root",
         prerequisite_options=(
@@ -1312,97 +1440,45 @@ def test_a_course_with_a_substitution_expands_at_its_compulsory_and_repeated_rec
         RecordingInferredSetRead(),
         RecordingEquivalenceGroupRead(),
     ).compile("alternatives-root", include_recommended=True)
-    requirements = compilation.tree.requirements
-    assert isinstance(requirements, AndRequirement)
-    assert requirements.composed_role is ComposedAndRole.LOGICAL
-    compulsory_branch, recommended_branch = requirements.children
+    structure = compilation.solver
+    requirements_use = structure.root_use_id
+    assert requirements_use is not None
+    assert piece_of(structure, requirements_use).kind == "and"
+    compulsory_use, recommended_use = child_uses(structure, requirements_use)
 
-    # The compulsory occurrence wraps the head's expansion in one COURSE_ALTERNATIVES OR, whose first
-    # child is the represented expanded occurrence.
-    assert isinstance(compulsory_branch, OrRequirement)
-    assert compulsory_branch.composed_role is ComposedOrRole.COURSE_ALTERNATIVES
-    represented = compulsory_branch.children[0]
-    assert is_expanded_course_branch(represented)
-    assert represented.children[0] == official_course("head")
+    # The compulsory slot wraps the head's expansion in a course-alternatives OR whose first child
+    # is the expanded occurrence and whose alternative is the official substitute.
+    assert piece_of(structure, compulsory_use).kind == "course_alternatives"
+    represented_use, substitute_use = child_uses(structure, compulsory_use)
+    assert piece_of(structure, represented_use).kind == "expanded_course"
+    assert piece_of(structure, child_uses(structure, represented_use)[0]).course_group_id == "head"
+    substitute_piece = piece_of(structure, substitute_use)
+    substitute_fact = fact_of(structure, substitute_use)
+    assert substitute_piece.kind == "course" and substitute_piece.course_group_id == "head-alt"
+    assert substitute_fact.official_kind is OfficialPrerequisiteKind.SUBSTITUTION
 
-    # Every occurrence expands: a course with a substitution is not a mandatory head, because its
-    # represented branch sits inside a COURSE_ALTERNATIVES OR. The compulsory occurrence and the
-    # repeated recommended occurrence each expand the head.
-    expanded_heads = [
-        expression.children[0].course_group_id
-        for _, expression in _iter_expression_occurrences(requirements)
-        if is_expanded_course_branch(expression)
+    # The repeated recommended occurrence also expands the head and keeps its own wrapper.
+    assert piece_of(structure, recommended_use).kind == "or"
+    repeated = [
+        use
+        for use in child_uses(structure, recommended_use)
+        if piece_of(structure, use).kind == "course_alternatives"
     ]
-    assert expanded_heads == ["head", "head"]
-    assert isinstance(recommended_branch, OrRequirement)
-    repeated = recommended_branch.children[1]
-    assert isinstance(repeated, OrRequirement)
-    assert repeated.composed_role is ComposedOrRole.COURSE_ALTERNATIVES
-    repeated_represented = repeated.children[0]
-    assert is_expanded_course_branch(repeated_represented)
-    assert repeated_represented.children[0] == official_course(
-        "head", OfficialPrerequisiteKind.RECOMMENDED
+    assert len(repeated) == 1
+    repeated_represented = child_uses(structure, repeated[0])[0]
+    assert piece_of(structure, repeated_represented).kind == "expanded_course"
+    repeated_head_use = child_uses(structure, repeated_represented)[0]
+    assert piece_of(structure, repeated_head_use).course_group_id == "head"
+    assert (
+        fact_of(structure, repeated_head_use).official_kind is OfficialPrerequisiteKind.RECOMMENDED
     )
-
-
-def test_returned_category_pools_are_the_trees_own_objects() -> None:
-    """A direct compile returns the pooled expressions the calculation tree itself holds."""
-    pair_root = catalogue_course(
-        "pair-root",
-        prerequisite_options=(
-            prerequisite_option(
-                0,
-                PrerequisiteRequirementKind.COMPULSORY,
-                prerequisite_course_member(0, "required-peer"),
-            ),
-            prerequisite_option(
-                0,
-                PrerequisiteRequirementKind.RECOMMENDED,
-                prerequisite_course_member(0, "recommended-peer"),
-            ),
-        ),
-    )
-    solo_root = catalogue_course(
-        "solo-root",
-        prerequisite_options=(
-            prerequisite_option(
-                0,
-                PrerequisiteRequirementKind.COMPULSORY,
-                prerequisite_course_member(0, "solo-peer"),
-            ),
-        ),
-    )
-    compiler = PrerequisiteGraphCompiler(
-        FakeCurriculumRead(
-            (
-                pair_root,
-                solo_root,
-                catalogue_course("required-peer"),
-                catalogue_course("recommended-peer"),
-                catalogue_course("solo-peer"),
-            )
-        ),
-        RecordingInferredSetRead(),
-        RecordingEquivalenceGroupRead(),
-    )
-    (paired,) = compiler.compile_direct_many(
-        ("pair-root",), read_context=DirectPrerequisiteReadContext()
-    )
-    paired_requirements = paired.tree.requirements
-    assert isinstance(paired_requirements, AndRequirement)
-    assert paired_requirements.children[0] is paired.required
-    assert paired_requirements.children[1] is paired.recommended
-
-    (solo,) = compiler.compile_direct_many(
-        ("solo-root",), read_context=DirectPrerequisiteReadContext()
-    )
-    assert solo.recommended is None
-    assert solo.tree.requirements is solo.required
+    assert _expanded_head_groups(structure, requirements_use) == ["head", "head"]
 
 
 def test_projection_aggregates_course_path_flags_without_rewriting_provenance() -> None:
     """Course nodes aggregate independent visibility flags while local provenance is exact."""
     root = course_summary("root")
+    metadata = InferenceNodeMetadata(confidence=Decimal("0.9"))
     recommended_branch = OrRequirement(
         type="or",
         origin=PrerequisiteOrigin.OFFICIAL,
@@ -1412,8 +1488,6 @@ def test_projection_aggregates_course_path_flags_without_rewriting_provenance() 
             official_course("shared", OfficialPrerequisiteKind.RECOMMENDED),
         ),
     )
-    # A bare inferred course occurrence expands to `And(composed, (head leaf, its children))`, and
-    # its compiled substitution wrapper forwards the inferred path category to official descendants.
     substitution_wrapper = OrRequirement(
         type="or",
         origin=PrerequisiteOrigin.COMPOSED,
@@ -1432,7 +1506,7 @@ def test_projection_aggregates_course_path_flags_without_rewriting_provenance() 
         type="and",
         origin=PrerequisiteOrigin.COMPOSED,
         composed_role=ComposedAndRole.EXPANDED_COURSE,
-        children=(inferred_course("shared"), substitution_wrapper),
+        children=(inferred_course("shared", inference=metadata), substitution_wrapper),
     )
     requirements = AndRequirement(
         type="and",
@@ -1442,12 +1516,14 @@ def test_projection_aggregates_course_path_flags_without_rewriting_provenance() 
             official_course("required-only"),
             recommended_branch,
             inferred_expanded,
-            # An inferred recommended occurrence carries the recommended path exactly like an
-            # official recommended one, while keeping inferred origin and its own category.
-            inferred_course("recommended-inferred", InferredPrerequisiteCategory.RECOMMENDED),
+            inferred_course(
+                "recommended-inferred",
+                InferredPrerequisiteCategory.RECOMMENDED,
+                inference=metadata,
+            ),
         ),
     )
-    tree = make_tree(
+    compilation = make_compilation(
         root,
         requirements,
         (
@@ -1461,14 +1537,16 @@ def test_projection_aggregates_course_path_flags_without_rewriting_provenance() 
         include_recommended=True,
         include_inferred=True,
     )
-    graph = project_prerequisite_graph(tree)
-    nodes_by_group = {node.course.group_id: node for node in graph.course_nodes}
+    nodes_by_group = {
+        node.course_group_id: node
+        for node in _nodes(compilation.display, "course")
+        if node.course_group_id is not None
+    }
 
     assert nodes_by_group["root"].via_inferred is False
     assert nodes_by_group["root"].via_recommended is False
     assert nodes_by_group["required-only"].via_inferred is False
     assert nodes_by_group["required-only"].via_recommended is False
-
     # One canonical course reached through separate recommended and inferred occurrences keeps both.
     assert nodes_by_group["shared"].via_recommended is True
     assert nodes_by_group["shared"].via_inferred is True
@@ -1483,146 +1561,48 @@ def test_projection_aggregates_course_path_flags_without_rewriting_provenance() 
     assert nodes_by_group["substitute"].via_inferred is True
     assert nodes_by_group["substitute"].via_recommended is False
 
-    # Local provenance is preserved: the recommended connector/edge is recommended, the
-    # inferred recommended occurrence keeps its own category, and required/recommended inferred
-    # members stay separate.
-    recommended_connector = next(
-        node
-        for node in graph.connector_nodes
-        if node.official_kind is OfficialPrerequisiteKind.RECOMMENDED
-    )
-    assert recommended_connector.kind is PrerequisiteGraphConnectorKind.OR
-    assert recommended_connector.inferred_category is None
-    inferred_recommended_members = [
-        member
-        for edge in graph.edges
-        if edge.target_node_id == "course:recommended-inferred"
-        for member in edge.relationships
-    ]
-    assert len(inferred_recommended_members) == 1
-    assert inferred_recommended_members[0].origin is PrerequisiteOrigin.INFERRED
+    # Local provenance is preserved through the native facts of the merged endpoint relationships.
+    def edge_facts(target: str):
+        return [
+            next(fact for fact in compilation.solver.facts if fact.fact_id == member.fact_id)
+            for edge in compilation.display.edges
+            if edge.target_node_id == target
+            for member in compilation.solver.members
+            if member.member_id in edge.member_ids
+        ]
+
+    inferred_recommended_facts = edge_facts("course:recommended-inferred")
+    assert len(inferred_recommended_facts) == 1
+    assert inferred_recommended_facts[0].origin is PrerequisiteOrigin.INFERRED
     assert (
-        inferred_recommended_members[0].inferred_category
-        is InferredPrerequisiteCategory.RECOMMENDED
+        inferred_recommended_facts[0].inferred_category is InferredPrerequisiteCategory.RECOMMENDED
     )
-    assert inferred_recommended_members[0].official_kind is None
-    shared_members = [
-        member
-        for edge in graph.edges
-        if edge.target_node_id == "course:shared"
-        for member in edge.relationships
-    ]
-    assert {member.official_kind for member in shared_members} == {
+    assert inferred_recommended_facts[0].official_kind is None
+    assert {fact.official_kind for fact in edge_facts("course:shared")} == {
         None,
         OfficialPrerequisiteKind.RECOMMENDED,
     }
-    substitution_members = [
-        member
-        for edge in graph.edges
-        for member in edge.relationships
-        if member.official_kind is OfficialPrerequisiteKind.SUBSTITUTION
+    substitution_facts = [
+        next(fact for fact in compilation.solver.facts if fact.fact_id == member.fact_id)
+        for edge in compilation.display.edges
+        for member in compilation.solver.members
+        if member.member_id in edge.member_ids
+        and next(
+            fact for fact in compilation.solver.facts if fact.fact_id == member.fact_id
+        ).official_kind
+        is OfficialPrerequisiteKind.SUBSTITUTION
     ]
-    assert substitution_members
-    assert all(member.origin is PrerequisiteOrigin.OFFICIAL for member in substitution_members)
+    assert substitution_facts
+    assert all(fact.origin is PrerequisiteOrigin.OFFICIAL for fact in substitution_facts)
 
-    # Deterministic: an identical tree projects to the same aggregated flags.
-    assert project_prerequisite_graph(tree) == graph
-
-
-def test_module_cards_hide_member_closure_without_relabeling_independent_occurrences() -> None:
-    """A module card lists only its official member. An independently reached member draws fully."""
-    year_period = (CatalogueCurriculumPeriod(id="period-2026", academic_year_start=2026),)
-    module = catalogue_module(
-        "module-x",
-        (
-            module_version(
-                "module-x-v1",
-                rule=module_rule(ModuleRuleType.COURSE_UNIT_RULE, referenced_group_id="member"),
-                curriculum_periods=year_period,
-            ),
-        ),
-    )
-    root = catalogue_course(
-        "root",
-        prerequisite_options=(
-            prerequisite_option(
-                0,
-                PrerequisiteRequirementKind.COMPULSORY,
-                prerequisite_module_member(0, "module-x"),
-            ),
-        ),
-    )
-    # The member has an ordinary prerequisite and an official substitute. Neither is a module card.
-    member = catalogue_course(
-        "member",
-        prerequisite_options=(
-            prerequisite_option(
-                0,
-                PrerequisiteRequirementKind.COMPULSORY,
-                prerequisite_course_member(0, "member-prereq"),
-            ),
-        ),
-        substitution_options=(substitution_option(0, ("substitute", None)),),
-    )
-    courses = (root, member, catalogue_course("member-prereq"), catalogue_course("substitute"))
-    inferred = RecordingInferredSetRead(
-        {
-            "root": current_result("root", expression=inferred_course("member")),
-            "member": current_result("member"),
-            "member-prereq": current_result("member-prereq"),
-            "substitute": current_result("substitute"),
-        }
-    )
-    compilation = PrerequisiteGraphCompiler(
-        FakeCurriculumRead(courses, (module,)), inferred, RecordingEquivalenceGroupRead()
-    ).compile("root", include_inferred=True)
-
-    # The module card list is exactly the explicit official member: no ancestor or substitute.
-    module_node = next(
-        node for node in compilation.graph.module_nodes if node.module.group_id == "module-x"
-    )
-    assert module_node.occurrence_id == "r.0"
-    assert [card.group_id for card in module_node.member_courses] == ["member"]
-    # The module boundary hides its internal member closure but exposes the member's real external
-    # obligations: its prerequisite and official substitute draw as conditional routes from the
-    # module, never as internal member cards.
-    assert any(edge.source_node_id == "module:r.0" for edge in compilation.graph.edges)
-    assert {
-        edge.target_node_id
-        for edge in compilation.graph.edges
-        if edge.source_node_id == "module:r.0"
-    } == {"connector:r.0.0"}
-    assert "member-prereq" in {node.course.group_id for node in compilation.graph.course_nodes}
-    assert "substitute" in {node.course.group_id for node in compilation.graph.course_nodes}
-
-    # The member independently reached through the inferred alternative draws once as a canonical
-    # standalone node. Its official module occurrence and inferred alternative aggregate, and the
-    # official occurrence wins the display marker.
-    member_node = next(
-        node for node in compilation.graph.course_nodes if node.course.group_id == "member"
-    )
-    assert member_node.has_official_provenance is True
-    assert member_node.has_inferred_provenance is True
-    assert member_node.via_inferred is True
-    assert member_node.display_as_inferred is False
-    assert "member-prereq" in {node.course.group_id for node in compilation.graph.course_nodes}
-
-    # Module identity is display metadata only: dropping it changes neither the calculation-tree
-    # expression nor the solver result.
-    stripped = compilation.model_copy(
-        update={
-            "tree": compilation.tree.model_copy(update={"module_occurrences": ()}),
-            "graph": compilation.graph.model_copy(update={"module_nodes": ()}),
-        }
-    )
-    assert stripped.tree.requirements == compilation.tree.requirements
-    assert calculate_minimum_new_credits(stripped.tree, []) == calculate_minimum_new_credits(
-        compilation.tree, []
-    )
+    # Deterministic: an identical structure projects to the same aggregated flags.
+    assert project_prerequisite_graph(compilation.solver).display == compilation.display
 
 
-def test_module_cards_follow_activity_retention_and_unretained_member_reports_no_solution() -> None:
-    """Module cards follow activity retention and exclusion, and an unretained member makes the route impossible."""
+def test_module_cards_follow_activity_retention_and_unretained_member_reports_no_solution(
+    solver_bundle: None,
+) -> None:
+    """Module cards follow activity retention and exclusion, and an unretained member blocks the route."""
     year_period = (CatalogueCurriculumPeriod(id="period-2026", academic_year_start=2026),)
     module = catalogue_module(
         "module-a",
@@ -1682,393 +1662,51 @@ def test_module_cards_follow_activity_retention_and_unretained_member_reports_no
         RecordingEquivalenceGroupRead(),
     )
 
-    def without_metadata(compilation):
-        return compilation.model_copy(
-            update={
-                "tree": compilation.tree.model_copy(update={"module_occurrences": ()}),
-                "graph": compilation.graph.model_copy(update={"module_nodes": ()}),
-            }
-        )
-
-    # All courses: both official module members are cards. The active member's external prerequisite is drawn.
+    # Both official module members are cards, and the active member's prerequisite draws.
     all_courses = compiler.compile("root")
-    assert [node.course.group_id for node in all_courses.graph.course_nodes] == [
+    assert {node.course_group_id for node in _nodes(all_courses.display, "course")} == {
         "external-prerequisite",
         "root",
-    ]
-    assert [node.node_id for node in all_courses.graph.module_nodes] == ["module:r"]
-    assert [card.group_id for card in all_courses.graph.module_nodes[0].member_courses] == [
-        "active-member",
-        "inactive-member",
-    ]
-    all_internal = next(
-        node
-        for node in all_courses.graph.connector_nodes
-        if node.kind is PrerequisiteGraphConnectorKind.INTERNAL_REQUIREMENT
-    )
-    assert all_internal.member_group_ids == ("inactive-member",)
+    }
+    module_node = _nodes(all_courses.display, "module")[0]
+    assert module_node.member_group_ids == ("active-member", "inactive-member")
+    internal = _nodes(all_courses.display, "internal_requirement")
+    assert [node.member_group_ids for node in internal] == [("inactive-member",)]
 
-    # Active-only drops the unretained inactive member, so the module node draws only the active
-    # member card and the module rule cannot meet its bound with the surviving members.
+    # Active-only drops the unretained inactive member, so the rule cannot meet its bound.
     active_only = compiler.compile("root", active_only=True)
-    assert [node.node_id for node in active_only.graph.module_nodes] == ["module:r"]
-    assert [card.group_id for card in active_only.graph.module_nodes[0].member_courses] == [
-        "active-member"
-    ]
-    assert not any(
-        node.kind is PrerequisiteGraphConnectorKind.INTERNAL_REQUIREMENT
-        for node in active_only.graph.connector_nodes
-    )
-    assert active_only.graph.course_nodes == all_courses.graph.course_nodes
-    active_edges = {(edge.source_node_id, edge.target_node_id) for edge in active_only.graph.edges}
-    assert active_edges == {
-        (edge.source_node_id, edge.target_node_id) for edge in all_courses.graph.edges
-    } - {("connector:r.0", "connector:r.0.0")}
-    assert not any("inactive-member" in endpoint for edge in active_edges for endpoint in edge)
+    active_module = _nodes(active_only.display, "module")[0]
+    assert active_module.member_group_ids == ("active-member",)
+    assert _nodes(active_only.display, "internal_requirement") == []
+    assert solve_route(active_only.solver, [])["state"] == "no_solution"
 
-    # Retaining the selected/completed identity restores the card and node, and that identity then
-    # fully satisfies the obligation as the calculation basis.
+    # Retaining the selected identity restores the card, the disclosure and a satisfiable route.
     retained = compiler.compile("root", active_only=True, retained_group_ids=("inactive-member",))
-    assert [node.node_id for node in retained.graph.module_nodes] == ["module:r"]
-    assert [card.group_id for card in retained.graph.module_nodes[0].member_courses] == [
+    assert _nodes(retained.display, "module")[0].member_group_ids == (
         "active-member",
         "inactive-member",
-    ]
-    retained_internal = next(
-        node
-        for node in retained.graph.connector_nodes
-        if node.kind is PrerequisiteGraphConnectorKind.INTERNAL_REQUIREMENT
     )
-    assert retained_internal.member_group_ids == ("inactive-member",)
-    retained_path = calculate_minimum_new_credits(retained.tree, ["inactive-member"])
-    assert retained_path.state is PrerequisitePathState.EXACT
+    assert [node.member_group_ids for node in _nodes(retained.display, "internal_requirement")] == [
+        ("inactive-member",)
+    ]
+    retained_path = solve_route(retained.solver, ["inactive-member"])
+    assert retained_path["state"] == "exact"
 
     # An excluded member is a visible card but is denied by the calculation.
     excluded = compiler.compile("root", excluded_group_ids=("inactive-member",))
-    assert [card.group_id for card in excluded.graph.module_nodes[0].member_courses] == [
+    assert _nodes(excluded.display, "module")[0].member_group_ids == (
         "active-member",
         "inactive-member",
-    ]
-    excluded_path = calculate_minimum_new_credits(excluded.tree, [])
-    assert excluded_path.state is PrerequisitePathState.NO_SOLUTION
-    assert excluded_path.blocked_excluded_group_ids == ("inactive-member",)
-
-    # Path/satisfaction values are identical with the display-only module metadata absent. Active-only
-    # drops the unretained inactive member, so the module rule cannot meet its bound and the route is
-    # impossible.
-    assert (
-        calculate_minimum_new_credits(active_only.tree, []).state
-        is PrerequisitePathState.NO_SOLUTION
     )
-    for compilation in (all_courses, active_only, retained, excluded):
-        assert calculate_minimum_new_credits(compilation.tree, []) == calculate_minimum_new_credits(
-            without_metadata(compilation).tree, []
-        )
+    excluded_path = solve_route(excluded.solver, [])
+    assert excluded_path["state"] == "no_solution"
+    assert excluded_path["blocked_excluded_group_ids"] == ["inactive-member"]
 
 
-def test_graph_node_marks_are_stable_scoped_and_history_distinct() -> None:
-    """Node action keys are positional-shift stable. Module marks stay graph-only and history-distinct."""
-    year_period = (CatalogueCurriculumPeriod(id="period-2026", academic_year_start=2026),)
-    module = catalogue_module(
-        "module-mark",
-        (
-            module_version(
-                "module-mark-v1",
-                rule=module_rule(ModuleRuleType.COURSE_UNIT_RULE, referenced_group_id="member"),
-                curriculum_periods=year_period,
-            ),
-        ),
-    )
-    root = catalogue_course(
-        "root",
-        prerequisite_options=(
-            prerequisite_option(
-                0,
-                PrerequisiteRequirementKind.COMPULSORY,
-                prerequisite_module_member(0, "module-mark"),
-            ),
-            prerequisite_option(
-                0,
-                PrerequisiteRequirementKind.RECOMMENDED,
-                prerequisite_course_member(0, "recommended"),
-            ),
-            prerequisite_option(1, PrerequisiteRequirementKind.COMPULSORY),
-        ),
-    )
-    compiler = PrerequisiteGraphCompiler(
-        FakeCurriculumRead(
-            (root, catalogue_course("member"), catalogue_course("recommended")), (module,)
-        ),
-        RecordingInferredSetRead(),
-        RecordingEquivalenceGroupRead(),
-    )
-
-    # A toggle that shifts the module's drawing position never changes its stable action key.
-    plain = compiler.compile("root")
-    shifted = compiler.compile("root", include_recommended=True)
-    plain_module = next(
-        occ for occ in plain.tree.node_occurrences if occ.action_key == "module:module-mark"
-    )
-    shifted_module = next(
-        occ for occ in shifted.tree.node_occurrences if occ.action_key == "module:module-mark"
-    )
-    assert plain_module.occurrence_id == "r"
-    assert shifted_module.occurrence_id == "r.0"
-    assert plain_module.action_key == shifted_module.action_key
-
-    # Excluding the module blocks its route with no-solution and never globally excludes its members.
-    excluded = compiler.compile("root", excluded_node_keys=("module:module-mark",))
-    assert excluded.tree.excluded_group_ids == ()
-    excluded_states = {
-        state.action_key: state
-        for state in evaluate_prerequisite_node_states(excluded.tree, [], completed_group_ids=[])
-    }
-    assert excluded_states["module:module-mark"].is_excluded is True
-    assert excluded_states["course:member"].is_excluded is False
-    excluded_path = calculate_minimum_new_credits(excluded.tree, [])
-    assert excluded_path.state is PrerequisitePathState.NO_SOLUTION
-    assert excluded_path.blocked_excluded_node_keys == ("module:module-mark",)
-    assert any(
-        problem.state == "no_solution"
-        and problem.reason == "excluded_node"
-        and problem.action_key == "module:module-mark"
-        for problem in excluded_path.problems
-    )
-
-    # Manually completing the module fulfils it at zero new cost without completing its members.
-    manual = compiler.compile("root", completed_node_keys=("module:module-mark",))
-    manual_path = calculate_minimum_new_credits(manual.tree, [])
-    assert manual_path.state is PrerequisitePathState.EXACT
-    assert manual_path.total_new_credits == Decimal("0")
-    assert manual_path.new_courses == ()
-    manual_states = {
-        state.action_key: state
-        for state in evaluate_prerequisite_node_states(manual.tree, [], completed_group_ids=[])
-    }
-    assert manual_states["module:module-mark"].manually_completed is True
-    assert manual_states["course:member"].manually_completed is False
-    assert manual_states["course:member"].completed_by_courses is False
-
-    disclosure = manual.tree.ignored_parts[0]
-    marked_disclosure = compiler.compile(
-        "root",
-        completed_node_keys=("module:module-mark", disclosure.action_key),
-    )
-    display_state = next(
-        state
-        for state in evaluate_prerequisite_node_states(
-            marked_disclosure.tree, [], completed_group_ids=[]
-        )
-        if state.action_key == disclosure.action_key
-    )
-    assert display_state.occurrence_ids == (disclosure.part_id,)
-    assert display_state.manually_completed is True
-    assert display_state.completed_by_courses is False
-    assert display_state.satisfied_by_basis is False
-    assert calculate_minimum_new_credits(marked_disclosure.tree, []).total_new_credits == Decimal(
-        "0"
-    )
-
-    # An ignored disclosure cannot satisfy or block its unpaid containing module, even when both
-    # display marks are present without a manual mark on that module.
-    ignored_only = compiler.compile(
-        "root",
-        completed_node_keys=(disclosure.action_key,),
-        excluded_node_keys=(disclosure.action_key,),
-    )
-    ignored_only_state = next(
-        state
-        for state in evaluate_prerequisite_node_states(
-            ignored_only.tree, [], completed_group_ids=[]
-        )
-        if state.action_key == disclosure.action_key
-    )
-    assert ignored_only_state.manually_completed is True
-    assert ignored_only_state.is_excluded is True
-    assert ignored_only_state.satisfied_by_basis is False
-    assert ignored_only_state.completed_by_courses is False
-    ignored_only_path = calculate_minimum_new_credits(ignored_only.tree, [])
-    assert ignored_only_path.state is PrerequisitePathState.EXACT
-    assert ignored_only_path.total_new_credits == Decimal("5")
-
-    free_root = catalogue_course(
-        "free-mark-root",
-        prerequisite_options=(
-            prerequisite_option(
-                0,
-                PrerequisiteRequirementKind.COMPULSORY,
-                prerequisite_module_member(0, "module-mark"),
-            ),
-            prerequisite_option(
-                1,
-                PrerequisiteRequirementKind.COMPULSORY,
-                prerequisite_course_member(0, "member"),
-            ),
-            prerequisite_option(
-                2,
-                PrerequisiteRequirementKind.COMPULSORY,
-                prerequisite_module_member(0, "module-free-mark"),
-            ),
-        ),
-    )
-    free_compiler = PrerequisiteGraphCompiler(
-        FakeCurriculumRead(
-            (free_root, catalogue_course("member")),
-            (
-                module,
-                catalogue_module(
-                    "module-free-mark",
-                    (
-                        module_version(
-                            "module-free-mark-v1",
-                            rule=module_rule(
-                                ModuleRuleType.COMPOSITE_RULE,
-                                all_mandatory=True,
-                                children=(
-                                    module_rule(ModuleRuleType.ANY_COURSE_UNIT_RULE),
-                                    module_rule(ModuleRuleType.ANY_MODULE_RULE, sibling_position=1),
-                                ),
-                            ),
-                            curriculum_periods=year_period,
-                        ),
-                    ),
-                ),
-            ),
-        ),
-        RecordingInferredSetRead(),
-        RecordingEquivalenceGroupRead(),
-    )
-    free_compilation = free_compiler.compile("free-mark-root")
-    free_disclosure = next(
-        part for part in free_compilation.tree.ignored_parts if part.kind.value == "free_choice"
-    )
-    free_marked = free_compiler.compile(
-        "free-mark-root",
-        completed_node_keys=(free_disclosure.action_key,),
-        excluded_node_keys=(free_disclosure.action_key,),
-    )
-    assert calculate_minimum_new_credits(free_marked.tree, []).total_new_credits == Decimal("5")
-
-    # Two disclosure records sharing one stable action key aggregate their distinct IDs once, with
-    # calculation occurrences left untouched.
-    disclosures = free_compilation.tree.ignored_parts
-    assert len(disclosures) == 2
-    duplicate_disclosures = (
-        disclosures[0],
-        disclosures[1].model_copy(update={"action_key": disclosures[0].action_key}),
-    )
-    aggregated_tree = free_compilation.tree.model_copy(
-        update={"ignored_parts": duplicate_disclosures}
-    )
-    aggregate_state = next(
-        state
-        for state in evaluate_prerequisite_node_states(aggregated_tree, [], completed_group_ids=[])
-        if state.action_key == disclosures[0].action_key
-    )
-    assert aggregate_state.occurrence_ids == tuple(
-        sorted(part.part_id for part in duplicate_disclosures)
-    )
-    assert aggregated_tree.requirements == free_compilation.tree.requirements
-
-    # Actual completed courses fulfil the module automatically. A selected-only basis satisfies the
-    # calculation without being reported as historical completion.
-    completed_states = {
-        state.action_key: state
-        for state in evaluate_prerequisite_node_states(
-            plain.tree, ["member"], completed_group_ids=["member"]
-        )
-    }
-    selected_states = {
-        state.action_key: state
-        for state in evaluate_prerequisite_node_states(
-            plain.tree, ["member"], completed_group_ids=[]
-        )
-    }
-    assert completed_states["module:module-mark"].completed_by_courses is True
-    assert completed_states["module:module-mark"].satisfied_by_basis is True
-    assert selected_states["module:module-mark"].completed_by_courses is False
-    assert selected_states["module:module-mark"].satisfied_by_basis is True
-
-    # Two same-child numeric source occurrences keep distinct stable action keys, and a category toggle
-    # that shifts their drawing positions never changes those source-lineage keys.
-    numeric_module = catalogue_module(
-        "module-numeric",
-        (
-            module_version(
-                "module-numeric-v1",
-                rule=module_rule(
-                    ModuleRuleType.COMPOSITE_RULE,
-                    all_mandatory=True,
-                    children=(
-                        module_rule(
-                            ModuleRuleType.CREDITS_RULE,
-                            credits_min="5",
-                            children=(
-                                module_rule(
-                                    ModuleRuleType.COURSE_UNIT_RULE,
-                                    referenced_group_id="member",
-                                ),
-                            ),
-                        ),
-                        module_rule(
-                            ModuleRuleType.CREDITS_RULE,
-                            sibling_position=1,
-                            credits_min="5",
-                            children=(
-                                module_rule(
-                                    ModuleRuleType.COURSE_UNIT_RULE,
-                                    referenced_group_id="member",
-                                ),
-                            ),
-                        ),
-                    ),
-                ),
-                curriculum_periods=year_period,
-            ),
-        ),
-    )
-    numeric_root = catalogue_course(
-        "numeric-root",
-        prerequisite_options=(
-            prerequisite_option(
-                0,
-                PrerequisiteRequirementKind.COMPULSORY,
-                prerequisite_module_member(0, "module-numeric"),
-            ),
-            prerequisite_option(
-                0,
-                PrerequisiteRequirementKind.RECOMMENDED,
-                prerequisite_course_member(0, "member"),
-            ),
-        ),
-    )
-    numeric_compiler = PrerequisiteGraphCompiler(
-        FakeCurriculumRead((numeric_root, catalogue_course("member")), (numeric_module,)),
-        RecordingInferredSetRead(),
-        RecordingEquivalenceGroupRead(),
-    )
-
-    def numeric_credit_keys(compilation):
-        expression_by_occurrence = dict(_iter_expression_occurrences(compilation.tree.requirements))
-        key_by_occurrence = {
-            occ.occurrence_id: occ.action_key for occ in compilation.tree.node_occurrences
-        }
-        return sorted(
-            key_by_occurrence[occurrence_id]
-            for occurrence_id, expression in expression_by_occurrence.items()
-            if isinstance(expression, CreditRequirement)
-        )
-
-    numeric_plain = numeric_compiler.compile("numeric-root")
-    numeric_shifted = numeric_compiler.compile("numeric-root", include_recommended=True)
-    plain_credit_keys = numeric_credit_keys(numeric_plain)
-    assert len(plain_credit_keys) == 2
-    assert plain_credit_keys[0] != plain_credit_keys[1]
-    assert numeric_credit_keys(numeric_shifted) == plain_credit_keys
-
-
-def test_external_module_dependencies_preserve_conditional_route_evidence() -> None:
-    """A compact module exposes its external obligations and shares canonical courses with outside routes."""
+def test_external_module_dependencies_preserve_conditional_route_evidence(
+    solver_bundle: None,
+) -> None:
+    """A hidden-member diamond holds one framed external obligation and exact route evidence."""
     year_period = (CatalogueCurriculumPeriod(id="period-2026", academic_year_start=2026),)
     module = catalogue_module(
         "module-abc",
@@ -2078,18 +1716,13 @@ def test_external_module_dependencies_preserve_conditional_route_evidence() -> N
                 rule=module_rule(
                     ModuleRuleType.COMPOSITE_RULE,
                     all_mandatory=True,
-                    children=(
-                        module_rule(ModuleRuleType.COURSE_UNIT_RULE, referenced_group_id="A"),
+                    children=tuple(
                         module_rule(
                             ModuleRuleType.COURSE_UNIT_RULE,
-                            sibling_position=1,
-                            referenced_group_id="B",
-                        ),
-                        module_rule(
-                            ModuleRuleType.COURSE_UNIT_RULE,
-                            sibling_position=2,
-                            referenced_group_id="C",
-                        ),
+                            sibling_position=index,
+                            referenced_group_id=group_id,
+                        )
+                        for index, group_id in enumerate(("A", "B", "C", "D"))
                     ),
                 ),
                 curriculum_periods=year_period,
@@ -2108,20 +1741,18 @@ def test_external_module_dependencies_preserve_conditional_route_evidence() -> N
         ),
     )
 
-    def require(first: str, second: str):
-        return catalogue_course(
-            first,
-            prerequisite_options=(
-                prerequisite_option(
-                    0, PrerequisiteRequirementKind.COMPULSORY, prerequisite_course_member(0, second)
+    def require(*group_ids: str) -> tuple:
+        return (
+            prerequisite_option(
+                0,
+                PrerequisiteRequirementKind.COMPULSORY,
+                *(
+                    prerequisite_course_member(index, group_id)
+                    for index, group_id in enumerate(group_ids)
                 ),
             ),
         )
 
-    # Module members A->B->C->D (D outside), plus an independently reached outside E requiring B or X.
-    a = require("A", "B")
-    b = require("B", "C")
-    c = require("C", "D")
     outside = catalogue_course(
         "outside",
         prerequisite_options=(
@@ -2135,80 +1766,116 @@ def test_external_module_dependencies_preserve_conditional_route_evidence() -> N
     )
     courses = (
         root,
-        a,
-        b,
-        c,
-        catalogue_course("D"),
-        catalogue_course("X"),
+        catalogue_course("A", prerequisite_options=require("B", "C")),
+        catalogue_course("B", prerequisite_options=require("D")),
+        catalogue_course("C", prerequisite_options=require("D")),
+        catalogue_course("D", prerequisite_options=require("E")),
+        catalogue_course("E"),
         outside,
+        catalogue_course("X"),
     )
     compilation = PrerequisiteGraphCompiler(
         FakeCurriculumRead(courses, (module,)),
         RecordingInferredSetRead(),
         RecordingEquivalenceGroupRead(),
     ).compile("root")
-    graph = compilation.graph
-
-    module_node = next(node for node in graph.module_nodes if node.module.group_id == "module-abc")
-    assert [card.group_id for card in module_node.member_courses] == ["A", "B", "C"]
-    module_edges = [edge for edge in graph.edges if edge.source_node_id == module_node.node_id]
-    # A pure mandatory internal chain collapses to its one real external obligation. That obligation
-    # is one real conjunction whose condition-distinct source chains travel as members of one
-    # visible connection, so route lighting never turns unrelated elided gates into a false all-of
-    # condition.
-    assert [edge.target_node_id for edge in module_edges] == ["connector:r.0.0"]
-    obligation_node = next(
-        node for node in graph.connector_nodes if node.node_id == "connector:r.0.0"
+    display = compilation.display
+    assert display is not None
+    assert len(display.edges) == len(
+        {(edge.source_node_id, edge.target_node_id) for edge in display.edges}
     )
-    assert obligation_node.kind is PrerequisiteGraphConnectorKind.AND
-    external_edges = [
-        edge for edge in graph.edges if edge.source_node_id == obligation_node.node_id
-    ]
-    assert {edge.target_node_id for edge in external_edges} == {"course:D"}
-    assert len(external_edges) == 1
-    external_members = external_edges[0].relationships
-    assert len(external_members) > 1
-    assert all(member.condition_occurrence_ids for member in external_members)
-    assert len({member.condition_occurrence_ids for member in external_members}) == len(
-        external_members
-    )
-    # No standalone member card is drawn solely for the module. The independently reached B, D and
-    # outside draw normally and share the one canonical course node. C appears only as a module card,
-    # because the module's mandatory conjunction expands it.
-    standalone = {node.course.group_id for node in graph.course_nodes}
-    assert "A" not in standalone
-    assert {"B", "D", "outside", "X"} <= standalone
-    assert "C" not in standalone
 
-    path = calculate_minimum_new_credits(compilation.tree, [])
-    assert path.state is PrerequisitePathState.EXACT
-    selected = tuple(entry.course.group_id for entry in path.new_courses)
-    assert selected == ("A", "B", "C", "D", "outside")
-    # The module's exact external evidence is selected, while the unchosen X alternative is not.
-    x_occurrences = {
-        occurrence_id
-        for edge in graph.edges
-        if edge.target_node_id == "course:X"
-        for member in edge.relationships
-        for occurrence_id in member.occurrence_ids
+    module_node = next(
+        node for node in _nodes(display, "module") if node.module_group_id == "module-abc"
+    )
+    assert module_node.member_group_ids == ("A", "B", "C", "D")
+    module_edges = [edge for edge in display.edges if edge.source_node_id == module_node.node_id]
+    # Unary normalization leaves the module one direct external attachment.
+    assert len(module_edges) == 1
+    module_to_e = module_edges[0]
+    assert module_to_e.target_node_id == "course:E"
+    assert module_to_e.member_ids
+
+    # A and C are hidden module cards. The independent B occurrence keeps its own closure, so B
+    # and its prerequisite D draw as standalone course nodes, while E is the shared external node.
+    course_ids = {node.course_group_id for node in _nodes(display, "course")}
+    assert "A" not in course_ids
+    assert "C" not in course_ids
+    assert {"B", "D", "E", "outside", "X"} <= course_ids
+    b_nodes = [node for node in _nodes(display, "course") if node.course_group_id == "B"]
+    assert len(b_nodes) == 1
+    assert b_nodes[0].has_official_provenance is True
+    assert b_nodes[0].display_as_inferred is False
+    assert {(edge.source_node_id, edge.target_node_id) for edge in display.edges} >= {
+        ("course:B", "course:D"),
+        ("course:D", "course:E"),
     }
-    assert set(module_edges[0].relationships[0].occurrence_ids) <= set(path.selected_occurrence_ids)
+    assert not any(
+        edge.source_node_id == module_node.node_id
+        and edge.target_node_id in {"course:B", "course:C", "course:D"}
+        for edge in display.edges
+    )
+    outside_edges = [edge for edge in display.edges if edge.source_node_id == "course:outside"]
+    assert len(outside_edges) == 1
+    outside_or_id = outside_edges[0].target_node_id
+    assert next(node for node in display.nodes if node.node_id == outside_or_id).kind == "or"
+    assert {
+        edge.target_node_id for edge in display.edges if edge.source_node_id == outside_or_id
+    } == {
+        "course:B",
+        "course:X",
+    }
+
+    # Every module member's course-head use binds to an emitted containing location.
+    emitted_ids = {node.node_id for node in display.nodes}
     assert all(
-        set(member.occurrence_ids) <= set(path.selected_occurrence_ids)
-        for edge in external_edges
-        for member in edge.relationships
+        binding.node_ids and set(binding.node_ids) <= emitted_ids
+        for binding in compilation.solver.bindings
     )
-    assert not (x_occurrences & set(path.selected_occurrence_ids))
+    for member in ("A", "B", "C", "D"):
+        member_piece_ids = {
+            piece.piece_id
+            for piece in compilation.solver.pieces
+            if piece.kind == "course" and piece.course_group_id == member
+        }
+        assert [
+            binding
+            for binding in compilation.solver.bindings
+            if binding.piece_id in member_piece_ids
+        ]
 
-    # An ordinary expanded course head connects to its descendant condition tree, never as an AND
-    # connector with head and descendants as siblings.
-    assert any(
-        edge.source_node_id == "course:outside" and edge.target_node_id.startswith("connector:")
-        for edge in graph.edges
+    path = solve_route(compilation.solver, [])
+    assert path["state"] == "exact"
+    assert tuple(entry["course"]["group_id"] for entry in path["new_courses"]) == (
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "outside",
+    )
+    assert Decimal(path["total_new_credits"]) == Decimal("30")
+    # The needed external E relationship is lit by the actual route and correlates.
+    assert set(path["lit_members"]) & set(module_to_e.member_ids)
+    assert set(path["lit_members"]) <= {
+        member_id for edge in display.edges for member_id in edge.member_ids
+    }
+
+    # Basis-covered heads bypass their own prerequisites, so E is neither needed nor lit.
+    covered = solve_route(compilation.solver, ["A", "B", "C", "D", "outside"])
+    assert covered["state"] == "exact"
+    assert Decimal(covered["total_new_credits"]) == Decimal("0")
+    assert covered["new_courses"] == []
+    assert not (
+        set(covered["lit_members"])
+        & {
+            member.member_id
+            for member in compilation.solver.members
+            if member.target_node_id == "course:E"
+        }
     )
 
-    # A mixed module choice keeps its internal-only option as a childless internal requirement and
-    # never collapses the external option into one mandatory edge.
+    # A mixed module choice represents this option as a childless requirement disclosure.
     choice_module = catalogue_module(
         "module-choice",
         (
@@ -2220,7 +1887,8 @@ def test_external_module_dependencies_preserve_conditional_route_evidence() -> N
                     require_max=1,
                     children=(
                         module_rule(
-                            ModuleRuleType.COURSE_UNIT_RULE, referenced_group_id="choice-internal"
+                            ModuleRuleType.COURSE_UNIT_RULE,
+                            referenced_group_id="choice-internal",
                         ),
                         module_rule(
                             ModuleRuleType.COURSE_UNIT_RULE,
@@ -2243,7 +1911,9 @@ def test_external_module_dependencies_preserve_conditional_route_evidence() -> N
             ),
         ),
     )
-    choice_external = require("choice-external", "choice-dep")
+    choice_external = catalogue_course(
+        "choice-external", prerequisite_options=require("choice-dep")
+    )
     choice_compilation = PrerequisiteGraphCompiler(
         FakeCurriculumRead(
             (
@@ -2257,27 +1927,405 @@ def test_external_module_dependencies_preserve_conditional_route_evidence() -> N
         RecordingInferredSetRead(),
         RecordingEquivalenceGroupRead(),
     ).compile("choice-root")
-    choice_graph = choice_compilation.graph
     choice_module_node = next(
-        node for node in choice_graph.module_nodes if node.module.group_id == "module-choice"
-    )
-    assert [card.group_id for card in choice_module_node.member_courses] == [
-        "choice-external",
-        "choice-internal",
-    ]
-    cardinality_connector = next(
         node
-        for node in choice_graph.connector_nodes
-        if node.kind is PrerequisiteGraphConnectorKind.CARDINALITY
+        for node in _nodes(choice_compilation.display, "module")
+        if node.module_group_id == "module-choice"
     )
-    choice_targets = {
-        edge.target_node_id
-        for edge in choice_graph.edges
-        if edge.source_node_id == cardinality_connector.node_id
+    assert choice_module_node.member_group_ids == ("choice-external", "choice-internal")
+    assert _nodes(choice_compilation.display, "cardinality")
+    assert _nodes(choice_compilation.display, "internal_requirement")
+    assert "choice-dep" in {
+        node.course_group_id for node in _nodes(choice_compilation.display, "course")
     }
-    assert len(choice_targets) == 2
-    assert any(
-        node.kind is PrerequisiteGraphConnectorKind.INTERNAL_REQUIREMENT
-        for node in choice_graph.connector_nodes
+
+
+def test_member_whole_module_prerequisite_draws_a_distinct_module_node(solver_bundle: None) -> None:
+    """A member's whole-module prerequisite draws its own node while structural nesting elides."""
+    year_period = (CatalogueCurriculumPeriod(id="period-2026", academic_year_start=2026),)
+    outer_module = catalogue_module(
+        "module-a",
+        (
+            module_version(
+                "module-a-v1",
+                rule=module_rule(
+                    ModuleRuleType.COMPOSITE_RULE,
+                    all_mandatory=True,
+                    children=(
+                        module_rule(ModuleRuleType.MODULE_RULE, referenced_group_id="module-s"),
+                    ),
+                ),
+                curriculum_periods=year_period,
+            ),
+        ),
     )
-    assert "choice-dep" in {node.course.group_id for node in choice_graph.course_nodes}
+    structural_module = catalogue_module(
+        "module-s",
+        (
+            module_version(
+                "module-s-v1",
+                rule=module_rule(
+                    ModuleRuleType.COMPOSITE_RULE,
+                    all_mandatory=True,
+                    children=(
+                        module_rule(ModuleRuleType.COURSE_UNIT_RULE, referenced_group_id="P"),
+                    ),
+                ),
+                curriculum_periods=year_period,
+            ),
+        ),
+    )
+    whole_module = catalogue_module(
+        "module-n",
+        (
+            module_version(
+                "module-n-v1",
+                rule=module_rule(
+                    ModuleRuleType.COMPOSITE_RULE,
+                    all_mandatory=True,
+                    children=(
+                        module_rule(ModuleRuleType.COURSE_UNIT_RULE, referenced_group_id="Q"),
+                    ),
+                ),
+                curriculum_periods=year_period,
+            ),
+        ),
+    )
+    root = catalogue_course(
+        "root",
+        prerequisite_options=(
+            prerequisite_option(
+                0,
+                PrerequisiteRequirementKind.COMPULSORY,
+                prerequisite_module_member(0, "module-a"),
+            ),
+        ),
+    )
+    member_p = catalogue_course(
+        "P",
+        prerequisite_options=(
+            prerequisite_option(
+                0,
+                PrerequisiteRequirementKind.COMPULSORY,
+                prerequisite_module_member(0, "module-n"),
+            ),
+        ),
+    )
+    member_q = catalogue_course(
+        "Q",
+        prerequisite_options=(
+            prerequisite_option(
+                0,
+                PrerequisiteRequirementKind.COMPULSORY,
+                prerequisite_course_member(0, "E"),
+            ),
+        ),
+    )
+    compilation = PrerequisiteGraphCompiler(
+        FakeCurriculumRead(
+            (root, member_p, member_q, catalogue_course("E")),
+            (outer_module, structural_module, whole_module),
+        ),
+        RecordingInferredSetRead(),
+        RecordingEquivalenceGroupRead(),
+    ).compile("root")
+    display = compilation.display
+    assert display is not None
+    modules = {node.module_group_id: node for node in _nodes(display, "module")}
+    assert set(modules) == {"module-a", "module-n"}
+    module_a_node = modules["module-a"]
+    module_n_node = modules["module-n"]
+    assert module_a_node.member_group_ids == ("P",)
+    assert module_n_node.member_group_ids == ("Q",)
+    assert {node.course_group_id for node in _nodes(display, "course")} == {"root", "E"}
+    assert set(_endpoint_pairs(display)) == {
+        ("course:root", module_a_node.node_id),
+        (module_a_node.node_id, module_n_node.node_id),
+        (module_n_node.node_id, "course:E"),
+    }
+
+    # The structurally nested module binds to the emitted containing box.
+    structural_piece = next(
+        piece
+        for piece in compilation.solver.pieces
+        if piece.kind == "module_block" and piece.module_group_id == "module-s"
+    )
+    structural_binding = next(
+        binding
+        for binding in compilation.solver.bindings
+        if binding.piece_id == structural_piece.piece_id
+    )
+    assert structural_binding.node_ids == (module_a_node.node_id,)
+
+    path = solve_route(compilation.solver, [])
+    assert path["state"] == "exact"
+    assert [entry["course"]["group_id"] for entry in path["new_courses"]] == ["E", "P", "Q"]
+    assert Decimal(path["total_new_credits"]) == Decimal("15")
+    module_to_e = next(
+        edge
+        for edge in display.edges
+        if edge.source_node_id == module_n_node.node_id and edge.target_node_id == "course:E"
+    )
+    emitted_members = {member_id for edge in display.edges for member_id in edge.member_ids}
+    assert set(path["lit_members"]) <= emitted_members
+    for pair in _endpoint_pairs(display):
+        edge = next(
+            edge for edge in display.edges if (edge.source_node_id, edge.target_node_id) == pair
+        )
+        assert set(path["lit_members"]) & set(edge.member_ids)
+    assert set(path["lit_members"]) & set(module_to_e.member_ids)
+
+    covered = solve_route(compilation.solver, ["P"])
+    assert covered["state"] == "exact"
+    assert Decimal(covered["total_new_credits"]) == Decimal("0")
+    assert not (set(covered["lit_members"]) & set(module_to_e.member_ids))
+
+
+def test_module_membership_scopes_shared_external_course_connections(solver_bundle: None) -> None:
+    """Each module draws its own external member connection, and another membership redirects
+    none.
+    """
+    year_period = (CatalogueCurriculumPeriod(id="period-2026", academic_year_start=2026),)
+    module_m1 = catalogue_module(
+        "M1",
+        (
+            module_version(
+                "M1-v1",
+                rule=module_rule(
+                    ModuleRuleType.COMPOSITE_RULE,
+                    all_mandatory=True,
+                    children=(
+                        module_rule(ModuleRuleType.COURSE_UNIT_RULE, referenced_group_id="P"),
+                    ),
+                ),
+                curriculum_periods=year_period,
+            ),
+        ),
+    )
+    module_m2 = catalogue_module(
+        "M2",
+        (
+            module_version(
+                "M2-v1",
+                rule=module_rule(
+                    ModuleRuleType.COMPOSITE_RULE,
+                    all_mandatory=True,
+                    children=(
+                        module_rule(ModuleRuleType.COURSE_UNIT_RULE, referenced_group_id="P"),
+                    ),
+                ),
+                curriculum_periods=year_period,
+            ),
+        ),
+    )
+    module_m3 = catalogue_module(
+        "M3",
+        (
+            module_version(
+                "M3-v1",
+                rule=module_rule(
+                    ModuleRuleType.COMPOSITE_RULE,
+                    all_mandatory=True,
+                    children=(
+                        module_rule(ModuleRuleType.COURSE_UNIT_RULE, referenced_group_id="Q"),
+                    ),
+                ),
+                curriculum_periods=year_period,
+            ),
+        ),
+    )
+    root = catalogue_course(
+        "root",
+        prerequisite_options=(
+            prerequisite_option(
+                0,
+                PrerequisiteRequirementKind.COMPULSORY,
+                prerequisite_module_member(0, "M1"),
+                prerequisite_module_member(1, "M2"),
+                prerequisite_module_member(2, "M3"),
+            ),
+        ),
+    )
+    member_p = catalogue_course(
+        "P",
+        prerequisite_options=(
+            prerequisite_option(
+                0,
+                PrerequisiteRequirementKind.COMPULSORY,
+                prerequisite_course_member(0, "Q"),
+            ),
+        ),
+    )
+    compilation = PrerequisiteGraphCompiler(
+        FakeCurriculumRead(
+            (root, member_p, catalogue_course("Q")), (module_m1, module_m2, module_m3)
+        ),
+        RecordingInferredSetRead(),
+        RecordingEquivalenceGroupRead(),
+    ).compile("root")
+    display = compilation.display
+    assert display is not None
+    modules = {node.module_group_id: node for node in _nodes(display, "module")}
+    assert set(modules) == {"M1", "M2", "M3"}
+    assert {node.course_group_id for node in _nodes(display, "course")} == {"root", "Q"}
+    pairs = set(_endpoint_pairs(display))
+    external_edges = {}
+    for group_id in ("M1", "M2"):
+        external_edges[group_id] = next(
+            edge
+            for edge in display.edges
+            if edge.source_node_id == modules[group_id].node_id
+            and edge.target_node_id == "course:Q"
+        )
+        assert (modules[group_id].node_id, "course:Q") in pairs
+        assert (modules[group_id].node_id, modules["M3"].node_id) not in pairs
+    assert not any(
+        edge.source_node_id == modules["M3"].node_id and edge.target_node_id.startswith("course:")
+        for edge in display.edges
+    )
+
+    path = solve_route(compilation.solver, [])
+    assert path["state"] == "exact"
+    assert [entry["course"]["group_id"] for entry in path["new_courses"]] == ["P", "Q"]
+    assert Decimal(path["total_new_credits"]) == Decimal("10")
+    for edge in external_edges.values():
+        assert set(path["lit_members"]) & set(edge.member_ids)
+
+    covered = solve_route(compilation.solver, ["P", "Q"])
+    assert covered["state"] == "exact"
+    assert Decimal(covered["total_new_credits"]) == Decimal("0")
+    for edge in external_edges.values():
+        assert not (set(covered["lit_members"]) & set(edge.member_ids))
+
+
+def test_member_prerequisite_choice_draws_its_conditional_or(solver_bundle: None) -> None:
+    """A member's official and inferred alternatives keep one conditional OR with its disclosure."""
+    year_period = (CatalogueCurriculumPeriod(id="period-2026", academic_year_start=2026),)
+    module_a = catalogue_module(
+        "A",
+        (
+            module_version(
+                "A-v1",
+                rule=module_rule(
+                    ModuleRuleType.COMPOSITE_RULE,
+                    all_mandatory=True,
+                    children=(
+                        module_rule(ModuleRuleType.COURSE_UNIT_RULE, referenced_group_id="P"),
+                        module_rule(
+                            ModuleRuleType.COMPOSITE_RULE,
+                            sibling_position=1,
+                            require_min=0,
+                            require_max=1,
+                            children=(
+                                module_rule(
+                                    ModuleRuleType.COURSE_UNIT_RULE,
+                                    referenced_group_id="Q",
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+                curriculum_periods=year_period,
+            ),
+        ),
+    )
+    root = catalogue_course(
+        "root",
+        prerequisite_options=(
+            prerequisite_option(
+                0,
+                PrerequisiteRequirementKind.COMPULSORY,
+                prerequisite_module_member(0, "A"),
+            ),
+        ),
+    )
+    member_p = catalogue_course(
+        "P",
+        prerequisite_options=(
+            prerequisite_option(
+                0,
+                PrerequisiteRequirementKind.COMPULSORY,
+                prerequisite_course_member(0, "Q"),
+            ),
+        ),
+    )
+    member_q = catalogue_course("Q", representative=course_version(code="Q", credits_min="10"))
+    metadata = InferenceNodeMetadata(confidence=Decimal("0.9"))
+    inferred = AndRequirement(
+        type="and",
+        origin=PrerequisiteOrigin.INFERRED,
+        inferred_category=InferredPrerequisiteCategory.REQUIRED,
+        inference=metadata,
+        children=(
+            OrRequirement(
+                type="or",
+                origin=PrerequisiteOrigin.INFERRED,
+                inferred_category=InferredPrerequisiteCategory.REQUIRED,
+                inference=metadata,
+                children=(inferred_course("E"),),
+            ),
+        ),
+    )
+    compilation = PrerequisiteGraphCompiler(
+        FakeCurriculumRead(
+            (root, member_p, member_q, catalogue_course("E")),
+            (module_a,),
+        ),
+        RecordingInferredSetRead(
+            {
+                "P": current_result("P", expression=inferred),
+                "Q": current_result("Q"),
+                "E": current_result("E"),
+            }
+        ),
+        RecordingEquivalenceGroupRead(),
+    ).compile("root", include_inferred=True)
+    display = compilation.display
+    assert display is not None
+    module_node = next(node for node in _nodes(display, "module") if node.module_group_id == "A")
+    assert module_node.member_group_ids == ("P", "Q")
+    assert {node.course_group_id for node in _nodes(display, "course")} == {"root", "E"}
+    assert not any(edge.target_node_id == "course:Q" for edge in display.edges)
+    or_nodes = _nodes(display, "or")
+    assert len(or_nodes) == 1
+    choice_or = or_nodes[0]
+    assert choice_or.owner_group_id == "P"
+    disclosure = next(
+        node for node in _nodes(display, "internal_requirement") if node.owner_group_id == "P"
+    )
+    assert disclosure.member_group_ids == ("Q",)
+    assert {
+        edge.target_node_id for edge in display.edges if edge.source_node_id == choice_or.node_id
+    } == {disclosure.node_id, "course:E"}
+    reachable = {module_node.node_id}
+    pending = [module_node.node_id]
+    while pending:
+        current = pending.pop()
+        for edge in display.edges:
+            if edge.source_node_id == current and edge.target_node_id not in reachable:
+                reachable.add(edge.target_node_id)
+                pending.append(edge.target_node_id)
+    assert choice_or.node_id in reachable
+
+    or_to_e = next(
+        edge
+        for edge in display.edges
+        if edge.source_node_id == choice_or.node_id and edge.target_node_id == "course:E"
+    )
+    assert or_to_e.inferred_only is True
+    facts = {fact.fact_id: fact for fact in compilation.solver.facts}
+    member_records = {member.member_id: member for member in compilation.solver.members}
+    assert {
+        facts[member_records[member_id].fact_id].origin for member_id in or_to_e.member_ids
+    } == {PrerequisiteOrigin.INFERRED}
+
+    path = solve_route(compilation.solver, [])
+    assert path["state"] == "exact"
+    assert [entry["course"]["group_id"] for entry in path["new_courses"]] == ["E", "P"]
+    assert Decimal(path["total_new_credits"]) == Decimal("10")
+    assert set(path["lit_members"]) & set(or_to_e.member_ids)
+
+    covered = solve_route(compilation.solver, ["P"])
+    assert covered["state"] == "exact"
+    assert Decimal(covered["total_new_credits"]) == Decimal("0")
+    assert not (set(covered["lit_members"]) & set(or_to_e.member_ids))

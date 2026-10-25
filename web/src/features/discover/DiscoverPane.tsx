@@ -1,15 +1,20 @@
 /** Discover composition over the selected/completed browser sets and reports. */
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DiscoveryRequest } from "../../api/types";
 import { useProfileSelector } from "../../state/useProfileSelector";
 import { setDiscoverOptions } from "./actions";
 import { DiscoverBasis } from "./DiscoverBasis";
-import { DiscoverControls } from "./DiscoverControls";
+import { DiscoverControls, DiscoverListTabs } from "./DiscoverControls";
 import { DiscoverResults } from "./DiscoverResults";
 import { useDiscovery } from "./useDiscovery";
 import { useWording } from "../../shared/useWording";
 import { useWebFeatures } from "../../app/useWebFeatures";
+import { useMediaQuery } from "../../shared/useMediaQuery";
+import { PHONE_CONTENT_QUERY } from "../../shared/viewport";
+import { PhoneSheet } from "../../shared/PhoneSheet";
+import { SLIDERS_ICON } from "../../shared/icons";
 
+/** Render discovery controls, basis and report results. */
 export function DiscoverPane() {
   const { store, value: options } = useProfileSelector(
     (state) => state.discover,
@@ -45,6 +50,24 @@ export function DiscoverPane() {
   const { next, similarity, loading, error } = useDiscovery(
     effective.list,
     request,
+    hasBasis,
+  );
+  const phone = useMediaQuery(PHONE_CONTENT_QUERY);
+  const [optionsOpen, setOptionsOpen] = useState(false);
+  const optionsTrigger = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!phone) setOptionsOpen(false);
+  }, [phone]);
+  const closeOptions = useCallback(() => {
+    setOptionsOpen(false);
+    optionsTrigger.current?.focus();
+  }, []);
+  const controls = (
+    <DiscoverControls
+      options={effective}
+      showTabs={!phone}
+      onChange={(patch) => setDiscoverOptions(store, patch)}
+    />
   );
 
   return (
@@ -54,27 +77,51 @@ export function DiscoverPane() {
       aria-label={t("Discover")}
     >
       <div className="discover-main">
-        <DiscoverControls
-          options={effective}
-          onChange={(patch) => setDiscoverOptions(store, patch)}
-        />
-        <DiscoverBasis
-          basis={effective.basis}
-          courseIds={chosenBasis}
-          expanded={effective.basisExpanded}
-          onExpandedChange={(basisExpanded) =>
-            setDiscoverOptions(store, { basisExpanded })
-          }
-        />
-        <DiscoverResults
-          next={next}
-          similarity={similarity}
-          list={effective.list}
-          loading={loading}
-          error={error}
-          hasBasis={hasBasis}
-        />
+        {phone && (
+          <div className="discover-phone-head">
+            <DiscoverListTabs
+              options={effective}
+              onChange={(patch) => setDiscoverOptions(store, patch)}
+            />
+            <button
+              ref={optionsTrigger}
+              className="phone-options-trigger discover-settings-trigger"
+              type="button"
+              aria-label={t("Discover options")}
+              aria-expanded={optionsOpen}
+              onClick={() => setOptionsOpen(true)}
+            >
+              {SLIDERS_ICON}
+            </button>
+          </div>
+        )}
+        {!phone && controls}
+        <div className="discover-phone-body">
+          <DiscoverBasis
+            basis={effective.basis}
+            courseIds={chosenBasis}
+            expanded={effective.basisExpanded}
+            onExpandedChange={(basisExpanded) =>
+              setDiscoverOptions(store, { basisExpanded })
+            }
+          />
+          <DiscoverResults
+            next={next}
+            similarity={similarity}
+            list={effective.list}
+            loading={loading}
+            error={error}
+            hasBasis={hasBasis}
+          />
+        </div>
       </div>
+      <PhoneSheet
+        open={phone && optionsOpen}
+        title={t("Discover options")}
+        onClose={closeOptions}
+      >
+        {controls}
+      </PhoneSheet>
     </main>
   );
 }

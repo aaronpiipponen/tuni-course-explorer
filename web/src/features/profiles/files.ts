@@ -7,7 +7,7 @@ const STATE_FILE_NAME = "course-explorer-saved-data.json";
 const INVALID_FILE_NAME_CHARACTERS = /[<>:"/\\|?*\u0000-\u001f]/g;
 
 function fileName(file: BrowserFile): string {
-  if (file.type !== "tuni-course-explorer/profile/2") return STATE_FILE_NAME;
+  if (file.type !== "tuni-course-explorer/profile/3") return STATE_FILE_NAME;
   const name = file.profile.name.replace(INVALID_FILE_NAME_CHARACTERS, "_");
   return `${PROFILE_FILE_PREFIX}${name}.json`;
 }

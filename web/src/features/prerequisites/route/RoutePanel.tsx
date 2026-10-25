@@ -37,6 +37,7 @@ function RouteTag({ state }: { state: RouteSummary["state"] }) {
           : "x";
   return <i className={`route-tag ${cls}`}>{t(TAG_KEYS[state])}</i>;
 }
+/** Render one route result with its problems and course rows. */
 export function RoutePanel({
   view,
   route,
@@ -68,7 +69,7 @@ export function RoutePanel({
   return (
     <Disclosure
       open={route.calculating || view !== null || route.error !== null}
-      className="route-panel"
+      className={`route-panel${route.expanded ? " expanded" : ""}`}
     >
       <div className="route-panel-content">
         {(route.calculating || view !== null) && (
@@ -102,9 +103,31 @@ export function RoutePanel({
                 {t(route.expanded ? "Collapse" : "Expand")}
               </button>
             )}
+            <button
+              className="pill-btn route-clear"
+              type="button"
+              aria-label={t("Clear minimum route")}
+              onClick={() => route.clear()}
+            >
+              {t("Clear")}
+            </button>
           </header>
         )}
-        {route.error && <ErrorNotice error={route.error} language={language} />}
+        {route.error && (
+          <div className="route-error">
+            <ErrorNotice error={route.error} language={language} />
+            {!route.calculating && view === null && (
+              <button
+                className="pill-btn route-clear"
+                type="button"
+                aria-label={t("Clear minimum route")}
+                onClick={() => route.clear()}
+              >
+                {t("Clear")}
+              </button>
+            )}
+          </div>
+        )}
         {view?.state === "exact" &&
           view.newCredits === uiText(language, "{value} cr", { value: 0 }) &&
           !route.calculating && (
@@ -119,11 +142,8 @@ export function RoutePanel({
           view.problems.length > 0 && (
             <ul className="route-problems">
               {view.problems.map((problem) => (
-                <li
-                  key={problem.identity}
-                  data-occurrence-id={problem.occurrenceId}
-                >
-                  <b>{problem.title ?? problem.actionKey}</b>
+                <li key={problem.identity} data-node-id={problem.nodeId}>
+                  <b>{problem.title ?? problem.nodeId}</b>
                   <span>{problem.reason}</span>
                 </li>
               ))}
@@ -153,7 +173,9 @@ export function RoutePanel({
                   >
                     <CourseListRow
                       course={row.course}
-                      trailing={row.covered ? t("done") : undefined}
+                      reveal
+                      hideCredits
+                      showMarkers
                     />
                   </div>
                 ) : (
@@ -162,20 +184,26 @@ export function RoutePanel({
                   </p>
                 ),
               )}
-              {view.missingCourseIds.length > 0 && (
-                <button
-                  className="pill-btn route-add"
-                  type="button"
-                  onClick={() =>
-                    runAction(() => freeChoice.add(view.missingCourseIds))
-                  }
-                >
-                  {t("Add all missing courses to structure")}
-                </button>
-              )}
             </div>
           </Disclosure>
         )}
+        {!route.calculating &&
+          route.expanded &&
+          canExpand &&
+          view !== null &&
+          view.missingCourseIds.length > 0 && (
+            <div className="route-foot">
+              <button
+                className="pill-btn route-add"
+                type="button"
+                onClick={() =>
+                  runAction(() => freeChoice.add(view.missingCourseIds))
+                }
+              >
+                {t("Add all missing courses to structure")}
+              </button>
+            </div>
+          )}
         {actionError && <ErrorNotice error={actionError} language={language} />}
       </div>
     </Disclosure>

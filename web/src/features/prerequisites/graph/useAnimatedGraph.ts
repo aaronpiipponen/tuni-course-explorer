@@ -101,6 +101,7 @@ const sameGeometry = (
   return true;
 };
 
+/** Return the animated frame between the rendered graph and the target layout. */
 export function useAnimatedGraph(
   target: LaidOutGraph | null,
 ): AnimatedGraphFrame | null {

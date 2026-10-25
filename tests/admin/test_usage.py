@@ -52,13 +52,13 @@ def test_usage_report_aggregates_window_and_prunes_retention(tmp_path: Path) -> 
     """One window reports its totals and route means, and the file keeps exactly the retained hours."""
     append_usage_record(
         hour=_SEED_HOUR - timedelta(hours=1),
-        route="/api/course-lookup",
+        route="/api/catalogue",
         status=200,
         duration_seconds=1.0,
     )
     append_usage_record(
         hour=_SEED_HOUR - timedelta(hours=1),
-        route="/api/course-lookup",
+        route="/api/catalogue",
         status=200,
         duration_seconds=3.0,
     )
@@ -85,7 +85,7 @@ def test_usage_report_aggregates_window_and_prunes_retention(tmp_path: Path) -> 
         mean_duration_seconds=2.0,
         routes=(
             UsageRouteSummary(route="/", requests=1, mean_duration_seconds=2.0),
-            UsageRouteSummary(route="/api/course-lookup", requests=2, mean_duration_seconds=2.0),
+            UsageRouteSummary(route="/api/catalogue", requests=2, mean_duration_seconds=2.0),
         ),
     )
     retained = [

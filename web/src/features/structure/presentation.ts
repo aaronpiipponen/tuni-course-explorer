@@ -8,8 +8,9 @@ import type { ResolvedNode, StructureNode } from "./model";
 import { localizedName } from "../../shared/course/presentation";
 import { uiText } from "../../shared/wording";
 
+/** Return the display name of one module, falling back to its code or identity. */
 export function moduleName(
-  module: ModuleSummary,
+  module: Pick<ModuleSummary, "group_id" | "code" | "name_fi" | "name_en">,
   language: DisplayLanguage,
 ): string {
   return localizedName(
@@ -43,7 +44,7 @@ export function nodeWordingKind(
     ? "programme"
     : "module";
 }
-/** Return the localized kind label of one node: its wording kind for a programme or module, its kind otherwise. */
+/** Return the localized kind label of one node: its official type for a programme or module, its kind otherwise. */
 export function nodeKindLabel(
   node: Pick<StructureNode, "kind" | "module">,
   language: DisplayLanguage,
@@ -51,13 +52,17 @@ export function nodeKindLabel(
   return uiText(
     language,
     node.kind === "programme" || node.kind === "module"
-      ? nodeWordingKind(node)
+      ? node.module?.module_type === "DegreeProgramme"
+        ? "programme"
+        : "module"
       : node.kind,
   );
 }
+/** Return one credit value as text without trailing zeros. */
 export function formatCredits(n: number): string {
   return String(Number(n.toFixed(2)));
 }
+/** Return the summed minimum credits of the courses the predicate accepts. */
 export function sumCredits(
   courses: readonly CourseSummary[],
   predicate: (course: CourseSummary) => boolean = () => true,

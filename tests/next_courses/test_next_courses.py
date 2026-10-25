@@ -20,12 +20,14 @@ from tests.prerequisite._graph_support import (
     catalogue_module,
     current_result,
     equivalence_group,
+    ignored_parts,
     inferred_course,
     module_rule,
     module_version,
     prerequisite_course_member,
     prerequisite_module_member,
     prerequisite_option,
+    root_summary,
     substitution_option,
 )
 
@@ -404,8 +406,10 @@ def test_next_course_source_shape_slots_preserve_coverage(group_id, ignored_kind
     by_id = {result.course.group_id: result for result in results}
     assert by_id[group_id].required_coverage == 1.0
     assert by_id[group_id].depends_on_inferred is False
-    compilation = next(entry for entry in first_pass if entry.tree.root.group_id == group_id)
-    assert [part.kind.value for part in compilation.tree.ignored_parts] == [ignored_kind]
+    compilation = next(
+        entry for entry in first_pass if root_summary(entry.solver).group_id == group_id
+    )
+    assert [part.kind for part in ignored_parts(compilation.solver)] == [ignored_kind]
 
 
 @pytest.mark.parametrize("mode", [NextCourseMode.ALL, NextCourseMode.AT_LEAST_ONE])
@@ -431,8 +435,10 @@ def test_next_course_basis_and_uncovered_candidates_are_omitted(mode) -> None:
         "emptyonly",
         "opaqueonly",
     } & proposed == set()
-    opaque_only = next(entry for entry in first_pass if entry.tree.root.group_id == "opaqueonly")
-    assert opaque_only.required is not None
+    opaque_only = next(
+        entry for entry in first_pass if root_summary(entry.solver).group_id == "opaqueonly"
+    )
+    assert opaque_only.required_use_id is not None
     if mode is NextCourseMode.AT_LEAST_ONE:
         by_id = {result.course.group_id: result for result in results}
         assert by_id["opaquebasis"].required_coverage == 1.0

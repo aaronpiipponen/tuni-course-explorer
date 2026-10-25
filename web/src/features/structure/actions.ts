@@ -31,6 +31,7 @@ import {
 } from "./edits";
 import { moduleSource } from "./display";
 import { resolvedNodeLabel } from "./presentation";
+import { forgetRemovedModuleVersions } from "./moduleVersions";
 
 /** One complete next structure and its accompanying selection and completion removals. */
 export type StructureChange = {
@@ -45,9 +46,18 @@ export type StructureChange = {
 
 /** One programme list operation: add, replace, reset or delete the programme with `groupId`. */
 export type ProgrammeOperation =
-  | { kind: "add"; groupId: string }
-  | { kind: "replace"; groupId: string; replacementGroupId: string }
+  | { kind: "add"; groupId: string; versionId: string }
+  | {
+      kind: "replace";
+      groupId: string;
+      replacementGroupId: string;
+      versionId: string;
+    }
   | { kind: "reset" | "delete"; groupId: string };
+
+/** The refusal message of a module version that differs from the stored one. */
+export const VERSION_CONFLICT =
+  "Another version of this module is already selected";
 
 /** One operation's next programme list, edits, pulled courses and uncompleted discards. */
 type ProgrammeOutcome = {
@@ -129,7 +139,8 @@ function holderNode(
 /**
  * Return edits without the placement one promoted identity holds.
  *
- * A promoted programme renders from the ordered list, so its former place keeps no record.
+ * A promoted programme renders from the ordered list, so its module placement map has no entry for
+ * that identity.
  */
 function withoutPlacement(
   edits: StructureEdits,
@@ -366,6 +377,7 @@ export function applyStructure(
         choices: next.choices,
         coursePlacements: next.coursePlacements,
         modulePlacements: next.modulePlacements,
+        moduleVersions: { ...next.moduleVersions },
         placedCourseIds: [...next.placedCourseIds],
       },
       pendingSisuImport:
@@ -425,6 +437,7 @@ export function resetCompletionChange(
     next: {
       programmeGroupIds: ordinary.next.programmeGroupIds,
       ...edits,
+      moduleVersions: ordinary.next.moduleVersions,
       placedCourseIds: projection.subtree.map((course) => course.group_id),
     },
     removedCourseIds: removedCompleted,
@@ -448,6 +461,12 @@ export function resetCompletionChange(
  *
  * `pull` is whether a reset returns the courses its scope's official content holds in another node.
  * A kept course stays there, and the addition and replacement paths read the flag the same way.
+ *
+ * `moduleVersions` is the prospective selection the operation's reports were read under. It
+ * defaults to the latest stored map, a picked identity is added to it, and any entry that disagrees
+ * with the latest stored map refuses the write instead of replacing an existing selection. The
+ * write forgets the version entries of the groups the operation removes from the rendered tree, so
+ * a removed programme or module can be added again with another explicit version.
  */
 export function changeProgrammes(
   store: BrowserStore,
@@ -455,10 +474,35 @@ export function changeProgrammes(
   content: PlacedContent,
   removeCompletedCourses = false,
   pull = true,
+  moduleVersions?: Readonly<Record<string, string>>,
 ): void {
   applyStructure(store, (state) => {
+    const latestVersions = state.structure.moduleVersions;
+    const baseVersions = moduleVersions ?? latestVersions;
+    let selectedVersions = baseVersions;
+    const beforeForest = programmeForest(
+      state.structure.programmeGroupIds,
+      content,
+    );
+    if (!beforeForest) throw new Error("Programme is unavailable");
+    const before = resolveStructure(beforeForest, state.structure, content);
+    if (operation.kind === "add" || operation.kind === "replace") {
+      const groupId =
+        operation.kind === "add"
+          ? operation.groupId
+          : operation.replacementGroupId;
+      for (const [group, version] of Object.entries(baseVersions)) {
+        const stored = latestVersions[group];
+        if (stored !== undefined && stored !== version)
+          throw new Error(VERSION_CONFLICT);
+      }
+      const stored = latestVersions[groupId];
+      if (stored !== undefined && stored !== operation.versionId)
+        throw new Error(VERSION_CONFLICT);
+      selectedVersions = { ...baseVersions, [groupId]: operation.versionId };
+    }
     const outcome = programmeOutcome(
-      state.structure,
+      { ...state.structure, moduleVersions: selectedVersions },
       operation,
       content,
       state.completedCourseIds,
@@ -482,6 +526,11 @@ export function changeProgrammes(
       next: {
         programmeGroupIds: outcome.programmeGroupIds,
         ...edits,
+        moduleVersions: forgetRemovedModuleVersions(
+          selectedVersions,
+          before,
+          projection,
+        ),
         placedCourseIds: projection.subtree.map((course) => course.group_id),
       },
       discardUncompletedCourseIds: outcome.discards,
@@ -498,7 +547,12 @@ export function changeProgrammes(
   });
 }
 
-/** Clear every choice and placement the global Unplaced studies bucket owns, and nothing else. */
+/**
+ * Clear every choice and placement the global Unplaced studies bucket owns.
+ *
+ * The write forgets the version entries of the groups the reset removes from the rendered tree and
+ * keeps every other selection.
+ */
 export function resetUnplaced(
   store: BrowserStore,
   content: PlacedContent,
@@ -544,6 +598,11 @@ export function resetUnplaced(
       next: {
         programmeGroupIds: [...edits.programmeGroupIds],
         ...next,
+        moduleVersions: forgetRemovedModuleVersions(
+          edits.moduleVersions,
+          resolved,
+          projection,
+        ),
         placedCourseIds: projection.subtree.map((course) => course.group_id),
       },
       discardUncompletedCourseIds: discard,
@@ -551,6 +610,7 @@ export function resetUnplaced(
   });
 }
 
+/** Remove one course from the selection and from completion. */
 export function removeFromSelection(
   store: BrowserStore,
   courseId: CourseId,

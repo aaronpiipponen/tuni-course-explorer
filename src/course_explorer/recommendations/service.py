@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-import math
-import statistics
 from collections.abc import Collection, Sequence
 
+import numpy
 from pydantic import BaseModel, ConfigDict, Field
 
 from course_explorer.comparison.service import overlap_percent
@@ -13,10 +12,8 @@ from course_explorer.config import SearchSettings
 from course_explorer.curriculum import CourseSummary, RepresentedCourseSummary
 from course_explorer.embeddings.hub import subtract_hub_for_field
 from course_explorer.embeddings.read import TeachingEmbeddingChunk, TeachingEmbeddingNeighbor
-from course_explorer.enums import TeachingTextField, TeachingTextOrigin
+from course_explorer.enums import DESCRIPTIVE_TEACHING_TEXT_FIELDS, TeachingTextOrigin
 from course_explorer.search.lookup import DisplayLanguage, name_code_key, official_display_name
-
-_DESCRIPTIVE_FIELDS = (TeachingTextField.CONTENT, TeachingTextField.OUTCOMES)
 
 
 class SimilarityRecommendation(BaseModel):
@@ -72,22 +69,36 @@ def rank_recommendation_candidates(
     return tuple(candidates)
 
 
-def _unit(vector: Sequence[float]) -> list[float]:
-    """Return the vector's unit form, raising on a zero-length centred vector."""
-    norm = math.sqrt(sum(component * component for component in vector))
+def _unit_row(vector: numpy.ndarray) -> numpy.ndarray:
+    """Return one vector's unit form, raising on a zero-length centred vector."""
+    norm = float(numpy.sqrt((vector * vector).sum()))
     if norm == 0.0:
         raise ValueError("cannot compare a zero-length centred embedding")
-    return [component / norm for component in vector]
+    return vector / norm
 
 
-def _centroid(units: Sequence[Sequence[float]]) -> list[float]:
-    """Return the unit mean of a nonempty collection of unit vectors."""
-    dimension = len(units[0])
-    total = [0.0] * dimension
-    for unit in units:
-        for index, component in enumerate(unit):
-            total[index] += component
-    return _unit(total)
+def _unit_rows(
+    chunks: Sequence[TeachingEmbeddingChunk],
+    hub: Sequence[float],
+    outcomes_hub: Sequence[float],
+) -> numpy.ndarray:
+    """Return one float64 unit row per chunk after its field's hub is subtracted.
+
+    A zero-length centred row raises `ValueError`. The row order follows the supplied chunk order.
+    """
+    if not chunks:
+        return numpy.empty((0, len(hub)), dtype=numpy.float64)
+    rows = numpy.asarray(
+        [
+            subtract_hub_for_field(chunk.embedding, chunk.field, hub, outcomes_hub)
+            for chunk in chunks
+        ],
+        dtype=numpy.float64,
+    )
+    norms = numpy.sqrt((rows * rows).sum(axis=1))
+    if bool(numpy.any(norms == 0.0)):
+        raise ValueError("cannot compare a zero-length centred embedding")
+    return rows / norms[:, None]
 
 
 def recommendations_from_candidates(
@@ -109,30 +120,46 @@ def recommendations_from_candidates(
     subject rather than to one course. The near-duplicate test follows the shared comparison coverage
     rule but applies it to each single basis course, so a course duplicating one taken course is
     removed while a course sharing content with a broad basis is kept.
+
+    Every row is float64 and the meters differ from a scalar evaluation of the same formula only in
+    their last binary digits. The retained set, the order, the exact ties and the derived flag follow
+    the formula alone.
     """
-    basis_descriptive = [chunk for chunk in basis_chunks if chunk.field in _DESCRIPTIVE_FIELDS]
-    course_units: dict[str, list[list[float]]] = {}
+    basis_descriptive = tuple(
+        chunk for chunk in basis_chunks if chunk.field in DESCRIPTIVE_TEACHING_TEXT_FIELDS
+    )
+    course_groups: list[str] = []
+    course_index: dict[str, int] = {}
+    course_rows: list[int] = []
     for chunk in basis_descriptive:
-        course_units.setdefault(chunk.group_id, []).append(
-            _unit(subtract_hub_for_field(chunk.embedding, chunk.field, hub, outcomes_hub))
-        )
-    centroids = {group: _centroid(units) for group, units in course_units.items()}
+        if chunk.group_id not in course_index:
+            course_index[chunk.group_id] = len(course_groups)
+            course_groups.append(chunk.group_id)
+        course_rows.append(course_index[chunk.group_id])
+    basis_units = _unit_rows(basis_descriptive, hub, outcomes_hub)
+    course_by_row = numpy.asarray(course_rows, dtype=numpy.intp)
+
+    course_rows_by_position: list[numpy.ndarray] = []
+    points: list[numpy.ndarray] = []
+    for position in range(len(course_groups)):
+        rows = numpy.flatnonzero(course_by_row == position)
+        course_rows_by_position.append(rows)
+        points.append(_unit_row(basis_units[rows].mean(axis=0)))
+    point_matrix = numpy.asarray(points, dtype=numpy.float64)
     # Build the profile from the basis courses most consistent with the whole basis, so a broad
     # degree's mandatory general strands (languages, thesis, orientation) do not steer it.
-    if len(centroids) > 1:
-        initial = _centroid(list(centroids.values()))
-        consistency = {
-            group: math.sumprod(centroid, initial) for group, centroid in centroids.items()
-        }
-        cut = statistics.median(consistency.values())
-        kept = [centroid for group, centroid in centroids.items() if consistency[group] >= cut]
+    if len(course_groups) > 1:
+        initial = _unit_row(point_matrix.mean(axis=0))
+        consistency = point_matrix @ initial
+        cut = float(numpy.median(consistency))
+        kept = point_matrix[consistency >= cut]
     else:
-        kept = list(centroids.values())
-    profile = _centroid(kept) if kept else []
+        kept = point_matrix
+    profile = _unit_row(kept.mean(axis=0)) if len(kept) else None
 
     chunks_by_group: dict[str, list[TeachingEmbeddingChunk]] = {}
     for chunk in candidate_chunks:
-        if chunk.field in _DESCRIPTIVE_FIELDS:
+        if chunk.field in DESCRIPTIVE_TEACHING_TEXT_FIELDS:
             chunks_by_group.setdefault(chunk.group_id, []).append(chunk)
 
     floor = settings.comparison_overlap_floor
@@ -140,32 +167,30 @@ def recommendations_from_candidates(
     results: list[tuple[SimilarityRecommendation, tuple[bool, str, str, str]]] = []
     for record, _raw in candidates:
         candidate = chunks_by_group.get(record.summary.group_id)
-        if not candidate or not profile:
+        if not candidate or profile is None:
             continue
-        candidate_units = [
-            _unit(subtract_hub_for_field(chunk.embedding, chunk.field, hub, outcomes_hub))
-            for chunk in candidate
-        ]
-        relatedness = 100 * max(0.0, math.sumprod(_centroid(candidate_units), profile))
+        candidate_units = _unit_rows(candidate, hub, outcomes_hub)
+        candidate_point = _unit_row(candidate_units.mean(axis=0))
+        relatedness = 100 * max(0.0, float(candidate_point @ profile))
         if relatedness < settings.recommendation_min_relatedness * 100:
             continue
         total_characters = sum(chunk.character_count for chunk in candidate)
-        coverage_sum = 0.0
-        coverage_per_basis_course: dict[str, float] = {}
-        for chunk, unit in zip(candidate, candidate_units, strict=True):
-            best = 0.0
-            for basis_group, units in course_units.items():
-                course_best = max(math.sumprod(basis_unit, unit) for basis_unit in units)
-                coverage_per_basis_course[basis_group] = coverage_per_basis_course.get(
-                    basis_group, 0.0
-                ) + chunk.character_count * max(0.0, course_best)
-                if course_best > best:
-                    best = course_best
-            coverage_sum += chunk.character_count * max(0.0, best)
+        dots = candidate_units @ basis_units.T
+        coverage_sum = sum(
+            chunk.character_count * max(0.0, float(best))
+            for chunk, best in zip(candidate, dots.max(axis=1), strict=True)
+        )
+        coverage_per_basis_course = [
+            sum(
+                chunk.character_count * max(0.0, float(best))
+                for chunk, best in zip(candidate, dots[:, rows].max(axis=1), strict=True)
+            )
+            for rows in course_rows_by_position
+        ]
         strongest_course = max(
             (
                 overlap_percent(covered / total_characters, floor=floor, ceiling=ceiling)
-                for covered in coverage_per_basis_course.values()
+                for covered in coverage_per_basis_course
             ),
             default=0.0,
         )

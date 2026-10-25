@@ -7,9 +7,11 @@ from pathlib import Path
 
 import pytest
 
+from course_explorer.config import DatabaseSettings
 from course_explorer.next_courses import commands as next_courses_commands
 from course_explorer.recommendations import commands as command_module
 from course_explorer.recommendations.commands import RecommendationsReport
+from tests.support import settings_factory
 
 _SPEC = importlib.util.spec_from_file_location(
     "recommendations", Path(__file__).parents[2] / "scripts" / "recommendations.py"
@@ -83,7 +85,9 @@ def test_recommendations_command_preserves_validation_and_empty_basis(monkeypatc
             return False
 
     monkeypatch.setattr(next_courses_commands, "load_search_settings", lambda: object())
-    monkeypatch.setattr(next_courses_commands, "load_database_settings", lambda: object())
+    monkeypatch.setattr(next_courses_commands, "load_database_settings", fail)
     monkeypatch.setattr(next_courses_commands, "_database_context", lambda _settings: NoIoContext())
-    report = command_module.run_recommendations_command(display_language="en")
+    report = command_module.run_recommendations_command(
+        display_language="en", database_settings=settings_factory(DatabaseSettings)
+    )
     assert report.similarity_results == ()

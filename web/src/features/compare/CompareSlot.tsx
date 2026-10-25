@@ -3,6 +3,7 @@ import type { CourseSummary } from "../../api/types";
 import { useWording } from "../../shared/useWording";
 import { CourseCard } from "../../shared/course/CourseCard";
 
+/** Render one occupied or empty comparison slot. */
 export function CompareSlot({
   slot,
   occupied,
@@ -28,6 +29,9 @@ export function CompareSlot({
       aria-label={t("Course {slot}", { slot: letter })}
     >
       <div className="compare-slot-actions">
+        <span className="compare-slot-letter" aria-hidden="true">
+          {letter}
+        </span>
         <button
           className="pill-btn"
           type="button"

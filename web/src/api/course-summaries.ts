@@ -2,6 +2,7 @@
 import { postJson } from "./http";
 import type { CourseSummariesReport } from "./types";
 
+/** Read official course summaries for the supplied identifiers. */
 export function readCourseSummaries(
   identifiers: readonly string[],
   signal?: AbortSignal,

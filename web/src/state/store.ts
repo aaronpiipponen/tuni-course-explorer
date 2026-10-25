@@ -14,8 +14,10 @@ import type {
 import { validateBrowserState, validateProfile } from "./validation";
 import { parseSisuCapture } from "../features/structure/sisu";
 
+/** Storage key for the browser state envelope. */
 export const BROWSER_STORAGE_KEY = "tuni-course-explorer";
 
+/** Live browser store that re-reads, validates and publishes profile mutations. */
 export class BrowserStore {
   #storage: Storage;
   #snapshot: BrowserState;
@@ -110,10 +112,7 @@ export class BrowserStore {
    */
   refreshFromStorage(): BrowserState {
     const latest = readBrowserState(this.#storage);
-    if (JSON.stringify(latest) !== JSON.stringify(this.#snapshot)) {
-      this.#snapshot = latest;
-      this.#listeners.forEach((listener) => listener());
-    }
+    this.#adopt(latest);
     return this.#snapshot;
   }
 
@@ -123,7 +122,7 @@ export class BrowserStore {
     const profile = snapshot.profiles[id];
     if (!profile) throw new Error("Browser profile is unavailable");
     return {
-      type: "tuni-course-explorer/profile/2",
+      type: "tuni-course-explorer/profile/3",
       profile: structuredClone(profile),
     };
   }
@@ -173,7 +172,13 @@ export class BrowserStore {
   }
 
   #commit(update: (latest: BrowserState) => BrowserState): void {
-    const latest = readBrowserState(this.#storage);
+    const stored = readBrowserState(this.#storage);
+    // An equal stored envelope hands the callback the live snapshot, so a local change keeps
+    // every other slice's references. A differing one carries another tab's write.
+    const latest =
+      JSON.stringify(stored) === JSON.stringify(this.#snapshot)
+        ? this.#snapshot
+        : stored;
     const next = update(latest);
     if (next === latest) {
       this.#adopt(latest);
@@ -214,6 +219,7 @@ export function resetBrowserStore(storage: Storage): BrowserStore {
   return store;
 }
 
+/** Create a browser store from saved data or the initial envelope. */
 export function createBrowserStore(storage: Storage): BrowserStore {
   if (storage.getItem(BROWSER_STORAGE_KEY) === null)
     return resetBrowserStore(storage);
@@ -224,7 +230,7 @@ export function createBrowserStore(storage: Storage): BrowserStore {
 export function exportSavedBrowserData(storage: Storage): BrowserStateFile {
   const data = storage.getItem(BROWSER_STORAGE_KEY);
   if (data === null) throw new Error("There is no saved data to export");
-  return { type: "tuni-course-explorer/state/2", data };
+  return { type: "tuni-course-explorer/state/3", data };
 }
 
 /** Dispatch one imported file on its `type` field, validate its payload and parse a Sisu capture. */
@@ -238,12 +244,12 @@ export function parseBrowserImport(text: string): BrowserImport {
   if (!value || typeof value !== "object" || Array.isArray(value))
     throw new Error("Invalid import file");
   const file = value as Record<string, unknown>;
-  if (file.type === "tuni-course-explorer/profile/2")
+  if (file.type === "tuni-course-explorer/profile/3")
     return {
-      type: "tuni-course-explorer/profile/2",
+      type: "tuni-course-explorer/profile/3",
       profile: validateProfile(file.profile),
     };
-  if (file.type === "tuni-course-explorer/state/2") {
+  if (file.type === "tuni-course-explorer/state/3") {
     if (typeof file.data !== "string") throw new Error("Invalid import file");
     let data: unknown;
     try {
@@ -252,7 +258,7 @@ export function parseBrowserImport(text: string): BrowserImport {
       throw new Error("Invalid import file");
     }
     return {
-      type: "tuni-course-explorer/state/2",
+      type: "tuni-course-explorer/state/3",
       state: validateBrowserState(data),
     };
   }

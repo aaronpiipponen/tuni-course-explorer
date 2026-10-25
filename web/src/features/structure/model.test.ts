@@ -15,6 +15,7 @@ import {
   type StructureEntry,
 } from "./model";
 import { emptyEdits } from "./state";
+import { resetScope } from "./edits";
 import { uiText } from "../../shared/wording";
 import { displayContents } from "./display";
 
@@ -42,6 +43,7 @@ const rule = (
   credits_max: null,
   count_min: null,
   count_max: null,
+  referenced_group_id: null,
   children: [],
   course: null,
   module: null,
@@ -513,5 +515,95 @@ describe("structure projection", () => {
     );
     expect(restored.courses).toEqual([{ course: moving, added: false }]);
     expect(restored.removed).toEqual([]);
+  });
+
+  it("excludes version requirements from references outside the selected plan", () => {
+    const wrapper = {
+      ...moduleSummary,
+      group_id: "wrapper",
+      sisu_module_id: "wrapper-v1",
+      module_type: "StudyModule",
+      code: "WRAPPER",
+    };
+    const tree = buildStructure({
+      academic_year_start: 2026,
+      root: {
+        module: moduleSummary,
+        target_credits_min: null,
+        target_credits_max: null,
+        rule: rule("CompositeRule", 0, {
+          all_mandatory: true,
+          children: [
+            rule("CompositeRule", 0, {
+              all_mandatory: false,
+              require_min: 0,
+              require_max: null,
+              children: [
+                rule("ModuleRule", 0, {
+                  module: {
+                    module: wrapper,
+                    target_credits_min: null,
+                    target_credits_max: null,
+                    rule: rule("CompositeRule", 0, {
+                      all_mandatory: true,
+                      children: [
+                        rule("ModuleRule", 0, {
+                          referenced_group_id: "child",
+                          unresolved: "ambiguous_version",
+                        }),
+                      ],
+                    }),
+                  },
+                }),
+              ],
+            }),
+          ],
+        }),
+      },
+    });
+    const choiceEntry = tree.entries[0];
+    if (choiceEntry.kind !== "node")
+      throw new Error("Expected the optional choice");
+    const choice = choiceEntry.node;
+    expect(choice.kind).toBe("choice");
+    expect(choice.single).toBe(false);
+    expect(
+      resolveStructure(tree, emptyEdits(), NO_CONTENT)
+        .versionSelectionRequiredIds,
+    ).toEqual([]);
+
+    const optionKey = choice.options[0].key;
+    const selectedChoices = nextChoices({}, choice, optionKey);
+    expect(selectedChoices[choice.key]).toEqual([optionKey]);
+    const selectedEdits = { ...emptyEdits(), choices: selectedChoices };
+    const selected = resolveStructure(tree, selectedEdits, NO_CONTENT);
+    expect(selected.versionSelectionRequiredIds).toEqual(["child"]);
+    const wrapperEntry = choice.options[0].entries[0];
+    if (wrapperEntry.kind !== "node")
+      throw new Error("Expected the wrapper node");
+    expect(
+      indexResolved(selected).byKey.get(wrapperEntry.node.key)?.notes,
+    ).toEqual([uiText("en", "Several current versions of this module")]);
+
+    const deselectedChoices = nextChoices(selectedChoices, choice, optionKey);
+    expect(deselectedChoices[choice.key]).toEqual([]);
+    const removals = [
+      { ...selectedEdits, modulePlacements: { wrapper: null } },
+      // A placement names the containing node, so the wrapper's own node excludes it instead.
+      {
+        ...selectedEdits,
+        modulePlacements: { wrapper: wrapperEntry.node.key },
+      },
+      { ...selectedEdits, choices: deselectedChoices },
+      resetScope(
+        selectedEdits,
+        officialHomes(tree, selectedEdits, NO_CONTENT),
+        tree.key,
+      ),
+    ];
+    for (const edits of removals)
+      expect(
+        resolveStructure(tree, edits, NO_CONTENT).versionSelectionRequiredIds,
+      ).toEqual([]);
   });
 });

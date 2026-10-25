@@ -1,6 +1,7 @@
 /** Measured selection geometry shared by the sliding activity and language switches. */
 import { useLayoutEffect } from "react";
 
+/** Write the selected element's box into the container's selection custom properties. */
 export function applySelectionGeometry(
   container: HTMLElement | null,
   selected: HTMLElement | null | undefined,
@@ -12,6 +13,7 @@ export function applySelectionGeometry(
   container.style.setProperty("--selection-h", `${selected.offsetHeight}px`);
 }
 
+/** Re-run one selection measurement on every resize for the mounted lifetime. */
 export function useSelectionGeometry(measure: () => void): void {
   useLayoutEffect(() => {
     measure();

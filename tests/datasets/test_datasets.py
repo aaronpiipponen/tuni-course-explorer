@@ -8,7 +8,7 @@ import pytest
 
 import course_explorer.administration as administration
 from course_explorer.administration import administrative_json, atomic_write_private_text
-from course_explorer.config import load_database_settings
+from course_explorer.config import load_database_settings, load_database_settings_with_identity
 from course_explorer.datasets import SelectedDatasetPointer
 from tests.config._support import set_database_environment
 from tests.datasets._support import INITIAL_ID, sample_receipt
@@ -28,7 +28,7 @@ def _write_selection(state: Path, *, database_name: str) -> None:
 def test_selected_dataset_default_and_explicit_opt_out(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """The loader resolves the selected receipt. The opt-out returns the raw name as-is."""
+    """The paired resolver reports the selected receipt identity. The opt-out returns the raw name."""
     state = tmp_path / "state"
     _write_selection(state, database_name="selected_db")
     monkeypatch.setattr(administration, "repository_root", lambda: tmp_path)
@@ -39,8 +39,10 @@ def test_selected_dataset_default_and_explicit_opt_out(
         SELECTED_DATASET_ENABLED="1",
         ADMIN_STATE_ROOT="state",
     )
-    resolved = load_database_settings()
+    resolved, identity = load_database_settings_with_identity()
     assert resolved.postgres_db == "selected_db"
+    assert identity == INITIAL_ID
+    assert load_database_settings() == resolved
 
     set_database_environment(
         monkeypatch,
@@ -48,6 +50,9 @@ def test_selected_dataset_default_and_explicit_opt_out(
         SELECTED_DATASET_ENABLED="0",
         ADMIN_STATE_ROOT="state",
     )
+    raw, raw_identity = load_database_settings_with_identity()
+    assert raw.postgres_db == "raw_name"
+    assert raw_identity is None
     assert load_database_settings().postgres_db == "raw_name"
 
     # An absent pointer refuses rather than falling back to the raw name, and writes nothing.
@@ -59,7 +64,7 @@ def test_selected_dataset_default_and_explicit_opt_out(
         ADMIN_STATE_ROOT="empty",
     )
     with pytest.raises(FileNotFoundError):
-        load_database_settings()
+        load_database_settings_with_identity()
     assert not empty.exists()
 
     # A pointer to a missing or invalid receipt fails instead of falling back to the raw name.
@@ -76,4 +81,4 @@ def test_selected_dataset_default_and_explicit_opt_out(
         ADMIN_STATE_ROOT="broken",
     )
     with pytest.raises(ValueError):
-        load_database_settings()
+        load_database_settings_with_identity()

@@ -5,12 +5,14 @@
 import type { CourseSummary } from "../../api/types";
 import type { ResolvedNode, StructureNode } from "./model";
 
+/** One resolved node's displayed courses, child nodes and notes. */
 export type DisplayContents = {
   courses: { course: CourseSummary; added: boolean; owner: StructureNode }[];
   children: ResolvedNode[];
   notes: string[];
 };
 
+/** Flatten one resolved subtree into its displayed contents. */
 export function displayContents(resolved: ResolvedNode): DisplayContents {
   const result: DisplayContents = {
     courses: resolved.courses.map((item) => ({
@@ -37,6 +39,33 @@ export function displayContents(resolved: ResolvedNode): DisplayContents {
 }
 
 /**
+ * Return the node whose displayed contents hold one course or child module identity, or null.
+ *
+ * The walk reads displayed children once per visited node, so a course inside a chosen option or a
+ * transparent wrapper is attributed to the programme, module or Unplaced studies node that draws
+ * it, and a module identity is attributed to its displayed parent.
+ */
+function contentSource(
+  resolved: ResolvedNode,
+  kind: "course" | "module",
+  id: string,
+): ResolvedNode | null {
+  const contents = displayContents(resolved);
+  if (
+    kind === "course" &&
+    contents.courses.some((item) => item.course.group_id === id)
+  )
+    return resolved;
+  for (const child of contents.children) {
+    if (kind === "module" && child.node.module?.group_id === id)
+      return resolved;
+    const found = contentSource(child, kind, id);
+    if (found) return found;
+  }
+  return null;
+}
+
+/**
  * Return the node whose displayed children hold one module identity, or null when none does.
  *
  * The walk reads displayed children, so a module inside a chosen option or a transparent wrapper is
@@ -46,10 +75,13 @@ export function moduleSource(
   resolved: ResolvedNode,
   moduleId: string,
 ): ResolvedNode | null {
-  for (const child of displayContents(resolved).children) {
-    if (child.node.module?.group_id === moduleId) return resolved;
-    const found = moduleSource(child, moduleId);
-    if (found) return found;
-  }
-  return null;
+  return contentSource(resolved, "module", moduleId);
+}
+
+/** Return the node whose displayed contents hold one course identity, or null when none does. */
+export function courseSource(
+  resolved: ResolvedNode,
+  courseId: string,
+): ResolvedNode | null {
+  return contentSource(resolved, "course", courseId);
 }

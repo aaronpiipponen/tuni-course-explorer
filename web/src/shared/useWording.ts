@@ -7,6 +7,7 @@ import type { DisplayLanguage } from "../state/types";
 import { useProfileSelector } from "../state/useProfileSelector";
 import { uiText, type UiTextKey } from "./wording";
 
+/** Subscribe one component to the current profile's language and text lookup. */
 export function useWording(): {
   language: DisplayLanguage;
   t: (

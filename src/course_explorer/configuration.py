@@ -39,8 +39,8 @@ from pydantic_settings import BaseSettings, EnvSettingsSource, PydanticBaseSetti
 
 from course_explorer.administration import repository_root
 
-# Ordered public subsystem files. The web bind file is last so its one loopback policy is
-# composed after the shared files.
+# Ordered public subsystem files. The two serving files are last, web before admission, so the
+# loopback bind and the admission policy compose after the shared files.
 PUBLIC_CONFIG_FILES: tuple[str, ...] = (
     "config/database.toml",
     "config/curriculum.toml",
@@ -50,6 +50,7 @@ PUBLIC_CONFIG_FILES: tuple[str, ...] = (
     "config/worker.toml",
     "config/admin_web.toml",
     "config/web.toml",
+    "config/admission.toml",
 )
 
 # The only two public values that are references to a tracked derived artifact rather than inline

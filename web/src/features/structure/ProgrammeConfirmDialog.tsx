@@ -15,6 +15,7 @@ import { courseName } from "../../shared/course/presentation";
 import type { DisplayLanguage } from "../../state/types";
 import type { PulledCourse } from "./edits";
 import { useWording } from "../../shared/useWording";
+import { usePhoneTabsOnClose } from "../../shared/usePhoneTabsOnClose";
 
 type Target = {
   operation: "replace";
@@ -26,6 +27,7 @@ type Target = {
   hasCompletedCourses: boolean;
 };
 
+/** Render one named confirmation for a scoped programme replacement. */
 export function ProgrammeConfirmDialog({
   operation,
   name,
@@ -56,6 +58,7 @@ export function ProgrammeConfirmDialog({
   returnFocus(): void;
 }) {
   const { language, t } = useWording();
+  usePhoneTabsOnClose(operation !== null);
   // The close animation keeps showing the names the confirmation opened with.
   const [retained, setRetained] = useState<Target | null>(null);
   const current: Target | null =

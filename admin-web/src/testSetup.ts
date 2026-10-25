@@ -2,8 +2,7 @@
  * The test-only DOM boundary of the administration console.
  *
  * jsdom performs no layout, so the panel body measurement gets one no-op `ResizeObserver` substitute
- * that emits no measurement and simulates no product behavior. Real layout proof lives in browser
- * acceptance.
+ * that emits no measurement.
  */
 import { beforeEach } from "vitest";
 

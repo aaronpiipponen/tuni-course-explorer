@@ -5,9 +5,9 @@
  * the Settings tab forwards it to the Dataset panel, and its reported selection state gates the
  * three dataset-dependent automatic reads. An unknown state waits for a successful read, a disabled
  * state states the site's own reason without a failure, and a failed refresh keeps the last report
- * and gates from it. The header carries the GitHub, Wiki, App and sign-out controls alone. The open
- * tab is stored in this browser tab's session storage, so a reload restores it, while every inactive
- * tab tree is mounted and hidden.
+ * and gates from it. The header carries branding, tab navigation, GitHub, Docs, App and sign-out
+ * controls. The open tab is stored in this browser tab's session storage, so a reload restores it,
+ * while every inactive tab tree is mounted and hidden.
  */
 import { useState } from "react";
 import { readDashboard } from "../api/dashboard";
@@ -59,7 +59,7 @@ export function SignedInConsole({
     setTab(next);
     window.sessionStorage.setItem(TAB_STORAGE_KEY, next);
   };
-  const wikiUrl = new URL("/docs#home", session.app_url).href;
+  const docsUrl = new URL("/docs#home", session.app_url).href;
   const dashboard = usePanelRead<ServerStatusReport>(dashboardRead, {
     pollSeconds: session.poll_seconds,
     enabled: true,
@@ -86,8 +86,8 @@ export function SignedInConsole({
             {GITHUB_MARK}
             {wording.github}
           </a>
-          <a className="btn p" href={wikiUrl}>
-            {wording.wiki}
+          <a className="btn p" href={docsUrl}>
+            {wording.docs}
           </a>
           <a className="btn p" href={session.app_url}>
             {wording.app}

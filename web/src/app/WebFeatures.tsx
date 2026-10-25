@@ -4,6 +4,7 @@ import { readWebFeatures } from "../api/features";
 import type { WebFeatures as WebFeaturesReport } from "../api/types";
 import { ErrorNotice } from "../shared/ErrorNotice";
 import { useWording } from "../shared/useWording";
+import { ReadCacheProvider } from "./ReadCacheProvider";
 import { WebFeaturesContext } from "./webFeaturesContext";
 
 type Loaded =
@@ -11,6 +12,7 @@ type Loaded =
   | { status: "failed"; error: Error }
   | { status: "ready"; features: WebFeaturesReport };
 
+/** Load served feature switches and provide them to the application shell. */
 export function WebFeatures({ children }: { children: ReactNode }) {
   const { language, t } = useWording();
   const [loaded, setLoaded] = useState<Loaded>({ status: "pending" });
@@ -41,7 +43,9 @@ export function WebFeatures({ children }: { children: ReactNode }) {
     return <ErrorNotice error={loaded.error} language={language} />;
   return (
     <WebFeaturesContext.Provider value={loaded.features}>
-      {children}
+      <ReadCacheProvider datasetIdentity={loaded.features.dataset_identity}>
+        {children}
+      </ReadCacheProvider>
     </WebFeaturesContext.Provider>
   );
 }

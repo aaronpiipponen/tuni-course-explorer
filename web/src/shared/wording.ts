@@ -1,15 +1,14 @@
 /**
- * One typed in-bundle FI/EN wording resource for every app-authored interface string.
+ * The interface wording of every app-authored string in English and Finnish.
  *
- * The English source literal is the dictionary key. A context suffix such as
- * `Completed (basis)` resolves Finnish grammar where one English word has two forms.
- * Values hold both translations once, beside a template's named `{placeholder}`s.
- * This module is pure: it imports only types and translates app-authored strings
- * between Finnish and English.
+ * Each entry is keyed by its English literal and holds both translations. A context suffix such as
+ * `Completed (basis)` gives one English word a second Finnish form. A template keeps its
+ * placeholders by name. The module imports only types.
  */
 import type { SearchMethod } from "../api/types";
 import type { DisplayLanguage } from "../state/types";
 
+/** Every app-authored interface string in Finnish and English, keyed by its English source. */
 export const UI_TEXT = {
   Search: { en: "Search", fi: "Haku" },
   Compare: { en: "Compare", fi: "Vertailu" },
@@ -19,8 +18,12 @@ export const UI_TEXT = {
     en: "Structure of studies",
     fi: "Opintojen rakenne",
   },
+  Prereqs: { en: "Prereqs", fi: "Esitiedot" },
+  Structure: { en: "Structure", fi: "Rakenne" },
+  "Discover (phone)": { en: "Discover", fi: "Ehdotukset" },
   Docs: { en: "Docs", fi: "Ohjeet" },
   "Main navigation": { en: "Main navigation", fi: "Päävalikko" },
+  More: { en: "More", fi: "Lisää" },
   "Course tools": { en: "Course tools", fi: "Kurssityökalut" },
   "Previous tab": { en: "Previous tab", fi: "Edellinen välilehti" },
   "Next tab": { en: "Next tab", fi: "Seuraava välilehti" },
@@ -39,7 +42,7 @@ export const UI_TEXT = {
   },
 
   active: { en: "active", fi: "aktiivinen" },
-  inactive: { en: "inactive", fi: "ei aktiivinen" },
+  inactive: { en: "inactive", fi: "ei-aktiivinen" },
   completed: { en: "completed", fi: "suoritettu" },
   selected: { en: "selected", fi: "valittu" },
   "not selected": { en: "not selected", fi: "ei valittu" },
@@ -80,6 +83,12 @@ export const UI_TEXT = {
   Remove: { en: "Remove", fi: "Poista" },
   Change: { en: "Change", fi: "Vaihda" },
   Recenter: { en: "Recenter", fi: "Keskitä" },
+  "Zoom in": { en: "Zoom in", fi: "Lähennä" },
+  "Zoom out": { en: "Zoom out", fi: "Loitonna" },
+  "Graph options": {
+    en: "Graph options",
+    fi: "Esitietograafin asetukset",
+  },
   Expand: { en: "Expand", fi: "Laajenna" },
   Collapse: { en: "Collapse", fi: "Tiivistä" },
   "Original technical detail": {
@@ -104,7 +113,19 @@ export const UI_TEXT = {
     en: "Add to Unplaced studies",
     fi: "Lisää sijoittamattomiin opintoihin",
   },
-  structure: { en: "structure", fi: "rakenteeseen" },
+  "Added {count} course to Unplaced studies": {
+    en: "Added {count} course to Unplaced studies",
+    fi: "Lisättiin {count} kurssi sijoittamattomiin opintoihin",
+  },
+  "Added {count} courses to Unplaced studies": {
+    en: "Added {count} courses to Unplaced studies",
+    fi: "Lisättiin {count} kurssia sijoittamattomiin opintoihin",
+  },
+  "No courses added. Selection unchanged.": {
+    en: "No courses added. Selection unchanged.",
+    fi: "Kursseja ei lisätty. Valinta ei muuttunut.",
+  },
+  structure: { en: "structure", fi: "rakenne" },
   "Mark completed": { en: "Mark completed", fi: "Merkitse suoritetuksi" },
   "Mark not completed": {
     en: "Mark not completed",
@@ -146,11 +167,27 @@ export const UI_TEXT = {
     en: "Explain these options",
     fi: "Selitä nämä valinnat",
   },
+  "Searching for courses": {
+    en: "Searching for courses",
+    fi: "Kurssien hakeminen",
+  },
+  "Exploring prerequisites": {
+    en: "Exploring prerequisites",
+    fi: "Esitietojen tarkastelu",
+  },
+  "Discovering courses": {
+    en: "Discovering courses",
+    fi: "Ehdotusten tarkastelu",
+  },
   options: { en: "options", fi: "valinnat" },
 
   "Search by code, name or topic": {
     en: "Search by code, name or topic",
     fi: "Hae koodin, nimen tai aiheen mukaan",
+  },
+  "Search by code or name": {
+    en: "Search by code or name",
+    fi: "Hae koodilla tai nimellä",
   },
   "Search results": { en: "Search results", fi: "Hakutulokset" },
   "Shows only courses that are currently active. Turn it off to include inactive courses.":
@@ -158,7 +195,7 @@ export const UI_TEXT = {
       en: "Shows only courses that are currently active. Turn it off to include inactive courses.",
       fi: "Näyttää vain tällä hetkellä aktiiviset kurssit. Poista valinta, jos haluat mukaan myös ei-aktiiviset kurssit.",
     },
-  "search modes": { en: "search modes", fi: "hakutyypit" },
+  "search methods": { en: "search methods", fi: "hakumenetelmät" },
   "Exact code": { en: "Exact code", fi: "Tarkka koodi" },
   Substring: { en: "Substring", fi: "Osamerkkijono" },
   "Fuzzy search": { en: "Fuzzy search", fi: "Likimääräinen haku" },
@@ -167,15 +204,16 @@ export const UI_TEXT = {
     en: "The text matches a course code, for example COMP.CS.100.",
     fi: "Teksti vastaa kurssikoodia, esimerkiksi COMP.CS.100.",
   },
-  "The text appears inside a course name or code, ignoring upper and lower case. A code fragment such as: COMP.CS":
+  "The text appears inside a course name or code, ignoring case, for example the code fragment COMP.CS.":
     {
-      en: "The text appears inside a course name or code, ignoring upper and lower case. A code fragment such as: COMP.CS",
-      fi: "Teksti esiintyy kurssin nimessä tai koodissa kirjainkoosta riippumatta. Koodin osa, esimerkiksi: COMP.CS",
+      en: "The text appears inside a course name or code, ignoring case, for example the code fragment COMP.CS.",
+      fi: "Teksti esiintyy kurssin nimessä tai koodissa kirjainkoosta riippumatta, esimerkiksi koodin osa COMP.CS.",
     },
-  "A course name that is close to the text, so a small typo still finds it.": {
-    en: "A course name that is close to the text, so a small typo still finds it.",
-    fi: "Kurssin nimi, joka muistuttaa tekstiä, joten pieni kirjoitusvirhe ei estä löytymistä.",
-  },
+  "A course name that is close to the text, so a small typo still matches it.":
+    {
+      en: "A course name that is close to the text, so a small typo still matches it.",
+      fi: "Kurssin nimi, joka muistuttaa tekstiä, joten pieni kirjoitusvirhe ei estä löytymistä.",
+    },
   "Courses whose content is about the topic you describe, even when they share no words with it.":
     {
       en: "Courses whose content is about the topic you describe, even when they share no words with it.",
@@ -240,13 +278,13 @@ export const UI_TEXT = {
   },
   "Same area, different content": {
     en: "Same area, different content",
-    fi: "Sama alue, eri sisältö",
+    fi: "Sama aihealue, eri sisältö",
   },
   "Loosely related": { en: "Loosely related", fi: "Löyhästi liittyvät" },
   Unrelated: { en: "Unrelated", fi: "Eivät liity toisiinsa" },
   "Overall relatedness": {
     en: "Overall relatedness",
-    fi: "Yleinen läheisyys",
+    fi: "Yleinen samankaltaisuus",
   },
   "whole course": {
     en: "whole course",
@@ -267,7 +305,7 @@ export const UI_TEXT = {
   },
   "Overlap: {a} in {b}": {
     en: "Overlap: {a} in {b}",
-    fi: "Päällekkäisyys: {a} kurssissa {b}",
+    fi: "Päällekkäisyys: {a} suhteessa kurssiin {b}",
   },
   "how much of A has a match in B": {
     en: "how much of A has a match in B",
@@ -275,7 +313,7 @@ export const UI_TEXT = {
   },
   "Overlap: {b} in {a}": {
     en: "Overlap: {b} in {a}",
-    fi: "Päällekkäisyys: {b} kurssissa {a}",
+    fi: "Päällekkäisyys: {b} suhteessa kurssiin {a}",
   },
   "how much of B has a match in A": {
     en: "how much of B has a match in A",
@@ -299,23 +337,27 @@ export const UI_TEXT = {
   },
 
   "Discovery list": { en: "Discovery list", fi: "Ehdotuslista" },
+  "Discover options": {
+    en: "Discover options",
+    fi: "Ehdotusten asetukset",
+  },
   "Next courses": { en: "Next courses", fi: "Seuraavat kurssit" },
   Recommended: { en: "Recommended", fi: "Suositellut" },
   All: { en: "All", fi: "Kaikki" },
-  "At least one": { en: "At least one", fi: "Vähintään yksi" },
+  "Partially covered": { en: "Partially covered", fi: "Osittain katettu" },
   "Prerequisite mode": {
     en: "Prerequisite mode",
     fi: "Esitietojen valintatapa",
   },
-  "Discovery basis": { en: "Discovery basis", fi: "Ehdotusten perusta" },
-  "All / At least one": {
-    en: "All / At least one",
-    fi: "Kaikki / Vähintään yksi",
+  "Discovery basis": { en: "Discovery basis", fi: "Ehdotuksissa huomioidaan" },
+  "All / Partially covered": {
+    en: "All / Partially covered",
+    fi: "Kaikki / Osittain katettu",
   },
-  "All proposes a course only when all of its prerequisites are covered by your courses. At least one proposes a course when any one prerequisite is covered, ranked by how much of it is covered.":
+  "The All mode proposes a course only when your courses cover all of its prerequisites. The Partially covered mode proposes a course when any prerequisite is covered, including courses whose prerequisites are all covered, ranked by coverage.":
     {
-      en: "All proposes a course only when all of its prerequisites are covered by your courses. At least one proposes a course when any one prerequisite is covered, ranked by how much of it is covered.",
-      fi: "Kaikki-tilassa ehdotetaan kurssia vain, kun kaikki sen esitiedot on katettu kursseillasi. Vähintään yksi -tilassa ehdotetaan kurssia, kun yksikin esitieto on katettu, ja kurssit järjestetään sen mukaan, kuinka suuri osa esitiedoista on katettu.",
+      en: "The All mode proposes a course only when your courses cover all of its prerequisites. The Partially covered mode proposes a course when any prerequisite is covered, including courses whose prerequisites are all covered, ranked by coverage.",
+      fi: "Kaikki-tilassa kurssi ehdotetaan vain, kun Suoritetut/Valitut-valinnassa huomioidut kurssit kattavat kaikki sen esitiedot. Osittain katettu -tilassa kurssi ehdotetaan, kun vähintään yksi esitieto on katettu, mukaan lukien kurssit, joiden kaikki esitiedot ovat katettuja. Kurssit järjestetään kattavuuden mukaan.",
     },
   "Completed / Selected": {
     en: "Completed / Selected",
@@ -337,20 +379,20 @@ export const UI_TEXT = {
   },
   "basis · {basis} · empty": {
     en: "basis · {basis} · empty",
-    fi: "perusta · {basis} · tyhjä",
+    fi: "mukana: {basis} · tyhjä",
   },
-  "basis {basis}": { en: "basis {basis}", fi: "perusta {basis}" },
-  "{basis} course basis": {
-    en: "{basis} course basis",
-    fi: "Kurssiperusta: {basis}",
+  "Basis · {basis}": { en: "Basis · {basis}", fi: "mukana: {basis}" },
+  "Basis: {basis}": {
+    en: "Basis: {basis}",
+    fi: "Mukana: {basis}",
   },
   "basis · {basis} · {count} courses": {
     en: "basis · {basis} · {count} courses",
-    fi: "perusta · {basis} · {count} kurssia",
+    fi: "mukana: {basis} · {count} kurssia",
   },
   "basis · {basis} · {count} course": {
     en: "basis · {basis} · {count} course",
-    fi: "perusta · {basis} · {count} kurssi",
+    fi: "mukana: {basis} · {count} kurssi",
   },
   "+{count} more": { en: "+{count} more", fi: "+{count} lisää" },
   "Loading course details…": {
@@ -399,17 +441,17 @@ export const UI_TEXT = {
   "Required and Recommended show how many of the courses in the best-matching prerequisite option of each category your basis covers. A category with no course prerequisites has no meter. The All mode lists only courses whose prerequisite requirements your basis satisfies, and it shows no meters. Official and inferred prerequisites both count. The inferred mark shows a course listed only because of inferred prerequisites.":
     {
       en: "Required and Recommended show how many of the courses in the best-matching prerequisite option of each category your basis covers. A category with no course prerequisites has no meter. The All mode lists only courses whose prerequisite requirements your basis satisfies, and it shows no meters. Official and inferred prerequisites both count. The inferred mark shows a course listed only because of inferred prerequisites.",
-      fi: "Pakolliset ja Suositellut näyttävät, kuinka suuren osan kunkin luokan parhaiten täyttyvän esitietovaihtoehdon kursseista perustasi kattaa. Jos luokalla ei ole kurssiesitietoja, mittaria ei näytetä. Kaikki-tilassa on vain kursseja, joiden esitietovaatimukset perustasi täyttää, eikä mittareita näytetä. Sekä viralliset että päätellyt esitiedot lasketaan mukaan. Päätelty-merkintä kertoo, että kurssi on luettelossa vain pääteltyjen esitietojen perusteella.",
+      fi: "Pakolliset ja Suositellut näyttävät, kuinka suuren osan kunkin luokan parhaiten sopivan esitietovaihtoehdon kursseista Suoritetut/Valitut-valinnassa huomioidut kurssit kattavat. Jos luokalla ei ole kurssiesitietoja, mittaria ei näytetä. Kaikki-tilassa on vain kursseja, joiden esitietovaatimukset Suoritetut/Valitut-valinnassa huomioidut kurssit täyttävät, eikä mittareita näytetä. Sekä viralliset että päätellyt esitiedot lasketaan mukaan. Päätelty-merkintä kertoo, että kurssi on luettelossa vain pääteltyjen esitietojen perusteella.",
     },
   "Required and Recommended show how many of the courses in the best-matching prerequisite option of each category your basis covers. A category with no course prerequisites has no meter. The All mode lists only courses whose prerequisite requirements your basis satisfies, and it shows no meters. Only official prerequisites count.":
     {
       en: "Required and Recommended show how many of the courses in the best-matching prerequisite option of each category your basis covers. A category with no course prerequisites has no meter. The All mode lists only courses whose prerequisite requirements your basis satisfies, and it shows no meters. Only official prerequisites count.",
-      fi: "Pakolliset ja Suositellut näyttävät, kuinka suuren osan kunkin luokan parhaiten täyttyvän esitietovaihtoehdon kursseista perustasi kattaa. Jos luokalla ei ole kurssiesitietoja, mittaria ei näytetä. Kaikki-tilassa on vain kursseja, joiden esitietovaatimukset perustasi täyttää, eikä mittareita näytetä. Vain viralliset esitiedot lasketaan mukaan.",
+      fi: "Pakolliset ja Suositellut näyttävät, kuinka suuren osan kunkin luokan parhaiten sopivan esitietovaihtoehdon kursseista Suoritetut/Valitut-valinnassa huomioidut kurssit kattavat. Jos luokalla ei ole kurssiesitietoja, mittaria ei näytetä. Kaikki-tilassa on vain kursseja, joiden esitietovaatimukset Suoritetut/Valitut-valinnassa huomioidut kurssit täyttävät, eikä mittareita näytetä. Vain viralliset esitiedot lasketaan mukaan.",
     },
   marks: { en: "marks", fi: "merkinnät" },
   "Listed only because of inferred prerequisites.": {
     en: "Listed only because of inferred prerequisites.",
-    fi: "Luettelossa vain pääteltyjen esitietojen perusteella.",
+    fi: "Kurssi on luettelossa vain pääteltyjen esitietojen perusteella.",
   },
   "In the profile's selection, not completed.": {
     en: "In the profile's selection, not completed.",
@@ -422,7 +464,7 @@ export const UI_TEXT = {
   "Similarity shows how close the course's teaching text is to your whole basis. It is a similarity score, not prerequisite coverage or official equivalence.":
     {
       en: "Similarity shows how close the course's teaching text is to your whole basis. It is a similarity score, not prerequisite coverage or official equivalence.",
-      fi: "Samankaltaisuus kertoo, kuinka lähellä kurssin opetusteksti on koko perustaasi. Se on samankaltaisuusluku, ei esitietojen kattavuus eikä virallinen vastaavuus.",
+      fi: "Samankaltaisuus kertoo, kuinka lähellä kurssin opetusteksti on kaikkia Suoritetut/Valitut-valinnassa huomioituja kursseja. Se on samankaltaisuusluku, ei esitietojen kattavuus eikä virallinen vastaavuus.",
     },
   "Teaching text includes derived translations": {
     en: "Teaching text includes derived translations",
@@ -430,7 +472,7 @@ export const UI_TEXT = {
   },
 
   "Counts as covered": { en: "Counts as covered", fi: "Lasketaan katetuksi" },
-  "Route basis": { en: "Route basis", fi: "Reitin perusta" },
+  "Route basis": { en: "Route basis", fi: "Reitissä huomioidaan" },
   "Pick a course to open its prerequisite graph.": {
     en: "Pick a course to open its prerequisite graph.",
     fi: "Avaa esitietograafi valitsemalla kurssi.",
@@ -454,22 +496,22 @@ export const UI_TEXT = {
   "Click to calculate one temporary cheapest route through your completed or selected courses. It is not saved anywhere, changing the selected course, the basis, the scope or your course sets clears it back to the normal graph, and clicking it again clears it.":
     {
       en: "Click to calculate one temporary cheapest route through your completed or selected courses. It is not saved anywhere, changing the selected course, the basis, the scope or your course sets clears it back to the normal graph, and clicking it again clears it.",
-      fi: "Laskee yhden tilapäisen reitin, joka vaatii vähiten uusia opintopisteitä suoritettujen tai valittujen kurssiesi kautta. Reittiä ei tallenneta. Se poistuu, kun muutat valittua kurssia, perustaa, laajuutta tai kurssejasi, tai kun painat painiketta uudelleen.",
+      fi: "Laskee yhden tilapäisen reitin, joka vaatii vähiten uusia opintopisteitä suoritettujen tai valittujen kurssiesi kautta. Reittiä ei tallenneta. Se poistuu, kun muutat valittua kurssia, Suoritetut/Valitut-valintaa, laajuutta tai kurssejasi, tai kun painat painiketta uudelleen.",
     },
-  "Also shows recommended prerequisites, drawn apart from the required ones. They count in the minimum route while this is on.":
+  "Also shows recommended prerequisites and includes them in the minimum route.":
     {
-      en: "Also shows recommended prerequisites, drawn apart from the required ones. They count in the minimum route while this is on.",
-      fi: "Näyttää myös suositellut esitiedot erillään pakollisista. Ne lasketaan mukaan lyhimpään reittiin, kun asetus on valittuna.",
+      en: "Also shows recommended prerequisites and includes them in the minimum route.",
+      fi: "Näyttää myös suositellut esitiedot ja ottaa ne mukaan lyhimpään reittiin.",
     },
   "Leaves inactive courses out of the graph and the route. Selected or completed inactive courses and the opened root are shown. Turn it off to include them.":
     {
       en: "Leaves inactive courses out of the graph and the route. Selected or completed inactive courses and the opened root are shown. Turn it off to include them.",
-      fi: "Jättää kurssit, jotka eivät ole aktiivisia, pois graafista ja reitistä. Valitut tai suoritetut kurssit, jotka eivät ole aktiivisia, ja avattu kurssi näkyvät. Poista valinta, jos haluat ne mukaan.",
+      fi: "Jättää ei-aktiiviset kurssit pois graafista ja reitistä. Valitut tai suoritetut ei-aktiiviset kurssit ja avattu kurssi näkyvät. Poista valinta, jos haluat ne mukaan.",
     },
-  "Also shows prerequisites found by analysis rather than listed in the official data. They are marked as inferred.":
+  "Also shows prerequisites found by analysis rather than listed in the official data. They are marked as inferred, and a connection is dashed only when all its relationships are inferred.":
     {
-      en: "Also shows prerequisites found by analysis rather than listed in the official data. They are marked as inferred.",
-      fi: "Näyttää myös esitiedot, jotka analyysi on löytänyt ja joita ei ole lueteltu virallisissa tiedoissa. Ne on merkitty pääteltyiksi.",
+      en: "Also shows prerequisites found by analysis rather than listed in the official data. They are marked as inferred, and a connection is dashed only when all its relationships are inferred.",
+      fi: "Näyttää myös esitiedot, jotka analyysi on löytänyt ja joita ei ole lueteltu virallisissa tiedoissa. Ne on merkitty pääteltyiksi, ja yhteys on katkoviiva vain, jos kaikki sen esitietosuhteet ovat pääteltyjä.",
     },
   "Which of your courses count as covered when the route is worked out: only the ones you marked completed, or everything you have selected.":
     {
@@ -482,6 +524,7 @@ export const UI_TEXT = {
     en: "Clear minimum route",
     fi: "Tyhjennä lyhin reitti",
   },
+  Clear: { en: "Clear", fi: "Tyhjennä" },
   "cheapest route to the selected course": {
     en: "cheapest route to the selected course",
     fi: "lyhin reitti valitulle kurssille",
@@ -590,6 +633,44 @@ export const UI_TEXT = {
   "Reset programme": { en: "Reset programme", fi: "Nollaa ohjelma" },
   "Delete programme": { en: "Delete programme", fi: "Poista ohjelma" },
   "Choose programme": { en: "Choose programme", fi: "Valitse ohjelma" },
+  "Choose module version": {
+    en: "Choose module version",
+    fi: "Valitse moduulin versio",
+  },
+  Select: { en: "Select", fi: "Valitse" },
+  "Valid {start} – {end}": {
+    en: "Valid {start} – {end}",
+    fi: "Voimassa {start} – {end}",
+  },
+  "Valid from {start}": {
+    en: "Valid from {start}",
+    fi: "Voimassa {start} alkaen",
+  },
+  "Valid until {end}": {
+    en: "Valid until {end}",
+    fi: "Voimassa {end} asti",
+  },
+  "Validity not stated": {
+    en: "Validity not stated",
+    fi: "Voimassaoloaikaa ei ole ilmoitettu",
+  },
+  "Periods: {periods}": {
+    en: "Periods: {periods}",
+    fi: "Opetussuunnitelmakaudet: {periods}",
+  },
+  "Version {id}": { en: "Version {id}", fi: "Versio {id}" },
+  "No versions available.": {
+    en: "No versions available.",
+    fi: "Versioita ei ole saatavilla.",
+  },
+  "Another version of this module is already selected": {
+    en: "Another version of this module is already selected",
+    fi: "Tästä moduulista on jo valittu toinen versio",
+  },
+  "Sisu plan selects two versions of a module": {
+    en: "Sisu plan selects two versions of a module",
+    fi: "Sisu-suunnitelma valitsee moduulista kaksi versiota",
+  },
   "Programme actions for {name}": {
     en: "Programme actions for {name}",
     fi: "Ohjelman toiminnot: {name}",
@@ -774,7 +855,6 @@ export const UI_TEXT = {
   "Loading modules": { en: "Loading modules", fi: "Ladataan moduuleja" },
   programmes: { en: "programmes", fi: "tutkinto-ohjelmat" },
   "No matches.": { en: "No matches.", fi: "Ei osumia." },
-  "adding…": { en: "adding…", fi: "lisätään…" },
   "{count} items": { en: "{count} items", fi: "{count} kohdetta" },
   "Filter programmes and modules by name or code": {
     en: "Filter programmes and modules by name or code",
@@ -784,7 +864,6 @@ export const UI_TEXT = {
     en: "Loading programmes and modules",
     fi: "Ladataan tutkinto-ohjelmia ja moduuleja",
   },
-  "opening…": { en: "opening…", fi: "avataan…" },
   "No programmes or modules match this search.": {
     en: "No programmes or modules match this search.",
     fi: "Mikään tutkinto-ohjelma tai moduuli ei vastaa tätä hakua.",
@@ -802,6 +881,18 @@ export const UI_TEXT = {
   "This removes {code} from your selection together with its completion.": {
     en: "This removes {code} from your selection together with its completion.",
     fi: "Tämä poistaa kurssin {code} valinnoistasi suoritusmerkintöineen.",
+  },
+  "Mark completed?": {
+    en: "Mark completed?",
+    fi: "Merkitäänkö suoritetuksi?",
+  },
+  "Add {name} to Unplaced studies and mark it completed?": {
+    en: "Add {name} to Unplaced studies and mark it completed?",
+    fi: "Lisätäänkö {name} sijoittamattomiin opintoihin ja merkitäänkö se suoritetuksi?",
+  },
+  "Add and complete": {
+    en: "Add and complete",
+    fi: "Lisää ja merkitse suoritetuksi",
   },
   "Move here?": { en: "Move here?", fi: "Siirretäänkö tänne?" },
   "the programme list": { en: "the programme list", fi: "ohjelmaluettelo" },
@@ -863,7 +954,7 @@ export const UI_TEXT = {
   Name: { en: "Name", fi: "Nimi" },
   "{selected} selected · {completed} completed": {
     en: "{selected} selected · {completed} completed",
-    fi: "valittu: {selected} · suoritettu: {completed}",
+    fi: "valittuja: {selected} · suoritettuja: {completed}",
   },
   "Rename {name}": { en: "Rename {name}", fi: "Nimeä {name} uudelleen" },
   "Delete {name}": { en: "Delete {name}", fi: "Poista {name}" },
@@ -876,7 +967,7 @@ export const UI_TEXT = {
   "This is your current profile. The first remaining profile will be selected instead.":
     {
       en: "This is your current profile. The first remaining profile will be selected instead.",
-      fi: "Tämä on nykyinen profiilisi. Ensimmäinen jäljellä oleva profiili valitaan sen sijaan.",
+      fi: "Tämä on nykyinen profiilisi. Tilalle valitaan ensimmäinen jäljellä oleva profiili.",
     },
   Export: { en: "Export", fi: "Vie" },
   Import: { en: "Import", fi: "Tuo" },
@@ -939,6 +1030,10 @@ export const UI_TEXT = {
     fi: "Tuo Sisu-suunnitelma",
   },
   "Sisu plan": { en: "Sisu plan", fi: "Sisu-suunnitelma" },
+  "Sisu import paused to preserve saved edits. Your profile is unchanged.": {
+    en: "Sisu import paused to preserve saved edits. Your profile is unchanged.",
+    fi: "Sisu-tuonti on keskeytetty tallennettujen muutosten säilyttämiseksi. Profiilisi säilyy ennallaan.",
+  },
   "or drop a .json file": {
     en: "or drop a .json file",
     fi: "tai raahaa tiedosto tähän",
@@ -962,12 +1057,12 @@ export const UI_TEXT = {
   "The catalogue has no structure for this module, so it was left out. Its courses that are in the catalogue are in Unplaced studies.":
     {
       en: "The catalogue has no structure for this module, so it was left out. Its courses that are in the catalogue are in Unplaced studies.",
-      fi: "Tämän moduulin rakennetta ei ole oppaassa, joten moduuli jätettiin pois. Sen kurssit, jotka löytyvät oppaasta, ovat sijoittamattomissa opinnoissa.",
+      fi: "Tämän moduulin rakennetta ei ole kurssiluettelossa, joten moduuli jätettiin pois. Sen kurssit, jotka löytyvät kurssiluettelosta, ovat sijoittamattomissa opinnoissa.",
     },
   "This course is not in the catalogue, so it was left out together with its completion.":
     {
       en: "This course is not in the catalogue, so it was left out together with its completion.",
-      fi: "Tätä kurssia ei ole oppaassa, joten se jätettiin pois suoritusmerkintöineen.",
+      fi: "Tätä kurssia ei ole kurssiluettelossa, joten se jätettiin pois suoritusmerkintöineen.",
     },
   "Export any listed profile or all saved data as one file. Select an entry to download it.":
     {
@@ -987,7 +1082,7 @@ export const UI_TEXT = {
 
   "Course not in the catalogue": {
     en: "Course not in the catalogue",
-    fi: "Kurssi ei ole oppaassa",
+    fi: "Kurssi ei ole kurssiluettelossa",
   },
   "Module not found": { en: "Module not found", fi: "Moduulia ei löytynyt" },
   "No current version of this module": {
@@ -1027,7 +1122,7 @@ export const UI_TEXT = {
   },
   "Blocked by an excluded course": {
     en: "Blocked by an excluded course",
-    fi: "Estetty poissuljetun kurssin takia",
+    fi: "Estetty, koska kurssi on suljettu pois",
   },
   "Inactive course": { en: "Inactive course", fi: "Ei-aktiivinen kurssi" },
   "Not enough active courses": {
@@ -1073,6 +1168,10 @@ export const UI_TEXT = {
     fi: "Pyyntö epäonnistui ({status})",
   },
   "Operation failed": { en: "Operation failed", fi: "Toiminto epäonnistui" },
+  "The serving dataset changed during the read": {
+    en: "The serving dataset changed during the read",
+    fi: "Palvelimen tietoaineisto muuttui lukemisen aikana",
+  },
   "Current browser profile is unavailable": {
     en: "Current browser profile is unavailable",
     fi: "Nykyinen selainprofiili ei ole käytettävissä",
@@ -1123,15 +1222,15 @@ export const UI_TEXT = {
   },
   "Saved browser profile slice search is invalid": {
     en: "Saved browser profile slice search is invalid",
-    fi: "Tallennetun selainprofiilin hakuosio on virheellinen",
+    fi: "Tallennetun selainprofiilin haun osio on virheellinen",
   },
   "Saved browser profile slice compare is invalid": {
     en: "Saved browser profile slice compare is invalid",
-    fi: "Tallennetun selainprofiilin vertailuosio on virheellinen",
+    fi: "Tallennetun selainprofiilin vertailun osio on virheellinen",
   },
   "Saved browser profile slice prerequisites is invalid": {
     en: "Saved browser profile slice prerequisites is invalid",
-    fi: "Tallennetun selainprofiilin esitieto-osio on virheellinen",
+    fi: "Tallennetun selainprofiilin esitietojen osio on virheellinen",
   },
   "Saved browser profile slice discover is invalid": {
     en: "Saved browser profile slice discover is invalid",
@@ -1139,7 +1238,7 @@ export const UI_TEXT = {
   },
   "Saved browser profile slice structure is invalid": {
     en: "Saved browser profile slice structure is invalid",
-    fi: "Tallennetun selainprofiilin opintojen rakenteen osio on virheellinen",
+    fi: "Tallennetun selainprofiilin rakenteen osio on virheellinen",
   },
   "A module cannot be added inside itself": {
     en: "A module cannot be added inside itself",
@@ -1148,6 +1247,10 @@ export const UI_TEXT = {
   "Structure programmes changed while adding a module": {
     en: "Structure programmes changed while adding a module",
     fi: "Rakenteen ohjelmat muuttuivat moduulia lisättäessä",
+  },
+  "Structure version selection changed while adding a module": {
+    en: "Structure version selection changed while adding a module",
+    fi: "Rakenteen versiovalinta muuttui moduulia lisättäessä",
   },
   "Structure moves changed while confirming a module": {
     en: "Structure moves changed while confirming a module",
@@ -1183,6 +1286,7 @@ export const UI_TEXT = {
   },
 } as const;
 
+/** One key of the wording resource. */
 export type UiTextKey = keyof typeof UI_TEXT;
 
 /**
@@ -1211,6 +1315,7 @@ const SEARCH_METHOD_KEYS: Record<SearchMethod, UiTextKey> = {
   semantic: "Semantic",
 };
 
+/** Return the localized label of one search method. */
 export function searchMethodLabel(
   method: SearchMethod,
   language: DisplayLanguage,

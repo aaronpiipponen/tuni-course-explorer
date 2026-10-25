@@ -1,4 +1,4 @@
-# Example web UI service, with its backend bound to loopback.
+# Example web UI served by one front router and its worker processes on loopback.
 [Unit]
 Description=TUNI Course Explorer web UI
 
@@ -10,6 +10,7 @@ Restart=on-failure
 RestartSec=5
 NoNewPrivileges=true
 UMask=0077
+Nice=5
 StandardOutput=null
 StandardError=journal
 
