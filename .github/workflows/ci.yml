@@ -1,4 +1,5 @@
-# Verify every push to main, then deploy its commit from this server.
+# Verify every push to main and every pull request that targets it, then deploy a tested push
+# from this server.
 #
 # The verify job runs on a GitHub-hosted runner. It installs the locked Python and Node
 # dependencies, runs the fast gate and the network-free Python suite, replaces the
@@ -13,6 +14,8 @@ name: CI
 
 on:
   push:
+    branches: [main]
+  pull_request:
     branches: [main]
 
 permissions:

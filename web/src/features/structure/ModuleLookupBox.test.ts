@@ -76,15 +76,21 @@ function restore(target: object, name: string, value: unknown) {
 }
 
 function installGeometry(): void {
-  Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
-    configurable: true,
-    get(this: HTMLElement) {
-      if (this.classList.contains("lookup-virtual-row")) return ROW_HEIGHT;
-      if (this.classList.contains("lookup-virtual-list"))
-        return VIEWPORT_HEIGHT;
-      return 0;
-    },
-  });
+  const boxHeight = (element: HTMLElement) =>
+    element.classList.contains("lookup-virtual-row")
+      ? ROW_HEIGHT
+      : element.classList.contains("lookup-virtual-list")
+        ? VIEWPORT_HEIGHT
+        : 0;
+  // The virtualizer reads `clientHeight` for its viewport and rows, and the row measurement
+  // reads `offsetHeight`, so both report the same synthetic geometry.
+  for (const name of ["offsetHeight", "clientHeight"] as const)
+    Object.defineProperty(HTMLElement.prototype, name, {
+      configurable: true,
+      get(this: HTMLElement) {
+        return boxHeight(this);
+      },
+    });
   globalThis.ResizeObserver = class {
     observe() {}
     unobserve() {}

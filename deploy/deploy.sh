@@ -1,5 +1,6 @@
 #!/usr/bin/bash
-# Build both frontends, restart the two serving units and prove their loopback listeners.
+# Build both frontends, restart the two serving units, and prove their loopback listeners and
+# their HTTP answers.
 # Usage: deploy/deploy.sh <tested-commit>
 # <tested-commit> is the full commit SHA the caller admitted and prints as deployed.
 # The units and ports come from serving.conf beside this script.
@@ -65,7 +66,26 @@ wait_serving() {
   return 1
 }
 
+# Poll one application over HTTP until it answers. The console refuses a request whose Host is not
+# its configured origin, so its probe accepts any response, while `--fail` requires a successful
+# status for the application that serves the shell.
+wait_http() {
+  local url="$1"
+  shift
+  local deadline=$((SECONDS + 15))
+  while (( SECONDS < deadline )); do
+    if curl --silent --max-time 5 --output /dev/null "$@" "$url"; then
+      return 0
+    fi
+    sleep 1
+  done
+  printf 'deployment failed: %s answers no HTTP request\n' "$url" >&2
+  return 1
+}
+
 wait_serving "$DEPLOY_WEB_UNIT" "$DEPLOY_WEB_PORT"
 wait_serving "$DEPLOY_ADMIN_UNIT" "$DEPLOY_ADMIN_PORT" --user
+wait_http "http://127.0.0.1:$DEPLOY_WEB_PORT/" --fail
+wait_http "http://127.0.0.1:$DEPLOY_ADMIN_PORT/"
 
 printf 'deployed %s\n' "$tested_commit"

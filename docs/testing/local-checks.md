@@ -4,7 +4,7 @@ This page lists the exact lint, Python, PostgreSQL and frontend commands for a l
 
 ## Prerequisites
 
-Python 3.14.3 is selected by `.python-version`, and the locked Python environment is installed with `uv sync --locked`. The browser app and the administration console declare the Node engine range `^20.19.0 || >=22.12.0` in their `package.json` files, and each app is installed from its own lock file with `npm --prefix <app> ci --no-audit --no-fund`.
+Python 3.14.3 is selected by `.python-version`, and the locked Python environment is installed with `uv sync --locked`. The browser app and the administration console declare the Node engine range `^22.22.2 || >=24.15.0` in their `package.json` files, and each app is installed from its own lock file with `npm --prefix <app> ci --no-audit --no-fund`.
 
 The web dependencies are also required by the Python suite. The session fixture `solver_bundle` in `tests/conftest.py` runs `npm --prefix web run solver:build` before a test that needs the Node machine route, so install the web dependencies before the Python suite.
 
@@ -121,6 +121,6 @@ The runner reads the database host, port and user from `config/database.toml`, a
 
 The runner creates one database named `course_explorer_browser_<random hex>_test`, applies the Alembic head and imports the example dataset from `data/mock/` through the real example-data loader with a temporary raw capture root. It serves the built app on an ephemeral loopback port and runs the Node journeys against that origin. On completion or failure it stops the Node process and the app, drops exactly the database it created and removes its temporary files. A name without the `_test` suffix is refused before creation.
 
-## Checks on every push
+## Checks on every push and pull request
 
-Each push to main runs these checks in the repository's CI workflow. The workflow runs `git diff --check HEAD^ HEAD` in place of `git diff --check`. Before the browser app and console checks and the integration selection it copies `examples/config/*.toml`, `examples/config/wiki.json`, `examples/config/derived/*.json` and `examples/docker-compose.yml` into the checkout, so those steps read the example configuration and Compose file. It then starts the Compose `db` service with `POSTGRES_DB=course_explorer_test`, a synthetic database password and its own Compose project name, and the integration selection and the browser journeys run with that same environment.
+Each push to `main` and each pull request that targets it runs these checks in the repository's CI workflow. The workflow runs `git diff --check HEAD^ HEAD` in place of `git diff --check`. Before the browser app and console checks and the integration selection it copies `examples/config/*.toml`, `examples/config/wiki.json`, `examples/config/derived/*.json` and `examples/docker-compose.yml` into the checkout, so those steps read the example configuration and Compose file. It then starts the Compose `db` service with `POSTGRES_DB=course_explorer_test`, a synthetic database password and its own Compose project name, and the integration selection and the browser journeys run with that same environment.

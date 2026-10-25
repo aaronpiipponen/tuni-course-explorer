@@ -93,7 +93,7 @@ Requirements:
 
 - Python 3.14.3
 - [uv](https://docs.astral.sh/uv/)
-- Node.js `^20.19.0 || >=22.12.0` with npm
+- Node.js `^22.22.2 || >=24.15.0` with npm
 - Docker with Docker Compose, for PostgreSQL with pgvector
 
 Runtime configuration and deployment files are provided as examples under `examples/`. The files a running copy uses are local to each checkout and are ignored by Git.
