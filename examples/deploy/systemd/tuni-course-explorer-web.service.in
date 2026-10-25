@@ -1,4 +1,4 @@
-# Example web UI served by one front router and its worker processes on loopback.
+# Example service configuration for the web UI.
 [Unit]
 Description=TUNI Course Explorer web UI
 

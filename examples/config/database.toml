@@ -1,5 +1,5 @@
-# PostgreSQL connection components for the example deployment, validated by
-# course_explorer.config.DatabaseSettings. The example serves its bundled fictional dataset.
+# Example PostgreSQL connection configuration, validated by
+# course_explorer.config.DatabaseSettings.
 POSTGRES_DB = "course_explorer"
 POSTGRES_USER = "course_explorer"
 POSTGRES_HOST = "127.0.0.1"
