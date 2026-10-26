@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 504" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Ten-scenario solve time ratio by course</title>
+  <desc id="d">Ratio of baseline to prototype median total solve time summed over ten scenarios per course. A value above 1 means the prototype is faster.</desc>
+  <rect width="960" height="504" rx="12" fill="#232434"/>
+  <line x1="164.8" y1="32" x2="164.8" y2="428" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="164.8" y="450" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="304.3" y1="32" x2="304.3" y2="428" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="304.3" y="450" text-anchor="middle" font-size="14" fill="#a3a4b8">0.25</text>
+  <line x1="443.8" y1="32" x2="443.8" y2="428" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="443.8" y="450" text-anchor="middle" font-size="14" fill="#a3a4b8">0.5</text>
+  <line x1="583.4" y1="32" x2="583.4" y2="428" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="583.4" y="450" text-anchor="middle" font-size="14" fill="#a3a4b8">0.75</text>
+  <line x1="722.9" y1="32" x2="722.9" y2="428" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="722.9" y="450" text-anchor="middle" font-size="14" fill="#a3a4b8">1</text>
+  <line x1="862.4" y1="32" x2="862.4" y2="428" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="862.4" y="450" text-anchor="middle" font-size="14" fill="#a3a4b8">1.25</text>
+  <text x="152.8" y="55" text-anchor="end" font-size="14" fill="#ececf2">COMP.CS.110</text>
+  <rect x="164.8" y="40" width="496.7" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="669.5" y="55" font-size="14" fill="#a3a4b8">0.89</text>
+  <text x="152.8" y="91" text-anchor="end" font-size="14" fill="#ececf2">COMP.CS.200</text>
+  <rect x="164.8" y="76" width="491.1" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="663.9" y="91" font-size="14" fill="#a3a4b8">0.88</text>
+  <text x="152.8" y="127" text-anchor="end" font-size="14" fill="#ececf2">COMP.CS.500</text>
+  <rect x="164.8" y="112" width="541.3" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="714.1" y="127" font-size="14" fill="#a3a4b8">0.97</text>
+  <text x="152.8" y="163" text-anchor="end" font-size="14" fill="#ececf2">KAT.MARK.304</text>
+  <rect x="164.8" y="148" width="563.7" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="736.5" y="163" font-size="14" fill="#a3a4b8">1.01</text>
+  <text x="152.8" y="199" text-anchor="end" font-size="14" fill="#ececf2">KAT.MARK.310</text>
+  <rect x="164.8" y="184" width="546.9" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="719.7" y="199" font-size="14" fill="#a3a4b8">0.98</text>
+  <text x="152.8" y="235" text-anchor="end" font-size="14" fill="#ececf2">KAT.MARK.399</text>
+  <rect x="164.8" y="220" width="541.3" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="714.1" y="235" font-size="14" fill="#a3a4b8">0.97</text>
+  <text x="152.8" y="271" text-anchor="end" font-size="14" fill="#ececf2">KIE.SUY.420</text>
+  <rect x="164.8" y="256" width="546.9" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="719.7" y="271" font-size="14" fill="#a3a4b8">0.98</text>
+  <text x="152.8" y="307" text-anchor="end" font-size="14" fill="#ececf2">MATH.MA.725</text>
+  <rect x="164.8" y="292" width="686.4" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="859.2" y="307" font-size="14" fill="#a3a4b8">1.23</text>
+  <text x="152.8" y="343" text-anchor="end" font-size="14" fill="#ececf2">MATH.MA.880</text>
+  <rect x="164.8" y="328" width="675.3" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="848.1" y="343" font-size="14" fill="#a3a4b8">1.21</text>
+  <text x="152.8" y="379" text-anchor="end" font-size="14" fill="#ececf2">PSY.324</text>
+  <rect x="164.8" y="364" width="647.4" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="820.2" y="379" font-size="14" fill="#a3a4b8">1.16</text>
+  <text x="152.8" y="415" text-anchor="end" font-size="14" fill="#ececf2">YKT.SOA.303</text>
+  <rect x="164.8" y="400" width="552.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="725.3" y="415" font-size="14" fill="#a3a4b8">0.99</text>
+  <text x="513.6" y="480" text-anchor="middle" font-size="14" fill="#a3a4b8">Ratio of baseline to prototype (x)</text>
+</svg>

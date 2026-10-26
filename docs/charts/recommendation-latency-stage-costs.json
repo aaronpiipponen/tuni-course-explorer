@@ -1,0 +1,21 @@
+{
+  "type": "bar",
+  "title": "Expanded 49-course recommendation stage costs",
+  "description": "Embedded next-course, nearest-chunk, basis-vector, candidate-vector and overlap-result stage times for the expanded 49-course basket across three runs, in seconds.",
+  "valueAxis": "Stage time (s)",
+  "categories": ["Embedded next course", "Nearest chunks", "Basis vector reads", "Candidate vector reads", "Overlap and results"],
+  "series": [
+    {
+      "name": "Run 1",
+      "values": [0.489, 1.257, 0.129, 0.191, 0.484]
+    },
+    {
+      "name": "Run 2",
+      "values": [0.59, 1.23, 0.126, 0.193, 0.452]
+    },
+    {
+      "name": "Run 3",
+      "values": [0.54, 1.258, 0.124, 0.189, 0.447]
+    }
+  ]
+}

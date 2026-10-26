@@ -1,0 +1,17 @@
+{
+  "type": "bar",
+  "title": "Gate records for the active-off YKT.SOA.303 row",
+  "description": "Gate records for YKT.SOA.303 with Recommended and Inferred on and Active only off in the first corrected pass, the second corrected pass and the module-drawing pass. The count falls from 38,523 to 2,845 records and then rises to 3,348.",
+  "valueAxis": "Gate records",
+  "categories": [
+    "First correction",
+    "Second correction",
+    "Module drawing"
+  ],
+  "series": [
+    {
+      "name": "Gate records",
+      "values": [38523, 2845, 3348]
+    }
+  ]
+}

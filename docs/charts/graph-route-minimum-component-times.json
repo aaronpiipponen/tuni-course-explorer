@@ -1,0 +1,25 @@
+{
+  "type": "bar",
+  "title": "Component times of the four large-case calculations",
+  "description": "Compilation, exact attempt, greedy pass and remaining service time for the four mathematics cases after the scalar correction.",
+  "valueAxis": "Time (s)",
+  "categories": ["MATH.MA.880 active only", "MATH.MA.880 all courses", "MATH.MA.725 active only", "MATH.MA.725 all courses"],
+  "series": [
+    {
+      "name": "Compilation",
+      "values": [1.565, 1.542, 2.066, 1.998]
+    },
+    {
+      "name": "Exact attempt",
+      "values": [2.382, 2.349, 2.261, 2.342]
+    },
+    {
+      "name": "Greedy pass",
+      "values": [1.432, 0.531, 1.148, 0.828]
+    },
+    {
+      "name": "Other",
+      "values": [1.912, 1.835, 2.357, 2.337]
+    }
+  ]
+}

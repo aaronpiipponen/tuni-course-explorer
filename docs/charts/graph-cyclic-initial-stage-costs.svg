@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 580" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Initial graph request stage costs for four large profiles</title>
+  <desc id="d">Compile, projection and preparation, satisfaction and serialization milliseconds for the MATH.MA.880 and MATH.MA.725 graph requests with Active only on and off.</desc>
+  <rect width="960" height="580" rx="12" fill="#232434"/>
+  <rect x="61" y="33" width="14" height="14" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="96" y="45" font-size="14" fill="#a3a4b8">Compile</text>
+  <rect x="191.8" y="33" width="14" height="14" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="226.8" y="45" font-size="14" fill="#a3a4b8">Projection and preparation</text>
+  <rect x="482.2" y="33" width="14" height="14" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="517.2" y="45" font-size="14" fill="#a3a4b8">Satisfaction</text>
+  <rect x="655" y="33" width="14" height="14" fill="#a7e36b" stroke="none" stroke-width="1.5"/>
+  <text x="690" y="45" font-size="14" fill="#a3a4b8">Serialization</text>
+  <line x1="248.8" y1="72" x2="248.8" y2="504" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="248.8" y="526" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="398" y1="72" x2="398" y2="504" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="398" y="526" text-anchor="middle" font-size="14" fill="#a3a4b8">5,000</text>
+  <line x1="547.2" y1="72" x2="547.2" y2="504" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="547.2" y="526" text-anchor="middle" font-size="14" fill="#a3a4b8">10,000</text>
+  <line x1="696.4" y1="72" x2="696.4" y2="504" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="696.4" y="526" text-anchor="middle" font-size="14" fill="#a3a4b8">15,000</text>
+  <line x1="845.6" y1="72" x2="845.6" y2="504" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="845.6" y="526" text-anchor="middle" font-size="14" fill="#a3a4b8">20,000</text>
+  <text x="236.8" y="131" text-anchor="end" font-size="14" fill="#ececf2">MATH.MA.880 active on</text>
+  <rect x="248.8" y="80" width="87" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="343.8" y="95" font-size="14" fill="#a3a4b8">2,915</text>
+  <rect x="248.8" y="104" width="15" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="271.8" y="119" font-size="14" fill="#a3a4b8">502</text>
+  <rect x="248.8" y="128" width="7.1" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="263.9" y="143" font-size="14" fill="#a3a4b8">239</text>
+  <rect x="248.8" y="152" width="2.4" height="20" rx="2" fill="#a7e36b" stroke="none" stroke-width="1.5"/>
+  <text x="259.2" y="167" font-size="14" fill="#a3a4b8">81</text>
+  <text x="236.8" y="239" text-anchor="end" font-size="14" fill="#ececf2">MATH.MA.880 active off</text>
+  <rect x="248.8" y="188" width="131.1" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="387.9" y="203" font-size="14" fill="#a3a4b8">4,395</text>
+  <rect x="248.8" y="212" width="169" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="425.8" y="227" font-size="14" fill="#a3a4b8">5,664</text>
+  <rect x="248.8" y="236" width="59.6" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="316.4" y="251" font-size="14" fill="#a3a4b8">1,996</text>
+  <rect x="248.8" y="260" width="10.1" height="20" rx="2" fill="#a7e36b" stroke="none" stroke-width="1.5"/>
+  <text x="266.9" y="275" font-size="14" fill="#a3a4b8">339</text>
+  <text x="236.8" y="347" text-anchor="end" font-size="14" fill="#ececf2">MATH.MA.725 active on</text>
+  <rect x="248.8" y="296" width="184.6" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="441.4" y="311" font-size="14" fill="#a3a4b8">6,188</text>
+  <rect x="248.8" y="320" width="152.3" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="409.1" y="335" font-size="14" fill="#a3a4b8">5,103</text>
+  <rect x="248.8" y="344" width="23" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="279.8" y="359" font-size="14" fill="#a3a4b8">771</text>
+  <rect x="248.8" y="368" width="15.5" height="20" rx="2" fill="#a7e36b" stroke="none" stroke-width="1.5"/>
+  <text x="272.3" y="383" font-size="14" fill="#a3a4b8">518</text>
+  <text x="236.8" y="455" text-anchor="end" font-size="14" fill="#ececf2">MATH.MA.725 active off</text>
+  <rect x="248.8" y="404" width="227.1" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="483.9" y="419" font-size="14" fill="#a3a4b8">7,609</text>
+  <rect x="248.8" y="428" width="464.8" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="721.6" y="443" font-size="14" fill="#a3a4b8">15,578</text>
+  <rect x="248.8" y="452" width="101.9" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="358.7" y="467" font-size="14" fill="#a3a4b8">3,414</text>
+  <rect x="248.8" y="476" width="26.1" height="20" rx="2" fill="#a7e36b" stroke="none" stroke-width="1.5"/>
+  <text x="282.9" y="491" font-size="14" fill="#a3a4b8">875</text>
+  <text x="547.2" y="556" text-anchor="middle" font-size="14" fill="#a3a4b8">Stage time (ms)</text>
+</svg>

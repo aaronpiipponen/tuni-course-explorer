@@ -1,0 +1,25 @@
+{
+  "type": "bar",
+  "title": "Ten-scenario solve time ratio by course",
+  "description": "Ratio of baseline to prototype median total solve time summed over ten scenarios per course. A value above 1 means the prototype is faster.",
+  "valueAxis": "Ratio of baseline to prototype (x)",
+  "categories": [
+    "COMP.CS.110",
+    "COMP.CS.200",
+    "COMP.CS.500",
+    "KAT.MARK.304",
+    "KAT.MARK.310",
+    "KAT.MARK.399",
+    "KIE.SUY.420",
+    "MATH.MA.725",
+    "MATH.MA.880",
+    "PSY.324",
+    "YKT.SOA.303"
+  ],
+  "series": [
+    {
+      "name": "Ten-scenario total",
+      "values": [0.89, 0.88, 0.97, 1.01, 0.98, 0.97, 0.98, 1.23, 1.21, 1.16, 0.99]
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "type": "bar",
+  "title": "Mean web cost by serving class",
+  "description": "Mean web process core-seconds per call for ten serving classes on the pinned dataset, from the basis-50 summaries read to the basis-50 recommendation.",
+  "valueAxis": "Web cost (core-seconds per call)",
+  "categories": [
+    "Summaries, basis 50",
+    "Structure",
+    "Graph, small payloads",
+    "Compare",
+    "Next courses, basis 3",
+    "Recommendation, basis 3",
+    "Search, exact",
+    "Search, substring",
+    "Search, semantic",
+    "Recommendation, basis 50"
+  ],
+  "series": [
+    {
+      "name": "Mean web cost",
+      "values": [0.020982, 0.066904, 0.083734, 0.107675, 0.126763, 0.275784, 0.933849, 0.950417, 0.983512, 9.329324]
+    }
+  ]
+}

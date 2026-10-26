@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 252" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Median SQL time by lexical form</title>
+  <desc id="d">Median SQL time over the 16 cells of the first recorded pass for exact code equality, projection substring, raw lower() substring and trigram matching over an 11,086-row lexical projection.</desc>
+  <rect width="960" height="252" rx="12" fill="#232434"/>
+  <line x1="248.8" y1="32" x2="248.8" y2="176" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="248.8" y="198" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="371.5" y1="32" x2="371.5" y2="176" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="371.5" y="198" text-anchor="middle" font-size="14" fill="#a3a4b8">10</text>
+  <line x1="494.2" y1="32" x2="494.2" y2="176" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="494.2" y="198" text-anchor="middle" font-size="14" fill="#a3a4b8">20</text>
+  <line x1="617" y1="32" x2="617" y2="176" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="617" y="198" text-anchor="middle" font-size="14" fill="#a3a4b8">30</text>
+  <line x1="739.7" y1="32" x2="739.7" y2="176" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="739.7" y="198" text-anchor="middle" font-size="14" fill="#a3a4b8">40</text>
+  <line x1="862.4" y1="32" x2="862.4" y2="176" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="862.4" y="198" text-anchor="middle" font-size="14" fill="#a3a4b8">50</text>
+  <text x="236.8" y="55" text-anchor="end" font-size="14" fill="#ececf2">Exact code, projection</text>
+  <rect x="248.8" y="40" width="19.6" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="276.4" y="55" font-size="14" fill="#a3a4b8">1.6</text>
+  <text x="236.8" y="91" text-anchor="end" font-size="14" fill="#ececf2">Substring, projection</text>
+  <rect x="248.8" y="76" width="28.2" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="285" y="91" font-size="14" fill="#a3a4b8">2.3</text>
+  <text x="236.8" y="127" text-anchor="end" font-size="14" fill="#ececf2">Substring, raw lower()</text>
+  <rect x="248.8" y="112" width="110.4" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="367.2" y="127" font-size="14" fill="#a3a4b8">9</text>
+  <text x="236.8" y="163" text-anchor="end" font-size="14" fill="#ececf2">Trigram name</text>
+  <rect x="248.8" y="148" width="499.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="756.3" y="163" font-size="14" fill="#a3a4b8">40.7</text>
+  <text x="555.6" y="228" text-anchor="middle" font-size="14" fill="#a3a4b8">First-pass median SQL time (ms)</text>
+</svg>

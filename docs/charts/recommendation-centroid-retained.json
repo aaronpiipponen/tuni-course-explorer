@@ -1,0 +1,21 @@
+{
+  "type": "bar",
+  "title": "Retained courses and changed ranks under centroid coverage",
+  "description": "Retained course counts under chunk-pair and centroid coverage, and the number of common courses whose rank changed, for the 1, 10 and 50 course bases.",
+  "valueAxis": "Courses",
+  "categories": ["Basis 1", "Basis 10", "Basis 50"],
+  "series": [
+    {
+      "name": "Chunk-pair retained",
+      "values": [37, 69, 319]
+    },
+    {
+      "name": "Centroid retained",
+      "values": [37, 69, 311]
+    },
+    {
+      "name": "Ranks changed",
+      "values": [0, 0, 253]
+    }
+  ]
+}

@@ -2,11 +2,10 @@
 # from this server.
 #
 # The verify job runs on a GitHub-hosted runner. It installs the locked Python and Node
-# dependencies, runs the fast gate and the network-free Python suite, replaces the
-# tracked runtime configuration with the committed example files inside the checkout,
-# and runs both frontend gates, the PostgreSQL integration selection and the browser
-# journeys against the built app and disposable example data.
-#
+# dependencies, runs the lint and format checks and the network-free Python suite, copies the
+# committed configuration examples into their runtime paths inside the checkout,
+# and runs the browser app and administration console checks, the PostgreSQL integration selection
+# and the browser journeys against the built app and a disposable example dataset.
 # The deploy job runs on the repository's self-hosted runner after verify succeeds. It admits
 # the serving checkout in its own run block, then builds and restarts the two serving
 # units from the admitted commit. It checks out nothing and pulls nothing.
@@ -61,9 +60,8 @@ jobs:
       - name: uv run pytest
         run: uv run pytest
       - name: Materialize example configuration
-        # The tracked configuration and Compose file hold environment-specific values, so the
-        # committed example tree replaces those copies inside the runner. Nothing is committed
-        # or published.
+        # The checks read runtime configuration and a Compose file copied from the committed
+        # example tree into the runner's working copy.
         run: |
           mkdir -p config/derived
           cp examples/config/*.toml config/

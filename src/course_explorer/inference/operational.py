@@ -1,19 +1,11 @@
-"""Operational label-free CE-only selection and the reusable route-neutral complete-target call.
+"""Select one target's label-free cross-encoder packet and run its complete-target call.
 
-This module is the operating path's owner of the decision-independent target pipeline: it reads the
-current curriculum and effective teaching text once per batch into one frozen catalogue carrier,
-selects one target's K1000 multiview pool, scores the exact K1000 label-free packet with the
-cross-encoder, and reduces it to the accepted CE-only top-50 packet. It binds the complete selection
-(packet digest, score/order digest, rerank model/runtime/input settings, and selection policy) into
-one canonical identity so a snapshot rebuild, changed candidate text/embedding, changed selection
-mechanics, or changed rerank runtime invalidates stale work rather than reusing it. It reads no
-official prerequisite structure, hidden label, saved development pool, or hardcoded development
-target ID, and it never rereads the full catalogue inside the per-target function.
-
-:func:`run_operational_target` reuses the one route-budgeted claim/validate/write path in
-``target_pass`` rather than forking a second evidence route for any execution route. No production
-model, prompt, or routing policy is selected here. The caller supplies the validated execution
-profile.
+A batch prepares one frozen catalogue carrier from the curriculum and effective teaching text.
+Selection reads the supplied catalogue for the target and candidate identities, and the candidate
+repository queries the compatible stored embeddings once for the all-field ranking and once per
+configured field view. A selection is a compact ordered set of course references with its canonical
+reference digest. :func:`run_operational_target` reuses the route-budgeted claim, validation and
+write path in ``target_pass`` for every execution route.
 """
 
 from __future__ import annotations
@@ -88,11 +80,14 @@ class _OperationalModel(BaseModel):
 class OperationalCatalogue(_OperationalModel):
     """One once-per-batch catalogue carrier for the operational target pipeline.
 
-    It holds the current canonical courses, their effective teaching text, the exact represented
-    identity universe, and the two bound snapshot identities. A caller builds it once per batch
-    boundary and reuses it across every target. No per-target function rereads the catalogue. It
-    contains official prerequisite structure only inside the canonical course models, and no
-    selector reads that structure while building model inputs.
+    It holds the current canonical course identity, activity context, and selected representative
+    when one exists, the resolved effective teaching text for every represented course, the exact
+    represented identity universe, and the catalogue and embedding-configuration digests. The
+    course mapping accepts either canonical course model, and
+    :func:`prepare_operational_catalogue` fills it from the teaching projection. Selection and
+    packet assembly read only identity, activity, and effective teaching text. A caller builds the
+    carrier once per batch boundary and reuses it across every target, and no per-target function
+    rereads the catalogue.
     """
 
     courses_by_group: Mapping[str, CatalogueCourse | CatalogueTeachingCourse]
@@ -155,8 +150,8 @@ def prepare_operational_catalogue(
     This is the only operational catalogue read. It lists every course (active or not) because
     inactive courses remain valid candidate prerequisite sources, builds the effective-text
     catalogue once, derives the compatible embedding configuration hash, and hashes the canonical
-    identity/activity/effective-text evidence. Official prerequisite fields are never read here.
-    Only the canonical course and its representative identity are carried.
+    identity, activity, and effective-text evidence. The result carries the group-keyed teaching
+    projection, the group-keyed effective text, the represented identities, and both digests.
     """
     courses = curriculum.list_teaching_courses(active_only=None)
     teaching_text_catalogue = teaching_text.build_catalogue(courses=courses)
@@ -177,9 +172,9 @@ def prepare_operational_catalogue(
 class OperationalPoolInput(_OperationalModel):
     """One complete label-free multiview pool bound to its exact compact ordered references.
 
-    ``references`` is the full configured multiview pool (the accepted K1000 depth) as ordered course
-    references. ``pool_sha256`` is its canonical reference digest. The configured pool depth is a
-    validated selection setting enforced by the selector, never a constant here.
+    ``references`` is the full configured multiview pool of ordered course references. Its depth
+    is the configured ``INFERENCE_SELECTION_POOL_K`` value, validated in the range 1 to 5000, for
+    example 1000. ``pool_sha256`` is its canonical reference digest.
     """
 
     references: InferenceSelectionReferences
@@ -193,15 +188,21 @@ class OperationalPoolInput(_OperationalModel):
     @field_validator("pool_sha256")
     @classmethod
     def validate_pool_sha256(cls, value: str) -> str:
+        """Require the pool reference digest as 64 lowercase hexadecimal characters.
+
+        The digest format is checked here. The referenced selection is not rehashed.
+        """
         return _require_sha256(value, "operational pool_sha256")
 
 
 class OperationalTargetInput(_OperationalModel):
     """One complete CE-only target selection bound to its exact compact ordered references.
 
-    ``references`` is the accepted CE-only top-50 selection as ordered course references and
-    ``packet_sha256`` is its canonical reference digest. The selection producer enforces the final
-    candidate count, so a partially built or stale selection can never reach the evidence path.
+    ``references`` is the accepted CE-only selection as ordered course references and
+    ``packet_sha256`` is its canonical reference digest. :func:`rerank_operational_pool` builds it
+    from the first ``FINAL_CANDIDATE_MAX`` group ids of the scored ranking, or from the whole
+    ranking when it is shorter, and requires the configured final count to equal
+    :data:`FINAL_CANDIDATE_MAX`. ``packet_sha256`` is validated for format only.
     """
 
     references: InferenceSelectionReferences
@@ -215,6 +216,10 @@ class OperationalTargetInput(_OperationalModel):
     @field_validator("packet_sha256")
     @classmethod
     def validate_packet_sha256(cls, value: str) -> str:
+        """Require the target reference digest as 64 lowercase hexadecimal characters.
+
+        The digest format is checked here. The referenced selection is not rehashed.
+        """
         return _require_sha256(value, "operational packet_sha256")
 
 
@@ -224,8 +229,9 @@ def materialize_selection_packet(
     """Resolve compact ordered references back into one transient label-free target packet.
 
     It resolves ids through the already-prepared mappings and ``_packet_course``, preserving order
-    and teaching origins with no SQL/model/retrieval call. Missing current ids fail naturally. The
-    job's coarse entry-time check owns compatibility, so no per-reference revalidation is repeated.
+    and teaching origins with no SQL, model, or retrieval call. A group id absent from the catalogue
+    or from the effective-text mapping raises :class:`ValueError`. The job's coarse entry-time check
+    owns compatibility, so no per-reference revalidation is repeated.
     """
 
     def course(reference: InferenceCourseReference) -> InferencePacketCourse:
@@ -256,13 +262,14 @@ def select_operational_multiview_pool(
     selection: InferenceSelectionSettings,
     context_settings: InferenceContextSettings,
 ) -> OperationalPoolInput:
-    """Select one target's accepted full multiview pool from the current live identities.
+    """Select one target's accepted full multiview pool.
 
     The target must be a current active represented course with a compatible embedding. Field views
     are ranked once through the shared multiview helper, the exact configured pool depth is assembled
-    into compact ordered references, and the configured depth must be reachable. No saved development
-    pool is replayed, no official label or hidden rank is read, and no full catalogue is reread. No
-    model call happens here. The cross-encoder rerank is a separate live stage.
+    into compact ordered references, and the configured depth must be reachable. The target and the
+    candidate identities are held in the supplied batch catalogue, and ``candidate_repository``
+    queries the compatible stored embeddings for them once for the all-field ranking and once per
+    configured field view. The cross-encoder rerank is a separate live stage.
     """
     pool_k = selection.inference_selection_pool_k
     target = catalogue.courses_by_group.get(target_group_id)
@@ -323,13 +330,13 @@ def rerank_operational_pool(
     rerank_settings: InferenceRerankSettings,
     before_request: Callable[[], bool] | None = None,
 ) -> OperationalTargetInput:
-    """Score one full multiview pool once and reduce it to the accepted CE-only top-50 selection.
+    """Score one full multiview pool once and reduce it to the accepted CE-only selection.
 
-    The configured final count must equal the accepted :data:`FINAL_CANDIDATE_MAX`. A mismatch fails
-    loudly instead of selecting a different policy. The pool references are materialized once for
-    scoring, every pair is scored once through the shared scoring core, and the complete score-derived
-    ranking reduces the pool to its compact ordered references. A declined admission raises the fixed
-    :class:`RequestNotStarted` and never yields a partial result.
+    The configured final count must equal the accepted :data:`FINAL_CANDIDATE_MAX`, and a mismatch
+    raises :class:`ValueError` before any scoring. The pool references are materialized once for
+    scoring, every pair is scored once through the shared scoring core, and the complete
+    score-derived ranking reduces the pool to its compact ordered references. A declined admission
+    raises the fixed :class:`RequestNotStarted` and never yields a partial result.
     """
     final_k = selection.inference_selection_final_k
     if final_k != FINAL_CANDIDATE_MAX:
@@ -386,10 +393,10 @@ def run_operational_target(
 ) -> InferenceTargetWorkRecord:
     """Run or reuse exactly one complete-target call through the sole evidence path.
 
-    It delegates only to :func:`run_target` for claim/retry, schema validation,
-    code-boundary check, and immutable completion writer. The transient ``packet`` is the router's
-    one materialization and ``identity`` is its one prepared work identity for the selected
-    execution profile. No catalogue loop or second controller is involved.
+    It delegates only to :func:`run_target` for claim/retry, schema validation, code resolution, and
+    the immutable completion write. The transient ``packet`` is the router's one materialization and
+    ``identity`` is its one prepared work identity for the selected execution profile. One call runs
+    one target.
     """
     return run_target(
         value,

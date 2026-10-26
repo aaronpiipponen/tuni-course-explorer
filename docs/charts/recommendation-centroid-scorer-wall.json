@@ -1,0 +1,17 @@
+{
+  "type": "bar",
+  "title": "Recommendation scorer wall time under matched timer boundaries",
+  "description": "Wall time for the product chunk-pair scorer and the centroid coverage scorer on the fixed recommendation pools of 1, 10 and 50 courses.",
+  "valueAxis": "Wall time (s)",
+  "categories": ["Basis 1", "Basis 10", "Basis 50"],
+  "series": [
+    {
+      "name": "Chunk-pair product scorer",
+      "values": [0.047667, 0.754062, 6.57034]
+    },
+    {
+      "name": "Centroid coverage scorer",
+      "values": [0.045379, 0.605629, 2.703793]
+    }
+  ]
+}

@@ -46,6 +46,8 @@ Every key is in `config/inference.toml`. The candidate pool holds both active an
 
 Each rerank request carries one target text and one candidate text, rendered from the course code and the effective teaching cells only. The scored order selects the candidates of the packet, so the packet holds the strongest candidates in one deterministic order.
 
+[Candidate retrieval, multiview fusion and reranking](/docs/experiments/inference/candidate-retrieval-and-reranking.md#which-selection-the-product-uses) gives the measurements that set the pool depth and the text bounds, and [Candidate packet selection](/docs/experiments/inference/candidate-packet-selection.md) gives the comparison that selected the cross-encoder-only packet at a fixed size of 50.
+
 ## Generation and validation
 
 Each generation attempt asks the local language model for one complete result for its target course. The result states a required option set, a recommended option set, equivalence groups, and target-level routing metadata. Each option names its member course codes, its evidence, its confidence, and zero or more finding flags, and the configured finding policy retains every flag. [Inference scheduling and disposition](/docs/backend/inference/inference-scheduling.md#failures-retries-and-isolation) describes retries after a failed attempt.
@@ -54,6 +56,8 @@ Model output is untrusted input. A result is accepted only when it parses as str
 
 An accepted result states one complete answer for its target course, so a partial or contradictory answer is refused rather than repaired. [Inference pipeline](/docs/backend/inference/inference-pipeline.md) lists the exact contract rules, the finding-flag vocabulary, and the emitted schema.
 
+The measurements that selected the prompt behind this contract and defined its finding-flag vocabulary are in [Prompt and structured-output tuning](/docs/experiments/inference/prompt-and-structured-output-tuning.md).
+
 ### Direct prerequisites and suppression
 
 The model classifies each candidate and records every non-direct candidate with its raw outcome. A candidate whose outcome is `too_basic_transitive` is a broad or transitive foundation below the target's entry level, and it is not drawn as a direct prerequisite. A course recorded as a suppressed non-direct candidate cannot also appear as a direct option, and the direct prerequisite outcome is refused for such a candidate. Suppression evidence is retained with the result, so a broad foundation is reported rather than silently dropped.
@@ -61,6 +65,8 @@ The model classifies each candidate and records every non-direct candidate with 
 ## Proposals and publication
 
 An accepted result becomes a proposal, composed from that one result. Composition applies the only deduction against official data: an inferred option that an official option already names in full is absorbed, an official option of the other category removes its members from the inferred option, and an equivalence group that repeats the target course plus one official single-course substitute is dropped. Every other option and group is kept with its own finding flags. The configuration selects the retained-recommendation and no-cutoff policies through `INFERENCE_RECOMMENDATION_POLICY` (`include`) and `INFERENCE_FINDING_FILTER_POLICY` (`none`), so no confidence threshold, drop, or demotion rule narrows the output. [Inference pipeline](/docs/backend/inference/inference-pipeline.md) states the exact rule.
+
+A rule built from the ByteShape model's confidence and finding flags is fitted on the 100 fit targets and applied to the distinct 50 validation targets, and it fails on both, so the policy retains the measured output unfiltered. [Held-out local model quality](/docs/experiments/inference/held-out-model-quality.md#confidence-and-flags-as-a-filter) states that fit and its validation, and [Confidence calibration and corrected reference judgments](/docs/experiments/inference/confidence-and-corrected-references.md) states the confidence bins, the target-level routing check and the corrected reference.
 
 Publication writes the accepted proposals into the inferred sets and the equivalence groups of the catalogue. An accepted result is written as the whole stored result of its target course, and each stored set and group is written in one step. Publication reads only the courses that an accepted result names. It reruns no selection, no rerank, and no model work.
 
@@ -72,7 +78,7 @@ Inference is a remote stage, and both language models run on the worker. Each is
 
 Each artifact is pinned by a revision and a SHA-256 digest. `INFERENCE_RUNTIME_REVISION` in `config/inference.toml` pins the serving runtime, `INFERENCE_PRIMARY_MODEL_REVISION` and `INFERENCE_PRIMARY_ARTIFACT_REVISION` pin the source model and the quantized artifact, and `INFERENCE_PRIMARY_ARTIFACT_SHA256` pins the artifact bytes. The cross-encoder is pinned the same way through `INFERENCE_RERANK_MODEL_REVISION`, `INFERENCE_RERANK_ARTIFACT_REVISION`, and `INFERENCE_RERANK_ARTIFACT_SHA256`, and it shares the pinned runtime revision with the language model.
 
-`INFERENCE_HOST` and `INFERENCE_RERANK_HOST` accept only a loopback address, so the worker serves the models to itself. `INFERENCE_LOCAL_VARIANTS` names two ordered keys for the language model, ordered by increasing context. A key that is loaded counts the tokens of a request, and the run loads the first key when no key is loaded. The example sets the two keys to 131072 and 163840 tokens.
+`INFERENCE_HOST` and `INFERENCE_RERANK_HOST` accept only a loopback address, so the worker serves the models to itself. `INFERENCE_LOCAL_VARIANTS` names two ordered keys for the language model, ordered by increasing context. A key that is loaded counts the tokens of a request, and the run loads the first key when no key is loaded. The example sets the two keys to 131072 and 163840 tokens. The measured fit and throughput of those keys are in [Local model hardware and throughput](/docs/experiments/inference/local-model-hardware-and-throughput.md).
 
 The execution identity is built from the pinned model and runtime identities, the prompt version, the result schema version, the pipeline version and the route. Each target adds its canonical identity, its activity context and the digest of its rendered input, so work produced under different values has a distinct identity. The stored output records the identity that produced it.
 

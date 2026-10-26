@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 252" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Basis-50 recommendation reads alone and three at once</title>
+  <desc id="d">Wall time of one warm basis-50 recommendation read and of three reads issued at the same time.</desc>
+  <rect width="960" height="252" rx="12" fill="#232434"/>
+  <line x1="257.2" y1="32" x2="257.2" y2="176" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="257.2" y="198" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="458.9" y1="32" x2="458.9" y2="176" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="458.9" y="198" text-anchor="middle" font-size="14" fill="#a3a4b8">5</text>
+  <line x1="660.7" y1="32" x2="660.7" y2="176" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="660.7" y="198" text-anchor="middle" font-size="14" fill="#a3a4b8">10</text>
+  <line x1="862.4" y1="32" x2="862.4" y2="176" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="862.4" y="198" text-anchor="middle" font-size="14" fill="#a3a4b8">15</text>
+  <text x="245.2" y="55" text-anchor="end" font-size="14" fill="#ececf2">One read alone</text>
+  <rect x="257.2" y="40" width="334.9" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="600.1" y="55" font-size="14" fill="#a3a4b8">8.3</text>
+  <text x="245.2" y="91" text-anchor="end" font-size="14" fill="#ececf2">First of three at once</text>
+  <rect x="257.2" y="76" width="391" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="656.2" y="91" font-size="14" fill="#a3a4b8">9.69</text>
+  <text x="245.2" y="127" text-anchor="end" font-size="14" fill="#ececf2">Second of three at once</text>
+  <rect x="257.2" y="112" width="593.1" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="858.3" y="127" font-size="14" fill="#a3a4b8">14.7</text>
+  <text x="245.2" y="163" text-anchor="end" font-size="14" fill="#ececf2">Third of three at once</text>
+  <rect x="257.2" y="148" width="601.2" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="866.4" y="163" font-size="14" fill="#a3a4b8">14.9</text>
+  <text x="559.8" y="228" text-anchor="middle" font-size="14" fill="#a3a4b8">Wall time (s)</text>
+</svg>

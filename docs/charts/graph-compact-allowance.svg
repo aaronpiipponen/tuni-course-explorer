@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 328" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Drawing allowance across the corrected passes</title>
+  <desc id="d">Rows the 500-element drawing limit allowed and refused in each corrected pass. The module-drawing pass allows 82 rows and refuses 28.</desc>
+  <rect width="960" height="328" rx="12" fill="#232434"/>
+  <rect x="61" y="33" width="14" height="14" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="96" y="45" font-size="14" fill="#a3a4b8">Allowed</text>
+  <rect x="191.8" y="33" width="14" height="14" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="226.8" y="45" font-size="14" fill="#a3a4b8">Refused</text>
+  <line x1="206.8" y1="72" x2="206.8" y2="252" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="206.8" y="274" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="341.3" y1="72" x2="341.3" y2="252" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="341.3" y="274" text-anchor="middle" font-size="14" fill="#a3a4b8">20</text>
+  <line x1="475.8" y1="72" x2="475.8" y2="252" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="475.8" y="274" text-anchor="middle" font-size="14" fill="#a3a4b8">40</text>
+  <line x1="610.2" y1="72" x2="610.2" y2="252" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="610.2" y="274" text-anchor="middle" font-size="14" fill="#a3a4b8">60</text>
+  <line x1="744.7" y1="72" x2="744.7" y2="252" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="744.7" y="274" text-anchor="middle" font-size="14" fill="#a3a4b8">80</text>
+  <line x1="879.2" y1="72" x2="879.2" y2="252" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="879.2" y="274" text-anchor="middle" font-size="14" fill="#a3a4b8">100</text>
+  <text x="194.8" y="107" text-anchor="end" font-size="14" fill="#ececf2">First correction</text>
+  <rect x="206.8" y="80" width="537.9" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="752.7" y="95" font-size="14" fill="#a3a4b8">80</text>
+  <rect x="206.8" y="104" width="201.7" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="416.5" y="119" font-size="14" fill="#a3a4b8">30</text>
+  <text x="194.8" y="167" text-anchor="end" font-size="14" fill="#ececf2">Second correction</text>
+  <rect x="206.8" y="140" width="537.9" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="752.7" y="155" font-size="14" fill="#a3a4b8">80</text>
+  <rect x="206.8" y="164" width="201.7" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="416.5" y="179" font-size="14" fill="#a3a4b8">30</text>
+  <text x="194.8" y="227" text-anchor="end" font-size="14" fill="#ececf2">Module drawing</text>
+  <rect x="206.8" y="200" width="551.4" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="766.2" y="215" font-size="14" fill="#a3a4b8">82</text>
+  <rect x="206.8" y="224" width="188.3" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="403.1" y="239" font-size="14" fill="#a3a4b8">28</text>
+  <text x="543" y="304" text-anchor="middle" font-size="14" fill="#a3a4b8">Case rows</text>
+</svg>

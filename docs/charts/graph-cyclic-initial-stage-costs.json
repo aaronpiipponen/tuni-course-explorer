@@ -1,0 +1,30 @@
+{
+  "type": "bar",
+  "title": "Initial graph request stage costs for four large profiles",
+  "description": "Compile, projection and preparation, satisfaction and serialization milliseconds for the MATH.MA.880 and MATH.MA.725 graph requests with Active only on and off.",
+  "valueAxis": "Stage time (ms)",
+  "categories": [
+    "MATH.MA.880 active on",
+    "MATH.MA.880 active off",
+    "MATH.MA.725 active on",
+    "MATH.MA.725 active off"
+  ],
+  "series": [
+    {
+      "name": "Compile",
+      "values": [2915, 4395, 6188, 7609]
+    },
+    {
+      "name": "Projection and preparation",
+      "values": [502, 5664, 5103, 15578]
+    },
+    {
+      "name": "Satisfaction",
+      "values": [239, 1996, 771, 3414]
+    },
+    {
+      "name": "Serialization",
+      "values": [81, 339, 518, 875]
+    }
+  ]
+}

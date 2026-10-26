@@ -29,7 +29,7 @@ uv run python scripts/admin.py translation status
 uv run python scripts/admin.py translation stop
 ```
 
-Prerequisites: the tracked subsystem files under `config/` and the ignored environment file hold the values these commands read, a dataset is selected, and the worker account runs the setup commands without an interactive prompt. [Setup and preflight](/docs/operations/setup-and-preflight.md) lists the same entries with their machine commands.
+Prerequisites: the subsystem files under `config/` and the ignored environment file hold the values these commands read, a dataset is selected, and the worker account runs the setup commands without an interactive prompt. [Setup and preflight](/docs/operations/setup-and-preflight.md) lists the same entries with their machine commands.
 
 ## Starting a session
 

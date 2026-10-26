@@ -116,6 +116,7 @@ This glossary defines the terms the documentation uses for courses, search, comp
 | Prerequisite coverage | The share of a next course's prerequisites that the basis covers, shown separately for required and recommended prerequisites. |
 | Inferred dependence | The mark on a next course that is listed only because of inferred prerequisites. |
 | Recommendations | Courses with teaching text similar to the basis, ranked by similarity and listed in the **Discover** tab as **Recommended for you** on a site that serves the embedding features. |
+| Course point | The unit-length mean of a course's centred, unit-length content and learning-outcomes chunk vectors, used to compute recommendation relatedness. Each chunk has equal weight. |
 | Near-duplicate | A candidate recommendation that overlaps a basis course above a configured share. Near-duplicates are left out of recommendations. |
 | Structure of studies | The official structure of each programme in the **Structure of studies** tab, shown as modules, courses, and rules. |
 | Programme | A degree programme or a bare module at the top level of the structure of studies. The app adds one with **Add programme** and orders them in the tab. The row's kind label follows the official type, so a top-level bare module reads **module** while its position gives it the programme menu and reset. |
@@ -146,8 +147,12 @@ This glossary defines the terms the documentation uses for courses, search, comp
 |---|---|
 | Inference | The stage that reads teaching text with a language model and proposes inferred prerequisites and equivalence groups. |
 | Target course | The course whose prerequisites one inference run proposes. |
+| Finding | One proposed required option, recommended option or equivalence group, with all of its member courses considered together. |
+| Packet | The target course and its ordered candidate courses, with their identities and effective teaching text, assembled as the input to one inference request. |
+| Local key | One configured local model runtime variant, with its context size, measured context ceiling, KV cache, batch settings and speculation settings. The fit rule tests these keys in configuration order. |
 | Label safety | The rule that keeps official prerequisite structure out of candidate selection and model inputs. |
 | Rerank | The step that scores a pool of candidate courses against the target course and keeps the strongest candidates for the language model. |
+| Cross-encoder | The reranking model that reads the target and a candidate together as a query and document pair and returns one score for that pair. |
 | Proposal | One validated inference result for one target course. |
 | Finding flag | A mark of uncertainty that the language model attaches to one proposed option or equivalence group. |
 | Publication | The step that writes the accepted proposals into the stored inferred prerequisites and equivalence groups, replacing the stored result as a whole. |
@@ -171,6 +176,7 @@ This glossary defines the terms the documentation uses for courses, search, comp
 | Worker process | One of the `WEB_WORKERS` web server processes that serve dataset reads behind the front router. |
 | Admission control | The front router's limits on API requests when `ADMISSION_ENABLED` is true: the light rate and concurrency limits, the heavy budget, the heavy slots and the heavy queue, each scaled by the load regime. |
 | Admission class | The class the front router gives one API request: free, light or heavy. A heavy request carries an estimated cost in core-seconds and passes the heavy limits. |
+| Load meter | A rule that maps measured CPU or request activity to a load score or a load regime. |
 | Load score | The configured weighted sum of whole-host CPU utilisation and the front router's light and heavy request activity over the configured load window. |
 | Load regime | The admission state derived from the load score: headroom, middle or saturated. Saturation holds until the score falls below the configured release line. The regime controls the request limits, the heavy budget, the heavy slots and the queue capacity. |
 | Heavy budget | The core-seconds of heavy requests one user may spend in one window. It moves linearly from `ADMISSION_HEAVY_BUDGET_CORE_SECONDS` at the headroom position to `ADMISSION_HEAVY_BUDGET_SATURATED_CORE_SECONDS` at saturation. |

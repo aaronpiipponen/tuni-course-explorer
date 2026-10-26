@@ -1,0 +1,13 @@
+{
+  "type": "bar",
+  "title": "Mixed-traffic search p95 by load meter",
+  "description": "Worst normal-user search p95 in the five cells that place one to five heavy users beside 12 normal users, for meters A, B, S and C1.",
+  "valueAxis": "Search p95 (ms)",
+  "categories": ["1 heavy, 12 normal", "2 heavy, 12 normal", "3 heavy, 12 normal", "4 heavy, 12 normal", "5 heavy, 12 normal"],
+  "series": [
+    { "name": "Meter A", "values": [1495, 3063, 8903, 5943, 5026] },
+    { "name": "Meter B", "values": [1794, 2379, 9448, 5928, 5150] },
+    { "name": "Meter S", "values": [1904, 3121, 1561, 2715, 3920] },
+    { "name": "Meter C1", "values": [1826, 3577, 4279, 3533, 3819] }
+  ]
+}

@@ -1,20 +1,15 @@
-"""Sole file-source owner for tracked public TOML and the device-local ignored ``.env``.
+"""Sole file-source owner for the subsystem files and the environment file.
 
-The repository keeps one TOML file per configuration subsystem under ``config/``. This module
-reads those tracked files and the device's ignored ``.env`` once per process and hands the values
-to the settings layer through the standard Pydantic settings source protocol. It owns no
-validator, no settings class and no policy value: it only parses, checks the cross-file
-disjointness rule, returns each caller's requested projection with any requested derived-hub
-reference tables resolved, and serializes portable values
-across a process boundary. Public files carry portable values, and the device-local file carries
-secrets and machine identity.
-
-Because the tracked TOML and the local ``.env`` are the runtime inputs, ordinary commands need no
-manual sourcing. ``configuration shell`` serves the few one-time shell recipes that
-need portable variables exported. It emits public portable aliases only.
-
-The same owner reads one file's candidate text without touching the file, and holds one transient
-candidate snapshot for a settings validation outside a process start.
+A running checkout reads one TOML file per configuration subsystem from ``config/`` together with
+the environment file, caching both reads by checkout root until ``clear_configuration_caches``
+clears them, and hands the values to the settings layer through the standard Pydantic settings
+source protocol. The module owns no validator, settings class or policy value. It parses the
+files, checks the cross-file disjointness rule, returns each caller's requested projection with
+any requested derived-hub reference tables resolved, serializes portable values across a process
+boundary, and parses supplied replacement text for one subsystem file. The subsystem files carry
+portable values and the environment file carries the values that change per machine. Ordinary
+commands need no manual sourcing, and the ``configuration shell`` action exports the portable
+aliases for the shell recipes that need them.
 """
 
 from __future__ import annotations
@@ -39,7 +34,7 @@ from pydantic_settings import BaseSettings, EnvSettingsSource, PydanticBaseSetti
 
 from course_explorer.administration import repository_root
 
-# Ordered public subsystem files. The two serving files are last, web before admission, so the
+# Ordered subsystem files. The two serving files are last, web before admission, so the
 # loopback bind and the admission policy compose after the shared files.
 PUBLIC_CONFIG_FILES: tuple[str, ...] = (
     "config/database.toml",
@@ -53,9 +48,9 @@ PUBLIC_CONFIG_FILES: tuple[str, ...] = (
     "config/admission.toml",
 )
 
-# The only two public values that are references to a tracked derived artifact rather than inline
-# policy. They live beside the TOML files as a bare JSON numeric array so the large embedding hubs
-# stay reviewable configuration instead of one very long line.
+# The only two values that are references to a derived hub file rather than inline policy. They
+# live beside the TOML files as a bare JSON numeric array so the large embedding hubs are
+# reviewable configuration instead of one very long line.
 _HUB_REFERENCE_ALIASES = ("EMBEDDING_HUB_VECTOR", "EMBEDDING_OUTCOMES_HUB_VECTOR")
 
 
@@ -98,7 +93,7 @@ def _resolve_hub_reference(root: Path, alias: str, value: object) -> object:
 
 @cache
 def _read_merged_public_configuration_cached(root_text: str) -> dict[str, object]:
-    """Read and merge every public TOML file beneath one root, rejecting duplicate aliases."""
+    """Read and merge every subsystem file beneath one root, rejecting duplicate aliases."""
     root = Path(root_text)
     documents = {relative: _read_toml_file(root / relative) for relative in PUBLIC_CONFIG_FILES}
     return _merge_configuration_documents(documents)
@@ -137,13 +132,13 @@ def _project_configuration(
 def read_public_configuration(
     root: Path, *, aliases: Collection[str] | None = None
 ) -> dict[str, object]:
-    """Read and merge the tracked public TOML files beneath ``root`` as one requested projection.
+    """Read and merge the subsystem files beneath ``root`` as one requested projection.
 
-    The merged raw TOML read is cached by checkout root for the process lifetime and a duplicate
-    alias across files is rejected. Each call returns a
+    The merged raw TOML read is cached by checkout root until ``clear_configuration_caches``
+    clears it, and a duplicate alias across files is rejected. Each call returns a
     fresh projection: ``aliases`` selects exactly the requested keys, so a runtime/generation reader
     never opens either derived similarity-hub artifact, while the default ``None`` returns every
-    public value with both hub references resolved. Only hub aliases present in the projection are
+    value with both hub references resolved. Only hub aliases present in the projection are
     resolved, so a full similarity read fails loudly when its artifact is missing or malformed.
     No local value is read or rendered here.
     """
@@ -154,7 +149,7 @@ def read_public_configuration(
 def read_configuration_documents(
     root: Path, *, replacements: Mapping[str, str] | None = None
 ) -> dict[str, dict[str, object]]:
-    """Read every public TOML file beneath ``root`` as its own parsed document.
+    """Read every subsystem file beneath ``root`` as its own parsed document.
 
     A supplied replacement text parses in place of that file's read, so a candidate edit validates
     against the same document set the runtime composition merges without writing the file. Every
@@ -239,21 +234,22 @@ def _read_local_configuration_cached(root_text: str) -> dict[str, str | None]:
 def read_local_configuration(root: Path) -> dict[str, str | None]:
     """Read the device-local ignored ``.env`` beneath ``root``, or no values when it is absent.
 
-    The read is cached by checkout root for the process lifetime. Absent means no local values, so
-    any required setting fails through its owning validator. The local file supplies values only and
-    its values are never logged.
+    The read is cached by checkout root until ``clear_configuration_caches`` clears it. Absent
+    means no local values, so any required setting fails through its owning validator. The local
+    file supplies values only and its values are never logged.
     """
     return _read_local_configuration_cached(str(root))
 
 
 def clear_configuration_caches() -> None:
-    """Clear the cached public and local file reads so a changed checkout root is re-read."""
+    """Clear the cached subsystem-file and local reads so a changed checkout root is re-read."""
     _read_merged_public_configuration_cached.cache_clear()
     _read_local_configuration_cached.cache_clear()
 
 
 class CandidateConfiguration(NamedTuple):
-    """One transient candidate configuration: its root, its merged public values, its local values."""
+    """One transient candidate configuration: its root, its merged subsystem-file values and its
+    local values."""
 
     root: Path
     public: Mapping[str, object]
@@ -300,8 +296,8 @@ def candidate_settings_sources(
     """Return the candidate sources of one settings class, or ``None`` outside a candidate block.
 
     The candidate local mapping replaces the device-local file read, and the projected candidate
-    public values replace the tracked-file read. No process environment is a source here, so only
-    the caller's constructor inputs can precede the candidate values.
+    subsystem-file values replace the subsystem-file read. No process environment is a source here,
+    so only the caller's constructor inputs can precede the candidate values.
     """
     snapshot = _candidate_configuration()
     if snapshot is None:
@@ -350,7 +346,9 @@ class LocalConfigurationSource(EnvSettingsSource):
 
 
 def _shell_exports() -> dict[str, str]:
-    """Project the public portable values, preserving any intentional same-alias process override."""
+    """Project every subsystem-file value, with a process environment value of the same alias
+    taking precedence.
+    """
     public = read_public_configuration(repository_root())
     return {
         alias: os.environ.get(alias, environment_value(value)) for alias, value in public.items()
@@ -364,7 +362,8 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Run the one explicit action: print public portable shell exports for shell recipes."""
+    """Run the one explicit ``shell`` action and print the composed portable values as shell
+    exports."""
     args = _parser().parse_args(argv)
     if args.action == "shell":
         for alias, value in _shell_exports().items():

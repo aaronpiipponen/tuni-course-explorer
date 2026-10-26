@@ -107,4 +107,6 @@ A similarity read uses completed rows whose configuration hash equals the config
 | `EMBEDDING_HUB_VECTOR` | The path of the embedding hub file. |
 | `EMBEDDING_OUTCOMES_HUB_VECTOR` | The path of the outcomes hub file. |
 
+The embedding runtime launch applies the configured `EMBEDDING_CONTEXT_SIZE` value to the context, the batch size and the micro-batch size, as [Machine translation as retrieval-preserving transformation](/docs/experiments/search-and-translation/translation-and-retrieval.md#the-embedding-runtime-correction) records.
+
 The generation mechanism, the hash fields, and the store operations are described in [Embedding generation](/docs/backend/text-and-vectors/embedding-generation.md). [Ingestion](/docs/backend/catalogue/ingestion.md) describes which official change makes the next embedding run rework a chunk, [Search](/docs/backend/search-and-discovery/search.md) and [Comparison](/docs/backend/search-and-discovery/comparison.md) describe the consumers, and [Data model](/docs/backend/catalogue/data-model.md) describes the stored chunk rows.

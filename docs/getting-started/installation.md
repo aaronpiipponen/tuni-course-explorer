@@ -7,7 +7,7 @@ Installation sets up a local copy that serves the example dataset, from the depe
 - A checkout of this repository.
 - Python 3.14.3. `.python-version` pins that interpreter version and `pyproject.toml` requires Python 3.14 or higher.
 - [uv](https://docs.astral.sh/uv/), which installs the interpreter, the Python dependencies, and the commands the steps run.
-- Node.js 20.19 or higher within major version 20, or 22.12 or higher, with npm. `web/package.json` and `admin-web/package.json` declare those engine ranges.
+- Node.js 22.22.2 or higher within major version 22, or 24.15.0 or higher, with npm. `web/package.json` and `admin-web/package.json` declare those engine ranges as `^22.22.2 || >=24.15.0`.
 - Docker with Docker Compose. The Compose wrapper runs `sudo docker compose` with the checkout as the project directory and `docker-compose.yml` at the checkout root as the file, so the account that runs the steps must be allowed to run Docker through sudo.
 - Access to the Python and npm package registries, and to the model file at the download address that `EMBEDDING_ARTIFACT_URL` names.
 

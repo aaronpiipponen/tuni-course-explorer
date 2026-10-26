@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 324" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Outright unsupported findings for six judged candidates</title>
+  <desc id="d">Outright unsupported findings from the blind teaching-text judgment for six prompt candidates on the 50 tuning targets.</desc>
+  <rect width="960" height="324" rx="12" fill="#232434"/>
+  <line x1="248.8" y1="32" x2="248.8" y2="248" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="248.8" y="270" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="408.5" y1="32" x2="408.5" y2="248" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="408.5" y="270" text-anchor="middle" font-size="14" fill="#a3a4b8">2</text>
+  <line x1="568.2" y1="32" x2="568.2" y2="248" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="568.2" y="270" text-anchor="middle" font-size="14" fill="#a3a4b8">4</text>
+  <line x1="727.9" y1="32" x2="727.9" y2="248" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="727.9" y="270" text-anchor="middle" font-size="14" fill="#a3a4b8">6</text>
+  <line x1="887.6" y1="32" x2="887.6" y2="248" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="887.6" y="270" text-anchor="middle" font-size="14" fill="#a3a4b8">8</text>
+  <text x="236.8" y="55" text-anchor="end" font-size="14" fill="#ececf2">v8 control</text>
+  <rect x="248.8" y="40" width="319.4" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="576.2" y="55" font-size="14" fill="#a3a4b8">4</text>
+  <text x="236.8" y="91" text-anchor="end" font-size="14" fill="#ececf2">c3 entry</text>
+  <rect x="248.8" y="76" width="638.8" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="895.6" y="91" font-size="14" fill="#a3a4b8">8</text>
+  <text x="236.8" y="127" text-anchor="end" font-size="14" fill="#ececf2">c9 no pressure</text>
+  <rect x="248.8" y="112" width="319.4" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="576.2" y="127" font-size="14" fill="#a3a4b8">4</text>
+  <text x="236.8" y="163" text-anchor="end" font-size="14" fill="#ececf2">c10 strict</text>
+  <rect x="248.8" y="148" width="319.4" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="576.2" y="163" font-size="14" fill="#a3a4b8">4</text>
+  <text x="236.8" y="199" text-anchor="end" font-size="14" fill="#ececf2">c12 flags, no pressure</text>
+  <rect x="248.8" y="184" width="239.6" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="496.4" y="199" font-size="14" fill="#a3a4b8">3</text>
+  <text x="236.8" y="235" text-anchor="end" font-size="14" fill="#ececf2">c4 flags (v9)</text>
+  <rect x="248.8" y="220" width="79.8" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="336.6" y="235" font-size="14" fill="#a3a4b8">1</text>
+  <text x="568.2" y="300" text-anchor="middle" font-size="14" fill="#a3a4b8">Unsupported findings</text>
+</svg>

@@ -1,0 +1,22 @@
+{
+  "type": "bar",
+  "title": "Route parity across the measured passes",
+  "description": "Rows identical to the baseline and rows with a differing approximate route in each pass. The final module-drawing pass has 104 identical rows and six differing approximate rows.",
+  "valueAxis": "Case rows",
+  "categories": [
+    "Initial compact",
+    "First correction",
+    "Second correction",
+    "Module drawing"
+  ],
+  "series": [
+    {
+      "name": "Identical rows",
+      "values": [108, 108, 108, 104]
+    },
+    {
+      "name": "Differing approximate rows",
+      "values": [2, 2, 2, 6]
+    }
+  ]
+}

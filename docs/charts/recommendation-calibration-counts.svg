@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 388" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Next courses and similarity results by basket</title>
+  <desc id="d">For the one-course, computing, math-heavy and expanded computing baskets, the number of next courses and the number of similarity recommendations returned, with the similarity list at the 0.80 relatedness floor. The expanded computing similarity bar is at the 30-result cap.</desc>
+  <rect width="960" height="388" rx="12" fill="#232434"/>
+  <rect x="61" y="33" width="14" height="14" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="96" y="45" font-size="14" fill="#a3a4b8">Next courses</text>
+  <rect x="233.8" y="33" width="14" height="14" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="268.8" y="45" font-size="14" fill="#a3a4b8">Similarity results</text>
+  <line x1="215.2" y1="72" x2="215.2" y2="312" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="215.2" y="334" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="348" y1="72" x2="348" y2="312" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="348" y="334" text-anchor="middle" font-size="14" fill="#a3a4b8">10</text>
+  <line x1="480.8" y1="72" x2="480.8" y2="312" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="480.8" y="334" text-anchor="middle" font-size="14" fill="#a3a4b8">20</text>
+  <line x1="613.6" y1="72" x2="613.6" y2="312" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="613.6" y="334" text-anchor="middle" font-size="14" fill="#a3a4b8">30</text>
+  <line x1="746.4" y1="72" x2="746.4" y2="312" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="746.4" y="334" text-anchor="middle" font-size="14" fill="#a3a4b8">40</text>
+  <line x1="879.2" y1="72" x2="879.2" y2="312" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="879.2" y="334" text-anchor="middle" font-size="14" fill="#a3a4b8">50</text>
+  <text x="203.2" y="107" text-anchor="end" font-size="14" fill="#ececf2">One course</text>
+  <rect x="215.2" y="80" width="332" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="555.2" y="95" font-size="14" fill="#a3a4b8">25</text>
+  <rect x="215.2" y="104" width="252.3" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="475.5" y="119" font-size="14" fill="#a3a4b8">19</text>
+  <text x="203.2" y="167" text-anchor="end" font-size="14" fill="#ececf2">Computing</text>
+  <rect x="215.2" y="140" width="610.9" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="834.1" y="155" font-size="14" fill="#a3a4b8">46</text>
+  <rect x="215.2" y="164" width="172.6" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="395.8" y="179" font-size="14" fill="#a3a4b8">13</text>
+  <text x="203.2" y="227" text-anchor="end" font-size="14" fill="#ececf2">Math-heavy</text>
+  <rect x="215.2" y="200" width="305.4" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="528.6" y="215" font-size="14" fill="#a3a4b8">23</text>
+  <rect x="215.2" y="224" width="39.8" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="263" y="239" font-size="14" fill="#a3a4b8">3</text>
+  <text x="203.2" y="287" text-anchor="end" font-size="14" fill="#ececf2">Expanded computing</text>
+  <rect x="215.2" y="260" width="411.7" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="634.9" y="275" font-size="14" fill="#a3a4b8">31</text>
+  <rect x="215.2" y="284" width="398.4" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="621.6" y="299" font-size="14" fill="#a3a4b8">30</text>
+  <text x="547.2" y="364" text-anchor="middle" font-size="14" fill="#a3a4b8">Courses (count)</text>
+</svg>

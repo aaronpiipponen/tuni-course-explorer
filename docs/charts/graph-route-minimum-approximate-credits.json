@@ -1,0 +1,17 @@
+{
+  "type": "bar",
+  "title": "Approximate route credits before and after the scalar correction",
+  "description": "New credits of the three approximate large-case routes at the first passing attempt and after the scalar correction.",
+  "valueAxis": "New credits (cr)",
+  "categories": ["MATH.MA.880 active only", "MATH.MA.725 active only", "MATH.MA.725 all courses"],
+  "series": [
+    {
+      "name": "Passing attempt",
+      "values": [218, 198, 194]
+    },
+    {
+      "name": "Corrected re-run",
+      "values": [204, 211, 194]
+    }
+  ]
+}

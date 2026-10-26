@@ -102,7 +102,7 @@ depends_on_inferred = official-only compilation exists and its outcome is None
 
 ### The descriptive chunk cache
 
-`DescriptiveChunkCache` in the same module holds one served dataset's descriptive chunk tuples between requests. An entry is keyed by the read triple `(group_id, sisu_course_unit_id, representative_source_hash)` and holds the ordered `TeachingEmbeddingChunk` carriers that triple's read returned. The example sets `WEB_CHUNK_CACHE_ENTRIES` to 497 entries, and the store holds at most that many entries in least-recently-used order. An empty tuple is a retained entry, so a triple with no compatible descriptive row answers from the cache like a triple with rows. An entry lives until the bound evicts it, and one lock serializes every read and write. One instance belongs to one serving dataset identity.
+`DescriptiveChunkCache` in the same module holds one served dataset's descriptive chunk tuples between requests. An entry is keyed by the read triple `(group_id, sisu_course_unit_id, representative_source_hash)` and holds the ordered `TeachingEmbeddingChunk` carriers that triple's read returned. The example sets `WEB_CHUNK_CACHE_ENTRIES` to 497 entries, and the store holds at most that many entries in least-recently-used order. An empty tuple is a retained entry, so a triple with no compatible descriptive row answers from the cache like a triple with rows. An entry lives until the bound evicts it, and one lock serializes every read and write. One instance belongs to one serving dataset identity. The accounting of those retained bytes is recorded in [Descriptive chunk caching](/docs/experiments/runtime-storage-and-serving/descriptive-chunk-caching.md#the-four-process-accounting).
 
 A read with a cache looks each requested triple up and opens no session when every triple is retained. Only the missing triples reach `_read_batch`, in batches of `_REQUEST_BATCH_SIZE`, and every triple a batch reads is retained, an empty result included. A requested set holds one triple per canonical group, so concatenating each triple's ordered carriers in sorted-triple order returns the rows and the order of the uncached statement.
 
@@ -116,7 +116,7 @@ A hit chooses a candidate identity, and the mapped percentage supplies the pool 
 
 `recommendations_from_candidates(candidates, basis_chunks, candidate_chunks, *, display_language, settings, hub, outcomes_hub)` computes the meters from the centred vectors on float64 NumPy arrays.
 
-`DESCRIPTIVE_TEACHING_TEXT_FIELDS` is `(CONTENT, OUTCOMES)`, and every vector is centred with `subtract_hub_for_field` from `src/course_explorer/embeddings/hub.py`, which selects the outcomes hub for an outcomes chunk and the embedding hub otherwise. Each centred chunk becomes one float64 row normalized to unit length, and a zero-length centred row raises `ValueError`. A course point is the unit mean of its chunk rows, so every chunk weights equally, unlike the character-weighted centroid of `src/course_explorer/comparison/service.py`. The profile, the relatedness and the overlap are computed with matrix products over those rows. The meters differ from a scalar evaluation of the same formula only in their last binary digits, so the retained set, the order, the exact ties, the median membership and the derived flag follow the formula alone.
+`DESCRIPTIVE_TEACHING_TEXT_FIELDS` is `(CONTENT, OUTCOMES)`, and every vector is centred with `subtract_hub_for_field` from `src/course_explorer/embeddings/hub.py`, which selects the outcomes hub for an outcomes chunk and the embedding hub otherwise. Each centred chunk becomes one float64 row normalized to unit length, and a zero-length centred row raises `ValueError`. A course point is the unit mean of its chunk rows, so every chunk weights equally, unlike the character-weighted centroid of `src/course_explorer/comparison/service.py`. The profile, the relatedness and the overlap are computed with matrix products over those rows. The meters differ from a scalar evaluation of the same formula only in their last binary digits, so the retained set, the order, the exact ties, the median membership and the derived flag follow the formula alone. That last-bit difference was measured on three fixed pools in [Recommendation vectorization and narrow reads](/docs/experiments/recommendations/vectorization-and-narrow-reads.md#where-the-line-ended).
 
 ```text
 point(course)      = unit(mean of the centred unit chunk rows)
@@ -143,6 +143,8 @@ score              = 100 * max(0, relatedness / 100 - weight * (whole_basis or 0
 ```
 
 `overlap_percent(mean_cosine, *, floor, ceiling)` from `src/course_explorer/comparison/service.py` maps the configured floor to 0 and the ceiling to 100. A candidate is dropped when `relatedness` is below `recommendation_min_relatedness * 100` or when `strongest_course` reaches `recommendation_near_duplicate_percent`. `uses_derived_text` is true when any candidate chunk or any basis descriptive chunk carries `TeachingTextOrigin.DERIVED`. The final order is `(-score, -relatedness, name_key)`.
+
+A centroid approximation of coverage was measured and dropped, as [Centroid coverage in recommendations](/docs/experiments/recommendations/centroid-coverage.md) records.
 
 ### Configuration keys
 

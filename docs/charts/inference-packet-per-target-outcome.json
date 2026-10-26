@@ -1,0 +1,10 @@
+{
+  "type": "bar",
+  "title": "Per-target outcome among the 62 targets whose answers differed",
+  "description": "Counts of the 62 targets where the CE-only answer scored higher, the RRF answer scored higher, or the two answers scored equally.",
+  "valueAxis": "Targets",
+  "categories": ["CE-only higher", "RRF higher", "Equal score"],
+  "series": [
+    { "name": "Targets", "values": [27, 26, 9] }
+  ]
+}

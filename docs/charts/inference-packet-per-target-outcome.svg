@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 216" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Per-target outcome among the 62 targets whose answers differed</title>
+  <desc id="d">Counts of the 62 targets where the CE-only answer scored higher, the RRF answer scored higher, or the two answers scored equally.</desc>
+  <rect width="960" height="216" rx="12" fill="#232434"/>
+  <line x1="181.6" y1="32" x2="181.6" y2="140" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="181.6" y="162" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="414.1" y1="32" x2="414.1" y2="140" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="414.1" y="162" text-anchor="middle" font-size="14" fill="#a3a4b8">10</text>
+  <line x1="646.7" y1="32" x2="646.7" y2="140" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="646.7" y="162" text-anchor="middle" font-size="14" fill="#a3a4b8">20</text>
+  <line x1="879.2" y1="32" x2="879.2" y2="140" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="879.2" y="162" text-anchor="middle" font-size="14" fill="#a3a4b8">30</text>
+  <text x="169.6" y="55" text-anchor="end" font-size="14" fill="#ececf2">CE-only higher</text>
+  <rect x="181.6" y="40" width="627.8" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="817.4" y="55" font-size="14" fill="#a3a4b8">27</text>
+  <text x="169.6" y="91" text-anchor="end" font-size="14" fill="#ececf2">RRF higher</text>
+  <rect x="181.6" y="76" width="604.6" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="794.2" y="91" font-size="14" fill="#a3a4b8">26</text>
+  <text x="169.6" y="127" text-anchor="end" font-size="14" fill="#ececf2">Equal score</text>
+  <rect x="181.6" y="112" width="209.3" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="398.9" y="127" font-size="14" fill="#a3a4b8">9</text>
+  <text x="530.4" y="192" text-anchor="middle" font-size="14" fill="#a3a4b8">Targets</text>
+</svg>

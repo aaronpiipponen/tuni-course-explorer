@@ -1,0 +1,25 @@
+{
+  "type": "bar",
+  "title": "Server stages of the four largest graph reads",
+  "description": "Compilation, drawing projection and preparation, satisfaction states and serialization for the four largest graph reads.",
+  "valueAxis": "Time (ms)",
+  "categories": ["MATH.MA.880, active only", "MATH.MA.880, all courses", "MATH.MA.725, active only", "MATH.MA.725, all courses"],
+  "series": [
+    {
+      "name": "Compile",
+      "values": [2915, 4395, 6188, 7609]
+    },
+    {
+      "name": "Project and prepare",
+      "values": [502, 5664, 5103, 15578]
+    },
+    {
+      "name": "Satisfaction",
+      "values": [239, 1996, 771, 3414]
+    },
+    {
+      "name": "Serialize",
+      "values": [81, 339, 518, 875]
+    }
+  ]
+}

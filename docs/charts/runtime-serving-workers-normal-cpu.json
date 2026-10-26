@@ -1,0 +1,17 @@
+{
+  "type": "bar",
+  "title": "Normal-load CPU per request by worker process count",
+  "description": "Fixed-mix normal CPU per request for two, three and four worker processes in the first comparison and the high-load relay comparison. The two-worker-process cell is lowest in both comparisons, and four worker processes cost about 6.5 percent more per request in the high-load comparison.",
+  "valueAxis": "CPU per request (core-seconds)",
+  "categories": ["2 worker processes", "3 worker processes", "4 worker processes"],
+  "series": [
+    {
+      "name": "First comparison",
+      "values": [0.35094, 0.36112, 0.36429]
+    },
+    {
+      "name": "High-load relay",
+      "values": [0.33946, 0.36259, 0.36148]
+    }
+  ]
+}

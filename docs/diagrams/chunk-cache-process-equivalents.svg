@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 620" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Descriptive chunk cache concurrency process groups</title>
+  <desc id="d">Two measured process groups. At two process equivalents, serving process a runs one cold
+  heavy recommendation call and an interactive catalogue reader thread, and serving process b runs one
+  cold heavy recommendation call. At four process equivalents, the same two active processes run beside
+  holder processes c and d, which build caches and then idle during the measured calls. The reader
+  thread runs inside process a rather than as a separate process.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="620" rx="12" fill="#232434"/>
+
+  <text x="48" y="88" font-size="16" fill="#a3a4b8">Two process equivalents</text>
+  <rect x="40" y="100" width="880" height="176" rx="8"
+        fill="none" stroke="#4a4c6b" stroke-width="1.5"/>
+
+  <rect x="64" y="124" width="420" height="128" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="274" y="150" text-anchor="middle" font-size="16" fill="#ececf2">Serving process a</text>
+  <rect x="80" y="162" width="388" height="40" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="274" y="187" text-anchor="middle" font-size="16" fill="#ececf2">Cold heavy recommendation call</text>
+  <rect x="80" y="210" width="388" height="40" rx="8"
+        fill="#2e3045" stroke="#a98ae0" stroke-width="1.5"/>
+  <text x="274" y="235" text-anchor="middle" font-size="16" fill="#ececf2">Interactive catalogue reader thread</text>
+
+  <rect x="500" y="156" width="384" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="692" y="182" text-anchor="middle" font-size="16" fill="#ececf2">Serving process b</text>
+  <text x="692" y="204" text-anchor="middle" font-size="14" fill="#a3a4b8">one cold heavy call</text>
+
+  <text x="48" y="316" font-size="16" fill="#a3a4b8">Four process equivalents</text>
+  <rect x="40" y="328" width="880" height="176" rx="8"
+        fill="none" stroke="#4a4c6b" stroke-width="1.5"/>
+
+  <rect x="64" y="352" width="400" height="128" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="264" y="378" text-anchor="middle" font-size="16" fill="#ececf2">Serving process a</text>
+  <rect x="80" y="390" width="368" height="40" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="264" y="415" text-anchor="middle" font-size="16" fill="#ececf2">Cold heavy recommendation call</text>
+  <rect x="80" y="438" width="368" height="40" rx="8"
+        fill="#2e3045" stroke="#a98ae0" stroke-width="1.5"/>
+  <text x="264" y="463" text-anchor="middle" font-size="16" fill="#ececf2">Interactive catalogue reader thread</text>
+
+  <rect x="480" y="352" width="200" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="580" y="378" text-anchor="middle" font-size="16" fill="#ececf2">Serving process b</text>
+  <text x="580" y="400" text-anchor="middle" font-size="14" fill="#a3a4b8">cold heavy call</text>
+
+  <rect x="696" y="352" width="200" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"
+        stroke-dasharray="5 4"/>
+  <text x="796" y="378" text-anchor="middle" font-size="16" fill="#ececf2">Holder process c</text>
+  <text x="796" y="400" text-anchor="middle" font-size="14" fill="#a3a4b8">builds, then idles</text>
+
+  <rect x="696" y="424" width="200" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"
+        stroke-dasharray="5 4"/>
+  <text x="796" y="450" text-anchor="middle" font-size="16" fill="#ececf2">Holder process d</text>
+  <text x="796" y="472" text-anchor="middle" font-size="14" fill="#a3a4b8">builds, then idles</text>
+
+  <rect x="40" y="540" width="300" height="52" rx="8"
+        fill="none" stroke="#4a4c6b" stroke-width="1.5"/>
+  <line x1="56" y1="566" x2="96" y2="566" stroke="#a3a4b8"
+        stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="112" y="571" font-size="14" fill="#a3a4b8">Idle during the calls</text>
+
+  <text x="920" y="571" text-anchor="end" font-size="14" fill="#a3a4b8">Each group covers both concurrency variants</text>
+</svg>

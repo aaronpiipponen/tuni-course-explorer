@@ -1,0 +1,24 @@
+{
+  "type": "bar",
+  "title": "Decode throughput at 10k and 120k prompt tokens",
+  "description": "Decode throughput in tokens per second for six local model keys at prompt lengths of about 10,000 and 120,000 tokens.",
+  "valueAxis": "Decode throughput (tokens/s)",
+  "categories": [
+    "Qwen3.6-35B-A3B",
+    "Qwen3.8-27B MIX MTP",
+    "Qwen3.8-27B MIX no-MTP",
+    "ByteShape IQ3_S no-MTP",
+    "gpt-oss-20b native",
+    "Nemotron CPU experts"
+  ],
+  "series": [
+    {
+      "name": "10k prompt",
+      "values": [66.7, 48.4, 24.2, 26.6, 112.1, 53.5]
+    },
+    {
+      "name": "120k prompt",
+      "values": [23.6, 36.7, 9.5, 16.1, 59.4, 19.8]
+    }
+  ]
+}

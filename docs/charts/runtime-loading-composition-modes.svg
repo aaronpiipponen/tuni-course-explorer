@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 400" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Fixed-pool composition wall medians by mode</title>
+  <desc id="d">Wall-clock medians for one fixed-pool recommendation composition on bases 1, 10 and 50 in fresh, reused and prepared modes.</desc>
+  <rect width="960" height="400" rx="12" fill="#232434"/>
+  <rect x="61" y="33" width="14" height="14" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="96" y="45" font-size="14" fill="#a3a4b8">Fresh</text>
+  <rect x="175" y="33" width="14" height="14" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="210" y="45" font-size="14" fill="#a3a4b8">Reused</text>
+  <rect x="297.4" y="33" width="14" height="14" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="332.4" y="45" font-size="14" fill="#a3a4b8">Prepared</text>
+  <line x1="131.2" y1="72" x2="131.2" y2="324" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="131.2" y="346" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="272.4" y1="72" x2="272.4" y2="324" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="272.4" y="346" text-anchor="middle" font-size="14" fill="#a3a4b8">2.5</text>
+  <line x1="413.6" y1="72" x2="413.6" y2="324" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="413.6" y="346" text-anchor="middle" font-size="14" fill="#a3a4b8">5</text>
+  <line x1="554.8" y1="72" x2="554.8" y2="324" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="554.8" y="346" text-anchor="middle" font-size="14" fill="#a3a4b8">7.5</text>
+  <line x1="696" y1="72" x2="696" y2="324" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="696" y="346" text-anchor="middle" font-size="14" fill="#a3a4b8">10</text>
+  <line x1="837.2" y1="72" x2="837.2" y2="324" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="837.2" y="346" text-anchor="middle" font-size="14" fill="#a3a4b8">12.5</text>
+  <text x="119.2" y="119" text-anchor="end" font-size="14" fill="#ececf2">Basis 1</text>
+  <rect x="131.2" y="80" width="10.6" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="149.8" y="95" font-size="14" fill="#a3a4b8">0.1868</text>
+  <rect x="131.2" y="104" width="6.8" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="146" y="119" font-size="14" fill="#a3a4b8">0.1207</text>
+  <rect x="131.2" y="128" width="3" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="142.2" y="143" font-size="14" fill="#a3a4b8">0.0526</text>
+  <text x="119.2" y="203" text-anchor="end" font-size="14" fill="#ececf2">Basis 10</text>
+  <rect x="131.2" y="164" width="89.2" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="228.4" y="179" font-size="14" fill="#a3a4b8">1.5798</text>
+  <rect x="131.2" y="188" width="85.9" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="225.1" y="203" font-size="14" fill="#a3a4b8">1.5215</text>
+  <rect x="131.2" y="212" width="44.5" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="183.7" y="227" font-size="14" fill="#a3a4b8">0.788</text>
+  <text x="119.2" y="287" text-anchor="end" font-size="14" fill="#ececf2">Basis 50</text>
+  <rect x="131.2" y="248" width="597.1" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="736.3" y="263" font-size="14" fill="#a3a4b8">10.5724</text>
+  <rect x="131.2" y="272" width="606.1" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="745.3" y="287" font-size="14" fill="#a3a4b8">10.7306</text>
+  <rect x="131.2" y="296" width="374.5" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="513.7" y="311" font-size="14" fill="#a3a4b8">6.6311</text>
+  <text x="484.2" y="376" text-anchor="middle" font-size="14" fill="#a3a4b8">Wall time (s)</text>
+</svg>

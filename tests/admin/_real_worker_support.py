@@ -50,9 +50,9 @@ def _redirect_repository_root(root: Path) -> None:
     import course_explorer_admin.remote as remote
     from course_explorer import configuration
 
-    # Import the configuration owner before any redirect so its file reads stay bound to the real
-    # prepared checkout: the tracked TOML and the device-local ignored ``.env`` live there, never under
-    # this process's temporary worker/state root. The redirected owners below own only session state.
+    # Import the settings owner before any redirect so its file reads bind to the real prepared
+    # checkout. The subsystem files and the device-local ignored ``.env`` live there, not under this
+    # process's temporary worker/state root. The redirected owners below own only session state.
     configuration.read_public_configuration(administration.repository_root())
 
     administration.repository_root = lambda: root
@@ -65,8 +65,9 @@ def _redirect_repository_root(root: Path) -> None:
 def _install_cwd_runner(patcher: _Patcher, checkout: Path) -> None:
     """Redirect only git and Compose command cwd to the real prepared checkout.
 
-    The worker/server data roots are temporary, so their relative tracked Compose/config files
-    resolve against the real checkout with the same dump/restore/create/drop and checkout reads.
+    The worker and server data roots are temporary. The settings owner reads the subsystem files
+    from the real prepared checkout through its own root, and ``_redirect_repository_root`` points
+    the redirected owners at the temporary root.
     """
     real_run = mechanics.SubprocessRunner.run
 
@@ -152,7 +153,7 @@ def _install_translation_boundaries(patcher: _Patcher, boundary_path: Path) -> N
 def install_worker_boundaries(
     monkeypatch: Any, *, root: Path, boundary_path: Path, stage: str
 ) -> None:
-    """Install only the boundary substitutions and delegate to the product owners."""
+    """Install the external boundary substitutions the bootstrap's modes use."""
     checkout = Path(os.environ["TRANSLATION_CONTROLLER_WORKER_PROJECT_ROOT"])
     _redirect_repository_root(root)
     _install_cwd_runner(monkeypatch, checkout)

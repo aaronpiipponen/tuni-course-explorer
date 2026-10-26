@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 388" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Route parity across the measured passes</title>
+  <desc id="d">Rows identical to the baseline and rows with a differing approximate route in each pass. The final module-drawing pass has 104 identical rows and six differing approximate rows.</desc>
+  <rect width="960" height="388" rx="12" fill="#232434"/>
+  <rect x="61" y="33" width="14" height="14" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="96" y="45" font-size="14" fill="#a3a4b8">Identical rows</text>
+  <rect x="250.6" y="33" width="14" height="14" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="285.6" y="45" font-size="14" fill="#a3a4b8">Differing approximate rows</text>
+  <line x1="206.8" y1="72" x2="206.8" y2="312" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="206.8" y="334" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="339.6" y1="72" x2="339.6" y2="312" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="339.6" y="334" text-anchor="middle" font-size="14" fill="#a3a4b8">25</text>
+  <line x1="472.4" y1="72" x2="472.4" y2="312" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="472.4" y="334" text-anchor="middle" font-size="14" fill="#a3a4b8">50</text>
+  <line x1="605.2" y1="72" x2="605.2" y2="312" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="605.2" y="334" text-anchor="middle" font-size="14" fill="#a3a4b8">75</text>
+  <line x1="738" y1="72" x2="738" y2="312" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="738" y="334" text-anchor="middle" font-size="14" fill="#a3a4b8">100</text>
+  <line x1="870.8" y1="72" x2="870.8" y2="312" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="870.8" y="334" text-anchor="middle" font-size="14" fill="#a3a4b8">125</text>
+  <text x="194.8" y="107" text-anchor="end" font-size="14" fill="#ececf2">Initial compact</text>
+  <rect x="206.8" y="80" width="573.7" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="788.5" y="95" font-size="14" fill="#a3a4b8">108</text>
+  <rect x="206.8" y="104" width="10.6" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="225.4" y="119" font-size="14" fill="#a3a4b8">2</text>
+  <text x="194.8" y="167" text-anchor="end" font-size="14" fill="#ececf2">First correction</text>
+  <rect x="206.8" y="140" width="573.7" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="788.5" y="155" font-size="14" fill="#a3a4b8">108</text>
+  <rect x="206.8" y="164" width="10.6" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="225.4" y="179" font-size="14" fill="#a3a4b8">2</text>
+  <text x="194.8" y="227" text-anchor="end" font-size="14" fill="#ececf2">Second correction</text>
+  <rect x="206.8" y="200" width="573.7" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="788.5" y="215" font-size="14" fill="#a3a4b8">108</text>
+  <rect x="206.8" y="224" width="10.6" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="225.4" y="239" font-size="14" fill="#a3a4b8">2</text>
+  <text x="194.8" y="287" text-anchor="end" font-size="14" fill="#ececf2">Module drawing</text>
+  <rect x="206.8" y="260" width="552.4" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="767.2" y="275" font-size="14" fill="#a3a4b8">104</text>
+  <rect x="206.8" y="284" width="31.9" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="246.7" y="299" font-size="14" fill="#a3a4b8">6</text>
+  <text x="538.8" y="364" text-anchor="middle" font-size="14" fill="#a3a4b8">Case rows</text>
+</svg>

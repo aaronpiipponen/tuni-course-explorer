@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 328" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Normal-load interactive probe p95 by worker process count</title>
+  <desc id="d">Normal-load interactive probe p95 at 20 users for two, three and four worker processes in the first comparison and the high-load relay comparison. Four worker processes were lowest in the first comparison and highest in the second.</desc>
+  <rect width="960" height="328" rx="12" fill="#232434"/>
+  <rect x="61" y="33" width="14" height="14" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="96" y="45" font-size="14" fill="#a3a4b8">First comparison</text>
+  <rect x="267.4" y="33" width="14" height="14" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="302.4" y="45" font-size="14" fill="#a3a4b8">High-load relay</text>
+  <line x1="215.2" y1="72" x2="215.2" y2="252" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="215.2" y="274" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="372.8" y1="72" x2="372.8" y2="252" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="372.8" y="274" text-anchor="middle" font-size="14" fill="#a3a4b8">100</text>
+  <line x1="530.4" y1="72" x2="530.4" y2="252" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="530.4" y="274" text-anchor="middle" font-size="14" fill="#a3a4b8">200</text>
+  <line x1="688" y1="72" x2="688" y2="252" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="688" y="274" text-anchor="middle" font-size="14" fill="#a3a4b8">300</text>
+  <line x1="845.6" y1="72" x2="845.6" y2="252" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="845.6" y="274" text-anchor="middle" font-size="14" fill="#a3a4b8">400</text>
+  <text x="203.2" y="107" text-anchor="end" font-size="14" fill="#ececf2">2 worker processes</text>
+  <rect x="215.2" y="80" width="482.3" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="705.5" y="95" font-size="14" fill="#a3a4b8">306</text>
+  <rect x="215.2" y="104" width="365.8" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="589" y="119" font-size="14" fill="#a3a4b8">232.13</text>
+  <text x="203.2" y="167" text-anchor="end" font-size="14" fill="#ececf2">3 worker processes</text>
+  <rect x="215.2" y="140" width="449.2" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="672.4" y="155" font-size="14" fill="#a3a4b8">285</text>
+  <rect x="215.2" y="164" width="458.1" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="681.3" y="179" font-size="14" fill="#a3a4b8">290.65</text>
+  <text x="203.2" y="227" text-anchor="end" font-size="14" fill="#ececf2">4 worker processes</text>
+  <rect x="215.2" y="200" width="238" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="461.2" y="215" font-size="14" fill="#a3a4b8">151</text>
+  <rect x="215.2" y="224" width="531.7" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="754.9" y="239" font-size="14" fill="#a3a4b8">337.36</text>
+  <text x="530.4" y="304" text-anchor="middle" font-size="14" fill="#a3a4b8">Probe p95 (ms)</text>
+</svg>

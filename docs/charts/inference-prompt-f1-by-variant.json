@@ -1,0 +1,23 @@
+{
+  "type": "bar",
+  "title": "Corrected-reference F1 on the 50 tuning targets",
+  "description": "F1 against the corrected reference for nine prompt variants on the 50 tuning targets, between 0.218 and 0.258. Eight variants scored over 49 valid targets and the v8 control over 47.",
+  "valueAxis": "F1 against the corrected reference",
+  "categories": [
+    "candidate 4",
+    "frozen v7",
+    "v8b",
+    "v8 control",
+    "c3 entry",
+    "c4 flags (v9)",
+    "c9 no pressure",
+    "c10 strict",
+    "c12 flags, no pressure"
+  ],
+  "series": [
+    {
+      "name": "F1",
+      "values": [0.247, 0.229, 0.218, 0.244, 0.236, 0.246, 0.258, 0.231, 0.248]
+    }
+  ]
+}

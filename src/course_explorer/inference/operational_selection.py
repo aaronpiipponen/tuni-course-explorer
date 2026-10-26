@@ -1,15 +1,12 @@
 """Product-owned label-free candidate-selection and cross-encoder scoring kernel.
 
-This module is the operating path's sole owner of the deterministic, label-free selection bodies:
-the represented-course identity projection, one target's multiview reciprocal-rank fusion, the
-bounded label-free teaching-text renderer and its query/document pair DTO, the scored-candidate
-DTO, and the cross-encoder scoring/order core.
-
-Nothing here reads an official label, a saved development pool, a hidden-label rank, or a production
-policy: the caller supplies validated settings values, the already-computed all-field ranking, and
-the complete scored ranking. ``FINAL_CANDIDATE_MAX`` is the one hard product ceiling on the selected
-packet. The configured accepted pool depth comes from validated selection settings and is never
-duplicated as a second policy constant here.
+The kernel projects the represented-course identities, fuses one target's all-field ranking with
+each configured field view by reciprocal rank, renders bounded label-free teaching text, and scores
+the query/document pairs in input order. The caller supplies the already-computed all-field ranking
+and the pairs to score. The renderer writes one code line and then one ``field/language: text`` line
+per effective cell in canonical field-then-language order, and truncates once to the given character
+bound. ``FINAL_CANDIDATE_MAX`` caps the selected packet, and the accepted pool depth comes from the
+validated selection settings.
 """
 
 from __future__ import annotations
@@ -48,13 +45,13 @@ def render_rerank_course_text(
     *,
     max_characters: int,
 ) -> str:
-    """Render one packet course into bounded label-free content-first teaching text.
+    """Render one packet course into bounded label-free teaching text.
 
-    Only the official course code and the effective teaching cells are read. ``course.texts`` is
-    already in the effective-text producer's canonical field-then-language order, so the renderer
-    copies it verbatim and truncates exactly once to the first ``max_characters`` Python characters.
-    No layout can read prerequisite text, labels, retrieval metrics, category, or activity, and both
-    the query and document use this one renderer.
+    Only the course code and the effective teaching cells are read. The renderer writes one code
+    line, then one ``field/language: text`` line per effective cell, joins the lines with newlines,
+    and truncates once to the first ``max_characters`` Python characters. The cells arrive in the
+    effective-text producer's canonical field-then-language order, and both the query and the
+    document use this renderer.
     """
     lines = [f"code: {course.course_code}"]
     for cell in course.texts:
@@ -96,9 +93,9 @@ def represented_identities(
 ) -> tuple[InferenceCourseEmbeddingIdentity, ...]:
     """Build the exact current represented-course identity tuple once per batch.
 
-    The projection is identical for every caller: canonical group ID plus the current
-    representative's source unit and source hash, skipping unrepresented courses. It reads no
-    official prerequisite structure or measurement label.
+    The projection is identical for every caller: the canonical group ID, the current
+    representative's source unit, and its source hash, skipping unrepresented courses. It reads
+    only those three values.
     """
     return tuple(
         InferenceCourseEmbeddingIdentity(
@@ -124,10 +121,9 @@ def rank_multiview_pool(
     """Fuse one target's all-field ranking with each configured field view.
 
     The caller supplies the already-computed all-field ``unfiltered`` ranking, which the repository
-    was queried for once. This helper queries each configured field view exactly once and fuses the
-    all-field ranking plus those views by the configured rank offset. It reads no official label and
-    selects no production policy. A field view that surfaces nothing (for example a target without a
-    compatible chunk in one field) contributes no synthetic rank.
+    was queried for once. This helper queries each configured field view exactly once and fuses that
+    ranking with those views by the configured rank offset. A field view that surfaces nothing (for
+    example a target without a compatible chunk in one field) contributes no synthetic rank.
     """
     views: list[tuple[TeachingTextField | None, tuple[InferenceRankedCandidate, ...]]] = [
         (None, unfiltered)
@@ -155,14 +151,14 @@ def score_rerank_pairs(
 ) -> tuple[tuple[InferenceScoredCandidate, ...], tuple[str, ...]]:
     """Score every label-free pair once in input order and return the deterministic ranking.
 
-    Returns the scored candidates in input (saved-pool) order and the complete ranking of unique
+    Returns the scored candidates in input order and the complete ranking of unique
     candidate group IDs (score descending, then input position, then candidate id). Any transport,
     HTTP, or contract failure propagates immediately so an incomplete score set can never be
     reported as a full result. It is the one scoring/order core used by the operating path.
 
     ``before_request`` is the pure live-control admission callback checked before each pair. A
     refusal raises the fixed content-free :class:`RequestNotStarted` and never returns a partial
-    ranking. The scorer's own last-I/O guard remains authoritative.
+    ranking. The provider checks ``before_request`` again before its single POST.
     """
     scored: list[InferenceScoredCandidate] = []
     for position, pair in enumerate(pairs, start=1):

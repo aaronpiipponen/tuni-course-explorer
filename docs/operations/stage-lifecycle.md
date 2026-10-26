@@ -84,7 +84,7 @@ Normalization is one transaction. It reads the completed capture, validates it, 
 
 A stage measures active time only while it is running and its recorded start time is known, so the idle time between two runs does not inflate the measured rate or the projected remaining time.
 
-Coverage counts the stored rows of the selected dataset, so it says what has been written and not what the run is doing. The two facts are independent. A stage returns to idle after a completed run with complete coverage, and it also returns to idle after a partial run with pending rows. The coverage reports are described in the [Operator menu](/docs/operations/operator-menu.md#coverage-and-summaries).
+Coverage counts the stored rows of the selected dataset, so it says what has been written and not what the run is doing. The two facts are independent. A stage returns to idle after a completed run with complete coverage, and it also returns to idle after a partial run with pending rows. The [Full-catalogue inference run](/docs/experiments/inference/full-catalogue-inference-run.md) report records a run that stopped part-way and resumed to a complete cycle. The coverage reports are described in the [Operator menu](/docs/operations/operator-menu.md#coverage-and-summaries).
 
 ## The worker at a stop
 

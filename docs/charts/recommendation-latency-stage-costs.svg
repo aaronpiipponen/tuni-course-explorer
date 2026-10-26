@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 568" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Expanded 49-course recommendation stage costs</title>
+  <desc id="d">Embedded next-course, nearest-chunk, basis-vector, candidate-vector and overlap-result stage times for the expanded 49-course basket across three runs, in seconds.</desc>
+  <rect width="960" height="568" rx="12" fill="#232434"/>
+  <rect x="61" y="33" width="14" height="14" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="96" y="45" font-size="14" fill="#a3a4b8">Run 1</text>
+  <rect x="175" y="33" width="14" height="14" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="210" y="45" font-size="14" fill="#a3a4b8">Run 2</text>
+  <rect x="289" y="33" width="14" height="14" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="324" y="45" font-size="14" fill="#a3a4b8">Run 3</text>
+  <line x1="248.8" y1="72" x2="248.8" y2="492" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="248.8" y="514" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="450.5" y1="72" x2="450.5" y2="492" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="450.5" y="514" text-anchor="middle" font-size="14" fill="#a3a4b8">0.5</text>
+  <line x1="652.3" y1="72" x2="652.3" y2="492" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="652.3" y="514" text-anchor="middle" font-size="14" fill="#a3a4b8">1</text>
+  <line x1="854" y1="72" x2="854" y2="492" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="854" y="514" text-anchor="middle" font-size="14" fill="#a3a4b8">1.5</text>
+  <text x="236.8" y="119" text-anchor="end" font-size="14" fill="#ececf2">Embedded next course</text>
+  <rect x="248.8" y="80" width="197.3" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="454.1" y="95" font-size="14" fill="#a3a4b8">0.489</text>
+  <rect x="248.8" y="104" width="238" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="494.8" y="119" font-size="14" fill="#a3a4b8">0.59</text>
+  <rect x="248.8" y="128" width="217.9" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="474.7" y="143" font-size="14" fill="#a3a4b8">0.54</text>
+  <text x="236.8" y="203" text-anchor="end" font-size="14" fill="#ececf2">Nearest chunks</text>
+  <rect x="248.8" y="164" width="507.2" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="764" y="179" font-size="14" fill="#a3a4b8">1.257</text>
+  <rect x="248.8" y="188" width="496.3" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="753.1" y="203" font-size="14" fill="#a3a4b8">1.23</text>
+  <rect x="248.8" y="212" width="507.6" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="764.4" y="227" font-size="14" fill="#a3a4b8">1.258</text>
+  <text x="236.8" y="287" text-anchor="end" font-size="14" fill="#ececf2">Basis vector reads</text>
+  <rect x="248.8" y="248" width="52" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="308.8" y="263" font-size="14" fill="#a3a4b8">0.129</text>
+  <rect x="248.8" y="272" width="50.8" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="307.6" y="287" font-size="14" fill="#a3a4b8">0.126</text>
+  <rect x="248.8" y="296" width="50" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="306.8" y="311" font-size="14" fill="#a3a4b8">0.124</text>
+  <text x="236.8" y="371" text-anchor="end" font-size="14" fill="#ececf2">Candidate vector reads</text>
+  <rect x="248.8" y="332" width="77.1" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="333.9" y="347" font-size="14" fill="#a3a4b8">0.191</text>
+  <rect x="248.8" y="356" width="77.9" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="334.7" y="371" font-size="14" fill="#a3a4b8">0.193</text>
+  <rect x="248.8" y="380" width="76.3" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="333.1" y="395" font-size="14" fill="#a3a4b8">0.189</text>
+  <text x="236.8" y="455" text-anchor="end" font-size="14" fill="#ececf2">Overlap and results</text>
+  <rect x="248.8" y="416" width="195.3" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="452.1" y="431" font-size="14" fill="#a3a4b8">0.484</text>
+  <rect x="248.8" y="440" width="182.4" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="439.2" y="455" font-size="14" fill="#a3a4b8">0.452</text>
+  <rect x="248.8" y="464" width="180.3" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="437.1" y="479" font-size="14" fill="#a3a4b8">0.447</text>
+  <text x="551.4" y="544" text-anchor="middle" font-size="14" fill="#a3a4b8">Stage time (s)</text>
+</svg>

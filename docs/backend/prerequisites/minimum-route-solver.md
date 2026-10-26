@@ -73,6 +73,8 @@ The size check compares the interned node count plus the trace count with the co
 
 A valid greedy route becomes an `approximate` result with the same result types as an exact one. A missing or invalid route calls `approximationFailed`, which returns `approximation_failed`, no route and no total, and one root problem whose reason is `search_too_large`.
 
+[Minimum-credit routes](/docs/experiments/graph-and-route-algorithms/minimum-credit-routes.md#the-size-limit-and-the-restart) records the calibration of the limit and the corrected approximate totals.
+
 ## Exclusion blocks and located problems
 
 The primary fold threads three collectors. `blocked_excluded_group_ids` collects the canonical course group IDs that the activity and exclusion check denied to the calculation. `blocked_excluded_node_keys` collects the scoped supports whose node mark denied them, and the result maps them to the drawn node IDs their bindings carry. One `PathProblem` is appended per local failure, expanded once per distinct provenance fact bound to the support, with its drawn `node_id`, `support_id`, `fact_id`, state, reason and optional referenced group. The reduction and all-course diagnostic passes and the greedy evaluator run with the collectors disabled or separate, so only the primary fold's failures reach the result. `mergeShortfalls` and `mergeBlockers` deduplicate and sort the two record families.

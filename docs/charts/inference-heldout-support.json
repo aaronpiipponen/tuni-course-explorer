@@ -1,0 +1,12 @@
+{
+  "type": "bar",
+  "title": "Judged support of local-model findings by category",
+  "description": "Share of emitted findings that the blind judge found supported, for all findings and for the required, recommended and equivalence categories, for the three local models that produced valid held-out answers.",
+  "valueAxis": "Share of findings judged supported (0 to 1)",
+  "categories": ["All findings", "Required options", "Recommended options", "Equivalence groups"],
+  "series": [
+    { "name": "ByteShape, 150 targets", "values": [0.52, 0.42, 0.62, 0.68] },
+    { "name": "IQ3-MIX, 150 targets", "values": [0.62, 0.54, 0.81, 0.61] },
+    { "name": "Qwen3.6-35B-A3B, 48 valid targets", "values": [0.23, 0.14, 0.31, 0.29] }
+  ]
+}

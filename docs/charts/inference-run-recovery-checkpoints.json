@@ -1,0 +1,11 @@
+{
+  "type": "bar",
+  "title": "Published inferred sets and recorded target failures mid-run and after the run",
+  "description": "Two counts read on the selected dataset: published inferred sets rose from 727 at the mid-run stop on 2026-10-12 to 4,543 after the run finished, while recorded target failure rows fell from 145 to 0.",
+  "valueAxis": "Records",
+  "categories": ["Mid-run stop, 2026-10-12", "Post-run read, 2026-10-25"],
+  "series": [
+    { "name": "Published inferred sets", "values": [727, 4543] },
+    { "name": "Recorded target failure rows", "values": [145, 0] }
+  ]
+}

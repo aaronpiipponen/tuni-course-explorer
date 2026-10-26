@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 484" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Heavy-load interactive probe p95 by worker process count</title>
+  <desc id="d">Interactive probe p95 with 20 normal users plus 5, 6, 8 or 12 heavy virtual users. Four worker processes have the lowest value at every level, and their p95 range does not overlap the two-worker-process range.</desc>
+  <rect width="960" height="484" rx="12" fill="#232434"/>
+  <rect x="61" y="33" width="14" height="14" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="96" y="45" font-size="14" fill="#a3a4b8">2 worker processes</text>
+  <rect x="284.2" y="33" width="14" height="14" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="319.2" y="45" font-size="14" fill="#a3a4b8">3 worker processes</text>
+  <rect x="507.4" y="33" width="14" height="14" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="542.4" y="45" font-size="14" fill="#a3a4b8">4 worker processes</text>
+  <line x1="131.2" y1="72" x2="131.2" y2="408" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="131.2" y="430" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="274.1" y1="72" x2="274.1" y2="408" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="274.1" y="430" text-anchor="middle" font-size="14" fill="#a3a4b8">100</text>
+  <line x1="417" y1="72" x2="417" y2="408" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="417" y="430" text-anchor="middle" font-size="14" fill="#a3a4b8">200</text>
+  <line x1="559.8" y1="72" x2="559.8" y2="408" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="559.8" y="430" text-anchor="middle" font-size="14" fill="#a3a4b8">300</text>
+  <line x1="702.7" y1="72" x2="702.7" y2="408" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="702.7" y="430" text-anchor="middle" font-size="14" fill="#a3a4b8">400</text>
+  <line x1="845.6" y1="72" x2="845.6" y2="408" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="845.6" y="430" text-anchor="middle" font-size="14" fill="#a3a4b8">500</text>
+  <text x="119.2" y="119" text-anchor="end" font-size="14" fill="#ececf2">Heavy 5</text>
+  <rect x="131.2" y="80" width="522.6" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="661.8" y="95" font-size="14" fill="#a3a4b8">365.76</text>
+  <rect x="131.2" y="104" width="446.7" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="585.9" y="119" font-size="14" fill="#a3a4b8">312.63</text>
+  <rect x="131.2" y="128" width="281.2" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="420.4" y="143" font-size="14" fill="#a3a4b8">196.78</text>
+  <text x="119.2" y="203" text-anchor="end" font-size="14" fill="#ececf2">Heavy 6</text>
+  <rect x="131.2" y="164" width="608.3" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="747.5" y="179" font-size="14" fill="#a3a4b8">425.77</text>
+  <rect x="131.2" y="188" width="425.9" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="565.1" y="203" font-size="14" fill="#a3a4b8">298.05</text>
+  <rect x="131.2" y="212" width="430.4" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="569.6" y="227" font-size="14" fill="#a3a4b8">301.23</text>
+  <text x="119.2" y="287" text-anchor="end" font-size="14" fill="#ececf2">Heavy 8</text>
+  <rect x="131.2" y="248" width="525.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="664.7" y="263" font-size="14" fill="#a3a4b8">367.77</text>
+  <rect x="131.2" y="272" width="541.4" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="680.6" y="287" font-size="14" fill="#a3a4b8">378.91</text>
+  <rect x="131.2" y="296" width="413.5" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="552.7" y="311" font-size="14" fill="#a3a4b8">289.4</text>
+  <text x="119.2" y="371" text-anchor="end" font-size="14" fill="#ececf2">Heavy 12</text>
+  <rect x="131.2" y="332" width="587.8" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="727" y="347" font-size="14" fill="#a3a4b8">411.37</text>
+  <rect x="131.2" y="356" width="632.2" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="771.4" y="371" font-size="14" fill="#a3a4b8">442.45</text>
+  <rect x="131.2" y="380" width="511.2" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="650.4" y="395" font-size="14" fill="#a3a4b8">357.77</text>
+  <text x="488.4" y="460" text-anchor="middle" font-size="14" fill="#a3a4b8">Probe p95 (ms)</text>
+</svg>

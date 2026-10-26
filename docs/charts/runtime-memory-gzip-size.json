@@ -1,0 +1,21 @@
+{
+  "type": "bar",
+  "title": "Compressed report size by gzip level",
+  "description": "Compressed size in bytes at gzip levels 1, 6 and 9 for the saved basis-50 report and the synthetic report-shaped JSON payload.",
+  "valueAxis": "Compressed size (bytes)",
+  "categories": ["Saved basis-50 report", "Synthetic report JSON"],
+  "series": [
+    {
+      "name": "Level 1",
+      "values": [39606, 135821]
+    },
+    {
+      "name": "Level 6",
+      "values": [34405, 120774]
+    },
+    {
+      "name": "Level 9",
+      "values": [33662, 116275]
+    }
+  ]
+}

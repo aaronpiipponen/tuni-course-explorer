@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 468" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Mean web cost by serving class</title>
+  <desc id="d">Mean web process core-seconds per call for ten serving classes on the pinned dataset, from the basis-50 summaries read to the basis-50 recommendation.</desc>
+  <rect width="960" height="468" rx="12" fill="#232434"/>
+  <line x1="265.6" y1="32" x2="265.6" y2="392" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="265.6" y="414" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="378.2" y1="32" x2="378.2" y2="392" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="378.2" y="414" text-anchor="middle" font-size="14" fill="#a3a4b8">2</text>
+  <line x1="490.9" y1="32" x2="490.9" y2="392" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="490.9" y="414" text-anchor="middle" font-size="14" fill="#a3a4b8">4</text>
+  <line x1="603.5" y1="32" x2="603.5" y2="392" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="603.5" y="414" text-anchor="middle" font-size="14" fill="#a3a4b8">6</text>
+  <line x1="716.2" y1="32" x2="716.2" y2="392" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="716.2" y="414" text-anchor="middle" font-size="14" fill="#a3a4b8">8</text>
+  <line x1="828.8" y1="32" x2="828.8" y2="392" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="828.8" y="414" text-anchor="middle" font-size="14" fill="#a3a4b8">10</text>
+  <text x="253.6" y="55" text-anchor="end" font-size="14" fill="#ececf2">Summaries, basis 50</text>
+  <rect x="265.6" y="40" width="1.2" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="274.8" y="55" font-size="14" fill="#a3a4b8">0.020982</text>
+  <text x="253.6" y="91" text-anchor="end" font-size="14" fill="#ececf2">Structure</text>
+  <rect x="265.6" y="76" width="3.8" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="277.4" y="91" font-size="14" fill="#a3a4b8">0.066904</text>
+  <text x="253.6" y="127" text-anchor="end" font-size="14" fill="#ececf2">Graph, small payloads</text>
+  <rect x="265.6" y="112" width="4.7" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="278.3" y="127" font-size="14" fill="#a3a4b8">0.083734</text>
+  <text x="253.6" y="163" text-anchor="end" font-size="14" fill="#ececf2">Compare</text>
+  <rect x="265.6" y="148" width="6.1" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="279.7" y="163" font-size="14" fill="#a3a4b8">0.107675</text>
+  <text x="253.6" y="199" text-anchor="end" font-size="14" fill="#ececf2">Next courses, basis 3</text>
+  <rect x="265.6" y="184" width="7.1" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="280.7" y="199" font-size="14" fill="#a3a4b8">0.126763</text>
+  <text x="253.6" y="235" text-anchor="end" font-size="14" fill="#ececf2">Recommendation, basis 3</text>
+  <rect x="265.6" y="220" width="15.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="289.1" y="235" font-size="14" fill="#a3a4b8">0.275784</text>
+  <text x="253.6" y="271" text-anchor="end" font-size="14" fill="#ececf2">Search, exact</text>
+  <rect x="265.6" y="256" width="52.6" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="326.2" y="271" font-size="14" fill="#a3a4b8">0.933849</text>
+  <text x="253.6" y="307" text-anchor="end" font-size="14" fill="#ececf2">Search, substring</text>
+  <rect x="265.6" y="292" width="53.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="327.1" y="307" font-size="14" fill="#a3a4b8">0.950417</text>
+  <text x="253.6" y="343" text-anchor="end" font-size="14" fill="#ececf2">Search, semantic</text>
+  <rect x="265.6" y="328" width="55.4" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="329" y="343" font-size="14" fill="#a3a4b8">0.983512</text>
+  <text x="253.6" y="379" text-anchor="end" font-size="14" fill="#ececf2">Recommendation, basis 50</text>
+  <rect x="265.6" y="364" width="525.4" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="799" y="379" font-size="14" fill="#a3a4b8">9.329324</text>
+  <text x="547.2" y="444" text-anchor="middle" font-size="14" fill="#a3a4b8">Web cost (core-seconds per call)</text>
+</svg>

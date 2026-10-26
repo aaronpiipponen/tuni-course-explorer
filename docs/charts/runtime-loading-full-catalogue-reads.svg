@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 448" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Full-catalogue command and read wall time before and after the read projection</title>
+  <desc id="d">Command and read wall times before and after the projected and scoped read path. Unified search uses both range minima. Prerequisites uses an approximate before value and the after range minimum. Other reads use their recorded values.</desc>
+  <rect width="960" height="448" rx="12" fill="#232434"/>
+  <rect x="61" y="33" width="14" height="14" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="96" y="45" font-size="14" fill="#a3a4b8">Before</text>
+  <rect x="183.4" y="33" width="14" height="14" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="218.4" y="45" font-size="14" fill="#a3a4b8">After</text>
+  <line x1="316" y1="72" x2="316" y2="372" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="316" y="394" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="452.6" y1="72" x2="452.6" y2="372" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="452.6" y="394" text-anchor="middle" font-size="14" fill="#a3a4b8">5</text>
+  <line x1="589.2" y1="72" x2="589.2" y2="372" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="589.2" y="394" text-anchor="middle" font-size="14" fill="#a3a4b8">10</text>
+  <line x1="725.8" y1="72" x2="725.8" y2="372" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="725.8" y="394" text-anchor="middle" font-size="14" fill="#a3a4b8">15</text>
+  <line x1="862.4" y1="72" x2="862.4" y2="372" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="862.4" y="394" text-anchor="middle" font-size="14" fill="#a3a4b8">20</text>
+  <text x="304" y="107" text-anchor="end" font-size="14" fill="#ececf2">Unified search, lower bound</text>
+  <rect x="316" y="80" width="423.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="747.5" y="95" font-size="14" fill="#a3a4b8">15.5</text>
+  <rect x="316" y="104" width="71" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="395" y="119" font-size="14" fill="#a3a4b8">2.6</text>
+  <text x="304" y="167" text-anchor="end" font-size="14" fill="#ececf2">Prerequisites, approximate/min</text>
+  <rect x="316" y="140" width="396.1" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="720.1" y="155" font-size="14" fill="#a3a4b8">14.5</text>
+  <rect x="316" y="164" width="64.2" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="388.2" y="179" font-size="14" fill="#a3a4b8">2.35</text>
+  <text x="304" y="227" text-anchor="end" font-size="14" fill="#ececf2">Coverage command</text>
+  <rect x="316" y="200" width="508.2" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="832.2" y="215" font-size="14" fill="#a3a4b8">18.6</text>
+  <rect x="316" y="224" width="167.7" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="491.7" y="239" font-size="14" fill="#a3a4b8">6.14</text>
+  <text x="304" y="287" text-anchor="end" font-size="14" fill="#ececf2">Represented summary read</text>
+  <rect x="316" y="260" width="113.4" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="437.4" y="275" font-size="14" fill="#a3a4b8">4.15</text>
+  <rect x="316" y="284" width="28.4" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="352.4" y="299" font-size="14" fill="#a3a4b8">1.04</text>
+  <text x="304" y="347" text-anchor="end" font-size="14" fill="#ececf2">Full-scope coverage</text>
+  <rect x="316" y="320" width="368.8" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="692.8" y="335" font-size="14" fill="#a3a4b8">13.5</text>
+  <rect x="316" y="344" width="7.6" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="331.6" y="359" font-size="14" fill="#a3a4b8">0.28</text>
+  <text x="589.2" y="424" text-anchor="middle" font-size="14" fill="#a3a4b8">Wall time (s)</text>
+</svg>

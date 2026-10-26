@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 216" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Resident growth on the basis-50 candidate read</title>
+  <desc id="d">Resident growth after the basis-50 candidate read for the full carrier read, the descriptive read and the streamed 512-row read.</desc>
+  <rect width="960" height="216" rx="12" fill="#232434"/>
+  <line x1="299.2" y1="32" x2="299.2" y2="140" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="299.2" y="162" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="410.2" y1="32" x2="410.2" y2="140" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="410.2" y="162" text-anchor="middle" font-size="14" fill="#a3a4b8">50</text>
+  <line x1="521.1" y1="32" x2="521.1" y2="140" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="521.1" y="162" text-anchor="middle" font-size="14" fill="#a3a4b8">100</text>
+  <line x1="632.1" y1="32" x2="632.1" y2="140" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="632.1" y="162" text-anchor="middle" font-size="14" fill="#a3a4b8">150</text>
+  <line x1="743" y1="32" x2="743" y2="140" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="743" y="162" text-anchor="middle" font-size="14" fill="#a3a4b8">200</text>
+  <line x1="854" y1="32" x2="854" y2="140" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="854" y="162" text-anchor="middle" font-size="14" fill="#a3a4b8">250</text>
+  <text x="287.2" y="55" text-anchor="end" font-size="14" fill="#ececf2">Full candidate read</text>
+  <rect x="299.2" y="40" width="519.1" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="826.3" y="55" font-size="14" fill="#a3a4b8">233.9</text>
+  <text x="287.2" y="91" text-anchor="end" font-size="14" fill="#ececf2">Descriptive candidate read</text>
+  <rect x="299.2" y="76" width="41.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="348.7" y="91" font-size="14" fill="#a3a4b8">18.7</text>
+  <text x="287.2" y="127" text-anchor="end" font-size="14" fill="#ececf2">Streamed candidate, 512 rows</text>
+  <rect x="299.2" y="112" width="34.4" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="341.6" y="127" font-size="14" fill="#a3a4b8">15.5</text>
+  <text x="576.6" y="192" text-anchor="middle" font-size="14" fill="#a3a4b8">Resident growth (MB)</text>
+</svg>

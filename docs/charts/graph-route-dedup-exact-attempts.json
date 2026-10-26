@@ -1,0 +1,27 @@
+{
+  "type": "bar",
+  "title": "Exact-attempt time for selected scenarios above 10 ms",
+  "description": "Baseline and prototype exact-attempt time for nine scenarios whose exact attempt exceeded 10 ms, spanning the largest attempts and both directions.",
+  "valueAxis": "Exact attempt (ms)",
+  "categories": [
+    "MATH.MA.725 recommended, empty",
+    "KAT.MARK.399 active-only-off, empty",
+    "KAT.MARK.399 recommended, nonempty",
+    "KAT.MARK.399 recommended, empty",
+    "KAT.MARK.304 active-only-off, empty",
+    "KAT.MARK.399 required-only, nonempty",
+    "KAT.MARK.399 required-only, empty",
+    "YKT.SOA.303 recommended, nonempty",
+    "YKT.SOA.303 recommended, empty"
+  ],
+  "series": [
+    {
+      "name": "Baseline exact attempt",
+      "values": [3392.2, 3352.5, 443.2, 428.8, 423.7, 227.4, 221.6, 122.0, 121.9]
+    },
+    {
+      "name": "Prototype exact attempt",
+      "values": [3136.6, 3492.1, 427.8, 418.8, 415.9, 233.0, 233.4, 106.0, 105.0]
+    }
+  ]
+}

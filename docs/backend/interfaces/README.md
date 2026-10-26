@@ -8,6 +8,8 @@ The web server answers eight fixed dataset read commands plus one feature read u
 
 With `ADMISSION_ENABLED` true in `config/admission.toml`, the front router gives each POST to a fixed API path a free, light or heavy class before it forwards the read, and with it off every request is forwarded without a class or a limit. [Admission control](/docs/backend/interfaces/admission-control.md) states the bounds, the regimes and the refusals an operator relies on.
 
+The measurements of the serving path are collected in [Runtime, storage and serving experiments](/docs/experiments/runtime-storage-and-serving/README.md).
+
 ## The command line
 
 The feature read scripts call package commands and print one JSON report each. The administration command runs the operator menu and the machine commands that enroll a dataset, prepare the worker, run the stages, and report coverage. The example data loader fills the invented dataset, and shell scripts start the web server and the administration backend. [Command line](/docs/backend/interfaces/command-line.md) describes the scripts and their inputs, and [Command adapters](/docs/backend/interfaces/command-adapters.md) describes the delegation.

@@ -123,6 +123,8 @@ The outcome decides what the panel says, and the drawing follows the outcome:
 
 The refusal concerns the drawing alone. **Find minimum route** and its panel stay in place, and the calculation reads the same solver structure and returns the same route either way.
 
+The drawings allowed and refused at the 500-element limit are measured in [Compact graph identity and projection](/docs/experiments/graph-and-route-algorithms/compact-graph-identity-and-projection.md#drawing-allowance).
+
 ## Waiting states and failures
 
 While the first report of a root loads, the pane shows a waiting state with no drawing. A node takes no input while it is leaving the drawing or while the drawing is being laid out.

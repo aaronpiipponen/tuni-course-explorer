@@ -15,3 +15,5 @@ The effective text of one cell is the official text when the version holds one, 
 The embedding stage splits the effective text of each representative version into overlapping chunks and stores one vector per chunk, with the lifecycle state of the chunk and the identity of its inputs. A vector has 1024 components, and a read uses only completed chunks written under the embedding configuration in force. Two hub files hold the means that centre every similarity measurement. [Embeddings](/docs/backend/text-and-vectors/embeddings.md) describes the service, the generation run, the hubs, and the keys that pin the runtime.
 
 The provider contract, the chunk assembly, the reconciliation, and the hub arithmetic are described in [Embedding generation](/docs/backend/text-and-vectors/embedding-generation.md).
+
+The translation and semantic retrieval measurements behind those vectors are recorded in [Machine translation as retrieval-preserving transformation](/docs/experiments/search-and-translation/translation-and-retrieval.md) and [Exact and approximate semantic retrieval](/docs/experiments/search-and-translation/semantic-retrieval.md).

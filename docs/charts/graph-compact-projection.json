@@ -1,0 +1,17 @@
+{
+  "type": "bar",
+  "title": "Largest projection time across the corrected passes",
+  "description": "The largest project stage across all 110 cases in each corrected pass. The first correction reached 15,706.5 ms, and the second and module-drawing passes stayed near 600 ms.",
+  "valueAxis": "Projection time (ms)",
+  "categories": [
+    "First correction",
+    "Second correction",
+    "Module drawing"
+  ],
+  "series": [
+    {
+      "name": "Largest project",
+      "values": [15706.5, 593.5, 600.5]
+    }
+  ]
+}

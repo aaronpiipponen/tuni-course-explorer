@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 688" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Mixed-traffic search p95 by load meter</title>
+  <desc id="d">Worst normal-user search p95 in the five cells that place one to five heavy users beside 12 normal users, for meters A, B, S and C1.</desc>
+  <rect width="960" height="688" rx="12" fill="#232434"/>
+  <rect x="61" y="33" width="14" height="14" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="96" y="45" font-size="14" fill="#a3a4b8">Meter A</text>
+  <rect x="191.8" y="33" width="14" height="14" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="226.8" y="45" font-size="14" fill="#a3a4b8">Meter B</text>
+  <rect x="322.6" y="33" width="14" height="14" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="357.6" y="45" font-size="14" fill="#a3a4b8">Meter S</text>
+  <rect x="453.4" y="33" width="14" height="14" fill="#a7e36b" stroke="none" stroke-width="1.5"/>
+  <text x="488.4" y="45" font-size="14" fill="#a3a4b8">Meter C1</text>
+  <line x1="215.2" y1="72" x2="215.2" y2="612" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="215.2" y="634" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="343" y1="72" x2="343" y2="612" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="343" y="634" text-anchor="middle" font-size="14" fill="#a3a4b8">2,000</text>
+  <line x1="470.7" y1="72" x2="470.7" y2="612" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="470.7" y="634" text-anchor="middle" font-size="14" fill="#a3a4b8">4,000</text>
+  <line x1="598.5" y1="72" x2="598.5" y2="612" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="598.5" y="634" text-anchor="middle" font-size="14" fill="#a3a4b8">6,000</text>
+  <line x1="726.2" y1="72" x2="726.2" y2="612" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="726.2" y="634" text-anchor="middle" font-size="14" fill="#a3a4b8">8,000</text>
+  <line x1="854" y1="72" x2="854" y2="612" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="854" y="634" text-anchor="middle" font-size="14" fill="#a3a4b8">10,000</text>
+  <text x="203.2" y="131" text-anchor="end" font-size="14" fill="#ececf2">1 heavy, 12 normal</text>
+  <rect x="215.2" y="80" width="95.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="318.7" y="95" font-size="14" fill="#a3a4b8">1,495</text>
+  <rect x="215.2" y="104" width="114.6" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="337.8" y="119" font-size="14" fill="#a3a4b8">1,794</text>
+  <rect x="215.2" y="128" width="121.6" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="344.8" y="143" font-size="14" fill="#a3a4b8">1,904</text>
+  <rect x="215.2" y="152" width="116.6" height="20" rx="2" fill="#a7e36b" stroke="none" stroke-width="1.5"/>
+  <text x="339.8" y="167" font-size="14" fill="#a3a4b8">1,826</text>
+  <text x="203.2" y="239" text-anchor="end" font-size="14" fill="#ececf2">2 heavy, 12 normal</text>
+  <rect x="215.2" y="188" width="195.7" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="418.9" y="203" font-size="14" fill="#a3a4b8">3,063</text>
+  <rect x="215.2" y="212" width="152" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="375.2" y="227" font-size="14" fill="#a3a4b8">2,379</text>
+  <rect x="215.2" y="236" width="199.4" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="422.6" y="251" font-size="14" fill="#a3a4b8">3,121</text>
+  <rect x="215.2" y="260" width="228.5" height="20" rx="2" fill="#a7e36b" stroke="none" stroke-width="1.5"/>
+  <text x="451.7" y="275" font-size="14" fill="#a3a4b8">3,577</text>
+  <text x="203.2" y="347" text-anchor="end" font-size="14" fill="#ececf2">3 heavy, 12 normal</text>
+  <rect x="215.2" y="296" width="568.7" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="791.9" y="311" font-size="14" fill="#a3a4b8">8,903</text>
+  <rect x="215.2" y="320" width="603.5" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="826.7" y="335" font-size="14" fill="#a3a4b8">9,448</text>
+  <rect x="215.2" y="344" width="99.7" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="322.9" y="359" font-size="14" fill="#a3a4b8">1,561</text>
+  <rect x="215.2" y="368" width="273.3" height="20" rx="2" fill="#a7e36b" stroke="none" stroke-width="1.5"/>
+  <text x="496.5" y="383" font-size="14" fill="#a3a4b8">4,279</text>
+  <text x="203.2" y="455" text-anchor="end" font-size="14" fill="#ececf2">4 heavy, 12 normal</text>
+  <rect x="215.2" y="404" width="379.6" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="602.8" y="419" font-size="14" fill="#a3a4b8">5,943</text>
+  <rect x="215.2" y="428" width="378.7" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="601.9" y="443" font-size="14" fill="#a3a4b8">5,928</text>
+  <rect x="215.2" y="452" width="173.4" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="396.6" y="467" font-size="14" fill="#a3a4b8">2,715</text>
+  <rect x="215.2" y="476" width="225.7" height="20" rx="2" fill="#a7e36b" stroke="none" stroke-width="1.5"/>
+  <text x="448.9" y="491" font-size="14" fill="#a3a4b8">3,533</text>
+  <text x="203.2" y="563" text-anchor="end" font-size="14" fill="#ececf2">5 heavy, 12 normal</text>
+  <rect x="215.2" y="512" width="321.1" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="544.3" y="527" font-size="14" fill="#a3a4b8">5,026</text>
+  <rect x="215.2" y="536" width="329" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="552.2" y="551" font-size="14" fill="#a3a4b8">5,150</text>
+  <rect x="215.2" y="560" width="250.4" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="473.6" y="575" font-size="14" fill="#a3a4b8">3,920</text>
+  <rect x="215.2" y="584" width="244" height="20" rx="2" fill="#a7e36b" stroke="none" stroke-width="1.5"/>
+  <text x="467.2" y="599" font-size="14" fill="#a3a4b8">3,819</text>
+  <text x="534.6" y="664" text-anchor="middle" font-size="14" fill="#a3a4b8">Search p95 (ms)</text>
+</svg>

@@ -1,0 +1,10 @@
+{
+  "type": "bar",
+  "title": "Interactive probe p95 at eleven heavy levels",
+  "description": "Eleven steady heavy levels from one to 50 virtual users. The probe p95 stays between 95 and 198 ms up to 32 virtual users and reaches 388 ms at 50.",
+  "valueAxis": "Latency (ms)",
+  "categories": ["1 VU", "2 VUs", "3 VUs", "5 VUs", "6 VUs", "8 VUs", "12 VUs", "16 VUs", "24 VUs", "32 VUs", "50 VUs"],
+  "series": [
+    { "name": "Probe p95", "values": [95, 143, 166, 134, 132, 102, 147, 115, 198, 178, 388] }
+  ]
+}

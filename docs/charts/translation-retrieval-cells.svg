@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 508" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Translation retrieval by cell</title>
+  <desc id="d">Top-1 rate and mean reciprocal rank for the six field and target-language cells of the 60-case translation evaluation, each cell holding 10 cases.</desc>
+  <rect width="960" height="508" rx="12" fill="#232434"/>
+  <rect x="61" y="33" width="14" height="14" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="96" y="45" font-size="14" fill="#a3a4b8">Top-1 rate</text>
+  <rect x="217" y="33" width="14" height="14" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="252" y="45" font-size="14" fill="#a3a4b8">Mean reciprocal rank</text>
+  <line x1="282.4" y1="72" x2="282.4" y2="432" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="282.4" y="454" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="396.7" y1="72" x2="396.7" y2="432" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="396.7" y="454" text-anchor="middle" font-size="14" fill="#a3a4b8">0.2</text>
+  <line x1="511" y1="72" x2="511" y2="432" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="511" y="454" text-anchor="middle" font-size="14" fill="#a3a4b8">0.4</text>
+  <line x1="625.4" y1="72" x2="625.4" y2="432" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="625.4" y="454" text-anchor="middle" font-size="14" fill="#a3a4b8">0.6</text>
+  <line x1="739.7" y1="72" x2="739.7" y2="432" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="739.7" y="454" text-anchor="middle" font-size="14" fill="#a3a4b8">0.8</text>
+  <line x1="854" y1="72" x2="854" y2="432" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="854" y="454" text-anchor="middle" font-size="14" fill="#a3a4b8">1</text>
+  <text x="270.4" y="107" text-anchor="end" font-size="14" fill="#ececf2">Name, Finnish</text>
+  <rect x="282.4" y="80" width="514.4" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="804.8" y="95" font-size="14" fill="#a3a4b8">0.9</text>
+  <rect x="282.4" y="104" width="528.7" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="819.1" y="119" font-size="14" fill="#a3a4b8">0.925</text>
+  <text x="270.4" y="167" text-anchor="end" font-size="14" fill="#ececf2">Name, English</text>
+  <rect x="282.4" y="140" width="571.6" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="862" y="155" font-size="14" fill="#a3a4b8">1</text>
+  <rect x="282.4" y="164" width="571.6" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="862" y="179" font-size="14" fill="#a3a4b8">1</text>
+  <text x="270.4" y="227" text-anchor="end" font-size="14" fill="#ececf2">Content, Finnish</text>
+  <rect x="282.4" y="200" width="571.6" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="862" y="215" font-size="14" fill="#a3a4b8">1</text>
+  <rect x="282.4" y="224" width="571.6" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="862" y="239" font-size="14" fill="#a3a4b8">1</text>
+  <text x="270.4" y="287" text-anchor="end" font-size="14" fill="#ececf2">Content, English</text>
+  <rect x="282.4" y="260" width="571.6" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="862" y="275" font-size="14" fill="#a3a4b8">1</text>
+  <rect x="282.4" y="284" width="571.6" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="862" y="299" font-size="14" fill="#a3a4b8">1</text>
+  <text x="270.4" y="347" text-anchor="end" font-size="14" fill="#ececf2">Learning outcomes, Finnish</text>
+  <rect x="282.4" y="320" width="571.6" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="862" y="335" font-size="14" fill="#a3a4b8">1</text>
+  <rect x="282.4" y="344" width="571.6" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="862" y="359" font-size="14" fill="#a3a4b8">1</text>
+  <text x="270.4" y="407" text-anchor="end" font-size="14" fill="#ececf2">Learning outcomes, English</text>
+  <rect x="282.4" y="380" width="571.6" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="862" y="395" font-size="14" fill="#a3a4b8">1</text>
+  <rect x="282.4" y="404" width="571.6" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="862" y="419" font-size="14" fill="#a3a4b8">1</text>
+  <text x="568.2" y="484" text-anchor="middle" font-size="14" fill="#a3a4b8">Rate (0 to 1)</text>
+</svg>

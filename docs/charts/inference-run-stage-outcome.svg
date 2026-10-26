@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 468" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Targets at each stage and the content of the published sets</title>
+  <desc id="d">The 4,543 eligible active targets at every completed stage of the one processing cycle, the published sets split into those with an expression and complete empty results, and the zero uncovered and failed targets.</desc>
+  <rect width="960" height="468" rx="12" fill="#232434"/>
+  <line x1="223.6" y1="32" x2="223.6" y2="392" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="223.6" y="414" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="349.7" y1="32" x2="349.7" y2="392" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="349.7" y="414" text-anchor="middle" font-size="14" fill="#a3a4b8">1,000</text>
+  <line x1="475.8" y1="32" x2="475.8" y2="392" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="475.8" y="414" text-anchor="middle" font-size="14" fill="#a3a4b8">2,000</text>
+  <line x1="601.8" y1="32" x2="601.8" y2="392" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="601.8" y="414" text-anchor="middle" font-size="14" fill="#a3a4b8">3,000</text>
+  <line x1="727.9" y1="32" x2="727.9" y2="392" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="727.9" y="414" text-anchor="middle" font-size="14" fill="#a3a4b8">4,000</text>
+  <line x1="854" y1="32" x2="854" y2="392" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="854" y="414" text-anchor="middle" font-size="14" fill="#a3a4b8">5,000</text>
+  <text x="211.6" y="55" text-anchor="end" font-size="14" fill="#ececf2">Eligible</text>
+  <rect x="223.6" y="40" width="572.8" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="804.4" y="55" font-size="14" fill="#a3a4b8">4,543</text>
+  <text x="211.6" y="91" text-anchor="end" font-size="14" fill="#ececf2">Multiview completed</text>
+  <rect x="223.6" y="76" width="572.8" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="804.4" y="91" font-size="14" fill="#a3a4b8">4,543</text>
+  <text x="211.6" y="127" text-anchor="end" font-size="14" fill="#ececf2">Rerank completed</text>
+  <rect x="223.6" y="112" width="572.8" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="804.4" y="127" font-size="14" fill="#a3a4b8">4,543</text>
+  <text x="211.6" y="163" text-anchor="end" font-size="14" fill="#ececf2">Inference completed</text>
+  <rect x="223.6" y="148" width="572.8" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="804.4" y="163" font-size="14" fill="#a3a4b8">4,543</text>
+  <text x="211.6" y="199" text-anchor="end" font-size="14" fill="#ececf2">Retained complete</text>
+  <rect x="223.6" y="184" width="572.8" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="804.4" y="199" font-size="14" fill="#a3a4b8">4,543</text>
+  <text x="211.6" y="235" text-anchor="end" font-size="14" fill="#ececf2">Published</text>
+  <rect x="223.6" y="220" width="572.8" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="804.4" y="235" font-size="14" fill="#a3a4b8">4,543</text>
+  <text x="211.6" y="271" text-anchor="end" font-size="14" fill="#ececf2">With an expression</text>
+  <rect x="223.6" y="256" width="296" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="527.6" y="271" font-size="14" fill="#a3a4b8">2,348</text>
+  <text x="211.6" y="307" text-anchor="end" font-size="14" fill="#ececf2">Complete empty</text>
+  <rect x="223.6" y="292" width="276.7" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="508.3" y="307" font-size="14" fill="#a3a4b8">2,195</text>
+  <text x="211.6" y="343" text-anchor="end" font-size="14" fill="#ececf2">Uncovered</text>
+  <rect x="223.6" y="328" width="0" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="231.6" y="343" font-size="14" fill="#a3a4b8">0</text>
+  <text x="211.6" y="379" text-anchor="end" font-size="14" fill="#ececf2">Failed</text>
+  <rect x="223.6" y="364" width="0" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="231.6" y="379" font-size="14" fill="#a3a4b8">0</text>
+  <text x="538.8" y="444" text-anchor="middle" font-size="14" fill="#a3a4b8">Targets</text>
+</svg>

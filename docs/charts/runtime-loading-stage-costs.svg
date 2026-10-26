@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 468" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Stage wall medians for the basis 50 fresh composition</title>
+  <desc id="d">Nested stage wall medians for the basis 50 fresh fixed-pool composition, showing the candidate chunk read and scoring against millisecond resolution, engine, head, preparation and serialization costs.</desc>
+  <rect width="960" height="468" rx="12" fill="#232434"/>
+  <line x1="248.8" y1="32" x2="248.8" y2="392" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="248.8" y="414" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="398" y1="32" x2="398" y2="392" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="398" y="414" text-anchor="middle" font-size="14" fill="#a3a4b8">2</text>
+  <line x1="547.2" y1="32" x2="547.2" y2="392" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="547.2" y="414" text-anchor="middle" font-size="14" fill="#a3a4b8">4</text>
+  <line x1="696.4" y1="32" x2="696.4" y2="392" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="696.4" y="414" text-anchor="middle" font-size="14" fill="#a3a4b8">6</text>
+  <line x1="845.6" y1="32" x2="845.6" y2="392" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="845.6" y="414" text-anchor="middle" font-size="14" fill="#a3a4b8">8</text>
+  <text x="236.8" y="55" text-anchor="end" font-size="14" fill="#ececf2">Receipt and settings</text>
+  <rect x="248.8" y="40" width="0.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="257.3" y="55" font-size="14" fill="#a3a4b8">0.0063</text>
+  <text x="236.8" y="91" text-anchor="end" font-size="14" fill="#ececf2">Engine creation</text>
+  <rect x="248.8" y="76" width="0" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="256.8" y="91" font-size="14" fill="#a3a4b8">0.0004</text>
+  <text x="236.8" y="127" text-anchor="end" font-size="14" fill="#ececf2">First connect and head</text>
+  <rect x="248.8" y="112" width="1.7" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="258.5" y="127" font-size="14" fill="#a3a4b8">0.0233</text>
+  <text x="236.8" y="163" text-anchor="end" font-size="14" fill="#ececf2">Summary read</text>
+  <rect x="248.8" y="148" width="17.9" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="274.7" y="163" font-size="14" fill="#a3a4b8">0.2402</text>
+  <text x="236.8" y="199" text-anchor="end" font-size="14" fill="#ececf2">Basis chunk read</text>
+  <rect x="248.8" y="184" width="5.6" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="262.4" y="199" font-size="14" fill="#a3a4b8">0.0756</text>
+  <text x="236.8" y="235" text-anchor="end" font-size="14" fill="#ececf2">Candidate chunk read</text>
+  <rect x="248.8" y="220" width="300.6" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="557.4" y="235" font-size="14" fill="#a3a4b8">4.0299</text>
+  <text x="236.8" y="271" text-anchor="end" font-size="14" fill="#ececf2">Engine disposal</text>
+  <rect x="248.8" y="256" width="0" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="256.8" y="271" font-size="14" fill="#a3a4b8">0.0004</text>
+  <text x="236.8" y="307" text-anchor="end" font-size="14" fill="#ececf2">Preparation</text>
+  <rect x="248.8" y="292" width="0.1" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="256.9" y="307" font-size="14" fill="#a3a4b8">0.0011</text>
+  <text x="236.8" y="343" text-anchor="end" font-size="14" fill="#ececf2">Scoring</text>
+  <rect x="248.8" y="328" width="461.9" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="718.7" y="343" font-size="14" fill="#a3a4b8">6.1915</text>
+  <text x="236.8" y="379" text-anchor="end" font-size="14" fill="#ececf2">Serialization</text>
+  <rect x="248.8" y="364" width="0.3" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="257.1" y="379" font-size="14" fill="#a3a4b8">0.0041</text>
+  <text x="547.2" y="444" text-anchor="middle" font-size="14" fill="#a3a4b8">Wall time (s)</text>
+</svg>

@@ -1,0 +1,17 @@
+{
+  "type": "bar",
+  "title": "Matched bounded read: peak and recorded growth",
+  "description": "Process peak and largest recorded sample growth for the materialized and bounded legs of the matched basis-50 read.",
+  "valueAxis": "Memory (MB)",
+  "categories": ["Materialized leg", "Bounded leg"],
+  "series": [
+    {
+      "name": "Process peak",
+      "values": [546.9, 171.5]
+    },
+    {
+      "name": "Largest recorded growth",
+      "values": [263.7, 10.8]
+    }
+  ]
+}

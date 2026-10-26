@@ -1,0 +1,21 @@
+{
+  "type": "bar",
+  "title": "Complete recommendation time by basket after remediation",
+  "description": "Three complete recommendation runs for the one-course, computing, math-heavy and expanded 49-course baskets, in seconds.",
+  "valueAxis": "Complete command time (s)",
+  "categories": ["One course", "Computing", "Math-heavy", "Expanded 49"],
+  "series": [
+    {
+      "name": "Run 1",
+      "values": [1.644, 1.705, 1.693, 2.697]
+    },
+    {
+      "name": "Run 2",
+      "values": [1.648, 1.728, 1.741, 2.76]
+    },
+    {
+      "name": "Run 3",
+      "values": [1.699, 1.738, 1.705, 2.7]
+    }
+  ]
+}

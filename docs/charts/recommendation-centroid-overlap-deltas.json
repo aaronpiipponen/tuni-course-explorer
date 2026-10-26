@@ -1,0 +1,17 @@
+{
+  "type": "bar",
+  "title": "Direction of whole-basis overlap change under centroid coverage",
+  "description": "Counts of retained courses whose whole-basis overlap percentage rises or falls when coverage uses course centroids instead of chunk pairs.",
+  "valueAxis": "Retained courses",
+  "categories": ["Basis 1", "Basis 10", "Basis 50"],
+  "series": [
+    {
+      "name": "Positive overlap delta",
+      "values": [26, 61, 225]
+    },
+    {
+      "name": "Negative overlap delta",
+      "values": [11, 8, 86]
+    }
+  ]
+}

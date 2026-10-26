@@ -397,6 +397,220 @@
           }
         ]
       }
+    },
+    {
+      "title": "Experiments",
+      "description": "The experiments behind the system: questions, setups, measurements, corrections and outcomes.",
+      "page": {
+        "id": "experiments",
+        "path": "docs/experiments/README.md",
+        "nav": "Experiments overview",
+        "children": [
+          {
+            "id": "inference-experiments",
+            "path": "docs/experiments/inference/README.md",
+            "nav": "Inference",
+            "children": [
+              {
+                "id": "inference-reference-answers-and-judging",
+                "path": "docs/experiments/inference/reference-answers-and-judging.md",
+                "nav": "Reference answers and judging",
+                "children": []
+              },
+              {
+                "id": "inference-local-model-hardware",
+                "path": "docs/experiments/inference/local-model-hardware-and-throughput.md",
+                "nav": "Local model hardware",
+                "children": []
+              },
+              {
+                "id": "inference-candidate-retrieval",
+                "path": "docs/experiments/inference/candidate-retrieval-and-reranking.md",
+                "nav": "Retrieval and reranking",
+                "children": []
+              },
+              {
+                "id": "inference-candidate-packet-selection",
+                "path": "docs/experiments/inference/candidate-packet-selection.md",
+                "nav": "Candidate packet selection",
+                "children": []
+              },
+              {
+                "id": "inference-confidence",
+                "path": "docs/experiments/inference/confidence-and-corrected-references.md",
+                "nav": "Confidence and corrections",
+                "children": []
+              },
+              {
+                "id": "inference-prompt-tuning",
+                "path": "docs/experiments/inference/prompt-and-structured-output-tuning.md",
+                "nav": "Prompt tuning",
+                "children": []
+              },
+              {
+                "id": "inference-held-out-quality",
+                "path": "docs/experiments/inference/held-out-model-quality.md",
+                "nav": "Held-out model quality",
+                "children": []
+              },
+              {
+                "id": "inference-full-catalogue-run",
+                "path": "docs/experiments/inference/full-catalogue-inference-run.md",
+                "nav": "Full-catalogue run",
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "search-and-translation-experiments",
+            "path": "docs/experiments/search-and-translation/README.md",
+            "nav": "Search and translation",
+            "children": [
+              {
+                "id": "translation-and-retrieval",
+                "path": "docs/experiments/search-and-translation/translation-and-retrieval.md",
+                "nav": "Translation and retrieval",
+                "children": []
+              },
+              {
+                "id": "semantic-retrieval",
+                "path": "docs/experiments/search-and-translation/semantic-retrieval.md",
+                "nav": "Semantic retrieval",
+                "children": []
+              },
+              {
+                "id": "lexical-matching-and-collation",
+                "path": "docs/experiments/search-and-translation/lexical-matching-and-collation.md",
+                "nav": "Lexical matching and collation",
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "recommendations-experiments",
+            "path": "docs/experiments/recommendations/README.md",
+            "nav": "Recommendations",
+            "children": [
+              {
+                "id": "recommendation-scoring-calibration",
+                "path": "docs/experiments/recommendations/scoring-calibration.md",
+                "nav": "Scoring calibration",
+                "children": []
+              },
+              {
+                "id": "recommendation-latency",
+                "path": "docs/experiments/recommendations/latency-diagnosis-and-remediation.md",
+                "nav": "Latency and remediation",
+                "children": []
+              },
+              {
+                "id": "recommendation-centroid-coverage",
+                "path": "docs/experiments/recommendations/centroid-coverage.md",
+                "nav": "Centroid coverage",
+                "children": []
+              },
+              {
+                "id": "recommendation-vectorization",
+                "path": "docs/experiments/recommendations/vectorization-and-narrow-reads.md",
+                "nav": "Vectorization and reads",
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "graph-and-route-experiments",
+            "path": "docs/experiments/graph-and-route-algorithms/README.md",
+            "nav": "Graph and route algorithms",
+            "children": [
+              {
+                "id": "minimum-credit-routes",
+                "path": "docs/experiments/graph-and-route-algorithms/minimum-credit-routes.md",
+                "nav": "Minimum-credit routes",
+                "children": []
+              },
+              {
+                "id": "structural-route-deduplication",
+                "path": "docs/experiments/graph-and-route-algorithms/structural-route-deduplication.md",
+                "nav": "Route deduplication",
+                "children": []
+              },
+              {
+                "id": "cyclic-graph-compilation",
+                "path": "docs/experiments/graph-and-route-algorithms/cyclic-graph-compilation.md",
+                "nav": "Cyclic graph compilation",
+                "children": []
+              },
+              {
+                "id": "compact-graph-identity",
+                "path": "docs/experiments/graph-and-route-algorithms/compact-graph-identity-and-projection.md",
+                "nav": "Compact graph identity",
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "runtime-storage-and-serving-experiments",
+            "path": "docs/experiments/runtime-storage-and-serving/README.md",
+            "nav": "Runtime, storage and serving",
+            "children": [
+              {
+                "id": "data-loading-and-connection-overheads",
+                "path": "docs/experiments/runtime-storage-and-serving/data-loading-and-connection-overheads.md",
+                "nav": "Data loading and overheads",
+                "children": []
+              },
+              {
+                "id": "read-memory-and-serialization",
+                "path": "docs/experiments/runtime-storage-and-serving/read-memory-and-serialization.md",
+                "nav": "Read memory and serialization",
+                "children": []
+              },
+              {
+                "id": "descriptive-chunk-caching",
+                "path": "docs/experiments/runtime-storage-and-serving/descriptive-chunk-caching.md",
+                "nav": "Descriptive chunk caching",
+                "children": []
+              },
+              {
+                "id": "serving-load-method",
+                "path": "docs/experiments/runtime-storage-and-serving/serving-load-method.md",
+                "nav": "Serving load method",
+                "children": []
+              },
+              {
+                "id": "endpoint-load-profiling",
+                "path": "docs/experiments/runtime-storage-and-serving/endpoint-load-profiling.md",
+                "nav": "Endpoint load profiling",
+                "children": []
+              },
+              {
+                "id": "serving-workers-and-admission",
+                "path": "docs/experiments/runtime-storage-and-serving/serving-workers-and-admission.md",
+                "nav": "Serving workers and admission",
+                "children": []
+              },
+              {
+                "id": "serving-cost-and-routing",
+                "path": "docs/experiments/runtime-storage-and-serving/serving-cost-and-routing.md",
+                "nav": "Serving cost and routing",
+                "children": []
+              },
+              {
+                "id": "serving-load-and-limits",
+                "path": "docs/experiments/runtime-storage-and-serving/serving-load-and-limits.md",
+                "nav": "Serving load and limits",
+                "children": []
+              },
+              {
+                "id": "curriculum-capture-and-replay",
+                "path": "docs/experiments/runtime-storage-and-serving/curriculum-capture-and-replay.md",
+                "nav": "Curriculum capture and replay",
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
     }
   ],
   "popular": []

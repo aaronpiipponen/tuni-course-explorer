@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 640" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Local fit routing and the supplied oversize route</title>
+  <desc id="d">A prepared complete packet is counted with the 8,192-token output cap and the 1,024-token
+  margin. The first local key, 131,072 tokens with MTP, receives it when that total fits, and the larger
+  163,840-token key without MTP receives it when only that key fits. When neither fits and no oversize
+  route is supplied, the product path ends in the context_exceeded capacity failure. The dashed branch
+  is the explicit route this run supplied, which sends the whole packet to DeepSeek V4.1 Flash for 23
+  targets.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="640" rx="12" fill="#232434"/>
+
+  <rect x="260" y="32" width="360" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="440" y="58" text-anchor="middle" font-size="16" fill="#ececf2">Prepared complete packet</text>
+  <text x="440" y="80" text-anchor="middle" font-size="14" fill="#a3a4b8">target course and 50 candidates</text>
+
+  <rect x="230" y="128" width="420" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="440" y="154" text-anchor="middle" font-size="16" fill="#ececf2">Prompt tokens and margin</text>
+  <text x="440" y="176" text-anchor="middle" font-size="14" fill="#a3a4b8">prompt + 8,192 output + 1,024 margin</text>
+
+  <rect x="260" y="224" width="360" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="440" y="250" text-anchor="middle" font-size="16" fill="#ececf2">Fits the 131,072-token MTP key?</text>
+  <text x="440" y="272" text-anchor="middle" font-size="14" fill="#a3a4b8">first key in configuration order</text>
+
+  <rect x="660" y="224" width="252" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="786" y="250" text-anchor="middle" font-size="16" fill="#ececf2">Local generation</text>
+  <text x="786" y="272" text-anchor="middle" font-size="14" fill="#a3a4b8">Qwen3.8-27B, MTP key</text>
+
+  <rect x="260" y="320" width="360" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="440" y="346" text-anchor="middle" font-size="16" fill="#ececf2">Fits the 163,840-token key?</text>
+  <text x="440" y="368" text-anchor="middle" font-size="14" fill="#a3a4b8">larger key without MTP</text>
+
+  <rect x="660" y="320" width="252" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="786" y="346" text-anchor="middle" font-size="16" fill="#ececf2">Local generation</text>
+  <text x="786" y="368" text-anchor="middle" font-size="14" fill="#a3a4b8">Qwen3.8-27B, no-MTP</text>
+
+  <rect x="48" y="448" width="400" height="64" rx="8" fill="#2e3045" stroke="#a98ae0" stroke-width="1.5"/>
+  <text x="248" y="474" text-anchor="middle" font-size="16" fill="#ececf2">Context exceeded</text>
+  <text x="248" y="496" text-anchor="middle" font-size="14" fill="#a3a4b8">context_exceeded, no oversize route</text>
+
+  <rect x="660" y="448" width="252" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="786" y="474" text-anchor="middle" font-size="16" fill="#ececf2">DeepSeek V4.1 Flash</text>
+  <text x="786" y="496" text-anchor="middle" font-size="14" fill="#a3a4b8">whole packet, 23 targets</text>
+
+  <line x1="440" y1="96" x2="440" y2="128" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="440" y1="192" x2="440" y2="224" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <line x1="620" y1="256" x2="660" y2="256" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="640" y="248" text-anchor="middle" font-size="14" fill="#a3a4b8">yes</text>
+  <line x1="440" y1="288" x2="440" y2="320" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="448" y="308" font-size="14" fill="#a3a4b8">no</text>
+
+  <line x1="620" y1="352" x2="660" y2="352" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="640" y="344" text-anchor="middle" font-size="14" fill="#a3a4b8">yes</text>
+
+  <polyline points="440,384 440,400 248,400 248,448" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="256" y="432" font-size="14" fill="#a3a4b8">no local key fits</text>
+
+  <polyline points="440,400 786,400 786,448" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+  <text x="480" y="428" font-size="14" fill="#a3a4b8">Explicit route supplied by this run</text>
+
+  <rect x="48" y="536" width="400" height="76" rx="8" fill="none" stroke="#4a4c6b" stroke-width="1.5"/>
+  <line x1="64" y1="564" x2="104" y2="564" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="120" y="569" font-size="14" fill="#a3a4b8">Product path</text>
+  <line x1="64" y1="592" x2="104" y2="592" stroke="#a3a4b8" stroke-width="1.5"
+        stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+  <text x="120" y="597" font-size="14" fill="#a3a4b8">Explicit route supplied by this run</text>
+</svg>

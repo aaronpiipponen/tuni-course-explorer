@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 688" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Exact attempt and greedy fallback in mixed scenarios</title>
+  <desc id="d">Baseline and prototype exact-attempt and greedy-fallback time on five empty-basis scenarios where the exact attempt exceeded the allocation limit.</desc>
+  <rect width="960" height="688" rx="12" fill="#232434"/>
+  <rect x="61" y="33" width="14" height="14" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="96" y="45" font-size="14" fill="#a3a4b8">Baseline exact</text>
+  <rect x="250.6" y="33" width="14" height="14" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="285.6" y="45" font-size="14" fill="#a3a4b8">Baseline greedy</text>
+  <rect x="448.6" y="33" width="14" height="14" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="483.6" y="45" font-size="14" fill="#a3a4b8">Prototype exact</text>
+  <rect x="646.6" y="33" width="14" height="14" fill="#a7e36b" stroke="none" stroke-width="1.5"/>
+  <text x="681.6" y="45" font-size="14" fill="#a3a4b8">Prototype greedy</text>
+  <line x1="332.8" y1="72" x2="332.8" y2="612" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="332.8" y="634" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="456.8" y1="72" x2="456.8" y2="612" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="456.8" y="634" text-anchor="middle" font-size="14" fill="#a3a4b8">5,000</text>
+  <line x1="580.8" y1="72" x2="580.8" y2="612" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="580.8" y="634" text-anchor="middle" font-size="14" fill="#a3a4b8">10,000</text>
+  <line x1="704.8" y1="72" x2="704.8" y2="612" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="704.8" y="634" text-anchor="middle" font-size="14" fill="#a3a4b8">15,000</text>
+  <line x1="828.8" y1="72" x2="828.8" y2="612" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="828.8" y="634" text-anchor="middle" font-size="14" fill="#a3a4b8">20,000</text>
+  <text x="320.8" y="131" text-anchor="end" font-size="14" fill="#ececf2">MATH.MA.880 recommended+inferred</text>
+  <rect x="332.8" y="80" width="127.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="468.3" y="95" font-size="14" fill="#a3a4b8">5,141</text>
+  <rect x="332.8" y="104" width="35.9" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="376.7" y="119" font-size="14" fill="#a3a4b8">1,449.5</text>
+  <rect x="332.8" y="128" width="55.1" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="395.9" y="143" font-size="14" fill="#a3a4b8">2,221</text>
+  <rect x="332.8" y="152" width="36.2" height="20" rx="2" fill="#a7e36b" stroke="none" stroke-width="1.5"/>
+  <text x="377" y="167" font-size="14" fill="#a3a4b8">1,459</text>
+  <text x="320.8" y="239" text-anchor="end" font-size="14" fill="#ececf2">MATH.MA.725 recommended+inferred</text>
+  <rect x="332.8" y="188" width="125.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="466.3" y="203" font-size="14" fill="#a3a4b8">5,058.8</text>
+  <rect x="332.8" y="212" width="30.9" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="371.7" y="227" font-size="14" fill="#a3a4b8">1,247</text>
+  <rect x="332.8" y="236" width="54.1" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="394.9" y="251" font-size="14" fill="#a3a4b8">2,182.7</text>
+  <rect x="332.8" y="260" width="30.1" height="20" rx="2" fill="#a7e36b" stroke="none" stroke-width="1.5"/>
+  <text x="370.9" y="275" font-size="14" fill="#a3a4b8">1,213</text>
+  <text x="320.8" y="347" text-anchor="end" font-size="14" fill="#ececf2">PSY.324 recommended+inferred</text>
+  <rect x="332.8" y="296" width="98.3" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="439.1" y="311" font-size="14" fill="#a3a4b8">3,962.8</text>
+  <rect x="332.8" y="320" width="0.9" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="341.7" y="335" font-size="14" fill="#a3a4b8">35</text>
+  <rect x="332.8" y="344" width="69" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="409.8" y="359" font-size="14" fill="#a3a4b8">2,781.4</text>
+  <rect x="332.8" y="368" width="0.9" height="20" rx="2" fill="#a7e36b" stroke="none" stroke-width="1.5"/>
+  <text x="341.7" y="383" font-size="14" fill="#a3a4b8">34.5</text>
+  <text x="320.8" y="455" text-anchor="end" font-size="14" fill="#ececf2">YKT.SOA.303 recommended+inferred</text>
+  <rect x="332.8" y="404" width="170.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="511.3" y="419" font-size="14" fill="#a3a4b8">6,873.3</text>
+  <rect x="332.8" y="428" width="112.5" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="453.3" y="443" font-size="14" fill="#a3a4b8">4,534.7</text>
+  <rect x="332.8" y="452" width="136.9" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="477.7" y="467" font-size="14" fill="#a3a4b8">5,520.8</text>
+  <rect x="332.8" y="476" width="109" height="20" rx="2" fill="#a7e36b" stroke="none" stroke-width="1.5"/>
+  <text x="449.8" y="491" font-size="14" fill="#a3a4b8">4,394.2</text>
+  <text x="320.8" y="563" text-anchor="end" font-size="14" fill="#ececf2">YKT.SOA.303 active-only-off</text>
+  <rect x="332.8" y="512" width="169.2" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="510" y="527" font-size="14" fill="#a3a4b8">6,821.9</text>
+  <rect x="332.8" y="536" width="453.7" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="794.5" y="551" font-size="14" fill="#a3a4b8">18,294.1</text>
+  <rect x="332.8" y="560" width="217.6" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="558.4" y="575" font-size="14" fill="#a3a4b8">8,772.8</text>
+  <rect x="332.8" y="584" width="455.1" height="20" rx="2" fill="#a7e36b" stroke="none" stroke-width="1.5"/>
+  <text x="795.9" y="599" font-size="14" fill="#a3a4b8">18,350.1</text>
+  <text x="580.8" y="664" text-anchor="middle" font-size="14" fill="#a3a4b8">Time (ms)</text>
+</svg>

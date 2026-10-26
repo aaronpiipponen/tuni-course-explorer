@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 400" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Redis kernel and logical memory by key count</title>
+  <desc id="d">Kernel cgroup peak and retained charge, and Redis logical run peak, for 1,000, 10,000 and 100,000 opaque admission keys, in megabytes.</desc>
+  <rect width="960" height="400" rx="12" fill="#232434"/>
+  <rect x="61" y="33" width="14" height="14" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="96" y="45" font-size="14" fill="#a3a4b8">Kernel peak</text>
+  <rect x="225.4" y="33" width="14" height="14" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="260.4" y="45" font-size="14" fill="#a3a4b8">Kernel retained after expiry</text>
+  <rect x="532.6" y="33" width="14" height="14" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="567.6" y="45" font-size="14" fill="#a3a4b8">Redis run peak</text>
+  <line x1="164.8" y1="72" x2="164.8" y2="324" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="164.8" y="346" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="295.9" y1="72" x2="295.9" y2="324" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="295.9" y="346" text-anchor="middle" font-size="14" fill="#a3a4b8">5</text>
+  <line x1="427" y1="72" x2="427" y2="324" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="427" y="346" text-anchor="middle" font-size="14" fill="#a3a4b8">10</text>
+  <line x1="558.2" y1="72" x2="558.2" y2="324" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="558.2" y="346" text-anchor="middle" font-size="14" fill="#a3a4b8">15</text>
+  <line x1="689.3" y1="72" x2="689.3" y2="324" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="689.3" y="346" text-anchor="middle" font-size="14" fill="#a3a4b8">20</text>
+  <line x1="820.4" y1="72" x2="820.4" y2="324" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="820.4" y="346" text-anchor="middle" font-size="14" fill="#a3a4b8">25</text>
+  <text x="152.8" y="119" text-anchor="end" font-size="14" fill="#ececf2">1,000 keys</text>
+  <rect x="164.8" y="80" width="388.2" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="561" y="95" font-size="14" fill="#a3a4b8">14.802944</text>
+  <rect x="164.8" y="104" width="262.2" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="435" y="119" font-size="14" fill="#a3a4b8">9.998336</text>
+  <rect x="164.8" y="128" width="39.5" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="212.3" y="143" font-size="14" fill="#a3a4b8">1.50464</text>
+  <text x="152.8" y="203" text-anchor="end" font-size="14" fill="#ececf2">10,000 keys</text>
+  <rect x="164.8" y="164" width="385.8" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="558.6" y="179" font-size="14" fill="#a3a4b8">14.712832</text>
+  <rect x="164.8" y="188" width="291.8" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="464.6" y="203" font-size="14" fill="#a3a4b8">11.128832</text>
+  <rect x="164.8" y="212" width="70.5" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="243.3" y="227" font-size="14" fill="#a3a4b8">2.686624</text>
+  <text x="152.8" y="287" text-anchor="end" font-size="14" fill="#ececf2">100,000 keys</text>
+  <rect x="164.8" y="248" width="588" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="760.8" y="263" font-size="14" fill="#a3a4b8">22.421504</text>
+  <rect x="164.8" y="272" width="581.1" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="753.9" y="287" font-size="14" fill="#a3a4b8">22.15936</text>
+  <rect x="164.8" y="296" width="353.6" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="526.4" y="311" font-size="14" fill="#a3a4b8">13.483296</text>
+  <text x="492.6" y="376" text-anchor="middle" font-size="14" fill="#a3a4b8">Memory (MB)</text>
+</svg>

@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 252" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Complete preparation time for the four cyclic roots after the cycle cut</title>
+  <desc id="d">Complete command wall time in seconds for the four spot-checked roots, with Recommended and Inferred on.</desc>
+  <rect width="960" height="252" rx="12" fill="#232434"/>
+  <line x1="114.4" y1="32" x2="114.4" y2="176" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="114.4" y="198" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="301.4" y1="32" x2="301.4" y2="176" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="301.4" y="198" text-anchor="middle" font-size="14" fill="#a3a4b8">1</text>
+  <line x1="488.4" y1="32" x2="488.4" y2="176" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="488.4" y="198" text-anchor="middle" font-size="14" fill="#a3a4b8">2</text>
+  <line x1="675.4" y1="32" x2="675.4" y2="176" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="675.4" y="198" text-anchor="middle" font-size="14" fill="#a3a4b8">3</text>
+  <line x1="862.4" y1="32" x2="862.4" y2="176" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="862.4" y="198" text-anchor="middle" font-size="14" fill="#a3a4b8">4</text>
+  <text x="102.4" y="55" text-anchor="end" font-size="14" fill="#ececf2">Root A</text>
+  <rect x="114.4" y="40" width="516.1" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="638.5" y="55" font-size="14" fill="#a3a4b8">2.76</text>
+  <text x="102.4" y="91" text-anchor="end" font-size="14" fill="#ececf2">Root B</text>
+  <rect x="114.4" y="76" width="518" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="640.4" y="91" font-size="14" fill="#a3a4b8">2.77</text>
+  <text x="102.4" y="127" text-anchor="end" font-size="14" fill="#ececf2">Root C</text>
+  <rect x="114.4" y="112" width="441.3" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="563.7" y="127" font-size="14" fill="#a3a4b8">2.36</text>
+  <text x="102.4" y="163" text-anchor="end" font-size="14" fill="#ececf2">Root D</text>
+  <rect x="114.4" y="148" width="562.9" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="685.3" y="163" font-size="14" fill="#a3a4b8">3.01</text>
+  <text x="488.4" y="228" text-anchor="middle" font-size="14" fill="#a3a4b8">Complete command time (s)</text>
+</svg>

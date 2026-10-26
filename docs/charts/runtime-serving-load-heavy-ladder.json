@@ -1,0 +1,10 @@
+{
+  "type": "bar",
+  "title": "Heavy request p50 at eleven heavy levels",
+  "description": "Eleven steady heavy levels from one to 50 virtual users. Heavy p50 rises from 12,755 ms at one virtual user to 34,138 ms at two and lies between 64,718 and 78,883 ms from three to 50.",
+  "valueAxis": "Latency (ms)",
+  "categories": ["1 VU", "2 VUs", "3 VUs", "5 VUs", "6 VUs", "8 VUs", "12 VUs", "16 VUs", "24 VUs", "32 VUs", "50 VUs"],
+  "series": [
+    { "name": "Heavy p50", "values": [12755, 34138, 65664, 66253, 67822, 66499, 64718, 65460, 65319, 78883, 70236] }
+  ]
+}

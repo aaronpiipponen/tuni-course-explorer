@@ -14,4 +14,6 @@ One processing cycle advances through the stages multiview, rerank, inference, a
 
 A processing marker per canonical course holds the hash of its teaching text, whether it was processed, a pointer to its accepted proposal, and the operator disposition. An operator marks one target done or failed, and a marker carries no disposition when the stage schedules that target automatically. A change to the effective text resets the marker. Publication writes a stored inferred set as one whole accepted result, so a target has one set at a time. A target with no accepted result and no operator decision is uncovered, and an operator-done target completes with no inferred output. [Inference coverage](/docs/reference/glossary.md#inference) reports the counts behind those states, and [Inference scheduling and disposition](/docs/backend/inference/inference-scheduling.md) states the fit rule and the disposition outcomes.
 
+[Inference experiments](/docs/experiments/inference/README.md) reports the fit, retrieval, prompt, held-out quality, and full-catalogue measurements behind the selected model, the two context keys, and the policy that applies no filter to the output.
+
 The module layout, the stored identities, and the checkpoint contract behind this behavior are described in [Inference pipeline](/docs/backend/inference/inference-pipeline.md).

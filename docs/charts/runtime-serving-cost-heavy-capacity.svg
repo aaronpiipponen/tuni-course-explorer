@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 216" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Measured heavy recommendation rate</title>
+  <desc id="d">Full-run basis-50 recommendation completions per minute at one, two and three heavy virtual users. Heavy work concentrated on one worker process, carrying 98.7 percent of web CPU at one virtual user and 99.4 percent at three. These rates are not a four-worker-process aggregate.</desc>
+  <rect width="960" height="216" rx="12" fill="#232434"/>
+  <line x1="190" y1="32" x2="190" y2="140" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="190" y="162" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="322.8" y1="32" x2="322.8" y2="140" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="322.8" y="162" text-anchor="middle" font-size="14" fill="#a3a4b8">2</text>
+  <line x1="455.6" y1="32" x2="455.6" y2="140" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="455.6" y="162" text-anchor="middle" font-size="14" fill="#a3a4b8">4</text>
+  <line x1="588.4" y1="32" x2="588.4" y2="140" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="588.4" y="162" text-anchor="middle" font-size="14" fill="#a3a4b8">6</text>
+  <line x1="721.2" y1="32" x2="721.2" y2="140" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="721.2" y="162" text-anchor="middle" font-size="14" fill="#a3a4b8">8</text>
+  <line x1="854" y1="32" x2="854" y2="140" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="854" y="162" text-anchor="middle" font-size="14" fill="#a3a4b8">10</text>
+  <text x="178" y="55" text-anchor="end" font-size="14" fill="#ececf2">One heavy VU</text>
+  <rect x="190" y="40" width="430" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="628" y="55" font-size="14" fill="#a3a4b8">6.476</text>
+  <text x="178" y="91" text-anchor="end" font-size="14" fill="#ececf2">Two heavy VUs</text>
+  <rect x="190" y="76" width="331.1" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="529.1" y="91" font-size="14" fill="#a3a4b8">4.986</text>
+  <text x="178" y="127" text-anchor="end" font-size="14" fill="#ececf2">Three heavy VUs</text>
+  <rect x="190" y="112" width="595.8" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="793.8" y="127" font-size="14" fill="#a3a4b8">8.973</text>
+  <text x="522" y="192" text-anchor="middle" font-size="14" fill="#a3a4b8">Completed calls per minute</text>
+</svg>

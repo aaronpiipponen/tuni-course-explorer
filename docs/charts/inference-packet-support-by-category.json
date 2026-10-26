@@ -1,0 +1,11 @@
+{
+  "type": "bar",
+  "title": "Judged support of differing findings by category and packet",
+  "description": "Judged support score for findings on which the CE-only and Qwen3 0.6B RRF packet answers differed, for all differing findings and for the required, recommended and equivalence categories.",
+  "valueAxis": "Support score (0 to 1)",
+  "categories": ["All differing findings", "Required options", "Recommended options", "Equivalence groups"],
+  "series": [
+    { "name": "CE-only top 50", "values": [0.63, 0.45, 0.77, 0.85] },
+    { "name": "Qwen3 0.6B RRF top 50", "values": [0.56, 0.3, 0.71, 0.91] }
+  ]
+}

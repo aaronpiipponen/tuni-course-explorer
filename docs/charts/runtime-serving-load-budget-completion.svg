@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 388" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Heavy completions at the two saturated budgets</title>
+  <desc id="d">Completions at 3, 6, 12 and 24 heavy virtual users under a saturated budget of 24 and of 40 core-seconds.</desc>
+  <rect width="960" height="388" rx="12" fill="#232434"/>
+  <rect x="61" y="33" width="14" height="14" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="96" y="45" font-size="14" fill="#a3a4b8">24 core-seconds</text>
+  <rect x="259" y="33" width="14" height="14" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="294" y="45" font-size="14" fill="#a3a4b8">40 core-seconds</text>
+  <line x1="181.6" y1="72" x2="181.6" y2="312" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="181.6" y="334" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="322.8" y1="72" x2="322.8" y2="312" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="322.8" y="334" text-anchor="middle" font-size="14" fill="#a3a4b8">2</text>
+  <line x1="464" y1="72" x2="464" y2="312" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="464" y="334" text-anchor="middle" font-size="14" fill="#a3a4b8">4</text>
+  <line x1="605.2" y1="72" x2="605.2" y2="312" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="605.2" y="334" text-anchor="middle" font-size="14" fill="#a3a4b8">6</text>
+  <line x1="746.4" y1="72" x2="746.4" y2="312" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="746.4" y="334" text-anchor="middle" font-size="14" fill="#a3a4b8">8</text>
+  <line x1="887.6" y1="72" x2="887.6" y2="312" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="887.6" y="334" text-anchor="middle" font-size="14" fill="#a3a4b8">10</text>
+  <text x="169.6" y="107" text-anchor="end" font-size="14" fill="#ececf2">3 heavy users</text>
+  <rect x="181.6" y="80" width="353" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="542.6" y="95" font-size="14" fill="#a3a4b8">5</text>
+  <rect x="181.6" y="104" width="564.8" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="754.4" y="119" font-size="14" fill="#a3a4b8">8</text>
+  <text x="169.6" y="167" text-anchor="end" font-size="14" fill="#ececf2">6 heavy users</text>
+  <rect x="181.6" y="140" width="353" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="542.6" y="155" font-size="14" fill="#a3a4b8">5</text>
+  <rect x="181.6" y="164" width="564.8" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="754.4" y="179" font-size="14" fill="#a3a4b8">8</text>
+  <text x="169.6" y="227" text-anchor="end" font-size="14" fill="#ececf2">12 heavy users</text>
+  <rect x="181.6" y="200" width="353" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="542.6" y="215" font-size="14" fill="#a3a4b8">5</text>
+  <rect x="181.6" y="224" width="564.8" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="754.4" y="239" font-size="14" fill="#a3a4b8">8</text>
+  <text x="169.6" y="287" text-anchor="end" font-size="14" fill="#ececf2">24 heavy users</text>
+  <rect x="181.6" y="260" width="282.4" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="472" y="275" font-size="14" fill="#a3a4b8">4</text>
+  <rect x="181.6" y="284" width="635.4" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="825" y="299" font-size="14" fill="#a3a4b8">9</text>
+  <text x="534.6" y="364" text-anchor="middle" font-size="14" fill="#a3a4b8">Completed 200 responses</text>
+</svg>

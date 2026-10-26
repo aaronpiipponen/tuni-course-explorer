@@ -24,7 +24,7 @@ A nearest search then asks for the closest chunks to each basis chunk, in the sa
 
 The search decides the candidates, and the greatest raw cosine of each course, mapped to a percentage from 0 to 100, orders the pool. Each hit names one candidate course, the hits of one course are reduced to a single entry that keeps the greatest raw cosine, and that percentage never reaches a result. A hit whose stored chunk belongs to a version that is not the representative version of its course is dropped, so only a current representative becomes a candidate.
 
-The measured text is read apart from the search. Once the pool is fixed, every compatible content and learning-outcomes chunk of each surviving candidate takes part in the measurement, so a candidate is measured over all of its descriptive text rather than the chunk that matched. The measured read selects the content and learning-outcomes rows alone.
+The measured text is read apart from the search. Once the pool is fixed, every compatible content and learning-outcomes chunk of each surviving candidate takes part in the measurement, so a candidate is measured over all of its descriptive text rather than the chunk that matched. The measured read selects the content and learning-outcomes rows alone. The measured saving of that projection is recorded in [Recommendation vectorization and narrow reads](/docs/experiments/recommendations/vectorization-and-narrow-reads.md#narrow-read-results).
 
 The activity scope applies to the pool. Under active only an inactive course is never proposed, and under the all-courses scope it takes part like any other candidate. An inactive basis course contributes its chunks to the profile.
 

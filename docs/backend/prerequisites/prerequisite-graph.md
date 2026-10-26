@@ -216,3 +216,5 @@ configured limit, the course, node, edge and element counts and whether the brow
 A graph whose element count is above the limit is reported with `display=null`, and the report
 carries the solver structure, the counts and the located reasons. The refusal affects the
 drawing only: the calculation and the separate route calculation give the same result either way.
+
+[Compact graph identity and projection](/docs/experiments/graph-and-route-algorithms/compact-graph-identity-and-projection.md#drawing-allowance) gives the drawings allowed and refused at the 500-element limit.

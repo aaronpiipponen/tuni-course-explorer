@@ -1,0 +1,22 @@
+{
+  "type": "bar",
+  "title": "Interactive catalogue reads under concurrent heavy calls",
+  "description": "First cold and warm-maximum interactive catalogue read in seconds for the baseline and the 67.109 MB bound at two and four process equivalents.",
+  "valueAxis": "Catalogue read (s)",
+  "categories": [
+    "Two equivalents, baseline",
+    "Two equivalents, 67.109 MB bound",
+    "Four equivalents, baseline",
+    "Four equivalents, 67.109 MB bound"
+  ],
+  "series": [
+    {
+      "name": "First cold read",
+      "values": [2.206, 2.23, 2.337, 2.183]
+    },
+    {
+      "name": "Warm maximum",
+      "values": [0.636, 0.631, 0.872, 0.564]
+    }
+  ]
+}

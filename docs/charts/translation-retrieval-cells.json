@@ -1,0 +1,18 @@
+{
+  "type": "bar",
+  "title": "Translation retrieval by cell",
+  "description": "Top-1 rate and mean reciprocal rank for the six field and target-language cells of the 60-case translation evaluation, each cell holding 10 cases.",
+  "valueAxis": "Rate (0 to 1)",
+  "categories": [
+    "Name, Finnish",
+    "Name, English",
+    "Content, Finnish",
+    "Content, English",
+    "Learning outcomes, Finnish",
+    "Learning outcomes, English"
+  ],
+  "series": [
+    { "name": "Top-1 rate", "values": [0.9, 1.0, 1.0, 1.0, 1.0, 1.0] },
+    { "name": "Mean reciprocal rank", "values": [0.925, 1.0, 1.0, 1.0, 1.0, 1.0] }
+  ]
+}

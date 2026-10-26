@@ -1,0 +1,21 @@
+{
+  "type": "bar",
+  "title": "Findings kept, demoted and dropped by the correction",
+  "description": "The 386 emitted findings by category and correction action. Demotion to recommended applies to required options only, and 45 of the 80 kept equivalence groups are kept by exception.",
+  "valueAxis": "Findings",
+  "categories": [
+    "Required, kept",
+    "Required, demoted",
+    "Required, dropped",
+    "Recommended, kept",
+    "Recommended, dropped",
+    "Equivalence, kept",
+    "Equivalence, dropped"
+  ],
+  "series": [
+    {
+      "name": "Findings",
+      "values": [97, 56, 46, 86, 15, 80, 6]
+    }
+  ]
+}

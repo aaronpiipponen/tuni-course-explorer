@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 504" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Interactive probe p95 at eleven heavy levels</title>
+  <desc id="d">Eleven steady heavy levels from one to 50 virtual users. The probe p95 stays between 95 and 198 ms up to 32 virtual users and reaches 388 ms at 50.</desc>
+  <rect width="960" height="504" rx="12" fill="#232434"/>
+  <line x1="114.4" y1="32" x2="114.4" y2="428" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="114.4" y="450" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="303.5" y1="32" x2="303.5" y2="428" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="303.5" y="450" text-anchor="middle" font-size="14" fill="#a3a4b8">100</text>
+  <line x1="492.6" y1="32" x2="492.6" y2="428" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="492.6" y="450" text-anchor="middle" font-size="14" fill="#a3a4b8">200</text>
+  <line x1="681.7" y1="32" x2="681.7" y2="428" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="681.7" y="450" text-anchor="middle" font-size="14" fill="#a3a4b8">300</text>
+  <line x1="870.8" y1="32" x2="870.8" y2="428" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="870.8" y="450" text-anchor="middle" font-size="14" fill="#a3a4b8">400</text>
+  <text x="102.4" y="55" text-anchor="end" font-size="14" fill="#ececf2">1 VU</text>
+  <rect x="114.4" y="40" width="179.6" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="302" y="55" font-size="14" fill="#a3a4b8">95</text>
+  <text x="102.4" y="91" text-anchor="end" font-size="14" fill="#ececf2">2 VUs</text>
+  <rect x="114.4" y="76" width="270.4" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="392.8" y="91" font-size="14" fill="#a3a4b8">143</text>
+  <text x="102.4" y="127" text-anchor="end" font-size="14" fill="#ececf2">3 VUs</text>
+  <rect x="114.4" y="112" width="313.9" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="436.3" y="127" font-size="14" fill="#a3a4b8">166</text>
+  <text x="102.4" y="163" text-anchor="end" font-size="14" fill="#ececf2">5 VUs</text>
+  <rect x="114.4" y="148" width="253.4" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="375.8" y="163" font-size="14" fill="#a3a4b8">134</text>
+  <text x="102.4" y="199" text-anchor="end" font-size="14" fill="#ececf2">6 VUs</text>
+  <rect x="114.4" y="184" width="249.6" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="372" y="199" font-size="14" fill="#a3a4b8">132</text>
+  <text x="102.4" y="235" text-anchor="end" font-size="14" fill="#ececf2">8 VUs</text>
+  <rect x="114.4" y="220" width="192.9" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="315.3" y="235" font-size="14" fill="#a3a4b8">102</text>
+  <text x="102.4" y="271" text-anchor="end" font-size="14" fill="#ececf2">12 VUs</text>
+  <rect x="114.4" y="256" width="278" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="400.4" y="271" font-size="14" fill="#a3a4b8">147</text>
+  <text x="102.4" y="307" text-anchor="end" font-size="14" fill="#ececf2">16 VUs</text>
+  <rect x="114.4" y="292" width="217.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="339.9" y="307" font-size="14" fill="#a3a4b8">115</text>
+  <text x="102.4" y="343" text-anchor="end" font-size="14" fill="#ececf2">24 VUs</text>
+  <rect x="114.4" y="328" width="374.4" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="496.8" y="343" font-size="14" fill="#a3a4b8">198</text>
+  <text x="102.4" y="379" text-anchor="end" font-size="14" fill="#ececf2">32 VUs</text>
+  <rect x="114.4" y="364" width="336.6" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="459" y="379" font-size="14" fill="#a3a4b8">178</text>
+  <text x="102.4" y="415" text-anchor="end" font-size="14" fill="#ececf2">50 VUs</text>
+  <rect x="114.4" y="400" width="733.7" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="856.1" y="415" font-size="14" fill="#a3a4b8">388</text>
+  <text x="492.6" y="480" text-anchor="middle" font-size="14" fill="#a3a4b8">Latency (ms)</text>
+</svg>

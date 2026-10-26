@@ -1,0 +1,17 @@
+{
+  "type": "bar",
+  "title": "Fixed-pool composition wall medians",
+  "description": "Whole-leg wall medians for the float64 chunk-pair composition and the float64 centroid composition on the three fixed recommendation pools.",
+  "valueAxis": "Wall median (s)",
+  "categories": ["Basis 1", "Basis 10", "Basis 50"],
+  "series": [
+    {
+      "name": "Chunk-pair A",
+      "values": [0.144528, 0.96081, 4.968174]
+    },
+    {
+      "name": "Vectorized centroid B",
+      "values": [0.142583, 0.954318, 5.010143]
+    }
+  ]
+}

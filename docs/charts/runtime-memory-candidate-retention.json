@@ -1,0 +1,13 @@
+{
+  "type": "bar",
+  "title": "Resident growth on the basis-50 candidate read",
+  "description": "Resident growth after the basis-50 candidate read for the full carrier read, the descriptive read and the streamed 512-row read.",
+  "valueAxis": "Resident growth (MB)",
+  "categories": ["Full candidate read", "Descriptive candidate read", "Streamed candidate, 512 rows"],
+  "series": [
+    {
+      "name": "Resident growth",
+      "values": [233.9, 18.7, 15.5]
+    }
+  ]
+}

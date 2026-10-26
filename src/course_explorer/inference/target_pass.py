@@ -1,22 +1,11 @@
-"""Deterministic request rendering and one route-budgeted complete-target call for any execution route.
+"""Render one deterministic complete-target request and run one route-budgeted call.
 
-This module owns the one route-budgeted bridge between a label-free operational CE-only packet and a
-single whole-target model request. :func:`render_target_request` renders one deterministic
-same-schema request, and :func:`run_target` runs exactly one complete-target call through the shared
-generation provider and durable inference-evidence repository using the operational CE-only work
-identity and the selected execution profile.
-
-Everything here is label-free: no official prerequisite structure, post-output rank/recall, oracle
-answer, or measured quality enters packet construction, request rendering, or work identity.
-Required, recommended, equivalence, and routing output stay one indivisible validated result, and a
-broad or transitive foundation can never be accepted as a direct option. No production packet
-policy, confidence threshold, or model/routing policy is chosen here.
-
-This is one target's whole-target writer, not a catalogue job: one call owns one target, and the
-writer owns that route's generation-request loop, unbounded on a local route, capped at a bounded
-route's own per-pass request budget. The one completion row is written only for an accepted
-result. Every real request/output/semantic failure marks the work failed and appends one safe
-single-attempt episode before the next request.
+Request rendering reads the label-free packet and the versioned prompt pack, and the work identity
+binds the compact selection reference digest to the rendered request digest. One call owns one
+target. The writer runs that route's generation loop, unbounded on a local route and at most
+``provider.max_attempts`` requests per pass on a bounded route, and writes the completion row only
+for a result that passes strict validation. A failed request or invalid output marks the work failed
+and appends one safe single-attempt episode.
 """
 
 from __future__ import annotations
@@ -87,7 +76,12 @@ class TargetGenerationResult(Protocol):
     """
 
     @property
-    def raw_json(self) -> str: ...
+    def raw_json(self) -> str:
+        """Return the provider response as JSON text.
+
+        The writer parses this text against the configured result schema.
+        """
+        ...
 
 
 class TargetGenerationProvider(Protocol):
@@ -100,10 +94,21 @@ class TargetGenerationProvider(Protocol):
     """
 
     @property
-    def max_attempts(self) -> int: ...
+    def max_attempts(self) -> int:
+        """Return the number of requests one bounded route pass may make.
+
+        The writer applies this budget to every route whose execution profile is not ``local``.
+        """
+        ...
 
     @property
-    def retry_backoff_seconds(self) -> float: ...
+    def retry_backoff_seconds(self) -> float:
+        """Return the initial backoff in seconds after a failed request on this route.
+
+        The writer caps the wait at ``inference_retry_max_backoff_seconds`` and doubles it after
+        each failure up to that cap.
+        """
+        ...
 
     def generate_json(
         self,
@@ -114,14 +119,21 @@ class TargetGenerationProvider(Protocol):
         json_schema: Mapping[str, object],
         attempt_ordinal: int,
         first_attempt: bool,
-    ) -> TargetGenerationResult: ...
+    ) -> TargetGenerationResult:
+        """Return one generation response for the supplied prompts and schema.
+
+        The writer supplies the reserved durable attempt ordinal and the first-attempt flag. A route
+        implements the call over its own transport and returns the response JSON text through
+        :class:`TargetGenerationResult`.
+        """
+        ...
 
 
 def target_result_schema_name(schema_version: str) -> str:
-    """Return the closed request schema name for one configured schema version.
+    """Return the closed request schema name for one result schema version.
 
-    Validation delegates to the single `target_result_model` owner so a new schema version is added
-    in exactly one place and this helper cannot reject a version the schema owner accepts.
+    The version is checked by the single :func:`target_result_model` owner, which accepts only
+    ``v2``, so this helper returns a name only for a version the schema owner accepts.
     """
     target_result_model(schema_version)
     return f"inference_target_result_{schema_version}"
@@ -140,8 +152,8 @@ class _TargetPassModel(BaseModel):
 def _prompt_course_descriptor(course: InferencePacketCourse) -> dict[str, object]:
     """Render one label-free packet course into its request descriptor.
 
-    Only identity and effective teaching cells are retained: no retrieval rank/score, activity
-    label, official prerequisite/substitution, previous result, or target-answer field can appear.
+    The descriptor carries the group ID, the course code, the representative source digest, and one
+    entry per effective teaching cell with its field, language, text, and origin.
     """
     return {
         "group_id": course.identity.group_id,
@@ -164,12 +176,11 @@ def render_target_request(
 ) -> InferenceRequestEvidence:
     """Render one deterministic same-schema complete-target request for a label-free packet.
 
-    The pack is the current complete-target prompt. The system prompt carries the versioned
-    instructions plus the deterministic curated worked examples, excluding the target's own curated
-    answer. The user prompt is compact sorted UTF-8 JSON of the target and ordered candidate
-    descriptors.
-    ``schema_version`` selects the strict result schema and its request identity. Live callers pass
-    the configured version and it has no default.
+    The pack supplies the system prompt and the curated worked examples. The system prompt combines
+    the pack's system prompt with the worked examples as sorted UTF-8 JSON, excluding the target's
+    own curated answer. The user prompt is compact sorted UTF-8 JSON of the target and ordered
+    candidate descriptors. ``schema_version`` selects the strict result schema and its request
+    identity. Live callers pass the configured version and it has no default.
     """
     if not packet.target.is_active:
         raise ValueError("the target pass requires an active target")
@@ -279,8 +290,8 @@ def target_work_identity(
     """Derive one operational CE-only target's execution spec and reuse request.
 
     The work input binds the selected packet digest and the prepared request digest, so a changed
-    CE-only selection or route/key invalidates operational work without changing any historical
-    saved identity. The packet supplies only the target activity context; nothing is rendered again.
+    CE-only selection or route produces a different work identity. The packet supplies the target
+    activity context, and nothing is rendered again.
     """
     target = packet.target
     work_request = InferenceTargetWorkRequest(
@@ -314,14 +325,14 @@ def run_target(
 ) -> InferenceTargetWorkRecord:
     """Run or reuse one complete-target call for one operational CE-only target.
 
-    ``identity`` is the route's one prepared work identity; this writer renders nothing and claims
+    ``identity`` is the route's one prepared work identity. The writer renders nothing and claims
     the work key from ``identity.input_sha256``.
 
     Matching completed work is reused without any reservation or HTTP request. The writer owns the
     whole-target generation loop for the route: unbounded on the local route, at most
     ``provider.max_attempts`` requests per pass on a bounded route (its own cost cap). Before
     every request it checks admission, reserves ``(ordinal, first_attempt)`` durably on the canonical
-    counter, and calls the provider once with both. The provider makes a single HTTP request, so
+    counter, and calls the provider once with both. The provider makes one request per call, so
     retries are never multiplied. Each genuine request/output/semantic failure marks the work failed,
     appends one safe single-attempt episode through the scheduling owner, and calls ``on_failure``.
 

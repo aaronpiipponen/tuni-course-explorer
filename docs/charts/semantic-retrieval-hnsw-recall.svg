@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 580" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">HNSW recall by candidate bound and ef_search</title>
+  <desc id="d">Recall against the exact oracle for four fixed stored vectors at four candidate and ef_search settings.</desc>
+  <rect width="960" height="580" rx="12" fill="#232434"/>
+  <rect x="61" y="33" width="14" height="14" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="96" y="45" font-size="14" fill="#a3a4b8">vector-1</text>
+  <rect x="200.2" y="33" width="14" height="14" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="235.2" y="45" font-size="14" fill="#a3a4b8">vector-2</text>
+  <rect x="339.4" y="33" width="14" height="14" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="374.4" y="45" font-size="14" fill="#a3a4b8">vector-3</text>
+  <rect x="478.6" y="33" width="14" height="14" fill="#a7e36b" stroke="none" stroke-width="1.5"/>
+  <text x="513.6" y="45" font-size="14" fill="#a3a4b8">vector-4</text>
+  <line x1="248.8" y1="72" x2="248.8" y2="504" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="248.8" y="526" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="368.2" y1="72" x2="368.2" y2="504" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="368.2" y="526" text-anchor="middle" font-size="14" fill="#a3a4b8">0.2</text>
+  <line x1="487.5" y1="72" x2="487.5" y2="504" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="487.5" y="526" text-anchor="middle" font-size="14" fill="#a3a4b8">0.4</text>
+  <line x1="606.9" y1="72" x2="606.9" y2="504" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="606.9" y="526" text-anchor="middle" font-size="14" fill="#a3a4b8">0.6</text>
+  <line x1="726.2" y1="72" x2="726.2" y2="504" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="726.2" y="526" text-anchor="middle" font-size="14" fill="#a3a4b8">0.8</text>
+  <line x1="845.6" y1="72" x2="845.6" y2="504" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="845.6" y="526" text-anchor="middle" font-size="14" fill="#a3a4b8">1</text>
+  <text x="236.8" y="131" text-anchor="end" font-size="14" fill="#ececf2">candidates 128, ef 128</text>
+  <rect x="248.8" y="80" width="179" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="435.8" y="95" font-size="14" fill="#a3a4b8">0.3</text>
+  <rect x="248.8" y="104" width="238" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="494.8" y="119" font-size="14" fill="#a3a4b8">0.3988</text>
+  <rect x="248.8" y="128" width="133.3" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="390.1" y="143" font-size="14" fill="#a3a4b8">0.2234</text>
+  <rect x="248.8" y="152" width="106.9" height="20" rx="2" fill="#a7e36b" stroke="none" stroke-width="1.5"/>
+  <text x="363.7" y="167" font-size="14" fill="#a3a4b8">0.1791</text>
+  <text x="236.8" y="239" text-anchor="end" font-size="14" fill="#ececf2">candidates 128, ef 512</text>
+  <rect x="248.8" y="188" width="179" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="435.8" y="203" font-size="14" fill="#a3a4b8">0.3</text>
+  <rect x="248.8" y="212" width="238" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="494.8" y="227" font-size="14" fill="#a3a4b8">0.3988</text>
+  <rect x="248.8" y="236" width="133.3" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="390.1" y="251" font-size="14" fill="#a3a4b8">0.2234</text>
+  <rect x="248.8" y="260" width="106.9" height="20" rx="2" fill="#a7e36b" stroke="none" stroke-width="1.5"/>
+  <text x="363.7" y="275" font-size="14" fill="#a3a4b8">0.1791</text>
+  <text x="236.8" y="347" text-anchor="end" font-size="14" fill="#ececf2">candidates 512, ef 128</text>
+  <rect x="248.8" y="296" width="189" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="445.8" y="311" font-size="14" fill="#a3a4b8">0.3167</text>
+  <rect x="248.8" y="320" width="252.2" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="509" y="335" font-size="14" fill="#a3a4b8">0.4226</text>
+  <rect x="248.8" y="344" width="173.2" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="430" y="359" font-size="14" fill="#a3a4b8">0.2902</text>
+  <rect x="248.8" y="368" width="107.8" height="20" rx="2" fill="#a7e36b" stroke="none" stroke-width="1.5"/>
+  <text x="364.6" y="383" font-size="14" fill="#a3a4b8">0.1807</text>
+  <text x="236.8" y="455" text-anchor="end" font-size="14" fill="#ececf2">candidates 512, ef 512</text>
+  <rect x="248.8" y="404" width="596.8" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="853.6" y="419" font-size="14" fill="#a3a4b8">1</text>
+  <rect x="248.8" y="428" width="593.2" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="850" y="443" font-size="14" fill="#a3a4b8">0.994</text>
+  <rect x="248.8" y="452" width="345.1" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="601.9" y="467" font-size="14" fill="#a3a4b8">0.5783</text>
+  <rect x="248.8" y="476" width="307.5" height="20" rx="2" fill="#a7e36b" stroke="none" stroke-width="1.5"/>
+  <text x="564.3" y="491" font-size="14" fill="#a3a4b8">0.5152</text>
+  <text x="547.2" y="556" text-anchor="middle" font-size="14" fill="#a3a4b8">Recall against exact oracle</text>
+</svg>

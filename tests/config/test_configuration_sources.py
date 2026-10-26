@@ -1,4 +1,4 @@
-"""Contracts that tracked TOML and the device-local .env compose automatically."""
+"""Contracts that the subsystem files and the device-local .env compose automatically."""
 
 from __future__ import annotations
 
@@ -38,10 +38,12 @@ def _bind_checkout(monkeypatch: pytest.MonkeyPatch, root: Path) -> None:
     configuration.clear_configuration_caches()
 
 
-def test_automatic_configuration_and_override_precedence(
+def test_loads_automatic_configuration_and_applies_override_precedence(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """TOML loads natively, the local .env supplies secrets, and an explicit export wins."""
+    """The example TOML values load without sourcing, the environment file supplies the database
+    password, and an explicit process value wins.
+    """
     root = tmp_path / "checkout"
     write_example_config_tree(root)
     (root / ".env").write_text(
@@ -122,7 +124,9 @@ def test_automatic_configuration_and_override_precedence(
 def test_runtime_configuration_does_not_require_similarity_hubs(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """A complete example seed without hub artifacts loads runtime/Compose inputs and refuses sim reads."""
+    """An example configuration without derived hub artifacts loads the runtime and Compose inputs
+    and refuses a similarity settings read.
+    """
     root = tmp_path / "checkout"
     write_example_config_tree(root, include_derived=False)
     assert not (root / "config" / "derived").exists()
@@ -150,7 +154,7 @@ def test_runtime_configuration_does_not_require_similarity_hubs(
 
 
 def test_public_configuration_rejects_duplicate_alias(tmp_path: Path) -> None:
-    """A duplicate top-level alias across two public files fails before any settings succeed."""
+    """A duplicate top-level alias across two subsystem files fails before any settings succeed."""
     root = tmp_path / "checkout"
     write_example_config_tree(root)
     for relative, value in (("database.toml", "first"), ("curriculum.toml", "second")):
@@ -168,7 +172,9 @@ def test_public_configuration_rejects_duplicate_alias(tmp_path: Path) -> None:
 def test_compose_bridge_carries_interpolation_aliases_and_cleans_up(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """The generated Compose bridge carries interpolation aliases and cleans itself up."""
+    """The Compose command writes a Compose environment file in a temporary directory and removes
+    that directory.
+    """
     database = SimpleNamespace(
         postgres_db="synthetic-db",
         postgres_user="synthetic-user",
@@ -235,7 +241,9 @@ def test_compose_bridge_carries_interpolation_aliases_and_cleans_up(
 
 
 def test_unsourced_cli_loads_policy(tmp_path: Path) -> None:
-    """The shell action exports example policy with no device or secret alias in a bare env."""
+    """The shell action exports the composed example portable values, and the environment-file
+    aliases do not appear in the exports.
+    """
     root = tmp_path / "checkout"
     write_example_config_tree(root)
     completed = subprocess.run(

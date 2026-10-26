@@ -1,0 +1,17 @@
+{
+  "type": "bar",
+  "title": "Worker process share of web CPU in the distribution gate",
+  "description": "Each worker process's share of the four worker processes' web CPU over the middle 90 seconds, with a new connection per request and with kept-alive connections.",
+  "valueAxis": "Share of web CPU (percent)",
+  "categories": ["Worker process 1", "Worker process 2", "Worker process 3", "Worker process 4"],
+  "series": [
+    {
+      "name": "New connection per request",
+      "values": [0.12, 28.26, 11.27, 60.35]
+    },
+    {
+      "name": "Kept alive",
+      "values": [33.04, 31.52, 35.17, 0.26]
+    }
+  ]
+}

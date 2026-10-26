@@ -1,0 +1,17 @@
+{
+  "type": "bar",
+  "title": "Prepared candidate matrix bytes by storage type",
+  "description": "Prepared candidate matrix size in decimal megabytes for float64 and float32 storage on the three fixed bases.",
+  "valueAxis": "Prepared size (MB)",
+  "categories": ["Basis 1", "Basis 10", "Basis 50"],
+  "series": [
+    {
+      "name": "float64",
+      "values": [1.12, 14.51, 62.73]
+    },
+    {
+      "name": "float32",
+      "values": [0.56, 7.25, 31.36]
+    }
+  ]
+}

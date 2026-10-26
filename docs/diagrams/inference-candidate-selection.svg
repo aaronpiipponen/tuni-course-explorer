@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 672" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Candidate selection for one target</title>
+  <desc id="d">The target course feeds one all-field view and the name, content and outcomes views.
+  The four ranked views fuse at rank offset 60 into a pool of 1,000 candidates for the target. The
+  bge-reranker-v2-m3 cross-encoder at Q8_0 scores content-first text bounded at 1,536 characters for
+  the target and for each candidate, and the strongest 50 candidates form the packet.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="672" rx="12" fill="#232434"/>
+
+  <rect x="360" y="40" width="240" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="66" text-anchor="middle" font-size="16" fill="#ececf2">Target course</text>
+  <text x="480" y="88" text-anchor="middle" font-size="14" fill="#a3a4b8">one target at a time</text>
+
+  <rect x="56" y="144" width="200" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="156" y="170" text-anchor="middle" font-size="16" fill="#ececf2">All-field view</text>
+  <text x="156" y="192" text-anchor="middle" font-size="14" fill="#a3a4b8">unrestricted</text>
+
+  <rect x="272" y="144" width="200" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="372" y="170" text-anchor="middle" font-size="16" fill="#ececf2">Name view</text>
+  <text x="372" y="192" text-anchor="middle" font-size="14" fill="#a3a4b8">target name</text>
+
+  <rect x="488" y="144" width="200" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="588" y="170" text-anchor="middle" font-size="16" fill="#ececf2">Content view</text>
+  <text x="588" y="192" text-anchor="middle" font-size="14" fill="#a3a4b8">target content</text>
+
+  <rect x="704" y="144" width="200" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="804" y="170" text-anchor="middle" font-size="16" fill="#ececf2">Outcomes view</text>
+  <text x="804" y="192" text-anchor="middle" font-size="14" fill="#a3a4b8">target outcomes</text>
+
+  <rect x="360" y="248" width="240" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="274" text-anchor="middle" font-size="16" fill="#ececf2">Multiview fusion</text>
+  <text x="480" y="296" text-anchor="middle" font-size="14" fill="#a3a4b8">rank offset 60</text>
+
+  <rect x="360" y="352" width="240" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="378" text-anchor="middle" font-size="16" fill="#ececf2">Candidate pool</text>
+  <text x="480" y="400" text-anchor="middle" font-size="14" fill="#a3a4b8">1,000 per target</text>
+
+  <rect x="320" y="456" width="320" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="482" text-anchor="middle" font-size="16" fill="#ececf2">Cross-encoder rerank</text>
+  <text x="480" y="504" text-anchor="middle" font-size="14" fill="#a3a4b8">bge-reranker-v2-m3 Q8_0</text>
+
+  <rect x="360" y="560" width="240" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="586" text-anchor="middle" font-size="16" fill="#ececf2">Packet</text>
+  <text x="480" y="608" text-anchor="middle" font-size="14" fill="#a3a4b8">50 candidates</text>
+
+  <line x1="480" y1="104" x2="480" y2="124" stroke="#a3a4b8" stroke-width="1.5"/>
+  <line x1="156" y1="124" x2="804" y2="124" stroke="#a3a4b8" stroke-width="1.5"/>
+  <line x1="156" y1="124" x2="156" y2="144" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="372" y1="124" x2="372" y2="144" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="588" y1="124" x2="588" y2="144" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="804" y1="124" x2="804" y2="144" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <line x1="156" y1="208" x2="156" y2="232" stroke="#a3a4b8" stroke-width="1.5"/>
+  <line x1="372" y1="208" x2="372" y2="232" stroke="#a3a4b8" stroke-width="1.5"/>
+  <line x1="588" y1="208" x2="588" y2="232" stroke="#a3a4b8" stroke-width="1.5"/>
+  <line x1="804" y1="208" x2="804" y2="232" stroke="#a3a4b8" stroke-width="1.5"/>
+  <line x1="156" y1="232" x2="804" y2="232" stroke="#a3a4b8" stroke-width="1.5"/>
+  <line x1="480" y1="232" x2="480" y2="248" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <line x1="480" y1="312" x2="480" y2="352" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="480" y1="416" x2="480" y2="456" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="496" y="441" font-size="14" fill="#a3a4b8">content-first, 1,536 characters each</text>
+  <line x1="480" y1="520" x2="480" y2="560" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="496" y="545" font-size="14" fill="#a3a4b8">strongest 50</text>
+</svg>

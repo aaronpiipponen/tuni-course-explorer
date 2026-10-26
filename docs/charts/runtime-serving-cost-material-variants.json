@@ -1,0 +1,17 @@
+{
+  "type": "bar",
+  "title": "Recommendation web cost by basis and scope",
+  "description": "Mean web process core-seconds per recommendation call at basis 50 and basis 200, in the active-only scope and with inactive courses included.",
+  "valueAxis": "Web cost (core-seconds per call)",
+  "categories": ["Basis 50", "Basis 200"],
+  "series": [
+    {
+      "name": "Active only",
+      "values": [10.419672, 23.908396]
+    },
+    {
+      "name": "Including inactive courses",
+      "values": [13.498728, 33.093459]
+    }
+  ]
+}

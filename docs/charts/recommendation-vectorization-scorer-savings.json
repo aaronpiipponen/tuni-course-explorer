@@ -1,0 +1,17 @@
+{
+  "type": "bar",
+  "title": "Scorer wall-median saving against the product scorer",
+  "description": "Wall-median saving for the float64 NumPy chunk scorer and the centroid coverage scorer against the product scorer on the three fixed recommendation pools.",
+  "valueAxis": "Saving (percent)",
+  "categories": ["Basis 1", "Basis 10", "Basis 50"],
+  "series": [
+    {
+      "name": "NumPy against product",
+      "values": [78.75, 86.27, 91.81]
+    },
+    {
+      "name": "Centroid against product",
+      "values": [4.8, 19.68, 58.85]
+    }
+  ]
+}

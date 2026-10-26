@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 316" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Compressed report size by gzip level</title>
+  <desc id="d">Compressed size in bytes at gzip levels 1, 6 and 9 for the saved basis-50 report and the synthetic report-shaped JSON payload.</desc>
+  <rect width="960" height="316" rx="12" fill="#232434"/>
+  <rect x="61" y="33" width="14" height="14" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="96" y="45" font-size="14" fill="#a3a4b8">Level 1</text>
+  <rect x="191.8" y="33" width="14" height="14" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="226.8" y="45" font-size="14" fill="#a3a4b8">Level 6</text>
+  <rect x="322.6" y="33" width="14" height="14" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="357.6" y="45" font-size="14" fill="#a3a4b8">Level 9</text>
+  <line x1="240.4" y1="72" x2="240.4" y2="240" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="240.4" y="262" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="439.3" y1="72" x2="439.3" y2="240" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="439.3" y="262" text-anchor="middle" font-size="14" fill="#a3a4b8">50,000</text>
+  <line x1="638.3" y1="72" x2="638.3" y2="240" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="638.3" y="262" text-anchor="middle" font-size="14" fill="#a3a4b8">100,000</text>
+  <line x1="837.2" y1="72" x2="837.2" y2="240" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="837.2" y="262" text-anchor="middle" font-size="14" fill="#a3a4b8">150,000</text>
+  <text x="228.4" y="119" text-anchor="end" font-size="14" fill="#ececf2">Saved basis-50 report</text>
+  <rect x="240.4" y="80" width="157.6" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="406" y="95" font-size="14" fill="#a3a4b8">39,606</text>
+  <rect x="240.4" y="104" width="136.9" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="385.3" y="119" font-size="14" fill="#a3a4b8">34,405</text>
+  <rect x="240.4" y="128" width="133.9" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="382.3" y="143" font-size="14" fill="#a3a4b8">33,662</text>
+  <text x="228.4" y="203" text-anchor="end" font-size="14" fill="#ececf2">Synthetic report JSON</text>
+  <rect x="240.4" y="164" width="540.4" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="788.8" y="179" font-size="14" fill="#a3a4b8">135,821</text>
+  <rect x="240.4" y="188" width="480.5" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="728.9" y="203" font-size="14" fill="#a3a4b8">120,774</text>
+  <rect x="240.4" y="212" width="462.6" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="711" y="227" font-size="14" fill="#a3a4b8">116,275</text>
+  <text x="538.8" y="292" text-anchor="middle" font-size="14" fill="#a3a4b8">Compressed size (bytes)</text>
+</svg>

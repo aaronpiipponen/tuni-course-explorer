@@ -1,0 +1,21 @@
+{
+  "type": "bar",
+  "title": "Single-query read time for exact, pushdown and centred SQL",
+  "description": "Wall time per query for the product exact read, the representative-filter pushdown and the centred SQL read on four fixed stored vectors.",
+  "valueAxis": "Wall time (s)",
+  "categories": ["vector-1", "vector-2", "vector-3", "vector-4"],
+  "series": [
+    {
+      "name": "Exact product read",
+      "values": [0.5699, 0.5756, 0.6202, 0.5863]
+    },
+    {
+      "name": "Representative pushdown",
+      "values": [0.8105, 0.6939, 0.6953, 0.7159]
+    },
+    {
+      "name": "Centred SQL",
+      "values": [0.4898, 0.4928, 0.4927, 0.5023]
+    }
+  ]
+}

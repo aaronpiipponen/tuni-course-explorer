@@ -4,7 +4,7 @@ The catalogue holds the official courses, modules, and curriculum periods that t
 
 ## Capture and normalization
 
-Ingestion runs as one stage with two steps. The capture reads the anonymous public curriculum source and stores each response unchanged, so a stored response always holds the same bytes. Normalization validates one completed capture and converts it into official courses, modules, their versions, and their rule trees in one transaction, and it reports a version whose official code is null as an exclusion. [Ingestion](/docs/backend/catalogue/ingestion.md) describes the stage, its pause and stop boundaries, and the configuration keys that steer the source reads.
+Ingestion runs as one stage with two steps. The capture reads the anonymous public curriculum source and stores each response unchanged, so a stored response always holds the same bytes. Normalization validates one completed capture and converts it into official courses, modules, their versions, and their rule trees in one transaction, and it reports a version whose official code is null as an exclusion. [Ingestion](/docs/backend/catalogue/ingestion.md) describes the stage, its pause and stop boundaries, and the configuration keys that steer the source reads. [Curriculum capture and replay](/docs/experiments/runtime-storage-and-serving/curriculum-capture-and-replay.md) records the scale of a full-catalogue capture and two source-free replays of it.
 
 ## Canonical identity, versions, and activity
 

@@ -1,0 +1,17 @@
+{
+  "type": "bar",
+  "title": "Normal-load interactive probe p95 by worker process count",
+  "description": "Normal-load interactive probe p95 at 20 users for two, three and four worker processes in the first comparison and the high-load relay comparison. Four worker processes were lowest in the first comparison and highest in the second.",
+  "valueAxis": "Probe p95 (ms)",
+  "categories": ["2 worker processes", "3 worker processes", "4 worker processes"],
+  "series": [
+    {
+      "name": "First comparison",
+      "values": [306, 285, 151]
+    },
+    {
+      "name": "High-load relay",
+      "values": [232.13, 290.65, 337.36]
+    }
+  ]
+}

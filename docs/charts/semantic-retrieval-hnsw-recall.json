@@ -1,0 +1,30 @@
+{
+  "type": "bar",
+  "title": "HNSW recall by candidate bound and ef_search",
+  "description": "Recall against the exact oracle for four fixed stored vectors at four candidate and ef_search settings.",
+  "valueAxis": "Recall against exact oracle",
+  "categories": [
+    "candidates 128, ef 128",
+    "candidates 128, ef 512",
+    "candidates 512, ef 128",
+    "candidates 512, ef 512"
+  ],
+  "series": [
+    {
+      "name": "vector-1",
+      "values": [0.3000, 0.3000, 0.3167, 1.0000]
+    },
+    {
+      "name": "vector-2",
+      "values": [0.3988, 0.3988, 0.4226, 0.9940]
+    },
+    {
+      "name": "vector-3",
+      "values": [0.2234, 0.2234, 0.2902, 0.5783]
+    },
+    {
+      "name": "vector-4",
+      "values": [0.1791, 0.1791, 0.1807, 0.5152]
+    }
+  ]
+}

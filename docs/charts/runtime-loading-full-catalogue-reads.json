@@ -1,0 +1,23 @@
+{
+  "type": "bar",
+  "title": "Full-catalogue command and read wall time before and after the read projection",
+  "description": "Command and read wall times before and after the projected and scoped read path. Unified search uses both range minima. Prerequisites uses an approximate before value and the after range minimum. Other reads use their recorded values.",
+  "valueAxis": "Wall time (s)",
+  "categories": [
+    "Unified search, lower bound",
+    "Prerequisites, approximate/min",
+    "Coverage command",
+    "Represented summary read",
+    "Full-scope coverage"
+  ],
+  "series": [
+    {
+      "name": "Before",
+      "values": [15.5, 14.5, 18.6, 4.15, 13.5]
+    },
+    {
+      "name": "After",
+      "values": [2.6, 2.35, 6.14, 1.04, 0.28]
+    }
+  ]
+}

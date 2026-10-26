@@ -1,0 +1,11 @@
+{
+  "type": "bar",
+  "title": "Next courses and similarity results by basket",
+  "description": "For the one-course, computing, math-heavy and expanded computing baskets, the number of next courses and the number of similarity recommendations returned, with the similarity list at the 0.80 relatedness floor. The expanded computing similarity bar is at the 30-result cap.",
+  "valueAxis": "Courses (count)",
+  "categories": ["One course", "Computing", "Math-heavy", "Expanded computing"],
+  "series": [
+    { "name": "Next courses", "values": [25, 46, 23, 31] },
+    { "name": "Similarity results", "values": [19, 13, 3, 30] }
+  ]
+}

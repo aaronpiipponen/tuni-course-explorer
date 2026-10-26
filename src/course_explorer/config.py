@@ -1,4 +1,10 @@
-"""Validated database, source, capture, web, administration, usage, admission, normalization, embedding, search, translation, and inference config."""
+"""Validated settings classes and their loaders for every subsystem.
+
+ConfiguredSettings subclasses compose values from constructor input, the process environment, the
+environment file and the subsystem files, in descending precedence, over their code defaults. Their
+validators reject invalid ports, non-loopback bind addresses, blank secrets and values or relations
+outside their bounds. Their validation errors hide the inputs they were built from.
+"""
 
 import json
 import math
@@ -78,7 +84,7 @@ ENVIRONMENT_ONLY_SETTINGS_SOURCE = "environment"
 def _project_public_values(
     settings_cls: type[BaseSettings], public: dict[str, object]
 ) -> dict[str, object]:
-    """Project merged public values onto the requested settings class's aliases only."""
+    """Project merged subsystem-file values onto the requested settings class's aliases only."""
     values: dict[str, object] = {}
     for name, field in settings_cls.model_fields.items():
         alias = field.validation_alias if isinstance(field.validation_alias, str) else name
@@ -88,7 +94,7 @@ def _project_public_values(
 
 
 def _settings_aliases(settings_cls: type[BaseSettings]) -> tuple[str, ...]:
-    """Return every validation alias the requested settings class reads from public values."""
+    """Return every validation alias the requested class reads from merged subsystem-file values."""
     return tuple(
         field.validation_alias if isinstance(field.validation_alias, str) else name
         for name, field in settings_cls.model_fields.items()
@@ -96,11 +102,11 @@ def _settings_aliases(settings_cls: type[BaseSettings]) -> tuple[str, ...]:
 
 
 class ConfiguredSettings(BaseSettings):
-    """Base for every settings family: automatic tracked TOML plus the device-local ignored ``.env``.
+    """Base for every settings family: the subsystem files plus the device-local ignored ``.env``.
 
     The standard Pydantic source hook composes, in descending precedence: native constructor
     inputs, intentional process-environment overrides, the device-local ignored ``.env``, and the
-    tracked public TOML files, over each class's own code defaults. Setting the
+    subsystem files, over each class's own code defaults. Setting the
     ``COURSE_EXPLORER_SETTINGS_SOURCE=environment`` marker returns only the constructor and process
     sources for an isolated child or a synthetic test. Configuration
     errors hide their inputs so a secret can never be rendered by a validation failure.
@@ -119,10 +125,11 @@ class ConfiguredSettings(BaseSettings):
     ) -> tuple[PydanticBaseSettingsSource | Callable[[], dict[str, object]], ...]:
         """Compose automatic file-backed sources, candidate sources, or only constructor/process.
 
-        A candidate configuration block supplies its own local and public mappings, and those
-        sources replace the file reads so an edited candidate validates on its own values. The
-        process-handoff marker then restricts the sources to the constructor and the process
-        environment. Otherwise both files compose automatically.
+        A candidate configuration block supplies its own local and subsystem-file mappings, and
+        those sources replace the file reads so an edited candidate validates on its own values. The
+        process-handoff marker restricts the sources to the constructor and the process environment
+        when no candidate block is active. Otherwise every subsystem file and the environment file
+        compose automatically.
         """
         from course_explorer import configuration
 
@@ -399,7 +406,8 @@ class AdmissionSettings(ConfiguredSettings):
 
 
 def load_admission_settings() -> AdmissionSettings:
-    """Read the admission policy through the automatic public/local configuration composition."""
+    """Read the admission policy through the automatic subsystem-file and environment-file
+    composition."""
     return AdmissionSettings()
 
 
@@ -416,25 +424,28 @@ class UsageSettings(ConfiguredSettings):
 
 
 def load_usage_settings() -> UsageSettings:
-    """Read usage retention through the automatic public/local configuration composition."""
+    """Read usage retention through the automatic subsystem-file and environment-file
+    composition."""
     return UsageSettings()
 
 
 class AdminWebSettings(ConfiguredSettings):
-    """Validated loopback bind, exact site origin and session and log bounds of the admin backend.
+    """Validated loopback bind, exact site origin and session and log bounds of the administration
+    backend.
 
-    ``origin`` is the external HTTPS origin the administration backend answers for, not the
-    plain-HTTP socket the backend itself binds. It is compared exactly by scheme, host and port, so
-    a request whose Host or supplied Origin differs is refused. The session lifetimes bound one
-    server-side session, and the command-log limit bounds the entries the one log file retains.
+    ``admin_web_origin`` is the external HTTPS origin the administration backend answers for, not
+    the plain-HTTP socket the backend itself binds. It is compared exactly by scheme, host and
+    port, so a request whose Host or supplied Origin differs is refused. The session lifetimes bound
+    one server-side session, and the command-log limit bounds the entries the one log file retains.
     The anonymous session limit bounds the fresh anonymous sessions one process creates in the
-    configured window of seconds, across every client of that process.
-    The lock path and the failed-attempt limit are code constants.
+    configured window of seconds, across every client of that process. The lock path and the
+    failed-attempt limit are code constants.
 
-    ``poll_seconds`` is the interval the console waits after one completed panel read before the
-    next read of that panel. ``app_url`` is the address the console's App link points at, stated by
-    the site because the administration bind is loopback and the two sites need not share a host.
-    ``repository_url`` is the repository address of the console's GitHub link.
+    ``admin_web_poll_seconds`` is the interval the console waits after one completed panel read
+    before the next read of that panel. ``admin_web_app_url`` is the address the console's App link
+    points at, stated by the site because the administration bind is loopback and the two sites need
+    not share a host. ``admin_web_repository_url`` is the repository address of the console's GitHub
+    link.
     """
 
     model_config = SettingsConfigDict(extra="ignore", env_prefix="")
@@ -570,8 +581,8 @@ class AdminWebSettings(ConfiguredSettings):
 def load_admin_web_settings() -> AdminWebSettings:
     """Read administration bind, origin, session, anonymous-grant budget and log bounds.
 
-    The values compose automatically from the tracked administration file and the device environment
-    file.
+    The values compose automatically from ``config/admin_web.toml`` and the device-local ignored
+    ``.env``.
     """
     return AdminWebSettings()
 
@@ -629,7 +640,8 @@ class DatabaseSettings(ConfiguredSettings):
 
 
 def load_raw_database_settings() -> DatabaseSettings:
-    """Read the raw configured database settings without resolving the selected-dataset pointer."""
+    """Read the configured database fields before the selected dataset replaces the database
+    name."""
     return DatabaseSettings()
 
 
@@ -676,7 +688,8 @@ class CaptureSettings(ConfiguredSettings):
 
 
 def load_capture_settings() -> CaptureSettings:
-    """Read capture settings through the automatic public/local configuration composition."""
+    """Read capture settings through the automatic subsystem-file and environment-file
+    composition."""
     return CaptureSettings()
 
 
@@ -709,12 +722,12 @@ def _require_relative_path(
 class LocalLifecycleSettings(ConfiguredSettings):
     """Validated state locations and cooperative lifecycle policy for the local admin stages.
 
-    These values describe *where* the two local stage state roots live and *how* every
+    These values describe where the two local stage state roots live and how every
     local detached-worker startup, polling, and stop acknowledgement is bounded. They are portable
     policy: a different device keeps the same repository-relative state roots and the same timing
-    bounds, so the roots live in the tracked ``config/curriculum.toml``/``config/search.toml`` and
-    the shared timing keys live in the tracked ``config/worker.toml``. Loading composes the tracked public TOML and the
-    device-local ignored ``.env`` automatically. There is no code default.
+    bounds, so the roots live in ``config/curriculum.toml``/``config/search.toml`` and the shared
+    timing keys live in ``config/worker.toml``. Loading composes the subsystem files under
+    ``config/`` and the device-local ignored ``.env`` automatically. There is no code default.
     """
 
     model_config = SettingsConfigDict(extra="ignore", env_prefix="")
@@ -753,7 +766,8 @@ class LocalLifecycleSettings(ConfiguredSettings):
 
 
 def load_local_lifecycle_settings() -> LocalLifecycleSettings:
-    """Read local lifecycle settings through the automatic public/local configuration composition."""
+    """Read local lifecycle settings through the automatic subsystem-file and environment-file
+    composition."""
     return LocalLifecycleSettings()
 
 
@@ -817,17 +831,18 @@ class KoriSettings(ConfiguredSettings):
 
     @property
     def first_academic_year_start(self) -> int:
-        """Return first academic year start without deriving a Kori period ID."""
+        """Return the configured first academic-year start."""
         return _academic_year_start(self.kori_first_academic_year)
 
     @property
     def current_academic_year_start(self) -> int:
-        """Return current academic year start without deriving a Kori period ID."""
+        """Return the configured current academic-year start."""
         return _academic_year_start(self.current_academic_year)
 
 
 def load_kori_settings() -> KoriSettings:
-    """Read public Kori settings through the automatic public/local configuration composition."""
+    """Read public Kori settings through the automatic subsystem-file and environment-file
+    composition."""
     return KoriSettings()
 
 
@@ -845,7 +860,7 @@ class NormalizationSettings(ConfiguredSettings):
     @field_validator("current_academic_year")
     @classmethod
     def validate_current_academic_year(cls, value: str) -> str:
-        """Reuse the shared academic-year syntax and semantics."""
+        """Require consecutive four-digit academic-year bounds."""
         _academic_year_start(value)
         return value
 
@@ -881,7 +896,8 @@ def validate_course_guide_base_url(value: object) -> AnyHttpUrl:
 
 
 def load_normalization_settings() -> NormalizationSettings:
-    """Read normalization settings through the automatic public/local configuration composition."""
+    """Read normalization settings through the automatic subsystem-file and environment-file
+    composition."""
     return NormalizationSettings()
 
 
@@ -900,8 +916,8 @@ class EmbeddingRuntimeSettings(ConfiguredSettings):
     lifecycle (and the Compose bridge) can run before a fresh dataset's similarity hubs exist. The
     full similarity contract that search, comparison, recommendations and the web
     process require is :class:`EmbeddingSettings`, which adds the two required hub fields. A
-    similarity read fails loudly when a hub is missing. Both classes are projections of the
-    same one file/source owner, never a second configuration path.
+    similarity read fails loudly when a hub is missing. Both classes read the same subsystem files
+    and environment file through one settings owner.
     """
 
     model_config = SettingsConfigDict(extra="ignore", env_prefix="")
@@ -1031,7 +1047,7 @@ class EmbeddingSettings(EmbeddingRuntimeSettings):
     """Validated similarity contract: the embedding runtime plus both required hub vectors.
 
     Request-time similarity consumers subtract these hubs before cosine, so they must resolve from
-    their tracked derived artifacts. A missing or malformed hub fails that read loudly.
+    their derived hub files. A missing or malformed hub fails that read loudly.
     """
 
     model_config = SettingsConfigDict(extra="ignore", env_prefix="")
@@ -1062,7 +1078,7 @@ class EmbeddingSettings(EmbeddingRuntimeSettings):
 
 
 def load_embedding_runtime_settings() -> EmbeddingRuntimeSettings:
-    """Read runtime/generation embedding settings without resolving either similarity hub."""
+    """Read the runtime and generation embedding fields from the configured sources."""
     return EmbeddingRuntimeSettings()
 
 
@@ -1205,7 +1221,8 @@ class TranslationSettings(ConfiguredSettings):
 
 
 def load_translation_settings() -> TranslationSettings:
-    """Read translation settings through the automatic public/local configuration composition."""
+    """Read translation settings through the automatic subsystem-file and environment-file
+    composition."""
     return TranslationSettings()
 
 
@@ -1293,8 +1310,8 @@ class WorkerRuntimeSettings(ConfiguredSettings):
 
     These two values are the measured launcher geometry (`-t`/`--threads-batch`) recorded as
     execution provenance. They never gate scheduling, invalidate retained work, or appear in the
-    cross-encoder runtime identity. They are device-independent, so they live in the
-    tracked ``config/worker.toml`` rather than the ignored per-device ``.env``.
+    cross-encoder runtime identity. They are device-independent, so they live in
+    ``config/worker.toml`` rather than the device-local ignored ``.env``.
     """
 
     model_config = SettingsConfigDict(extra="ignore", env_prefix="")
@@ -1320,9 +1337,9 @@ class WorkerGpuRebootSettings(ConfiguredSettings):
     A worker GPU mode (translation generation and inference cross-encoder scoring/whole-target
     generation) reboots the Windows worker at a completed atomic unit or a committed failed
     generation attempt once its loaded-GPU time reaches this interval. The value is device-independent
-    policy owned by tracked
-    ``config/worker.toml`` and is never a per-mode duplicate or a CLI flag. Loading composes the tracked public TOML and the
-    device-local ignored ``.env`` automatically. There is no code default.
+    policy owned by ``config/worker.toml``, and every worker GPU mode uses that one value. Loading
+    composes the subsystem files under ``config/`` and the device-local ignored ``.env``
+    automatically. There is no code default.
     """
 
     model_config = SettingsConfigDict(extra="ignore", env_prefix="")
@@ -1333,7 +1350,8 @@ class WorkerGpuRebootSettings(ConfiguredSettings):
 
 
 def load_worker_gpu_reboot_settings() -> WorkerGpuRebootSettings:
-    """Read the shared checkpoint-reboot interval through the automatic public/local configuration composition."""
+    """Read the shared checkpoint-reboot interval through the automatic subsystem-file and
+    environment-file composition."""
     return WorkerGpuRebootSettings()
 
 
@@ -1351,12 +1369,11 @@ class InferenceSettings(WorkerRuntimeSettings):
     two measured ordered local fit keys. The first key carries MTP speculation and is the request
     tokenizer authority. The second key is the larger no-MTP fallback. A packet that fits neither
     configured key has no configured route and fails as one target capacity failure, unless a
-    caller injects its own explicit oversize route. Provider mechanics
-    hardcode none of these values, and the closed routing/recommendation/filter policy keys carry
-    exactly the solo/no-cutoff/retained-recommendation policy with no second-model,
-    recommendation-skip, or cutoff configuration path. `INFERENCE_PROPOSAL_VERSION` is the
-    separate result proposal composition version that binds one proposal identity together
-    with the official snapshot and its source attempt.
+    caller injects its own explicit oversize route. The three closed policy keys accept one literal
+    each: ``INFERENCE_ROUTING_POLICY`` is ``solo_fit_only``, ``INFERENCE_RECOMMENDATION_POLICY`` is
+    ``include``, and ``INFERENCE_FINDING_FILTER_POLICY`` is ``none``.
+    `INFERENCE_PROPOSAL_VERSION` is the separate result proposal composition version that binds one
+    proposal identity together with the official snapshot and its source attempt.
     """
 
     model_config = SettingsConfigDict(extra="ignore", env_prefix="")
@@ -1641,7 +1658,8 @@ class InferenceSettings(WorkerRuntimeSettings):
 
 
 def load_inference_settings() -> InferenceSettings:
-    """Read inference settings through the automatic public/local configuration composition."""
+    """Read inference settings through the automatic subsystem-file and environment-file
+    composition."""
     return InferenceSettings()
 
 
@@ -1679,11 +1697,10 @@ _INFERENCE_MULTIVIEW_FIELD_ORDER: tuple[str, ...] = tuple(
 class InferenceContextSettings(ConfiguredSettings):
     """Validated label-blind multiview field-view and fusion settings for live selection.
 
-    These two values own the accepted multiview field views and the reciprocal-rank
-    fusion offset consumed by the installed operational CE-only selection. They are operational
-    selection mechanics separate from development measurement policy and from the runtime contract
-    in ``InferenceSettings``. Loading composes the tracked public TOML and the
-    device-local ignored ``.env`` automatically. There is no code default.
+    These two values own the accepted multiview field views and the reciprocal-rank fusion offset
+    consumed by the operational cross-encoder selection. They are operational selection mechanics
+    apart from the runtime contract in ``InferenceSettings``. Loading composes the subsystem files
+    under ``config/`` and the device-local ignored ``.env``, and no code default applies.
     """
 
     model_config = SettingsConfigDict(extra="ignore", env_prefix="")
@@ -1743,14 +1760,10 @@ def load_inference_context_settings() -> InferenceContextSettings:
 class InferenceSelectionSettings(ConfiguredSettings):
     """Validated pool and final-candidate policy for the label-free selection pipeline.
 
-    The two values bound the label-free selection pipeline: the embedding
-    pool depth that the live operational selection consumes, and the hard maximum of
-    candidates the selected packet may carry. They are separate from
-    ``InferenceContextSettings``: the multiview field views and fusion offset are selection
-    mechanics, whereas ``INFERENCE_SELECTION_POOL_K`` records the pool size for the live
-    operational selection and eventual bulk selection. ``INFERENCE_SELECTION_FINAL_K`` is the hard
-    ceiling for the CE-only top-50 packet. No ranking-only model is enabled
-    here. Loading composes the tracked public TOML and the
+    ``INFERENCE_SELECTION_POOL_K`` is the embedding pool depth the live operational selection
+    consumes. ``INFERENCE_SELECTION_FINAL_K`` is the hard ceiling for the CE-only top-50 packet.
+    Both are separate from ``InferenceContextSettings``, whose multiview field views and fusion
+    offset are selection mechanics. Loading composes the subsystem files under ``config/`` and the
     device-local ignored ``.env`` automatically. There is no code default.
     """
 
@@ -1783,7 +1796,8 @@ class InferenceSelectionSettings(ConfiguredSettings):
 
 
 def load_inference_selection_settings() -> InferenceSelectionSettings:
-    """Read pool selection settings through the automatic public/local configuration composition."""
+    """Read pool selection settings through the automatic subsystem-file and environment-file
+    composition."""
     return InferenceSelectionSettings()
 
 
@@ -1915,7 +1929,7 @@ class InferenceRerankSettings(ConfiguredSettings):
     @field_validator("inference_rerank_request_timeout_seconds", mode="before")
     @classmethod
     def validate_rerank_request_timeout(cls, value: object) -> float:
-        """Require one positive finite decimal timeout no greater than the configured 60-second bound.
+        """Require one positive finite decimal timeout no greater than 60 seconds.
 
         Runs before Pydantic coercion so a boolean, a nonnumeric or formatted string, ``NaN``,
         ``Infinity``, or zero is rejected instead of being accepted as a finite in-range timeout.
@@ -1999,7 +2013,8 @@ class InferenceRerankSettings(ConfiguredSettings):
 
 
 def load_inference_rerank_settings() -> InferenceRerankSettings:
-    """Read cross-encoder rerank settings through the automatic public/local configuration composition."""
+    """Read cross-encoder rerank settings through the automatic subsystem-file and environment-file
+    composition."""
     return InferenceRerankSettings()
 
 
@@ -2009,10 +2024,10 @@ class InferenceRerankInputSettings(ConfiguredSettings):
     These keys bound and order the query and document text a cross-encoder input may send to the
     operational reranker. They are separate from ``InferenceRerankSettings`` (the
     runtime/serving contract) and ``InferenceSelectionSettings`` (pool depth and final
-    candidate ceiling): they are the shared label-free teaching-text construction, not a rerank
-    depth or a top-50 policy. The layout is a closed teaching-text order and never reads prerequisite
-    text. Loading composes the tracked public TOML and the
-    device-local ignored ``.env`` automatically. There is no code default.
+    candidate ceiling). They are the shared label-free teaching-text construction. The layout is a
+    closed teaching-text order and never reads prerequisite text. Loading composes the subsystem
+    files under ``config/`` and the device-local ignored ``.env`` automatically. There is no code
+    default.
     """
 
     model_config = SettingsConfigDict(extra="ignore", env_prefix="")
@@ -2044,7 +2059,8 @@ class InferenceRerankInputSettings(ConfiguredSettings):
 
 
 def load_inference_rerank_input_settings() -> InferenceRerankInputSettings:
-    """Read rerank-input bounds through the automatic public/local configuration composition."""
+    """Read rerank-input bounds through the automatic subsystem-file and environment-file
+    composition."""
     return InferenceRerankInputSettings()
 
 
@@ -2068,17 +2084,17 @@ def _require_database_prefix(value: str, *, setting_name: str) -> str:
 class WorkerConnectionSettings(ConfiguredSettings):
     """Validated neutral worker transport and lifecycle-bounding policy.
 
-    These values describe *where* the worker is reached and *how* a cooperative
+    These values describe where the worker is reached and how a cooperative
     worker lifecycle is bounded. They are shared by the neutral SSH/WSL
     transport and any administrative worker stage that needs the connection boundary.
 
     Ownership splits by what must change per setup. ``TRANSLATION_CONTROLLER_SSH_TARGET``,
     ``TRANSLATION_CONTROLLER_WSL_DISTRIBUTION``, and
-    ``TRANSLATION_CONTROLLER_WORKER_PROJECT_ROOT`` are machine-local values read from the ignored
-    local ``.env``. The connect timeout comes from the tracked portable ``config/worker.toml``.
-    The health interval and stop timeout are shared wait values that stay assigned once, in
-    ``config/translation.toml``. All reach this class through the automatic public/local
-    configuration composition.
+    ``TRANSLATION_CONTROLLER_WORKER_PROJECT_ROOT`` are machine-local values read from the
+    device-local ignored ``.env``. The connect timeout comes from ``config/worker.toml``. The health
+    interval and stop timeout are shared wait values that are assigned once, in
+    ``config/translation.toml``. All reach this class through the automatic subsystem-file and
+    environment-file composition.
     """
 
     model_config = SettingsConfigDict(extra="ignore", env_prefix="")
@@ -2135,10 +2151,9 @@ class TranslationControllerSettings(WorkerConnectionSettings):
     """Validated remote-controller state-root and health-attempt policy.
 
     This adds the translation controller's own local state root and health attempt count on top
-    of the neutral connection base. The derived worker database name comes from the shared
-    administrative dataset settings, never a second translation prefix, so cleanup can only
-    ever target the exact session database. All values reach this class through the
-    the automatic public/local configuration composition.
+    of the neutral connection base. The derived worker database name comes from
+    :class:`AdministrativeDatasetSettings`, so cleanup targets the exact session database. All
+    values reach this class through the automatic subsystem-file and environment-file composition.
     """
 
     translation_controller_state_root: Path = Field(
@@ -2158,23 +2173,25 @@ class TranslationControllerSettings(WorkerConnectionSettings):
 
 
 def load_worker_connection_settings() -> WorkerConnectionSettings:
-    """Read the neutral worker connection settings through the automatic public/local configuration composition."""
+    """Read the neutral worker connection settings through the automatic subsystem-file and
+    environment-file composition."""
     return WorkerConnectionSettings()
 
 
 def load_translation_controller_settings() -> TranslationControllerSettings:
-    """Read translation-controller settings through the automatic public/local configuration composition."""
+    """Read translation-controller settings through the automatic subsystem-file and
+    environment-file composition."""
     return TranslationControllerSettings()
 
 
 class InferenceControllerSettings(WorkerConnectionSettings):
     """Validated inference-controller state-root and health-attempt policy.
 
-    This adds only the inference controller's own repository-relative state root and bounded
+    This adds the inference controller's own repository-relative state root and bounded
     health attempt count on top of the neutral connection base. The derived worker database name
-    comes from the shared administrative dataset settings, never from a second inference prefix,
-    so cleanup can only ever target the exact canonical session database. All values reach this
-    class through the automatic public/local configuration composition.
+    comes from :class:`AdministrativeDatasetSettings`, so cleanup targets the exact canonical
+    session database. All values reach this class through the automatic subsystem-file and
+    environment-file composition.
     """
 
     inference_controller_state_root: Path = Field(
@@ -2194,7 +2211,8 @@ class InferenceControllerSettings(WorkerConnectionSettings):
 
 
 def load_inference_controller_settings() -> InferenceControllerSettings:
-    """Read inference-controller settings through the automatic public/local configuration composition."""
+    """Read inference-controller settings through the automatic subsystem-file and environment-file
+    composition."""
     return InferenceControllerSettings()
 
 
@@ -2203,9 +2221,11 @@ class AdministrativeDatasetSettings(ConfiguredSettings):
 
     These values are portable policy: the repository-relative admin state root, the two
     distinct lowercase prefixes that derive one server or worker database name from a validated
-    session id, and the single timeout every dataset dump/restore/rotation subprocess receives.
-    The state root reuses the shared repository-relative predicate. Loading composes the tracked public TOML and the
-    device-local ignored ``.env`` automatically. There is no code default.
+    32-character hexadecimal id, and the single timeout every dataset dump/restore/rotation
+    subprocess receives.
+    The state root reuses the shared repository-relative predicate. Loading composes the
+    subsystem files under ``config/`` and the device-local ignored ``.env`` automatically.
+    There is no code default.
     """
 
     model_config = SettingsConfigDict(extra="ignore", env_prefix="")
@@ -2239,7 +2259,8 @@ class AdministrativeDatasetSettings(ConfiguredSettings):
         return self
 
     def database_name(self, dataset_id: str, *, worker: bool = False) -> str:
-        """Derive the one server or worker database name for a validated dataset id."""
+        """Derive the one server or worker database name from a validated 32-character
+        hexadecimal id."""
         if _CONTROLLER_SESSION_ID_PATTERN.fullmatch(dataset_id) is None:
             raise ValueError("dataset id must be 32 lowercase hexadecimal characters")
         prefix = self.worker_database_prefix if worker else self.dataset_database_prefix
@@ -2268,7 +2289,8 @@ class AdministrativeSiteSettings(ConfiguredSettings):
     accepted: a path, an option, whitespace and a command are refused, so each value is one
     syntactically valid unit name. ``web_service_scope`` selects the manager that owns the web
     unit, ``user`` or ``system``, and the administration unit always belongs to the user manager.
-    Loading composes the tracked public TOML and the device-local ignored ``.env`` automatically.
+    Loading composes the subsystem files under ``config/`` and the device-local ignored ``.env``
+    automatically.
     """
 
     model_config = SettingsConfigDict(extra="ignore", env_prefix="")
@@ -2298,8 +2320,9 @@ class WorkerSetupSettings(ConfiguredSettings):
 
     Two portable values drive explicit worker setup/update: the GitHub origin URL the worker
     checkout must match, and one long setup timeout that a real install/download/build may use
-    without borrowing the short model-request or control timeout. Loading composes the tracked public TOML and the
-    device-local ignored ``.env`` automatically. There is no code default.
+    without borrowing the short model-request or control timeout. Loading composes the
+    subsystem files under ``config/`` and the device-local ignored ``.env`` automatically.
+    There is no code default.
     """
 
     model_config = SettingsConfigDict(extra="ignore", env_prefix="")
@@ -2317,10 +2340,13 @@ class WorkerSetupSettings(ConfiguredSettings):
 
 
 def load_worker_setup_settings() -> WorkerSetupSettings:
-    """Read explicit worker setup/update settings through the automatic public/local configuration composition."""
+    """Read explicit worker setup/update settings through the automatic subsystem-file and
+    environment-file composition."""
     return WorkerSetupSettings()
 
 
+# The four search methods a query matches a course by: exact code, substring, fuzzy search and
+# semantic. Semantic runs only on a site that serves the embedding features.
 SearchMethod = Literal["exact_code", "substring", "fuzzy_name", "semantic"]
 
 _SEARCH_METHODS: tuple[SearchMethod, ...] = (
@@ -2440,7 +2466,8 @@ class SearchSettings(ConfiguredSettings):
 
 
 def load_search_settings() -> SearchSettings:
-    """Read search settings through the automatic public/local configuration composition."""
+    """Read search settings through the automatic subsystem-file and environment-file
+    composition."""
     return SearchSettings()
 
 

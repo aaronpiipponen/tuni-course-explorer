@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 328" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Normal-load CPU per request by worker process count</title>
+  <desc id="d">Fixed-mix normal CPU per request for two, three and four worker processes in the first comparison and the high-load relay comparison. The two-worker-process cell is lowest in both comparisons, and four worker processes cost about 6.5 percent more per request in the high-load comparison.</desc>
+  <rect width="960" height="328" rx="12" fill="#232434"/>
+  <rect x="61" y="33" width="14" height="14" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="96" y="45" font-size="14" fill="#a3a4b8">First comparison</text>
+  <rect x="267.4" y="33" width="14" height="14" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="302.4" y="45" font-size="14" fill="#a3a4b8">High-load relay</text>
+  <line x1="215.2" y1="72" x2="215.2" y2="252" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="215.2" y="274" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="370.7" y1="72" x2="370.7" y2="252" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="370.7" y="274" text-anchor="middle" font-size="14" fill="#a3a4b8">0.1</text>
+  <line x1="526.2" y1="72" x2="526.2" y2="252" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="526.2" y="274" text-anchor="middle" font-size="14" fill="#a3a4b8">0.2</text>
+  <line x1="681.7" y1="72" x2="681.7" y2="252" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="681.7" y="274" text-anchor="middle" font-size="14" fill="#a3a4b8">0.3</text>
+  <line x1="837.2" y1="72" x2="837.2" y2="252" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="837.2" y="274" text-anchor="middle" font-size="14" fill="#a3a4b8">0.4</text>
+  <text x="203.2" y="107" text-anchor="end" font-size="14" fill="#ececf2">2 worker processes</text>
+  <rect x="215.2" y="80" width="545.7" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="768.9" y="95" font-size="14" fill="#a3a4b8">0.35094</text>
+  <rect x="215.2" y="104" width="527.9" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="751.1" y="119" font-size="14" fill="#a3a4b8">0.33946</text>
+  <text x="203.2" y="167" text-anchor="end" font-size="14" fill="#ececf2">3 worker processes</text>
+  <rect x="215.2" y="140" width="561.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="784.7" y="155" font-size="14" fill="#a3a4b8">0.36112</text>
+  <rect x="215.2" y="164" width="563.8" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="787" y="179" font-size="14" fill="#a3a4b8">0.36259</text>
+  <text x="203.2" y="227" text-anchor="end" font-size="14" fill="#ececf2">4 worker processes</text>
+  <rect x="215.2" y="200" width="566.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="789.7" y="215" font-size="14" fill="#a3a4b8">0.36429</text>
+  <rect x="215.2" y="224" width="562.1" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="785.3" y="239" font-size="14" fill="#a3a4b8">0.36148</text>
+  <text x="526.2" y="304" text-anchor="middle" font-size="14" fill="#a3a4b8">CPU per request (core-seconds)</text>
+</svg>

@@ -1,0 +1,10 @@
+{
+  "type": "bar",
+  "title": "Memory bounds and measured peaks",
+  "description": "The retained-cache aggregate, the serving-tree proof limit, the summed process high-water marks, the cgroup maximum usage and the kernel proof ceiling, in GB.",
+  "valueAxis": "Memory (GB)",
+  "categories": ["Retained-cache aggregate", "Serving-tree proof limit", "Summed VmHWM", "Cgroup maximum usage", "Kernel proof ceiling"],
+  "series": [
+    { "name": "GB", "values": [1.074, 4.295, 2.788, 0.41, 0.268] }
+  ]
+}

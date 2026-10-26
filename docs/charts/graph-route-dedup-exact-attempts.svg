@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 688" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Exact-attempt time for selected scenarios above 10 ms</title>
+  <desc id="d">Baseline and prototype exact-attempt time for nine scenarios whose exact attempt exceeded 10 ms, spanning the largest attempts and both directions.</desc>
+  <rect width="960" height="688" rx="12" fill="#232434"/>
+  <rect x="61" y="33" width="14" height="14" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="96" y="45" font-size="14" fill="#a3a4b8">Baseline exact attempt</text>
+  <rect x="317.8" y="33" width="14" height="14" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="352.8" y="45" font-size="14" fill="#a3a4b8">Prototype exact attempt</text>
+  <line x1="366.4" y1="72" x2="366.4" y2="612" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="366.4" y="634" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="484.1" y1="72" x2="484.1" y2="612" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="484.1" y="634" text-anchor="middle" font-size="14" fill="#a3a4b8">1,000</text>
+  <line x1="601.8" y1="72" x2="601.8" y2="612" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="601.8" y="634" text-anchor="middle" font-size="14" fill="#a3a4b8">2,000</text>
+  <line x1="719.5" y1="72" x2="719.5" y2="612" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="719.5" y="634" text-anchor="middle" font-size="14" fill="#a3a4b8">3,000</text>
+  <line x1="837.2" y1="72" x2="837.2" y2="612" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="837.2" y="634" text-anchor="middle" font-size="14" fill="#a3a4b8">4,000</text>
+  <text x="354.4" y="107" text-anchor="end" font-size="14" fill="#ececf2">MATH.MA.725 recommended, empty</text>
+  <rect x="366.4" y="80" width="399.3" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="773.7" y="95" font-size="14" fill="#a3a4b8">3,392.2</text>
+  <rect x="366.4" y="104" width="369.2" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="743.6" y="119" font-size="14" fill="#a3a4b8">3,136.6</text>
+  <text x="354.4" y="167" text-anchor="end" font-size="14" fill="#ececf2">KAT.MARK.399 active-only-off, empty</text>
+  <rect x="366.4" y="140" width="394.6" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="769" y="155" font-size="14" fill="#a3a4b8">3,352.5</text>
+  <rect x="366.4" y="164" width="411" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="785.4" y="179" font-size="14" fill="#a3a4b8">3,492.1</text>
+  <text x="354.4" y="227" text-anchor="end" font-size="14" fill="#ececf2">KAT.MARK.399 recommended, nonempty</text>
+  <rect x="366.4" y="200" width="52.2" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="426.6" y="215" font-size="14" fill="#a3a4b8">443.2</text>
+  <rect x="366.4" y="224" width="50.4" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="424.8" y="239" font-size="14" fill="#a3a4b8">427.8</text>
+  <text x="354.4" y="287" text-anchor="end" font-size="14" fill="#ececf2">KAT.MARK.399 recommended, empty</text>
+  <rect x="366.4" y="260" width="50.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="424.9" y="275" font-size="14" fill="#a3a4b8">428.8</text>
+  <rect x="366.4" y="284" width="49.3" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="423.7" y="299" font-size="14" fill="#a3a4b8">418.8</text>
+  <text x="354.4" y="347" text-anchor="end" font-size="14" fill="#ececf2">KAT.MARK.304 active-only-off, empty</text>
+  <rect x="366.4" y="320" width="49.9" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="424.3" y="335" font-size="14" fill="#a3a4b8">423.7</text>
+  <rect x="366.4" y="344" width="49" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="423.4" y="359" font-size="14" fill="#a3a4b8">415.9</text>
+  <text x="354.4" y="407" text-anchor="end" font-size="14" fill="#ececf2">KAT.MARK.399 required-only, nonempty</text>
+  <rect x="366.4" y="380" width="26.8" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="401.2" y="395" font-size="14" fill="#a3a4b8">227.4</text>
+  <rect x="366.4" y="404" width="27.4" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="401.8" y="419" font-size="14" fill="#a3a4b8">233</text>
+  <text x="354.4" y="467" text-anchor="end" font-size="14" fill="#ececf2">KAT.MARK.399 required-only, empty</text>
+  <rect x="366.4" y="440" width="26.1" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="400.5" y="455" font-size="14" fill="#a3a4b8">221.6</text>
+  <rect x="366.4" y="464" width="27.5" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="401.9" y="479" font-size="14" fill="#a3a4b8">233.4</text>
+  <text x="354.4" y="527" text-anchor="end" font-size="14" fill="#ececf2">YKT.SOA.303 recommended, nonempty</text>
+  <rect x="366.4" y="500" width="14.4" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="388.8" y="515" font-size="14" fill="#a3a4b8">122</text>
+  <rect x="366.4" y="524" width="12.5" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="386.9" y="539" font-size="14" fill="#a3a4b8">106</text>
+  <text x="354.4" y="587" text-anchor="end" font-size="14" fill="#ececf2">YKT.SOA.303 recommended, empty</text>
+  <rect x="366.4" y="560" width="14.3" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="388.7" y="575" font-size="14" fill="#a3a4b8">121.9</text>
+  <rect x="366.4" y="584" width="12.4" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="386.8" y="599" font-size="14" fill="#a3a4b8">105</text>
+  <text x="601.8" y="664" text-anchor="middle" font-size="14" fill="#a3a4b8">Exact attempt (ms)</text>
+</svg>

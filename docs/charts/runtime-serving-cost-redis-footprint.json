@@ -1,0 +1,21 @@
+{
+  "type": "bar",
+  "title": "Redis kernel and logical memory by key count",
+  "description": "Kernel cgroup peak and retained charge, and Redis logical run peak, for 1,000, 10,000 and 100,000 opaque admission keys, in megabytes.",
+  "valueAxis": "Memory (MB)",
+  "categories": ["1,000 keys", "10,000 keys", "100,000 keys"],
+  "series": [
+    {
+      "name": "Kernel peak",
+      "values": [14.802944, 14.712832, 22.421504]
+    },
+    {
+      "name": "Kernel retained after expiry",
+      "values": [9.998336, 11.128832, 22.15936]
+    },
+    {
+      "name": "Redis run peak",
+      "values": [1.50464, 2.686624, 13.483296]
+    }
+  ]
+}

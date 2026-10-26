@@ -1,0 +1,15 @@
+{
+  "type": "bar",
+  "title": "Findings kept and unsupported findings kept on the ByteShape fit targets",
+  "description": "The baseline keeps 109 of 109 judged findings and 18 unsupported ones. Dropping findings at confidence 0.90 or below keeps 76 and keeps all 18 unsupported findings. Dropping every flagged finding keeps 70 and keeps 16 unsupported findings.",
+  "valueAxis": "Findings kept (count)",
+  "categories": [
+    "Keep every finding",
+    "Drop confidence 0.90 or below",
+    "Drop every flagged finding"
+  ],
+  "series": [
+    { "name": "Findings kept", "values": [109, 76, 70] },
+    { "name": "Unsupported findings kept", "values": [18, 18, 16] }
+  ]
+}

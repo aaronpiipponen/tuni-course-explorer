@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 360" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Findings kept, demoted and dropped by the correction</title>
+  <desc id="d">The 386 emitted findings by category and correction action. Demotion to recommended applies to required options only, and 45 of the 80 kept equivalence groups are kept by exception.</desc>
+  <rect width="960" height="360" rx="12" fill="#232434"/>
+  <line x1="232" y1="32" x2="232" y2="284" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="232" y="306" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="361.4" y1="32" x2="361.4" y2="284" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="361.4" y="306" text-anchor="middle" font-size="14" fill="#a3a4b8">20</text>
+  <line x1="490.9" y1="32" x2="490.9" y2="284" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="490.9" y="306" text-anchor="middle" font-size="14" fill="#a3a4b8">40</text>
+  <line x1="620.3" y1="32" x2="620.3" y2="284" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="620.3" y="306" text-anchor="middle" font-size="14" fill="#a3a4b8">60</text>
+  <line x1="749.8" y1="32" x2="749.8" y2="284" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="749.8" y="306" text-anchor="middle" font-size="14" fill="#a3a4b8">80</text>
+  <line x1="879.2" y1="32" x2="879.2" y2="284" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="879.2" y="306" text-anchor="middle" font-size="14" fill="#a3a4b8">100</text>
+  <text x="220" y="55" text-anchor="end" font-size="14" fill="#ececf2">Required, kept</text>
+  <rect x="232" y="40" width="627.8" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="867.8" y="55" font-size="14" fill="#a3a4b8">97</text>
+  <text x="220" y="91" text-anchor="end" font-size="14" fill="#ececf2">Required, demoted</text>
+  <rect x="232" y="76" width="362.4" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="602.4" y="91" font-size="14" fill="#a3a4b8">56</text>
+  <text x="220" y="127" text-anchor="end" font-size="14" fill="#ececf2">Required, dropped</text>
+  <rect x="232" y="112" width="297.7" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="537.7" y="127" font-size="14" fill="#a3a4b8">46</text>
+  <text x="220" y="163" text-anchor="end" font-size="14" fill="#ececf2">Recommended, kept</text>
+  <rect x="232" y="148" width="556.6" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="796.6" y="163" font-size="14" fill="#a3a4b8">86</text>
+  <text x="220" y="199" text-anchor="end" font-size="14" fill="#ececf2">Recommended, dropped</text>
+  <rect x="232" y="184" width="97.1" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="337.1" y="199" font-size="14" fill="#a3a4b8">15</text>
+  <text x="220" y="235" text-anchor="end" font-size="14" fill="#ececf2">Equivalence, kept</text>
+  <rect x="232" y="220" width="517.8" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="757.8" y="235" font-size="14" fill="#a3a4b8">80</text>
+  <text x="220" y="271" text-anchor="end" font-size="14" fill="#ececf2">Equivalence, dropped</text>
+  <rect x="232" y="256" width="38.8" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="278.8" y="271" font-size="14" fill="#a3a4b8">6</text>
+  <text x="555.6" y="336" text-anchor="middle" font-size="14" fill="#a3a4b8">Findings</text>
+</svg>

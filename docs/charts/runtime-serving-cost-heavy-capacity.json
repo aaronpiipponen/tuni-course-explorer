@@ -1,0 +1,13 @@
+{
+  "type": "bar",
+  "title": "Measured heavy recommendation rate",
+  "description": "Full-run basis-50 recommendation completions per minute at one, two and three heavy virtual users. Heavy work concentrated on one worker process, carrying 98.7 percent of web CPU at one virtual user and 99.4 percent at three. These rates are not a four-worker-process aggregate.",
+  "valueAxis": "Completed calls per minute",
+  "categories": ["One heavy VU", "Two heavy VUs", "Three heavy VUs"],
+  "series": [
+    {
+      "name": "Full-run rate",
+      "values": [6.476, 4.986, 8.973]
+    }
+  ]
+}

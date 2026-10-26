@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 388" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Heavy-alone completions by load meter</title>
+  <desc id="d">Completions over the five heavy-alone cells and over all ten heavy cells for meters A, B, S and C1.</desc>
+  <rect width="960" height="388" rx="12" fill="#232434"/>
+  <rect x="61" y="33" width="14" height="14" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="96" y="45" font-size="14" fill="#a3a4b8">Heavy alone</text>
+  <rect x="225.4" y="33" width="14" height="14" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="260.4" y="45" font-size="14" fill="#a3a4b8">Ten heavy cells</text>
+  <line x1="131.2" y1="72" x2="131.2" y2="312" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="131.2" y="334" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="280.8" y1="72" x2="280.8" y2="312" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="280.8" y="334" text-anchor="middle" font-size="14" fill="#a3a4b8">20</text>
+  <line x1="430.4" y1="72" x2="430.4" y2="312" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="430.4" y="334" text-anchor="middle" font-size="14" fill="#a3a4b8">40</text>
+  <line x1="580" y1="72" x2="580" y2="312" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="580" y="334" text-anchor="middle" font-size="14" fill="#a3a4b8">60</text>
+  <line x1="729.6" y1="72" x2="729.6" y2="312" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="729.6" y="334" text-anchor="middle" font-size="14" fill="#a3a4b8">80</text>
+  <line x1="879.2" y1="72" x2="879.2" y2="312" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="879.2" y="334" text-anchor="middle" font-size="14" fill="#a3a4b8">100</text>
+  <text x="119.2" y="107" text-anchor="end" font-size="14" fill="#ececf2">Meter A</text>
+  <rect x="131.2" y="80" width="314.2" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="453.4" y="95" font-size="14" fill="#a3a4b8">42</text>
+  <rect x="131.2" y="104" width="590.9" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="730.1" y="119" font-size="14" fill="#a3a4b8">79</text>
+  <text x="119.2" y="167" text-anchor="end" font-size="14" fill="#ececf2">Meter B</text>
+  <rect x="131.2" y="140" width="351.6" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="490.8" y="155" font-size="14" fill="#a3a4b8">47</text>
+  <rect x="131.2" y="164" width="658.2" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="797.4" y="179" font-size="14" fill="#a3a4b8">88</text>
+  <text x="119.2" y="227" text-anchor="end" font-size="14" fill="#ececf2">Meter S</text>
+  <rect x="131.2" y="200" width="366.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="505.7" y="215" font-size="14" fill="#a3a4b8">49</text>
+  <rect x="131.2" y="224" width="680.7" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="819.9" y="239" font-size="14" fill="#a3a4b8">91</text>
+  <text x="119.2" y="287" text-anchor="end" font-size="14" fill="#ececf2">Meter C1</text>
+  <rect x="131.2" y="260" width="321.6" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="460.8" y="275" font-size="14" fill="#a3a4b8">43</text>
+  <rect x="131.2" y="284" width="613.4" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="752.6" y="299" font-size="14" fill="#a3a4b8">82</text>
+  <text x="505.2" y="364" text-anchor="middle" font-size="14" fill="#a3a4b8">Completed 200 responses</text>
+</svg>

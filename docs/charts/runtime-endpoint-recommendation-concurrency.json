@@ -1,0 +1,13 @@
+{
+  "type": "bar",
+  "title": "Basis-50 recommendation reads alone and three at once",
+  "description": "Wall time of one warm basis-50 recommendation read and of three reads issued at the same time.",
+  "valueAxis": "Wall time (s)",
+  "categories": ["One read alone", "First of three at once", "Second of three at once", "Third of three at once"],
+  "series": [
+    {
+      "name": "Wall time",
+      "values": [8.3, 9.69, 14.7, 14.9]
+    }
+  ]
+}

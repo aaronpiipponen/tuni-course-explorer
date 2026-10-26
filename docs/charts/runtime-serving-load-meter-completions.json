@@ -1,0 +1,11 @@
+{
+  "type": "bar",
+  "title": "Heavy-alone completions by load meter",
+  "description": "Completions over the five heavy-alone cells and over all ten heavy cells for meters A, B, S and C1.",
+  "valueAxis": "Completed 200 responses",
+  "categories": ["Meter A", "Meter B", "Meter S", "Meter C1"],
+  "series": [
+    { "name": "Heavy alone", "values": [42, 47, 49, 43] },
+    { "name": "Ten heavy cells", "values": [79, 88, 91, 82] }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "type": "bar",
+  "title": "Exact attempt and greedy fallback in mixed scenarios",
+  "description": "Baseline and prototype exact-attempt and greedy-fallback time on five empty-basis scenarios where the exact attempt exceeded the allocation limit.",
+  "valueAxis": "Time (ms)",
+  "categories": [
+    "MATH.MA.880 recommended+inferred",
+    "MATH.MA.725 recommended+inferred",
+    "PSY.324 recommended+inferred",
+    "YKT.SOA.303 recommended+inferred",
+    "YKT.SOA.303 active-only-off"
+  ],
+  "series": [
+    {
+      "name": "Baseline exact",
+      "values": [5141.0, 5058.8, 3962.8, 6873.3, 6821.9]
+    },
+    {
+      "name": "Baseline greedy",
+      "values": [1449.5, 1247.0, 35.0, 4534.7, 18294.1]
+    },
+    {
+      "name": "Prototype exact",
+      "values": [2221.0, 2182.7, 2781.4, 5520.8, 8772.8]
+    },
+    {
+      "name": "Prototype greedy",
+      "values": [1459.0, 1213.0, 34.5, 4394.2, 18350.1]
+    }
+  ]
+}

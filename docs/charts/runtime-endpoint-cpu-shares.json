@@ -1,0 +1,21 @@
+{
+  "type": "bar",
+  "title": "CPU shares of the heavy and light serving runs",
+  "description": "Web, database and embedding shares of total CPU in three heavy basis-50 runs and three light mixed runs.",
+  "valueAxis": "Share of total CPU (percent)",
+  "categories": ["Heavy, 1 user", "Heavy, 2 users", "Heavy, 3 users", "Light, 20 users", "Light, 50 users", "Light, 100 users, corrected cap"],
+  "series": [
+    {
+      "name": "Web",
+      "values": [69.8, 85.2, 77.7, 45.6, 43.3, 46.8]
+    },
+    {
+      "name": "Database",
+      "values": [30, 14.7, 22.2, 50.3, 48.2, 45]
+    },
+    {
+      "name": "Embedding",
+      "values": [0.2, 0.1, 0.1, 4, 8.3, 8.2]
+    }
+  ]
+}

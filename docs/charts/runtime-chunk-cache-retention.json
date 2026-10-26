@@ -1,0 +1,23 @@
+{
+  "type": "bar",
+  "title": "Measured chunk bytes against the accounted term",
+  "description": "Measured retained chunk bytes and the accounted chunk term in bytes for the 33.554 MB and 67.109 MB bounds at both bases and for the reproduction at 497 entries.",
+  "valueAxis": "Bytes",
+  "categories": [
+    "33.554 MB bound, 50",
+    "33.554 MB bound, 200",
+    "67.109 MB bound, 50",
+    "67.109 MB bound, 200",
+    "Reproduction, 497 entries"
+  ],
+  "series": [
+    {
+      "name": "Measured",
+      "values": [33318668, 35131425, 67246566, 68483256, 68937692]
+    },
+    {
+      "name": "Accounted",
+      "values": [33554432, 33554432, 67108864, 67108864, 68483618]
+    }
+  ]
+}

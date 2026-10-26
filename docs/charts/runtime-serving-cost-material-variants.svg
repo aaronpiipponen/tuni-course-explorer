@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 268" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Recommendation web cost by basis and scope</title>
+  <desc id="d">Mean web process core-seconds per recommendation call at basis 50 and basis 200, in the active-only scope and with inactive courses included.</desc>
+  <rect width="960" height="268" rx="12" fill="#232434"/>
+  <rect x="61" y="33" width="14" height="14" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="96" y="45" font-size="14" fill="#a3a4b8">Active only</text>
+  <rect x="225.4" y="33" width="14" height="14" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="260.4" y="45" font-size="14" fill="#a3a4b8">Including inactive courses</text>
+  <line x1="139.6" y1="72" x2="139.6" y2="192" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="139.6" y="214" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="309.8" y1="72" x2="309.8" y2="192" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="309.8" y="214" text-anchor="middle" font-size="14" fill="#a3a4b8">10</text>
+  <line x1="480" y1="72" x2="480" y2="192" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="480" y="214" text-anchor="middle" font-size="14" fill="#a3a4b8">20</text>
+  <line x1="650.2" y1="72" x2="650.2" y2="192" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="650.2" y="214" text-anchor="middle" font-size="14" fill="#a3a4b8">30</text>
+  <line x1="820.4" y1="72" x2="820.4" y2="192" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="820.4" y="214" text-anchor="middle" font-size="14" fill="#a3a4b8">40</text>
+  <text x="127.6" y="107" text-anchor="end" font-size="14" fill="#ececf2">Basis 50</text>
+  <rect x="139.6" y="80" width="177.3" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="324.9" y="95" font-size="14" fill="#a3a4b8">10.419672</text>
+  <rect x="139.6" y="104" width="229.7" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="377.3" y="119" font-size="14" fill="#a3a4b8">13.498728</text>
+  <text x="127.6" y="167" text-anchor="end" font-size="14" fill="#ececf2">Basis 200</text>
+  <rect x="139.6" y="140" width="406.9" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="554.5" y="155" font-size="14" fill="#a3a4b8">23.908396</text>
+  <rect x="139.6" y="164" width="563.3" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="710.9" y="179" font-size="14" fill="#a3a4b8">33.093459</text>
+  <text x="480" y="244" text-anchor="middle" font-size="14" fill="#a3a4b8">Web cost (core-seconds per call)</text>
+</svg>

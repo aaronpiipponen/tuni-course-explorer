@@ -1,0 +1,21 @@
+{
+  "type": "bar",
+  "title": "Heavy-load interactive probe p95 by worker process count",
+  "description": "Interactive probe p95 with 20 normal users plus 5, 6, 8 or 12 heavy virtual users. Four worker processes have the lowest value at every level, and their p95 range does not overlap the two-worker-process range.",
+  "valueAxis": "Probe p95 (ms)",
+  "categories": ["Heavy 5", "Heavy 6", "Heavy 8", "Heavy 12"],
+  "series": [
+    {
+      "name": "2 worker processes",
+      "values": [365.76, 425.77, 367.77, 411.37]
+    },
+    {
+      "name": "3 worker processes",
+      "values": [312.63, 298.05, 378.91, 442.45]
+    },
+    {
+      "name": "4 worker processes",
+      "values": [196.78, 301.23, 289.4, 357.77]
+    }
+  ]
+}

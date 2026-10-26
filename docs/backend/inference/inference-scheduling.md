@@ -34,6 +34,8 @@ A whole-target generation retries without a fixed attempt cap until one result i
 
 Each failed generation attempt is recorded once with its stage, its fixed reason, its error type, and an attempt count. A target course whose generation failed retains its pool, its shortlist, and the work identity it was running, so the next entry resumes it at the failed stage instead of rebuilding it.
 
+[Full-catalogue inference run](/docs/experiments/inference/full-catalogue-inference-run.md#the-retry-rules-the-run-used) records these retry rules in a run over the whole catalogue.
+
 ## The fit rule
 
 A generation request starts only when its rendered prompt tokens plus `INFERENCE_MAX_TOKENS` and `INFERENCE_FIT_HEADROOM_TOKENS` fit inside one configured local key. `INFERENCE_LOCAL_VARIANTS` names two ordered keys for the local language model, ordered by increasing context, and the first key that fits receives the request.
@@ -45,6 +47,8 @@ A generation request starts only when its rendered prompt tokens plus `INFERENCE
 | `INFERENCE_LOCAL_VARIANTS` | The two ordered local keys, by increasing context | 131072 and 163840 tokens |
 
 Every key is in `config/inference.toml`. A packet that fits neither key is never shortened. It fails as one capacity failure for that target course, with the reason `context_exceeded`, and no generation request is made for it. The rest of the run continues normally, and a following run retries the target course.
+
+The measured context each key holds is recorded with the sizing corrections in [Local model hardware and throughput](/docs/experiments/inference/local-model-hardware-and-throughput.md#sizing-corrections).
 
 ## The periodic reboot
 

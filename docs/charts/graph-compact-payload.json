@@ -1,0 +1,26 @@
+{
+  "type": "bar",
+  "title": "Graph report payload before and after the two-structure report",
+  "description": "Raw and gzip graph report sizes for MATH.MA.880 and MATH.MA.725, each with Active only on and off. The initial compact report is smaller than the baseline in all four cases, and gzip reduces the compact body further.",
+  "valueAxis": "Graph payload (MB)",
+  "categories": [
+    "MATH.MA.880, Active only on",
+    "MATH.MA.880, Active only off",
+    "MATH.MA.725, Active only on",
+    "MATH.MA.725, Active only off"
+  ],
+  "series": [
+    {
+      "name": "Baseline raw",
+      "values": [6.76, 28.02, 65.76, 92.98]
+    },
+    {
+      "name": "Compact raw",
+      "values": [1.23, 3.6, 1.36, 3.52]
+    },
+    {
+      "name": "Compact gzip",
+      "values": [0.18, 0.67, 0.22, 0.68]
+    }
+  ]
+}

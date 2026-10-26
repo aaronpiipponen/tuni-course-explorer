@@ -1,4 +1,5 @@
-"""Shared disposable-PostgreSQL fixtures for package and schema integration tests.
+"""Shared pytest fixtures for ordinary-test settings isolation, a temporary usage root, the
+disposable PostgreSQL test database and the Node solver bundle.
 
 The session fixture migrates the dedicated ``*_test`` database once at head and truncates it
 between tests through the ``database`` fixture. It forces ``SELECTED_DATASET_ENABLED=0`` and asserts
@@ -42,14 +43,17 @@ def _file_free_settings_environment(
 ) -> None:
     """Keep ordinary tests file-free while integration tests consume the owning local database.
 
-    An ordinary test receives the tracked public base fixture values and a synthetic
-    database password through the process environment, and the environment-only marker stops the
-    settings layer from reopening any file. A database integration test instead leaves every
-    ``DatabaseSettings`` alias and the environment-only marker alone, so the database settings owner
-    composes its normal local configuration for the fixture, snapshot, Compose and local subprocess
-    boundaries alike. That credential is consumed only by the owning database operations and is never
-    extracted, inspected or copied. Both kinds preserve an already-set process override, inject the
-    remaining public aliases, and force the selected-dataset opt-out.
+    An ordinary test receives the base fixture values from the committed example configuration and
+    the template placeholders through the process environment, including the placeholder database
+    password. The environment-only marker stops the settings layer from reopening any file. A
+    database integration test leaves the ``DatabaseSettings`` aliases and the environment-only
+    marker untouched except that it forces ``SELECTED_DATASET_ENABLED=0``, so the database settings
+    owner composes its normal local configuration for the fixture, snapshot, Compose and local
+    subprocess boundaries alike. That credential is consumed only by the owning database operations
+    and is never extracted, inspected or copied. Both kinds keep an already-set process value,
+    except that both force the selected-dataset opt-out and the ordinary kind also forces the
+    environment-only marker. The ordinary kind injects every absent example alias, and the
+    integration kind injects the absent example aliases outside ``DatabaseSettings``.
     """
     integration = request.node.get_closest_marker("integration") is not None
     for alias, value in public_environment().items():
@@ -68,9 +72,10 @@ def _file_free_settings_environment(
 def _temporary_usage_root(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Point the shared usage owner at the calling test's temporary directory.
 
-    The front router's usage middleware appends one record per forwarded request, and it resolves
-    this owner's root when it runs. Binding the root to the temporary directory keeps those writes
-    out of the checkout's own usage file, and the real writer stays enabled.
+    The front router's usage middleware appends one record per HTTP request it handles, including a
+    forwarded response, a refusal and a failure. It resolves this owner's root when it runs. Binding
+    the root to the temporary directory keeps those writes out of the checkout's own usage file, and
+    the real writer stays enabled.
     """
     monkeypatch.setattr(usage, "repository_root", lambda: tmp_path)
 

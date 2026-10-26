@@ -1,0 +1,21 @@
+{
+  "type": "bar",
+  "title": "Fixed-pool composition wall medians by mode",
+  "description": "Wall-clock medians for one fixed-pool recommendation composition on bases 1, 10 and 50 in fresh, reused and prepared modes.",
+  "valueAxis": "Wall time (s)",
+  "categories": ["Basis 1", "Basis 10", "Basis 50"],
+  "series": [
+    {
+      "name": "Fresh",
+      "values": [0.1868, 1.5798, 10.5724]
+    },
+    {
+      "name": "Reused",
+      "values": [0.1207, 1.5215, 10.7306]
+    },
+    {
+      "name": "Prepared",
+      "values": [0.0526, 0.788, 6.6311]
+    }
+  ]
+}

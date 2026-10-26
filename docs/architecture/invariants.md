@@ -185,4 +185,4 @@ The administration credential is stored as a hash file rather than as an environ
 
 Enforced by `src/course_explorer/config.py` (`DatabaseSettings.postgres_password`, `hide_input_in_errors`), `src/course_explorer/configuration.py` (`read_local_configuration`), `src/course_explorer_admin/credentials.py` (`set_admin_password`, `read_admin_credential`), and `src/course_explorer_web/launch.py` (`main`).
 
-Covered by `tests/config/test_configuration_sources.py::test_automatic_configuration_and_override_precedence`, `tests/web/test_launcher.py::test_web_launcher_excludes_operator_credentials`, and `tests/admin/test_operator_commands.py::test_operator_commands_report_status_refuse_bad_input_and_map_nothing`.
+Covered by `tests/config/test_configuration_sources.py::test_loads_automatic_configuration_and_applies_override_precedence`, `tests/web/test_launcher.py::test_web_launcher_excludes_operator_credentials`, and `tests/admin/test_operator_commands.py::test_operator_commands_report_status_refuse_bad_input_and_map_nothing`.

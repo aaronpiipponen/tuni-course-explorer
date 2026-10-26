@@ -1,0 +1,25 @@
+{
+  "type": "bar",
+  "title": "Occurrence evidence differences by course",
+  "description": "Paired comparisons per course whose selected occurrence set or per-course occurrence evidence differs, out of 30 comparisons per course.",
+  "valueAxis": "Differing comparisons (count)",
+  "categories": [
+    "COMP.CS.110",
+    "COMP.CS.200",
+    "COMP.CS.500",
+    "KAT.MARK.304",
+    "KAT.MARK.310",
+    "KAT.MARK.399",
+    "KIE.SUY.420",
+    "MATH.MA.725",
+    "MATH.MA.880",
+    "PSY.324",
+    "YKT.SOA.303"
+  ],
+  "series": [
+    {
+      "name": "Differing comparisons",
+      "values": [0, 0, 12, 18, 15, 12, 30, 12, 0, 12, 6]
+    }
+  ]
+}

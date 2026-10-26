@@ -1,0 +1,13 @@
+{
+  "type": "bar",
+  "title": "Complete preparation time for the four cyclic roots after the cycle cut",
+  "description": "Complete command wall time in seconds for the four spot-checked roots, with Recommended and Inferred on.",
+  "valueAxis": "Complete command time (s)",
+  "categories": ["Root A", "Root B", "Root C", "Root D"],
+  "series": [
+    {
+      "name": "Complete command",
+      "values": [2.76, 2.77, 2.36, 3.01]
+    }
+  ]
+}

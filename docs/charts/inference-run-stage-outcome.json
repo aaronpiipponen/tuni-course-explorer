@@ -1,0 +1,24 @@
+{
+  "type": "bar",
+  "title": "Targets at each stage and the content of the published sets",
+  "description": "The 4,543 eligible active targets at every completed stage of the one processing cycle, the published sets split into those with an expression and complete empty results, and the zero uncovered and failed targets.",
+  "valueAxis": "Targets",
+  "categories": [
+    "Eligible",
+    "Multiview completed",
+    "Rerank completed",
+    "Inference completed",
+    "Retained complete",
+    "Published",
+    "With an expression",
+    "Complete empty",
+    "Uncovered",
+    "Failed"
+  ],
+  "series": [
+    {
+      "name": "Targets",
+      "values": [4543, 4543, 4543, 4543, 4543, 4543, 2348, 2195, 0, 0]
+    }
+  ]
+}

@@ -46,3 +46,4 @@ TUNI Course Explorer is an independent project that is not affiliated with Tampe
 - [Backend](/docs/backend/README.md) explains how the official catalogue and its derived text, vectors, and inferred prerequisites are prepared and read.
 - [Testing](/docs/testing/README.md) describes the test boundaries, the local checks, and the solver fixtures.
 - [Reference](/docs/reference/README.md) explains how to read the vocabulary of the documentation, and the [Glossary](/docs/reference/glossary.md) defines every term.
+- [Experiments](/docs/experiments/README.md) records the experiments behind the system: the questions, setups, measurements, corrections and outcomes.

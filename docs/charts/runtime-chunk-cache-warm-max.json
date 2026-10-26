@@ -1,0 +1,22 @@
+{
+  "type": "bar",
+  "title": "Warm heavy-call maximum by case",
+  "description": "Warm heavy recommendation call maximum in seconds for the baseline, the 33.554 MB bound, the 67.109 MB bound and the eager projection at the 50-course and 200-course bases.",
+  "valueAxis": "Warm maximum (s)",
+  "categories": [
+    "Baseline, 50",
+    "33.554 MB bound, 50",
+    "67.109 MB bound, 50",
+    "Eager projection, 50",
+    "Baseline, 200",
+    "33.554 MB bound, 200",
+    "67.109 MB bound, 200",
+    "Eager projection, 200"
+  ],
+  "series": [
+    {
+      "name": "Warm maximum",
+      "values": [9.044, 8.399, 7.892, 9.512, 22.016, 22.561, 21.821, 22.187]
+    }
+  ]
+}

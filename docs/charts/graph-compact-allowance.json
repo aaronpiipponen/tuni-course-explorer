@@ -1,0 +1,21 @@
+{
+  "type": "bar",
+  "title": "Drawing allowance across the corrected passes",
+  "description": "Rows the 500-element drawing limit allowed and refused in each corrected pass. The module-drawing pass allows 82 rows and refuses 28.",
+  "valueAxis": "Case rows",
+  "categories": [
+    "First correction",
+    "Second correction",
+    "Module drawing"
+  ],
+  "series": [
+    {
+      "name": "Allowed",
+      "values": [80, 80, 82]
+    },
+    {
+      "name": "Refused",
+      "values": [30, 30, 28]
+    }
+  ]
+}

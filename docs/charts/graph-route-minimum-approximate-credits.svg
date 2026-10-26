@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 328" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Approximate route credits before and after the scalar correction</title>
+  <desc id="d">New credits of the three approximate large-case routes at the first passing attempt and after the scalar correction.</desc>
+  <rect width="960" height="328" rx="12" fill="#232434"/>
+  <rect x="61" y="33" width="14" height="14" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="96" y="45" font-size="14" fill="#a3a4b8">Passing attempt</text>
+  <rect x="259" y="33" width="14" height="14" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="294" y="45" font-size="14" fill="#a3a4b8">Corrected re-run</text>
+  <line x1="257.2" y1="72" x2="257.2" y2="252" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="257.2" y="274" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="379.9" y1="72" x2="379.9" y2="252" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="379.9" y="274" text-anchor="middle" font-size="14" fill="#a3a4b8">50</text>
+  <line x1="502.6" y1="72" x2="502.6" y2="252" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="502.6" y="274" text-anchor="middle" font-size="14" fill="#a3a4b8">100</text>
+  <line x1="625.4" y1="72" x2="625.4" y2="252" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="625.4" y="274" text-anchor="middle" font-size="14" fill="#a3a4b8">150</text>
+  <line x1="748.1" y1="72" x2="748.1" y2="252" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="748.1" y="274" text-anchor="middle" font-size="14" fill="#a3a4b8">200</text>
+  <line x1="870.8" y1="72" x2="870.8" y2="252" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="870.8" y="274" text-anchor="middle" font-size="14" fill="#a3a4b8">250</text>
+  <text x="245.2" y="107" text-anchor="end" font-size="14" fill="#ececf2">MATH.MA.880 active only</text>
+  <rect x="257.2" y="80" width="535.1" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="800.3" y="95" font-size="14" fill="#a3a4b8">218</text>
+  <rect x="257.2" y="104" width="500.7" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="765.9" y="119" font-size="14" fill="#a3a4b8">204</text>
+  <text x="245.2" y="167" text-anchor="end" font-size="14" fill="#ececf2">MATH.MA.725 active only</text>
+  <rect x="257.2" y="140" width="486" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="751.2" y="155" font-size="14" fill="#a3a4b8">198</text>
+  <rect x="257.2" y="164" width="517.9" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="783.1" y="179" font-size="14" fill="#a3a4b8">211</text>
+  <text x="245.2" y="227" text-anchor="end" font-size="14" fill="#ececf2">MATH.MA.725 all courses</text>
+  <rect x="257.2" y="200" width="476.2" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="741.4" y="215" font-size="14" fill="#a3a4b8">194</text>
+  <rect x="257.2" y="224" width="476.2" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="741.4" y="239" font-size="14" fill="#a3a4b8">194</text>
+  <text x="564" y="304" text-anchor="middle" font-size="14" fill="#a3a4b8">New credits (cr)</text>
+</svg>

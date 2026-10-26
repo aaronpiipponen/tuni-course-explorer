@@ -151,6 +151,8 @@ diagnostic or cycle marker. The rule runs only when inferred prerequisites are e
 occurrence is offered equivalences, so an offered equivalent is never tested and the root counts as
 an ancestor.
 
+[Cyclic graph compilation](/docs/experiments/graph-and-route-algorithms/cyclic-graph-compilation.md#the-rule-applied-in-the-product) records the roots whose expansion the rule bounds and the alternative that was rejected.
+
 ## Inferred composition and equivalence
 
 `_read_inferred_expression` reads one active course's inferred set once through the cached

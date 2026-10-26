@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 484" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Graph report payload before and after the two-structure report</title>
+  <desc id="d">Raw and gzip graph report sizes for MATH.MA.880 and MATH.MA.725, each with Active only on and off. The initial compact report is smaller than the baseline in all four cases, and gzip reduces the compact body further.</desc>
+  <rect width="960" height="484" rx="12" fill="#232434"/>
+  <rect x="61" y="33" width="14" height="14" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="96" y="45" font-size="14" fill="#a3a4b8">Baseline raw</text>
+  <rect x="233.8" y="33" width="14" height="14" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="268.8" y="45" font-size="14" fill="#a3a4b8">Compact raw</text>
+  <rect x="398.2" y="33" width="14" height="14" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="433.2" y="45" font-size="14" fill="#a3a4b8">Compact gzip</text>
+  <line x1="299.2" y1="72" x2="299.2" y2="408" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="299.2" y="430" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="410.2" y1="72" x2="410.2" y2="408" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="410.2" y="430" text-anchor="middle" font-size="14" fill="#a3a4b8">20</text>
+  <line x1="521.1" y1="72" x2="521.1" y2="408" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="521.1" y="430" text-anchor="middle" font-size="14" fill="#a3a4b8">40</text>
+  <line x1="632.1" y1="72" x2="632.1" y2="408" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="632.1" y="430" text-anchor="middle" font-size="14" fill="#a3a4b8">60</text>
+  <line x1="743" y1="72" x2="743" y2="408" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="743" y="430" text-anchor="middle" font-size="14" fill="#a3a4b8">80</text>
+  <line x1="854" y1="72" x2="854" y2="408" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="854" y="430" text-anchor="middle" font-size="14" fill="#a3a4b8">100</text>
+  <text x="287.2" y="119" text-anchor="end" font-size="14" fill="#ececf2">MATH.MA.880, Active only on</text>
+  <rect x="299.2" y="80" width="37.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="344.7" y="95" font-size="14" fill="#a3a4b8">6.76</text>
+  <rect x="299.2" y="104" width="6.8" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="314" y="119" font-size="14" fill="#a3a4b8">1.23</text>
+  <rect x="299.2" y="128" width="1" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="308.2" y="143" font-size="14" fill="#a3a4b8">0.18</text>
+  <text x="287.2" y="203" text-anchor="end" font-size="14" fill="#ececf2">MATH.MA.880, Active only off</text>
+  <rect x="299.2" y="164" width="155.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="462.7" y="179" font-size="14" fill="#a3a4b8">28.02</text>
+  <rect x="299.2" y="188" width="20" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="327.2" y="203" font-size="14" fill="#a3a4b8">3.6</text>
+  <rect x="299.2" y="212" width="3.7" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="310.9" y="227" font-size="14" fill="#a3a4b8">0.67</text>
+  <text x="287.2" y="287" text-anchor="end" font-size="14" fill="#ececf2">MATH.MA.725, Active only on</text>
+  <rect x="299.2" y="248" width="364.8" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="672" y="263" font-size="14" fill="#a3a4b8">65.76</text>
+  <rect x="299.2" y="272" width="7.5" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="314.7" y="287" font-size="14" fill="#a3a4b8">1.36</text>
+  <rect x="299.2" y="296" width="1.2" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="308.4" y="311" font-size="14" fill="#a3a4b8">0.22</text>
+  <text x="287.2" y="371" text-anchor="end" font-size="14" fill="#ececf2">MATH.MA.725, Active only off</text>
+  <rect x="299.2" y="332" width="515.9" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="823.1" y="347" font-size="14" fill="#a3a4b8">92.98</text>
+  <rect x="299.2" y="356" width="19.5" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="326.7" y="371" font-size="14" fill="#a3a4b8">3.52</text>
+  <rect x="299.2" y="380" width="3.8" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="311" y="395" font-size="14" fill="#a3a4b8">0.68</text>
+  <text x="576.6" y="460" text-anchor="middle" font-size="14" fill="#a3a4b8">Graph payload (MB)</text>
+</svg>

@@ -1,0 +1,11 @@
+{
+  "type": "bar",
+  "title": "Heavy completions at the two saturated budgets",
+  "description": "Completions at 3, 6, 12 and 24 heavy virtual users under a saturated budget of 24 and of 40 core-seconds.",
+  "valueAxis": "Completed 200 responses",
+  "categories": ["3 heavy users", "6 heavy users", "12 heavy users", "24 heavy users"],
+  "series": [
+    { "name": "24 core-seconds", "values": [5, 5, 5, 4] },
+    { "name": "40 core-seconds", "values": [8, 8, 8, 9] }
+  ]
+}

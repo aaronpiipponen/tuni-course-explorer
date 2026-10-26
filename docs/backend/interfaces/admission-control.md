@@ -62,13 +62,13 @@ A light read that finds the cookie's concurrency in use or its balance below one
 
 ## The heavy budget
 
-One cookie holds a heavy bucket whose capacity is the current budget: `ADMISSION_HEAVY_BUDGET_CORE_SECONDS` at the headroom line (120 core-seconds in the example) and `ADMISSION_HEAVY_BUDGET_SATURATED_CORE_SECONDS` at saturation (40 in the example). Between the two lines the budget falls linearly. The bucket refills over `ADMISSION_WINDOW_SECONDS` (60 seconds in the example) at the budget divided by the window.
+One cookie holds a heavy bucket whose capacity is the current budget: `ADMISSION_HEAVY_BUDGET_CORE_SECONDS` at the headroom line (120 core-seconds in the example) and `ADMISSION_HEAVY_BUDGET_SATURATED_CORE_SECONDS` at saturation (40 in the example). Between the two lines the budget falls linearly. The bucket refills over `ADMISSION_WINDOW_SECONDS` (60 seconds in the example) at the budget divided by the window. The measured effect of that saturated budget on heavy completions is recorded in [Serving load and admission limits](/docs/experiments/runtime-storage-and-serving/serving-load-and-limits.md#the-saturated-budget-at-40-core-seconds).
 
 A heavy read is charged its cost. A read whose cost is above the budget is charged the whole budget, so it passes while the bucket is full and fails once the balance has fallen below the budget. A read whose charge the balance cannot cover answers 429 at once. A read that is refused at the queue cap gets its charge back.
 
 ## The load score
 
-The front router combines three terms into one load score over a window of `ADMISSION_LOAD_WINDOW_SECONDS` seconds (60 in the example): the whole host's CPU utilisation, the light reads admitted in the window and the heavy reads admitted or running in it. `ADMISSION_SCORE_CPU_WEIGHT`, `ADMISSION_SCORE_LIGHT_WEIGHT` and `ADMISSION_SCORE_HEAVY_WEIGHT` set the three weights (1.0, 0.012 and 0.004 in the example).
+The front router combines three terms into one load score over a window of `ADMISSION_LOAD_WINDOW_SECONDS` seconds (60 in the example): the whole host's CPU utilisation, the light reads admitted in the window and the heavy reads admitted or running in it. `ADMISSION_SCORE_CPU_WEIGHT`, `ADMISSION_SCORE_LIGHT_WEIGHT` and `ADMISSION_SCORE_HEAVY_WEIGHT` set the three weights (1.0, 0.012 and 0.004 in the example). The weights and the fitted score behind them are recorded in [Serving load and admission limits](/docs/experiments/runtime-storage-and-serving/serving-load-and-limits.md#the-fitted-score).
 
 The CPU utilisation is the host's busy CPU core-seconds over the window divided by the window length and the host's core count. It covers every process on the host, including work outside this site. The front router samples the host CPU once a second, and every admission reads the values the last sample stored.
 
@@ -102,7 +102,7 @@ A heavy read that finds no free slot joins a first-in-first-out queue and waits 
 
 The front router places an admitted heavy read on a worker process that carries no other heavy read, and it picks the least busy such process, with the lowest index on a tie. A light read goes to the least busy worker process, which may carry a heavy read.
 
-A read holds its worker process until its response body ends. The router opens one connection per forwarded read and reuses none. A failed connection to a worker process ends the request with status 500, and the read is not retried or moved to another process.
+A read holds its worker process until its response body ends. The router opens one connection per forwarded read and reuses none. A failed connection to a worker process ends the request with status 500, and the read is not retried or moved to another process. The measured distribution of that placement is recorded in [Serving cost and routing](/docs/experiments/runtime-storage-and-serving/serving-cost-and-routing.md).
 
 ## Refusals
 

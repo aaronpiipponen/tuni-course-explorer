@@ -215,6 +215,8 @@ The values are the unit names installed on this host. `ADMIN_SITE_WEB_SERVICE_SC
 | `WEB_EMBEDDINGS_ENABLED` | `true` | Whether the site serves semantic matching, comparison and the recommended courses, and mounts their controls. |
 | `WEB_INFERENCE_ENABLED` | `true` | Whether the site serves inferred prerequisites and mounts the controls and marks that describe them. |
 
+The four worker processes trade more normal-load CPU and memory for a lower interactive latency under heavy load, against comparisons that recommended two, as [Serving workers and admission](/docs/experiments/runtime-storage-and-serving/serving-workers-and-admission.md#the-selection-of-four-workers) records.
+
 The serving processes read these values when they start, so a changed value reaches the site when the unit starts it again. [Web server](/docs/backend/interfaces/web-server.md) describes the router, the workers, the launcher and the supervisor.
 
 `USAGE_RETENTION_DAYS` in the same file is not a serving value. It sets how many days of request records the usage report keeps, and the report refuses a requested hour window longer than that retention in hours. The example keeps 30 days, so a window longer than 720 hours is refused. The front router appends one request record per request, and an operator reads the aggregates or prunes the old records with:

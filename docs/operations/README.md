@@ -65,6 +65,8 @@ A remote stage leaves the selected dataset as it is while it runs, and the selec
 
 [Worker sessions](/docs/operations/worker-sessions.md) describes the session and its return, and [Datasets](/docs/operations/datasets.md) describes the retained datasets and their reports.
 
+The [Full-catalogue inference run](/docs/experiments/inference/full-catalogue-inference-run.md) report covers a remote stage run that stopped part-way and resumed to a complete cycle, and the [Curriculum capture and replay](/docs/experiments/runtime-storage-and-serving/curriculum-capture-and-replay.md) report covers the capture and replay of a full catalogue.
+
 ## Derived files, served data and the web restart
 
 Search and comparison subtract an [embedding hub](/docs/reference/glossary.md#capture-and-data-preparation) from every vector before measuring similarity, so the two hub files are computed from the selected dataset and change when its chunk vectors change. The administration command computes both hub means from the current chunk vectors and writes the two files that `EMBEDDING_HUB_VECTOR` and `EMBEDDING_OUTCOMES_HUB_VECTOR` in `config/search.toml` name.

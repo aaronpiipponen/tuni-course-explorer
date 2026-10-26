@@ -1,0 +1,17 @@
+{
+  "type": "bar",
+  "title": "Descriptive read saving against the product read",
+  "description": "Wall-median and CPU-median saving for the descriptive-only projected read against the product chunk read on the three fixed recommendation pools.",
+  "valueAxis": "Saving (percent)",
+  "categories": ["Basis 1", "Basis 10", "Basis 50"],
+  "series": [
+    {
+      "name": "Wall median",
+      "values": [32.04, 30.57, 26.31]
+    },
+    {
+      "name": "CPU median",
+      "values": [34.99, 36.62, 35.01]
+    }
+  ]
+}

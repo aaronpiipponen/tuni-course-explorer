@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 396" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Warm heavy-call maximum by case</title>
+  <desc id="d">Warm heavy recommendation call maximum in seconds for the baseline, the 33.554 MB bound, the 67.109 MB bound and the eager projection at the 50-course and 200-course bases.</desc>
+  <rect width="960" height="396" rx="12" fill="#232434"/>
+  <line x1="240.4" y1="32" x2="240.4" y2="320" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="240.4" y="342" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="361.4" y1="32" x2="361.4" y2="320" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="361.4" y="342" text-anchor="middle" font-size="14" fill="#a3a4b8">5</text>
+  <line x1="482.5" y1="32" x2="482.5" y2="320" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="482.5" y="342" text-anchor="middle" font-size="14" fill="#a3a4b8">10</text>
+  <line x1="603.5" y1="32" x2="603.5" y2="320" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="603.5" y="342" text-anchor="middle" font-size="14" fill="#a3a4b8">15</text>
+  <line x1="724.6" y1="32" x2="724.6" y2="320" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="724.6" y="342" text-anchor="middle" font-size="14" fill="#a3a4b8">20</text>
+  <line x1="845.6" y1="32" x2="845.6" y2="320" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="845.6" y="342" text-anchor="middle" font-size="14" fill="#a3a4b8">25</text>
+  <text x="228.4" y="55" text-anchor="end" font-size="14" fill="#ececf2">Baseline, 50</text>
+  <rect x="240.4" y="40" width="218.9" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="467.3" y="55" font-size="14" fill="#a3a4b8">9.044</text>
+  <text x="228.4" y="91" text-anchor="end" font-size="14" fill="#ececf2">33.554 MB bound, 50</text>
+  <rect x="240.4" y="76" width="203.3" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="451.7" y="91" font-size="14" fill="#a3a4b8">8.399</text>
+  <text x="228.4" y="127" text-anchor="end" font-size="14" fill="#ececf2">67.109 MB bound, 50</text>
+  <rect x="240.4" y="112" width="191" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="439.4" y="127" font-size="14" fill="#a3a4b8">7.892</text>
+  <text x="228.4" y="163" text-anchor="end" font-size="14" fill="#ececf2">Eager projection, 50</text>
+  <rect x="240.4" y="148" width="230.3" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="478.7" y="163" font-size="14" fill="#a3a4b8">9.512</text>
+  <text x="228.4" y="199" text-anchor="end" font-size="14" fill="#ececf2">Baseline, 200</text>
+  <rect x="240.4" y="184" width="533" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="781.4" y="199" font-size="14" fill="#a3a4b8">22.016</text>
+  <text x="228.4" y="235" text-anchor="end" font-size="14" fill="#ececf2">33.554 MB bound, 200</text>
+  <rect x="240.4" y="220" width="546.2" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="794.6" y="235" font-size="14" fill="#a3a4b8">22.561</text>
+  <text x="228.4" y="271" text-anchor="end" font-size="14" fill="#ececf2">67.109 MB bound, 200</text>
+  <rect x="240.4" y="256" width="528.2" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="776.6" y="271" font-size="14" fill="#a3a4b8">21.821</text>
+  <text x="228.4" y="307" text-anchor="end" font-size="14" fill="#ececf2">Eager projection, 200</text>
+  <rect x="240.4" y="292" width="537.1" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="785.5" y="307" font-size="14" fill="#a3a4b8">22.187</text>
+  <text x="543" y="372" text-anchor="middle" font-size="14" fill="#a3a4b8">Warm maximum (s)</text>
+</svg>
