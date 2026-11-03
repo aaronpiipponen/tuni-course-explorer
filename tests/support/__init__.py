@@ -1,10 +1,10 @@
 """Shared test support: committed public configuration values and common fixtures.
 
 This module owns the committed example TOML settings under ``examples/config/`` plus the committed
-``examples/.env.example`` template, the alias-keyed settings factory every package settings helper
-uses, the shared official catalogue builders and in-memory read double, and the shared
-derived-translation read double and DTO fixture builder. Its values come from the committed example
-tree and template.
+``examples/.env.example`` credential template, the alias-keyed settings factory every package
+settings helper uses, the shared embedding configuration the compatible hashes derive from, the
+shared official catalogue builders and in-memory read double, and the shared derived-translation read
+double and DTO fixture builder. Its values come from the committed example tree and template.
 """
 
 from __future__ import annotations
@@ -20,6 +20,7 @@ from dotenv import dotenv_values
 from pydantic_settings import BaseSettings
 
 from course_explorer import configuration
+from course_explorer.config import EmbeddingRuntimeSettings
 from course_explorer.configuration import environment_value
 from course_explorer.curriculum import (
     CatalogueCourse,
@@ -55,12 +56,10 @@ _JSON_ALIASES = (
     "INFERENCE_CHAT_TEMPLATE_KWARGS",
     "SEARCH_TIER_PRIORITY",
     "INFERENCE_MULTIVIEW_EVALUATION_FIELDS",
-    "EMBEDDING_HUB_VECTOR",
-    "EMBEDDING_OUTCOMES_HUB_VECTOR",
 )
 _SYNTHETIC_VALUES = {
     "POSTGRES_PASSWORD": "local-password",
-    "SELECTED_DATASET_ENABLED": "0",
+    "FEEDBACK_POSTGRES_PASSWORD": "local-feedback-password",
 }
 
 
@@ -86,10 +85,9 @@ def public_environment() -> dict[str, str]:
     """Return the cached settings fixture map from the committed example tree and template.
 
     The committed example TOML values are serialized through the one shared helper so string-valued
-    fixtures preserve their form, and the committed ``examples/.env.example`` supplies the
-    machine-local placeholder aliases that a fixture must provide. Only aliases a
-    base settings family declares are kept. Only the committed example tree and template supply
-    values.
+    fixtures preserve their form, and the committed ``examples/.env.example`` supplies the credential
+    placeholder aliases that a fixture must provide. Only aliases a base settings family declares are
+    included. Only the committed example tree and template supply values.
     """
     declared = _declared_base_aliases()
     environment = {
@@ -108,21 +106,19 @@ def public_environment() -> dict[str, str]:
     return environment
 
 
-def write_example_config_tree(root: Path, *, include_derived: bool = True) -> Path:
+def write_example_config_tree(root: Path) -> Path:
     """Materialize the committed example configuration under one temporary root.
 
     Every registered subsystem ``examples/config/*.toml`` source is copied to ``<root>/config/`` so a
     test can bind the real owner's canonical layout to the actually committed example assets without
-    touching the checkout's own configuration. The two generated ``derived/`` hub artifacts are copied
-    too unless a caller exercises the hub-less case with ``include_derived=False``.
+    touching the checkout's own configuration. The ordered feedback definition is copied as its own
+    file.
     """
     config = root / "config"
     config.mkdir(parents=True, exist_ok=True)
     for relative in configuration.PUBLIC_CONFIG_FILES:
         shutil.copyfile(EXAMPLE_ROOT / relative, config / Path(relative).name)
-    derived = EXAMPLE_ROOT / "config" / "derived"
-    if include_derived and derived.is_dir():
-        shutil.copytree(derived, config / "derived")
+    shutil.copyfile(EXAMPLE_ROOT / "config/feedback-form.json", config / "feedback-form.json")
     return root
 
 
@@ -162,6 +158,21 @@ def settings_factory[T: BaseSettings](settings_type: type[T], **overrides: objec
         if isinstance(values.get(alias), str):
             values[alias] = json.loads(values[alias])
     return settings_type(**values)
+
+
+def embedding_settings() -> EmbeddingRuntimeSettings:
+    """Build the full required embedding configuration used to derive the compatible hash."""
+    return settings_factory(
+        EmbeddingRuntimeSettings,
+        EMBEDDING_CONTEXT_SIZE=1024,
+        EMBEDDING_REQUEST_TIMEOUT_SECONDS=30,
+        EMBEDDING_GENERATION_BATCH_SIZE=16,
+        EMBEDDING_ARTIFACT_URL="https://example.test/model.gguf",
+        EMBEDDING_ARTIFACT_PATH="models/model.gguf",
+        EMBEDDING_ARTIFACT_SHA256="a" * 64,
+        EMBEDDING_SERVER_IMAGE="ghcr.io/ggml-org/llama.cpp:server@sha256:" + "b" * 64,
+        EMBEDDING_RUNTIME_REVISION="c" * 40,
+    )
 
 
 def version(

@@ -1,0 +1,10 @@
+{
+  "type": "bar",
+  "title": "Successful throughput of the arena A/B runs",
+  "description": "Successful requests per second in the four concurrency-8 runs, two with MALLOC_ARENA_MAX unset and two with it set to 2, in the order they ran.",
+  "valueAxis": "Successful requests per second",
+  "categories": ["A, first run", "B, first run", "A, second run", "B, second run"],
+  "series": [
+    { "name": "Requests per second", "values": [30.304, 30.169, 24.627, 24.46] }
+  ]
+}

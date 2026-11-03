@@ -19,6 +19,9 @@ ACTIVE_ONLY_DEFAULT = True
 # its root, so the front router records the elapsed graph cost of that request.
 MEASURE_GRAPH_HEADER = "x-course-explorer-graph-measured"
 
+# The three shell document paths the frontend serves and the request record labels.
+SHELL_ROUTES = ("/", "/docs", "/feedback")
+
 
 class Route(StrEnum):
     """The fixed POST paths of the read-only API."""

@@ -1,6 +1,7 @@
 /** Structure root picker over the locally filtered official catalogue, with its version hand-off. */
 import { useEffect, useRef, useState } from "react";
 import type { CatalogueModule, ModuleLookupGroup } from "../../api/types";
+import { AnimatedHeight } from "../../shared/AnimatedHeight";
 import { ErrorNotice } from "../../shared/ErrorNotice";
 import { LookupSkeletons } from "../../shared/LookupSkeletons";
 import { LookupVirtualList } from "../../shared/LookupVirtualList";
@@ -33,23 +34,10 @@ export function ModuleLookupBox({
     JSON.stringify([open, query]),
   );
   useEffect(() => {
-    if (open) input.current?.focus();
+    if (open) input.current?.focus({ preventScroll: true });
   }, [open]);
-  return (
+  const results = (
     <>
-      <div className="course-lookup-controls module-lookup-controls">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <circle cx="11" cy="11" r="7" />
-          <path d="m20 20-3.5-3.5" />
-        </svg>
-        <input
-          ref={input}
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder={t("Filter programmes and modules by name or code")}
-          aria-label={t("Filter programmes and modules by name or code")}
-        />
-      </div>
       {error && <ErrorNotice error={error} language={language} />}
       {loading && (
         <LookupSkeletons label={t("Loading programmes and modules")} />
@@ -57,19 +45,11 @@ export function ModuleLookupBox({
       {!loading &&
         !error &&
         (query.trim() ? (
-          handoff.group ? (
-            <ModuleVersionHandoff
-              group={handoff.group}
-              cancelRef={handoff.cancelRef}
-              disabled={pendingId !== null}
-              onCancel={handoff.cancel}
-              onSelect={handoff.pick}
-            />
-          ) : report?.results.length ? (
+          report?.results.length ? (
             <LookupVirtualList
               items={report.results}
               getItemKey={groupKey}
-              className="plist"
+              className="plist thin-scrollbar"
               resetKey={`${open}-${query}-${language}`}
               inputRef={input}
               renderRow={(row) => (
@@ -81,6 +61,7 @@ export function ModuleLookupBox({
                 >
                   <span className="scode">{row.code ?? ""}</span>
                   <span className="sname">{moduleName(row, language)}</span>
+                  <span className="add">{t("+ add")}</span>
                 </button>
               )}
             />
@@ -96,6 +77,31 @@ export function ModuleLookupBox({
             {t("Type to search programmes and modules by name or code.")}
           </p>
         ))}
+    </>
+  );
+  return (
+    <>
+      <div className="course-lookup-controls module-lookup-controls">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="11" cy="11" r="7" />
+          <path d="m20 20-3.5-3.5" />
+        </svg>
+        <input
+          ref={input}
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder={t("Filter programmes and modules by name or code")}
+          aria-label={t("Filter programmes and modules by name or code")}
+        />
+      </div>
+      <AnimatedHeight>{results}</AnimatedHeight>
+      <ModuleVersionHandoff
+        group={handoff.group}
+        cancelRef={handoff.cancelRef}
+        disabled={pendingId !== null}
+        onCancel={handoff.cancel}
+        onSelect={handoff.pick}
+      />
     </>
   );
 }

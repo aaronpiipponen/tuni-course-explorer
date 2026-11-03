@@ -11,43 +11,49 @@ Usage:
     uv run python scripts/prerequisites.py COMP.CS.500 --excluded COMP.CS.100
     uv run python scripts/prerequisites.py COMP.CS.500 --route
 
-Inputs may be canonical group IDs (which take precedence) or exact official course codes. The script
-is an adapter over `course_explorer.prerequisite.commands` and prints exactly one JSON result
-line for the one operation it dispatches. By default it prints the graph report with the native
-solver structure and the minimized drawing graph. `--route` prints the minimum-new-credit result
-instead from the shared TypeScript solver run through Node: the exact-default route, or an
+Graph-node flags:
+    --completed-node NODE_KEY   mark one drawn requirement node complete for this request.
+    --excluded-node NODE_KEY    exclude one drawn requirement node for this request.
+
+Inputs may be canonical group IDs (which take precedence) or exact official course codes. The
+script is an adapter over `course_explorer.prerequisite.commands` and prints exactly one JSON
+result line for the one operation it dispatches. By default it prints the graph report with the
+native solver structure and the minimized drawing graph. `--route` prints the minimum-new-credit
+result instead from the shared TypeScript solver run through Node: the exact-default route, or an
 explicitly marked approximate route, or `approximation_failed` with a `search_too_large` root
 problem, and no drawing graph. The Node run needs the bundle from
-`npm --prefix web run solver:build`. Defaults are
-required official prerequisites only. `--include-recommended` and `--include-inferred` independently
-add their category to both the graph and the calculation. An inlined official module or degree
-prerequisite is reported as one graph node identified by its canonical `group_id` and selected
-version, with its official member course cards in the graph's module-node list. Its inlined rule drives
-the calculation. The default activity scope is all courses. `--active-only` hides
-unretained inactive graph courses and excludes them from route candidates. `--completed` courses form
-the default calculation basis. `--basis selected` computes from the retained `--selected` display set
-instead, and without `--selected` it uses the completed set. Each repeatable `--excluded` code stays
-visible as its ordinary graph course node or as a module member card, while the canonical exclusion
-blocks the calculation from routing through or charging it, even when it is completed or
-selected: a required branch with no other usable route yields `no_solution` and reports the excluded
-courses that blocked it. Excluding the opened root blocks the whole request with a located
-`no_solution`. Graph-only completion and exclusion flags also apply to non-course nodes, without
-changing shared course completion state. It is read-only, and the route operation runs the bundled
-TypeScript solver in a child process.
+`npm --prefix web run solver:build`. Defaults are required official prerequisites only.
+`--include-recommended` and `--include-inferred` independently add their category to both the graph
+and the calculation. An inlined official module or degree prerequisite is reported as one graph node
+identified by its canonical `group_id` and selected version, with its official member course cards
+in the graph's module-node list. Its inlined rule drives the calculation. The default activity scope
+is all courses. `--active-only` hides unretained inactive graph courses and excludes them from route
+candidates. `--completed` courses form the default calculation basis. `--basis selected` computes
+from the retained `--selected` display set instead, and without `--selected` it uses the completed
+set. Each repeatable `--excluded` code stays visible as its ordinary graph course node or as a
+module member card, while the canonical exclusion blocks the calculation from routing through or
+charging it, even when it is completed or selected: a required branch with no other usable route
+yields `no_solution` and reports the excluded courses that blocked it. Excluding the opened root
+blocks the whole request with a located `no_solution`. Graph-only completion and exclusion flags
+also apply to non-course nodes, without changing shared course completion state. It is read-only,
+and the route operation runs the bundled TypeScript solver in a child process.
 """
 
 import argparse
 import json
 from collections.abc import Sequence
 
-from course_explorer.prerequisite.commands import (
-    run_minimum_route_command,
-    run_prerequisite_command,
-)
+from _checkout_source import install
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     """Parse one course and its options, delegate once, and print one JSON report line."""
+    install()
+    from course_explorer.prerequisite.commands import (
+        run_minimum_route_command,
+        run_prerequisite_command,
+    )
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("course_code")
     parser.add_argument("--completed", action="append", default=[])

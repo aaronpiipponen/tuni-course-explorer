@@ -22,7 +22,7 @@ import tempfile
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
-from course_explorer.administration import repository_root
+from course_explorer import administration
 from course_explorer.config import (
     load_embedding_runtime_settings,
     load_raw_database_settings,
@@ -100,7 +100,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     """
     arguments = sys.argv[1:] if argv is None else argv
     non_interactive, compose_arguments = _split_arguments(arguments)
-    root = repository_root()
+    root = administration.repository_root()
     project_name = os.environ.get(COMPOSE_PROJECT_NAME_ALIAS)
     directory = Path(tempfile.mkdtemp(prefix="course-explorer-compose-"))
     os.chmod(directory, 0o700)

@@ -19,6 +19,10 @@
 .graph-panel:active {
   cursor: grabbing;
 }
+.graph-panel .react-flow__node,
+.graph-panel .react-flow__edge {
+  transition: opacity 0.25s ease;
+}
 .graph-panel .react-flow__node.dim,
 .graph-panel .react-flow__edge.dim {
   opacity: 0.28;
@@ -46,7 +50,7 @@
   border: 1px solid rgb(255 255 255 / 25%);
   border-radius: 14px;
   border-color: rgb(176 123 232 / 50%);
-  background: linear-gradient(180deg, rgb(78 0 142 / 18%), #0d0d14);
+  background: linear-gradient(180deg, rgb(90 30 156 / 18%), #0d0d14);
   transition:
     border-color 0.2s,
     box-shadow 0.2s,
@@ -54,14 +58,14 @@
 }
 .graph-module:hover {
   border-color: #b07be8;
-  box-shadow: 0 0 30px -8px rgb(78 0 142 / 50%);
+  box-shadow: 0 0 30px -8px rgb(90 30 156 / 50%);
 }
 .graph-course.root > .tile {
   border-color: #b07be8;
   box-shadow:
     0 0 0 4px rgb(176 123 232 / 10%),
-    0 0 50px -8px rgb(78 0 142 / 50%);
-  background: linear-gradient(180deg, rgb(78 0 142 / 30%), #0d0d14);
+    0 0 50px -8px rgb(90 30 156 / 50%);
+  background: linear-gradient(180deg, rgb(90 30 156 / 30%), #0d0d14);
 }
 .graph-course.inferred > .tile {
   border-color: rgb(74 168 255 / 60%);
@@ -196,6 +200,9 @@
   fill: none;
   stroke: var(--edge-color);
   stroke-width: 1.6;
+  transition:
+    stroke-width 0.25s ease,
+    filter 0.25s ease;
 }
 .react-flow__edge-path.prereq-edge.inferred.line {
   stroke-dasharray: 5 5;

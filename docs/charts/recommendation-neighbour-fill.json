@@ -1,0 +1,17 @@
+{
+  "type": "bar",
+  "title": "Nearest-chunk rows returned by basis",
+  "description": "Rows returned by the direct nearest-chunk scan without an iterative scan and with the iterative scan at relaxed_order and 20,000 scan tuples, for bases of 5, 20 and 40 courses.",
+  "valueAxis": "Rows returned",
+  "categories": ["Basis 5", "Basis 20", "Basis 40"],
+  "series": [
+    {
+      "name": "Direct scan, no iterative scan",
+      "values": [314, 1790, 3773]
+    },
+    {
+      "name": "Direct scan, iterative",
+      "values": [720, 3320, 6840]
+    }
+  ]
+}

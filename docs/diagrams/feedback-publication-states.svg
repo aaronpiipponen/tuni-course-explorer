@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 720" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Feedback publication states</title>
+  <desc id="d">A submission that chose publication starts in GitHub publication pending, and one that did
+  not starts private. The sender claims the oldest pending submission as publication outcome unconfirmed
+  before one issue-create attempt, which ends as an issue created, an issue created with incomplete
+  attachments, or publication failed before issue creation, and an unconfirmed outcome leaves the row
+  unconfirmed. No state returns to pending, and operator deletion removes a submission in any state.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="720" rx="12" fill="#232434"/>
+
+  <rect x="48" y="40" width="180" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="138" y="66" text-anchor="middle" font-size="16" fill="#ececf2">Submission</text>
+  <text x="138" y="88" text-anchor="middle" font-size="14" fill="#a3a4b8">one submission</text>
+
+  <rect x="300" y="40" width="300" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="450" y="66" text-anchor="middle" font-size="16" fill="#ececf2">GitHub publication pending</text>
+  <text x="450" y="88" text-anchor="middle" font-size="14" fill="#a3a4b8">awaits its one attempt</text>
+
+  <rect x="48" y="160" width="168" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="132" y="186" text-anchor="middle" font-size="16" fill="#ececf2">Private</text>
+  <text x="132" y="208" text-anchor="middle" font-size="14" fill="#a3a4b8">no publication</text>
+
+  <rect x="300" y="160" width="330" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="465" y="186" text-anchor="middle" font-size="16" fill="#ececf2">Publication outcome unconfirmed</text>
+  <text x="465" y="208" text-anchor="middle" font-size="14" fill="#a3a4b8">claimed, no result</text>
+
+  <text x="304" y="246" font-size="16" fill="#a3a4b8">One attempt</text>
+
+  <rect x="300" y="256" width="426" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="513" y="282" text-anchor="middle" font-size="16" fill="#ececf2">Issue created</text>
+  <text x="513" y="304" text-anchor="middle" font-size="14" fill="#a3a4b8">the issue exists</text>
+
+  <rect x="300" y="352" width="426" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="513" y="378" text-anchor="middle" font-size="16" fill="#ececf2">Issue created with incomplete attachments</text>
+  <text x="513" y="400" text-anchor="middle" font-size="14" fill="#a3a4b8">the upload was incomplete</text>
+
+  <rect x="300" y="448" width="426" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="513" y="474" text-anchor="middle" font-size="16" fill="#ececf2">Publication failed before issue creation</text>
+  <text x="513" y="496" text-anchor="middle" font-size="14" fill="#a3a4b8">no issue was created</text>
+
+  <rect x="48" y="544" width="864" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="570" text-anchor="middle" font-size="16" fill="#ececf2">Deleted</text>
+  <text x="480" y="592" text-anchor="middle" font-size="14" fill="#a3a4b8">removed with its stored images</text>
+
+  <line x1="228" y1="72" x2="300" y2="72" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <text x="264" y="64" text-anchor="middle" font-size="14" fill="#a3a4b8">chosen</text>
+
+  <line x1="138" y1="104" x2="138" y2="160" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <text x="146" y="140" font-size="14" fill="#a3a4b8">not chosen</text>
+
+  <line x1="465" y1="104" x2="465" y2="160" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <text x="473" y="140" font-size="14" fill="#a3a4b8">claimed</text>
+
+  <polyline points="630,176 654,176 654,208 630,208" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="662" y="196" font-size="14" fill="#a3a4b8">outcome unconfirmed</text>
+
+  <line x1="300" y1="192" x2="272" y2="192" stroke="#a3a4b8" stroke-width="1.5"/>
+  <line x1="272" y1="192" x2="272" y2="480" stroke="#a3a4b8" stroke-width="1.5"/>
+  <line x1="272" y1="288" x2="300" y2="288" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="272" y1="384" x2="300" y2="384" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="272" y1="480" x2="300" y2="480" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+
+  <line x1="132" y1="224" x2="132" y2="544" stroke="#a3a4b8" stroke-width="1.5"
+        stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+
+  <polyline points="600,88 872,88 872,544" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+  <polyline points="630,216 840,216 840,544" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+  <polyline points="726,288 808,288 808,544" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+  <polyline points="726,384 776,384 776,544" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+  <polyline points="726,480 744,480 744,544" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+
+  <rect x="48" y="640" width="420" height="48" rx="8" fill="none" stroke="#4a4c6b" stroke-width="1.5"/>
+  <line x1="64" y1="664" x2="104" y2="664" stroke="#a3a4b8" stroke-width="1.5"
+        stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+  <text x="116" y="669" font-size="14" fill="#a3a4b8">Operator deletion from any state</text>
+</svg>

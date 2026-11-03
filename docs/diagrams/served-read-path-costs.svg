@@ -1,0 +1,106 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 624" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Served read path costs</title>
+  <desc id="d">The served request path of the measured build on the left and the structure each request
+  reused on the right. A request resolves the selected receipt through a memo keyed by the pointer and
+  receipt state, uses one engine per dataset identity, builds the catalogue body only on its first
+  read, answers a repeated next-course request from a raw alias, loads the centroid matrix as columns
+  on a worker's first recommendation, and subtracts the hub through one primitive. Every response body
+  matched the baseline after these removals.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="624" rx="12" fill="#232434"/>
+
+  <text x="64" y="88" font-size="16" fill="#a3a4b8">Request work, measured build</text>
+  <text x="596" y="88" font-size="16" fill="#a3a4b8">Structure the request reused</text>
+
+  <rect x="64" y="104" width="320" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="224" y="130" text-anchor="middle" font-size="16" fill="#ececf2">Resolve the selected receipt</text>
+  <text x="224" y="152" text-anchor="middle" font-size="14" fill="#a3a4b8">pointer and receipt read</text>
+
+  <rect x="64" y="184" width="320" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="224" y="210" text-anchor="middle" font-size="16" fill="#ececf2">Create the serving engine</text>
+  <text x="224" y="232" text-anchor="middle" font-size="14" fill="#a3a4b8">engine and pool per request</text>
+
+  <rect x="64" y="264" width="320" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="224" y="290" text-anchor="middle" font-size="16" fill="#ececf2">Build the catalogue body</text>
+  <text x="224" y="312" text-anchor="middle" font-size="14" fill="#a3a4b8">first read only</text>
+
+  <rect x="64" y="344" width="320" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="224" y="370" text-anchor="middle" font-size="16" fill="#ececf2">Resolve a repeated request</text>
+  <text x="224" y="392" text-anchor="middle" font-size="14" fill="#a3a4b8">identities and receipt</text>
+
+  <rect x="64" y="424" width="320" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="224" y="450" text-anchor="middle" font-size="16" fill="#ececf2">Load the centroid matrix</text>
+  <text x="224" y="472" text-anchor="middle" font-size="14" fill="#a3a4b8">first read per worker</text>
+
+  <rect x="64" y="504" width="320" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="224" y="530" text-anchor="middle" font-size="16" fill="#ececf2">Subtract the hub per row</text>
+  <text x="224" y="552" text-anchor="middle" font-size="14" fill="#a3a4b8">every row, every request</text>
+
+  <rect x="596" y="104" width="300" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="746" y="130" text-anchor="middle" font-size="16" fill="#ececf2">Receipt memo</text>
+  <text x="746" y="152" text-anchor="middle" font-size="14" fill="#a3a4b8">same pointer state</text>
+
+  <rect x="596" y="184" width="300" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="746" y="210" text-anchor="middle" font-size="16" fill="#ececf2">One engine per identity</text>
+  <text x="746" y="232" text-anchor="middle" font-size="14" fill="#a3a4b8">connection pool kept</text>
+
+  <rect x="596" y="264" width="300" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="746" y="290" text-anchor="middle" font-size="16" fill="#ececf2">Retained catalogue body</text>
+  <text x="746" y="312" text-anchor="middle" font-size="14" fill="#a3a4b8">5,878,209 bytes</text>
+
+  <rect x="596" y="344" width="300" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="746" y="370" text-anchor="middle" font-size="16" fill="#ececf2">Report cache</text>
+  <text x="746" y="392" text-anchor="middle" font-size="14" fill="#a3a4b8">raw aliases</text>
+
+  <rect x="596" y="424" width="300" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="746" y="450" text-anchor="middle" font-size="16" fill="#ececf2">Column-read centroid matrix</text>
+  <text x="746" y="472" text-anchor="middle" font-size="14" fill="#a3a4b8">8,996 rows</text>
+
+  <rect x="596" y="504" width="300" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="746" y="530" text-anchor="middle" font-size="16" fill="#ececf2">One subtraction primitive</text>
+  <text x="746" y="552" text-anchor="middle" font-size="14" fill="#a3a4b8">any row count</text>
+
+  <line x1="384" y1="136" x2="588" y2="136" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="392" y="128" font-size="14" fill="#a3a4b8">reuses the parse</text>
+
+  <line x1="384" y1="216" x2="588" y2="216" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="392" y="208" font-size="14" fill="#a3a4b8">reuses the engine</text>
+
+  <line x1="384" y1="296" x2="588" y2="296" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="392" y="288" font-size="14" fill="#a3a4b8">reuses the bytes</text>
+
+  <line x1="384" y1="376" x2="588" y2="376" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="392" y="368" font-size="14" fill="#a3a4b8">answers first</text>
+
+  <line x1="384" y1="456" x2="588" y2="456" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="392" y="448" font-size="14" fill="#a3a4b8">builds no entities</text>
+
+  <line x1="384" y1="536" x2="588" y2="536" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="392" y="528" font-size="14" fill="#a3a4b8">one call, both routes</text>
+
+  <text x="64" y="600" font-size="14" fill="#a3a4b8">Bodies matched the baseline after every removal</text>
+</svg>

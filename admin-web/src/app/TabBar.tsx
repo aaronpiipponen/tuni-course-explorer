@@ -5,9 +5,9 @@
  */
 import { wording } from "../shared/wording";
 
-/** The five tabs the console implements. */
+/** The six tabs the console implements. */
 export type TabId =
-  "dashboard" | "preparation" | "inference" | "logs" | "settings";
+  "dashboard" | "preparation" | "inference" | "logs" | "settings" | "feedback";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "dashboard", label: wording.tabs.dashboard },
@@ -15,6 +15,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "inference", label: wording.tabs.inference },
   { id: "logs", label: wording.tabs.logs },
   { id: "settings", label: wording.tabs.settings },
+  { id: "feedback", label: wording.tabs.feedback },
 ];
 
 /** Report whether one stored value names a tab the console implements. */

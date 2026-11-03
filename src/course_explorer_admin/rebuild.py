@@ -2,8 +2,10 @@
 
 This module owns the operator's rebuilds. ``rebuild_site`` builds the site frontend from the
 checkout's installed dependencies, recreates the already-prepared database and embedding containers,
-restarts the site's web unit, and proves the configured loopback listener belongs to the restarted
-process. ``rebuild_admin`` builds the administration frontend alone, and ``restart_admin`` queues one
+runs ``restart_web``, and proves the configured loopback listener belongs to the restarted
+process. ``restart_web`` restarts a caller-validated web unit through the configured manager and
+proves its loopback bind. ``rebuild_admin`` builds the administration
+frontend alone, and ``restart_admin`` queues one
 non-blocking restart of this checkout's own administration unit. Each is one bounded maintenance
 command over prepared resources.
 
@@ -23,7 +25,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from course_explorer.administration import repository_root
+from course_explorer import administration
 from course_explorer.config import (
     load_administrative_site_settings,
     load_local_lifecycle_settings,
@@ -116,36 +118,18 @@ def _read_web_listeners(
     return tuple(owned)
 
 
-def rebuild_site(*, runner: mechanics.ProcessRunner) -> RebuildReport:
-    """Rebuild the frontend, the two containers, the web unit and its verified bind.
+def restart_web(website: server.WebsiteStatus, *, runner: mechanics.ProcessRunner) -> None:
+    """Restart this checkout's validated web unit and prove its loopback bind.
 
-    Every step is checked. The frontend build runs from the checkout with its installed
-    dependencies, the containers are recreated from their prepared images without a build or a
-    download, the unit restarts through its configured manager, and the restarted unit must answer
-    on the configured loopback bind.
+    The caller supplies the already validated unit from ``server.read_web_service``, and only the
+    configured manager scope's restart command runs. The restarted process must own
+    ``127.0.0.1:<configured port>`` within the configured startup attempts. No frontend build,
+    container change or administration restart runs.
     """
-    root = repository_root()
+    root = administration.repository_root()
     site = load_administrative_site_settings()
-    website = server.read_web_service(runner=runner)
     settings = load_local_lifecycle_settings()
     timeout = settings.stop_timeout_seconds
-
-    runner.run(("npm", "--prefix", "web", "run", "build"), cwd=root, timeout=timeout)
-    runner.run(
-        (
-            *mechanics.compose_prefix(non_interactive=True),
-            "up",
-            "-d",
-            "--wait",
-            "--force-recreate",
-            "--no-build",
-            "--pull",
-            "never",
-            *REBUILD_SERVICES,
-        ),
-        cwd=root,
-        timeout=timeout,
-    )
     restart = (
         ("sudo", "-n", "/usr/bin/systemctl", "restart", website.unit)
         if site.web_service_scope == "system"
@@ -163,7 +147,40 @@ def rebuild_site(*, runner: mechanics.ProcessRunner) -> RebuildReport:
         interval=settings.poll_interval_seconds,
         sleep=time.sleep,
     )
-    return RebuildReport(steps=REBUILD_STEPS, host=restarted.host, port=restarted.port)
+
+
+def rebuild_site(*, runner: mechanics.ProcessRunner) -> RebuildReport:
+    """Rebuild the frontend, the two containers, the web unit and its verified bind.
+
+    Every step is checked. The frontend build runs from the checkout with its installed
+    dependencies, the containers are recreated from their prepared images without a build or a
+    download, the unit restarts through its configured manager, and the restarted unit must answer
+    on the configured loopback bind.
+    """
+    root = administration.repository_root()
+    # The checkout's own unit is validated before any frontend output or container changes.
+    website = server.read_web_service(runner=runner)
+    settings = load_local_lifecycle_settings()
+    timeout = settings.stop_timeout_seconds
+
+    runner.run(("npm", "--prefix", "web", "run", "build"), cwd=root, timeout=timeout)
+    runner.run(
+        (
+            *mechanics.compose_prefix(non_interactive=True, interpreter=True),
+            "up",
+            "-d",
+            "--wait",
+            "--force-recreate",
+            "--no-build",
+            "--pull",
+            "never",
+            *REBUILD_SERVICES,
+        ),
+        cwd=root,
+        timeout=timeout,
+    )
+    restart_web(website, runner=runner)
+    return RebuildReport(steps=REBUILD_STEPS, host=website.host, port=website.port)
 
 
 def rebuild_admin(*, runner: mechanics.ProcessRunner) -> AdminRebuildReport:
@@ -172,7 +189,7 @@ def rebuild_admin(*, runner: mechanics.ProcessRunner) -> AdminRebuildReport:
     The command runs the administration frontend build from the checkout's installed dependencies.
     A build failure propagates, and a separate ``restart_admin`` invocation queues the restart.
     """
-    root = repository_root()
+    root = administration.repository_root()
     unit = load_administrative_site_settings().admin_service_unit
     server.read_owned_site_unit(runner, unit, root=root, entry_point=_ADMIN_ENTRY_POINT)
     timeout = load_local_lifecycle_settings().stop_timeout_seconds
@@ -188,7 +205,7 @@ def restart_admin(*, runner: mechanics.ProcessRunner) -> AdminRestartReport:
     before the request is admitted. The restart is queued rather than waited for, so the caller is
     not the process being replaced. The returned report acknowledges queue admission alone.
     """
-    root = repository_root()
+    root = administration.repository_root()
     unit = load_administrative_site_settings().admin_service_unit
     server.read_owned_site_unit(runner, unit, root=root, entry_point=_ADMIN_ENTRY_POINT)
     timeout = load_local_lifecycle_settings().stop_timeout_seconds

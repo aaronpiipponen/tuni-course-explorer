@@ -16,8 +16,8 @@ from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 
+from course_explorer import administration
 from course_explorer.administration import (
-    repository_root,
     sha256_file,
     utc_now,
 )
@@ -91,19 +91,19 @@ def ingestion_configuration_sha256(
 def stage_identity_sha256(
     stage_name: StageName, configuration_sha256: str, options: StageOptions
 ) -> str:
-    """Hash one coarse work identity: stage, configuration, selected database and options."""
+    """Hash one coarse work identity: stage, configuration, Working database and options."""
     payload = {
         "stage": stage_name,
         "configuration_sha256": configuration_sha256,
-        "postgres_db": load_database_settings().postgres_db,
+        "postgres_db": load_database_settings(role="working").postgres_db,
         "options": options.model_dump(mode="json"),
     }
     return json_sha256(payload, ensure_ascii=True)
 
 
-def require_selected_database_schema() -> None:
-    """Require the selected database to be at this checkout's single Alembic head."""
-    engine = create_database_engine(load_database_settings())
+def require_working_database_schema() -> None:
+    """Require the Working database to be at this checkout's single Alembic head."""
+    engine = create_database_engine(load_database_settings(role="working"))
     try:
         with engine.connect() as connection:
             require_database_schema(connection)
@@ -158,7 +158,7 @@ class IngestionStage:
         """Do nothing: the core starts the database service."""
 
     def require_database(self) -> None:
-        require_selected_database_schema()
+        require_working_database_schema()
 
     def release(self, context: LifecycleContext) -> None:
         """Release is a no-op. A local stage's work runs on this host."""
@@ -310,7 +310,7 @@ def _require_prepared_artifact() -> None:
     """Validate that the pinned embedding artifact exists and matches its configured checksum."""
     settings = load_embedding_runtime_settings()
     artifact = settings.embedding_artifact_path
-    resolved = artifact if artifact.is_absolute() else repository_root() / artifact
+    resolved = artifact if artifact.is_absolute() else administration.repository_root() / artifact
     resolved = resolved.resolve()
     if not resolved.is_file() or resolved.is_symlink():
         raise ValueError("configured embedding artifact must be a regular file before start")
@@ -349,7 +349,7 @@ class EmbeddingStage:
         _require_prepared_artifact()
 
     def require_database(self) -> None:
-        require_selected_database_schema()
+        require_working_database_schema()
 
     def release(self, context: LifecycleContext) -> None:
         """Release is a no-op. A local stage's work runs on this host."""

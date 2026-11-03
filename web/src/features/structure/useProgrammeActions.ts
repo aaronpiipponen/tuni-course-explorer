@@ -15,7 +15,7 @@ import type {
   CourseMoveAnswer,
   CourseMoveRequest,
 } from "./CourseMoveConfirmDialog";
-import type { PulledCourse } from "./edits";
+import type { PulledCourse, PulledModule } from "./edits";
 import type { PlacedContent } from "./model";
 import type { StructureState } from "./state";
 import { moduleVersionKey } from "./moduleVersions";
@@ -28,9 +28,19 @@ export type ProgrammeMovePreview = {
   /** The holder the operation adds, replaces or resets. */
   holder: ModuleSummary;
   moves: readonly PulledCourse[];
+  /** The highest-level official modules the operation pulls, with everything they hold. */
+  moduleMoves: readonly PulledModule[];
+  /** The courses a reset of the moved holder would return from other nodes. */
+  resetMoves: readonly PulledCourse[];
+  /** The highest-level official modules a reset of the moved holder would return. */
+  resetModuleMoves: readonly PulledModule[];
+  /** The pulled module identities the ordered programme list renders. */
+  resetProgrammeIds: readonly string[];
+  /** The reset actions the move offers beside Move, from the moved module's own state. */
+  moveOptions: "reset" | "reset-all" | "both" | undefined;
   /** The exact selections the preview's reports were read under. */
   moduleVersions: Readonly<Record<string, string>>;
-  /** Localized node that displays the operation's holder now, when a visible node does. */
+  /** Localized node that displays the operation's holder, when a visible node does. */
   moduleFrom?: (language: DisplayLanguage) => string;
 };
 
@@ -174,9 +184,18 @@ export function useProgrammeActions(
   ): ProgrammeMovePreview => {
     const report = ctx.reports[pendingId(operation)];
     if (!report) throw new Error("Programme is unavailable");
+    const latest = store.refreshFromStorage();
+    const completed =
+      latest.profiles[latest.currentProfileId]?.state.completedCourseIds ?? [];
+    const pulls = programmeMoves(state, operation, ctx, completed);
     return {
       holder: report.root.module,
-      moves: programmeMoves(state, operation, ctx),
+      moves: pulls.moves,
+      moduleMoves: pulls.moduleMoves,
+      resetMoves: pulls.resetMoves,
+      resetModuleMoves: pulls.resetModuleMoves,
+      resetProgrammeIds: pulls.resetProgrammeIds,
+      moveOptions: pulls.moveOptions,
       moduleVersions,
       moduleFrom: displayedPlace(state, ctx, pendingId(operation)),
     };
@@ -236,6 +255,7 @@ export function useProgrammeActions(
           return false;
         let ctx = content;
         let pulls = pull;
+        let reset: "keep" | "all" | undefined;
         if (operation.kind === "add" || operation.kind === "replace") {
           ctx = await withReport(
             state,
@@ -257,11 +277,32 @@ export function useProgrammeActions(
           if (operation.kind === "add") {
             const request = preview(state, operation, ctx, moduleVersions);
             // One confirmation covers the programme move and every course it pulls.
-            if (request.moduleFrom !== undefined || request.moves.length > 0) {
+            if (
+              request.moduleFrom !== undefined ||
+              request.moves.length > 0 ||
+              request.moduleMoves.length > 0
+            ) {
               const answer = await confirmMoves({
                 holder: request.holder,
                 moves: request.moves,
+                moduleMoves: request.moduleMoves,
                 moduleFrom: request.moduleFrom,
+                resetOptions: request.moveOptions,
+              });
+              if (answer === false) return false;
+              pulls = answer !== "keep";
+              if (answer === "reset" || answer === "reset-all")
+                reset = answer === "reset" ? "keep" : "all";
+            }
+            if (
+              reset !== undefined &&
+              (request.resetMoves.length > 0 ||
+                request.resetModuleMoves.length > 0)
+            ) {
+              const answer = await confirmMoves({
+                holder: request.holder,
+                moves: request.resetMoves,
+                moduleMoves: request.resetModuleMoves,
               });
               if (answer === false) return false;
               pulls = answer !== "keep";
@@ -278,6 +319,7 @@ export function useProgrammeActions(
           removeCompletedCourses,
           pulls,
           moduleVersions,
+          reset,
         );
         return true;
       } catch (caught) {

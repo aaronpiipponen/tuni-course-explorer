@@ -6,7 +6,7 @@ import os
 import httpx
 import pytest
 
-from course_explorer.config import EmbeddingSettings
+from course_explorer.config import EmbeddingRuntimeSettings
 from course_explorer.embeddings.provider import EmbeddingProvider
 
 pytestmark = pytest.mark.live
@@ -16,7 +16,7 @@ def test_live_embedding_service_contract() -> None:
     """Exercise Finnish/English embedding, dimension, normalization, and determinism."""
     if os.environ.get("COURSE_EXPLORER_RUN_LIVE_EMBEDDING_TESTS") != "1":
         pytest.skip("set COURSE_EXPLORER_RUN_LIVE_EMBEDDING_TESTS=1 to enable live embedding test")
-    settings = EmbeddingSettings()
+    settings = EmbeddingRuntimeSettings()
     assert settings.embedding_host == "127.0.0.1"
 
     with EmbeddingProvider(settings) as provider:
@@ -42,7 +42,7 @@ def test_live_embedding_service_accepts_token_dense_maximum_character_chunk() ->
     """Prove one production-shaped maximal character chunk embeds completely."""
     if os.environ.get("COURSE_EXPLORER_RUN_LIVE_EMBEDDING_TESTS") != "1":
         pytest.skip("set COURSE_EXPLORER_RUN_LIVE_EMBEDDING_TESTS=1 to enable live embedding test")
-    settings = EmbeddingSettings()
+    settings = EmbeddingRuntimeSettings()
     long_text = ("a " * settings.embedding_chunk_max_characters)[
         : settings.embedding_chunk_max_characters
     ]

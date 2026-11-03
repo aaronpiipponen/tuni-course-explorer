@@ -1,10 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 512" role="img"
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 640" role="img"
      aria-labelledby="t d" font-family="system-ui, sans-serif">
   <title id="t">Boundaries between the read-only side and the administration side</title>
   <desc id="d">An administration side holds the administration console, the administration backend,
   the administration command and the worker. A read-only side, outlined in accent, holds the browser
-  app and the web server. A database between the two sides holds the selected dataset: the
-  administration command writes it, and the web server reads it. A usage file holds the request
+  app and the web server. A database between the two sides holds the Selected and Working datasets:
+  the administration command writes Working, and the web server reads Selected. A feedback
+  application store holds the submissions the web server writes and the administration command lists
+  and deletes, and the feedback sender claims and records them. A usage file holds the request
   records that the web server appends and the administration command reads and prunes.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
@@ -12,35 +14,35 @@
       <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
     </marker>
   </defs>
-  <rect width="960" height="512" rx="12" fill="#232434"/>
+  <rect width="960" height="640" rx="12" fill="#232434"/>
 
-  <rect x="24" y="64" width="320" height="424" rx="12" fill="none"
+  <rect x="24" y="64" width="296" height="448" rx="12" fill="none"
         stroke="#4a4c6b" stroke-width="1.5"/>
   <text x="40" y="88" font-size="16" fill="#a3a4b8">Administration side</text>
 
-  <rect x="696" y="64" width="240" height="280" rx="12" fill="none"
+  <rect x="696" y="64" width="240" height="232" rx="12" fill="none"
         stroke="#a98ae0" stroke-width="1.5"/>
   <text x="712" y="88" font-size="16" fill="#a98ae0">Read-only side</text>
 
-  <rect x="40" y="104" width="288" height="64" rx="8"
+  <rect x="40" y="104" width="264" height="64" rx="8"
         fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
-  <text x="184" y="130" text-anchor="middle" font-size="16" fill="#ececf2">Administration console</text>
-  <text x="184" y="152" text-anchor="middle" font-size="14" fill="#a3a4b8">Signed-in browser app</text>
+  <text x="172" y="130" text-anchor="middle" font-size="16" fill="#ececf2">Administration console</text>
+  <text x="172" y="152" text-anchor="middle" font-size="14" fill="#a3a4b8">Signed-in browser app</text>
 
-  <rect x="40" y="200" width="288" height="64" rx="8"
+  <rect x="40" y="200" width="264" height="64" rx="8"
         fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
-  <text x="184" y="226" text-anchor="middle" font-size="16" fill="#ececf2">Administration backend</text>
-  <text x="184" y="248" text-anchor="middle" font-size="14" fill="#a3a4b8">Fixed commands and sessions</text>
+  <text x="172" y="226" text-anchor="middle" font-size="16" fill="#ececf2">Administration backend</text>
+  <text x="172" y="248" text-anchor="middle" font-size="14" fill="#a3a4b8">Commands and sessions</text>
 
-  <rect x="40" y="296" width="288" height="64" rx="8"
+  <rect x="40" y="296" width="264" height="64" rx="8"
         fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
-  <text x="184" y="322" text-anchor="middle" font-size="16" fill="#ececf2">Administration command</text>
-  <text x="184" y="344" text-anchor="middle" font-size="14" fill="#a3a4b8">Operator menu and stages</text>
+  <text x="172" y="322" text-anchor="middle" font-size="16" fill="#ececf2">Administration command</text>
+  <text x="172" y="344" text-anchor="middle" font-size="14" fill="#a3a4b8">Operator menu and stages</text>
 
-  <rect x="40" y="400" width="288" height="64" rx="8"
+  <rect x="40" y="424" width="264" height="64" rx="8"
         fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
-  <text x="184" y="426" text-anchor="middle" font-size="16" fill="#ececf2">Worker</text>
-  <text x="184" y="448" text-anchor="middle" font-size="14" fill="#a3a4b8">Translation and inference</text>
+  <text x="172" y="450" text-anchor="middle" font-size="16" fill="#ececf2">Worker</text>
+  <text x="172" y="472" text-anchor="middle" font-size="14" fill="#a3a4b8">Translation and inference</text>
 
   <rect x="720" y="104" width="192" height="64" rx="8"
         fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
@@ -52,45 +54,67 @@
   <text x="816" y="242" text-anchor="middle" font-size="16" fill="#ececf2">Web server</text>
   <text x="816" y="264" text-anchor="middle" font-size="14" fill="#a3a4b8">Read-only API</text>
 
-  <rect x="400" y="200" width="168" height="64" rx="8"
+  <rect x="380" y="200" width="288" height="64" rx="8"
         fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
-  <text x="484" y="226" text-anchor="middle" font-size="16" fill="#ececf2">Database</text>
-  <text x="484" y="248" text-anchor="middle" font-size="14" fill="#a3a4b8">Selected dataset</text>
+  <text x="524" y="226" text-anchor="middle" font-size="16" fill="#ececf2">Database</text>
+  <text x="524" y="248" text-anchor="middle" font-size="14" fill="#a3a4b8">Selected and Working datasets</text>
 
-  <rect x="720" y="416" width="192" height="64" rx="8"
+  <rect x="380" y="320" width="288" height="64" rx="8"
         fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
-  <text x="816" y="442" text-anchor="middle" font-size="16" fill="#ececf2">Usage file</text>
-  <text x="816" y="464" text-anchor="middle" font-size="14" fill="#a3a4b8">Request records</text>
+  <text x="524" y="346" text-anchor="middle" font-size="16" fill="#ececf2">Feedback application store</text>
+  <text x="524" y="368" text-anchor="middle" font-size="14" fill="#a3a4b8">Submissions and outcomes</text>
 
-  <line x1="184" y1="168" x2="184" y2="200" stroke="#a3a4b8" stroke-width="1.5"
-        marker-end="url(#arrow)"/>
-  <text x="196" y="188" font-size="14" fill="#a3a4b8">Requests</text>
+  <rect x="380" y="448" width="288" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="524" y="474" text-anchor="middle" font-size="16" fill="#ececf2">Feedback sender</text>
+  <text x="524" y="496" text-anchor="middle" font-size="14" fill="#a3a4b8">Scheduled publication</text>
 
-  <line x1="184" y1="264" x2="184" y2="296" stroke="#a3a4b8" stroke-width="1.5"
-        marker-end="url(#arrow)"/>
-  <text x="196" y="284" font-size="14" fill="#a3a4b8">Fixed commands</text>
+  <rect x="720" y="544" width="192" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="816" y="570" text-anchor="middle" font-size="16" fill="#ececf2">Usage file</text>
+  <text x="816" y="592" text-anchor="middle" font-size="14" fill="#a3a4b8">Request records</text>
 
-  <line x1="184" y1="360" x2="184" y2="400" stroke="#a3a4b8" stroke-width="1.5"
+  <line x1="172" y1="168" x2="172" y2="200" stroke="#a3a4b8" stroke-width="1.5"
         marker-end="url(#arrow)"/>
-  <text x="196" y="384" font-size="14" fill="#a3a4b8">Remote stages</text>
+  <text x="184" y="190" font-size="14" fill="#a3a4b8">Requests</text>
+
+  <line x1="172" y1="264" x2="172" y2="296" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <text x="164" y="286" text-anchor="end" font-size="14" fill="#a3a4b8">Fixed commands</text>
+
+  <line x1="172" y1="360" x2="172" y2="424" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <text x="184" y="400" font-size="14" fill="#a3a4b8">Remote stages</text>
 
   <line x1="816" y1="168" x2="816" y2="216" stroke="#a3a4b8" stroke-width="1.5"
         marker-end="url(#arrow)"/>
-  <text x="828" y="196" font-size="14" fill="#a3a4b8">App requests</text>
+  <text x="828" y="198" font-size="14" fill="#a3a4b8">App requests</text>
 
-  <polyline points="328,312 376,312 376,232 400,232" fill="none" stroke="#a3a4b8"
+  <polyline points="240,296 240,284 524,284 524,264" fill="none" stroke="#a3a4b8"
             stroke-width="1.5" marker-end="url(#arrow)"/>
-  <text x="388" y="286" font-size="14" fill="#a3a4b8">Writes the dataset</text>
+  <text x="324" y="280" font-size="14" fill="#a3a4b8">Writes Working</text>
 
-  <polyline points="568,232 580,232 580,248 720,248" fill="none" stroke="#a3a4b8"
+  <polyline points="304,344 350,344 350,352 380,352" fill="none" stroke="#a3a4b8"
             stroke-width="1.5" marker-end="url(#arrow)"/>
-  <text x="590" y="240" font-size="14" fill="#a3a4b8">Served data</text>
+  <text x="388" y="312" font-size="14" fill="#a3a4b8">Lists and deletes</text>
 
-  <polyline points="328,344 356,344 356,448 720,448" fill="none" stroke="#a3a4b8"
+  <polyline points="304,312 364,312 364,576 720,576" fill="none" stroke="#a3a4b8"
             stroke-width="1.5" marker-end="url(#arrow)"/>
-  <text x="368" y="436" font-size="14" fill="#a3a4b8">Reads and prunes</text>
+  <text x="372" y="568" font-size="14" fill="#a3a4b8">Reads and prunes</text>
 
-  <line x1="816" y1="280" x2="816" y2="416" stroke="#a3a4b8" stroke-width="1.5"
+  <polyline points="780,216 780,196 688,196 688,232 668,232" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="700" y="188" font-size="14" fill="#a3a4b8">Reads Selected</text>
+
+  <polyline points="816,280 816,352 668,352" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="676" y="342" font-size="14" fill="#a3a4b8">Submissions</text>
+
+  <polyline points="880,280 880,520 816,520 816,544" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="770" y="512" font-size="14" fill="#a3a4b8">Appends</text>
+
+  <line x1="524" y1="448" x2="524" y2="384" stroke="#a3a4b8" stroke-width="1.5"
         marker-end="url(#arrow)"/>
-  <text x="828" y="368" font-size="14" fill="#a3a4b8">Appends</text>
+  <text x="536" y="424" font-size="14" fill="#a3a4b8">Claims and records</text>
 </svg>

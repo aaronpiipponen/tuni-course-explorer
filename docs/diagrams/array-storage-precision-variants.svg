@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 280" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Precision choices in the array storage experiment</title>
+  <desc id="d">A fixed candidate pool is prepared into arrays at float64 or float32 storage, scored
+  with float64 or float32 arithmetic, and ranked. Each reported variant changes one precision choice
+  against the product float64 baseline.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="280" rx="12" fill="#232434"/>
+
+  <rect x="48" y="64" width="176" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="136" y="90" text-anchor="middle" font-size="16" fill="#ececf2">Fixed pool</text>
+  <text x="136" y="112" text-anchor="middle" font-size="14" fill="#a3a4b8">captured pool</text>
+
+  <rect x="248" y="64" width="200" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="348" y="90" text-anchor="middle" font-size="16" fill="#ececf2">Prepared arrays</text>
+  <text x="348" y="112" text-anchor="middle" font-size="14" fill="#a3a4b8">float64 or float32</text>
+
+  <rect x="472" y="64" width="200" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="572" y="90" text-anchor="middle" font-size="16" fill="#ececf2">Scorer arithmetic</text>
+  <text x="572" y="112" text-anchor="middle" font-size="14" fill="#a3a4b8">float64 or float32</text>
+
+  <rect x="696" y="64" width="216" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="804" y="90" text-anchor="middle" font-size="16" fill="#ececf2">Ranked results</text>
+  <text x="804" y="112" text-anchor="middle" font-size="14" fill="#a3a4b8">set, order, meters</text>
+
+  <line x1="224" y1="96" x2="248" y2="96" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="448" y1="96" x2="472" y2="96" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="672" y1="96" x2="696" y2="96" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+
+  <text x="48" y="200" font-size="14" fill="#a3a4b8">Each reported variant changes one precision choice against float64 storage and float64 arithmetic.</text>
+  <text x="48" y="224" font-size="14" fill="#a3a4b8">The candidate matrix bytes follow the storage choice.</text>
+</svg>

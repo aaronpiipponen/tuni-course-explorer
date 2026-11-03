@@ -28,7 +28,7 @@ export function useModuleVersionHandoff(
   }, [resetKey]);
   useEffect(() => {
     // The activated row leaves the results, so focus moves to the hand-off's first control.
-    if (group) cancelRef.current?.focus();
+    if (group) cancelRef.current?.focus({ preventScroll: true });
   }, [group]);
   const pick = (module: CatalogueModule) => {
     setGroup(null);
@@ -48,7 +48,10 @@ export function useModuleVersionHandoff(
   };
   const cancel = () => {
     setGroup(null);
-    inputRef.current?.focus();
+    // The prompt leaves the document in this update, so focus returns after its removal.
+    requestAnimationFrame(() =>
+      inputRef.current?.focus({ preventScroll: true }),
+    );
   };
   return { group, cancelRef, activate, pick, cancel };
 }

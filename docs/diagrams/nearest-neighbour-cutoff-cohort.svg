@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 300" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Exact-score cohort at the top-k cutoff</title>
+  <desc id="d">Stored rows of one basis chunk are ranked by score. Positions 39 to 42 hold the same
+  score, so the cohort crosses the limit between positions 40 and 41. The score-only order leaves
+  the survivor undefined, and the stored order keeps the row at position 40.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="300" rx="12" fill="#232434"/>
+
+  <text x="64" y="48" font-size="16" fill="#a3a4b8">One basis chunk's stored rows</text>
+  <text x="436" y="48" font-size="14" fill="#a3a4b8">top-k limit</text>
+
+  <rect x="64" y="64" width="84" height="40" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="106" y="89" text-anchor="middle" font-size="16" fill="#ececf2">37</text>
+  <rect x="156" y="64" width="84" height="40" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="198" y="89" text-anchor="middle" font-size="16" fill="#ececf2">38</text>
+  <rect x="248" y="64" width="84" height="40" rx="8" fill="#2e3045"
+        stroke="#a98ae0" stroke-width="1.5"/>
+  <text x="290" y="89" text-anchor="middle" font-size="16" fill="#ececf2">39</text>
+  <rect x="340" y="64" width="84" height="40" rx="8" fill="#5a1e9c"
+        stroke="#a98ae0" stroke-width="1.5"/>
+  <text x="382" y="89" text-anchor="middle" font-size="16" fill="#ececf2">40</text>
+  <rect x="432" y="64" width="84" height="40" rx="8" fill="#2e3045"
+        stroke="#a98ae0" stroke-width="1.5"/>
+  <text x="474" y="89" text-anchor="middle" font-size="16" fill="#ececf2">41</text>
+  <rect x="524" y="64" width="84" height="40" rx="8" fill="#2e3045"
+        stroke="#a98ae0" stroke-width="1.5"/>
+  <text x="566" y="89" text-anchor="middle" font-size="16" fill="#ececf2">42</text>
+  <rect x="616" y="64" width="84" height="40" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="658" y="89" text-anchor="middle" font-size="16" fill="#ececf2">43</text>
+
+  <line x1="428" y1="56" x2="428" y2="124" stroke="#a98ae0" stroke-width="1.5"/>
+
+  <line x1="428" y1="124" x2="428" y2="148" stroke="#a3a4b8" stroke-width="1.5"/>
+  <line x1="244" y1="148" x2="716" y2="148" stroke="#a3a4b8" stroke-width="1.5"/>
+  <line x1="244" y1="148" x2="244" y2="208" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="716" y1="148" x2="716" y2="208" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <text x="436" y="142" font-size="14" fill="#a3a4b8">survivor</text>
+
+  <text x="64" y="196" font-size="16" fill="#a3a4b8">Direct read</text>
+  <text x="536" y="196" font-size="16" fill="#a3a4b8">Stored read</text>
+
+  <rect x="64" y="208" width="360" height="64" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="244" y="234" text-anchor="middle" font-size="16" fill="#ececf2">Score-only order</text>
+  <text x="244" y="256" text-anchor="middle" font-size="14" fill="#a3a4b8">survivor undefined</text>
+
+  <rect x="536" y="208" width="360" height="64" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="716" y="234" text-anchor="middle" font-size="16" fill="#ececf2">Score, then target chunk id</text>
+  <text x="716" y="256" text-anchor="middle" font-size="14" fill="#a3a4b8">position 40 keeps tut-cu-g-28836</text>
+</svg>

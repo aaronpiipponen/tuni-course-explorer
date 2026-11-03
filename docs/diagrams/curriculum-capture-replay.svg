@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 400" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Capture, verification and replay of the curriculum source</title>
+  <desc id="d">A timed capture of one curriculum period writes stored responses and source snapshots
+  into a manifest, which a source-free verification re-reads and checks against an identical report.
+  Two full-catalogue captures write two manifests with one shared response set, and two source-free
+  replays normalize that set without a source client. The two scopes are separate and their counts
+  do not add.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="400" rx="12" fill="#232434"/>
+
+  <rect x="48" y="80" width="248" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="172" y="106" text-anchor="middle" font-size="16" fill="#ececf2">2026-2027 capture</text>
+  <text x="172" y="128" text-anchor="middle" font-size="14" fill="#a3a4b8">One curriculum period</text>
+
+  <rect x="356" y="80" width="248" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="106" text-anchor="middle" font-size="16" fill="#ececf2">Manifest</text>
+  <text x="480" y="128" text-anchor="middle" font-size="14" fill="#a3a4b8">Responses and snapshots</text>
+
+  <rect x="664" y="80" width="248" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="788" y="106" text-anchor="middle" font-size="16" fill="#ececf2">Verification</text>
+  <text x="788" y="128" text-anchor="middle" font-size="14" fill="#a3a4b8">Source-free and identical</text>
+
+  <line x1="296" y1="112" x2="356" y2="112" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="604" y1="112" x2="664" y2="112" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+
+  <rect x="48" y="240" width="248" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="172" y="266" text-anchor="middle" font-size="16" fill="#ececf2">Full-catalogue capture</text>
+  <text x="172" y="288" text-anchor="middle" font-size="14" fill="#a3a4b8">Two manifests, 21 periods</text>
+
+  <rect x="356" y="240" width="248" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="266" text-anchor="middle" font-size="16" fill="#ececf2">Manifest</text>
+  <text x="480" y="288" text-anchor="middle" font-size="14" fill="#a3a4b8">One shared response set</text>
+
+  <rect x="664" y="240" width="248" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="788" y="266" text-anchor="middle" font-size="16" fill="#ececf2">Two replays</text>
+  <text x="788" y="288" text-anchor="middle" font-size="14" fill="#a3a4b8">Without a source client</text>
+
+  <line x1="296" y1="272" x2="356" y2="272" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="604" y1="272" x2="664" y2="272" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+
+  <text x="48" y="352" font-size="14" fill="#a3a4b8">The two scopes are separate, and their counts do not add.</text>
+</svg>

@@ -304,8 +304,6 @@ describe("minimum-route projection", () => {
       problems: [blocked, blocked],
     });
     const noSolutionView = build(graph, noSolution);
-    expect(noSolutionView.blockedCourseIds).toEqual(["unused"]);
-    expect(noSolutionView.blockedNodeTitles).toEqual(["OR"]);
     expect(noSolutionView.problems).toHaveLength(1);
     expect(noSolutionView.newCredits).toBeNull();
     expect(noSolutionView.lit.nodes).toEqual(

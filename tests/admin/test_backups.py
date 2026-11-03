@@ -8,13 +8,14 @@ from pathlib import Path
 
 import pytest
 
+from course_explorer import administration
 from course_explorer_admin import backups
 
 
 @pytest.fixture()
 def backup_root(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     """Point the backup owner at one isolated repository root and return its backup directory."""
-    monkeypatch.setattr(backups, "repository_root", lambda: tmp_path)
+    monkeypatch.setattr(administration, "repository_root", lambda: tmp_path)
     return tmp_path / "data" / "backups"
 
 

@@ -31,7 +31,7 @@ export function RefusedGraph({
       <div className="graph-panel graph-refusal-panel">
         <div className="graph-refusal-body">
           <section className="graph-refusal" role="status">
-            <b>{t("This prerequisite tree is too large to draw.")}</b>
+            <b>{t("This prerequisite graph is too large to draw.")}</b>
             <p>
               <b>
                 {t("{elements} elements, limit {limit}.", {

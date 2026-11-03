@@ -24,7 +24,8 @@ from typing import Literal, get_args
 
 from pydantic import BaseModel, ConfigDict
 
-from course_explorer.administration import load_private_model, repository_root, session_directory
+from course_explorer import administration
+from course_explorer.administration import load_private_model, session_directory
 from course_explorer.config import WorkerConnectionSettings, load_worker_connection_settings
 from course_explorer.datasets import DatasetId
 from course_explorer_admin import mechanics
@@ -382,7 +383,7 @@ def read_embedding_log(*, lines: int, runner: mechanics.ProcessRunner) -> LogRea
     """
     _require_line_count(lines)
     argv = (
-        *mechanics.compose_prefix(non_interactive=True),
+        *mechanics.compose_prefix(non_interactive=True, interpreter=True),
         "logs",
         "--no-color",
         "--no-log-prefix",
@@ -390,7 +391,7 @@ def read_embedding_log(*, lines: int, runner: mechanics.ProcessRunner) -> LogRea
         str(lines),
         _EMBEDDING_SERVICE,
     )
-    output = runner.run(argv, cwd=repository_root()).stdout
+    output = runner.run(argv, cwd=administration.repository_root()).stdout
     return LogReadReport(
         stage="embedding",
         session_id=None,

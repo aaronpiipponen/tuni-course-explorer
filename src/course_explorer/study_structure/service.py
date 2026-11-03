@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from collections.abc import Collection, Iterator, Mapping
 from decimal import Decimal
-from typing import Literal
+from typing import Literal, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -90,6 +90,20 @@ class StudyStructureBatch(BaseModel):
     version_selection_required: tuple[str, ...] = ()
 
 
+class FragmentBatchReader(Protocol):
+    """The read a study fragment store offers to the batched service."""
+
+    def read(
+        self,
+        root_group_ids: Collection[str],
+        *,
+        allow_unavailable: bool,
+        module_versions: Mapping[str, str] | None,
+    ) -> StudyStructureBatch | None:
+        """Return the stored batch, or ``None`` when the service must read the roots."""
+        ...
+
+
 class StudyStructureService:
     """Project official programme/module structures for the configured academic year."""
 
@@ -97,26 +111,13 @@ class StudyStructureService:
         self._curriculum = curriculum
         self._academic_year_start = academic_year_start
 
-    def read(
-        self,
-        root_group_id: str,
-        *,
-        module_versions: Mapping[str, str] | None = None,
-    ) -> StudyStructureModule:
-        """Return the root's official structure, failing loudly for an unknown or ambiguous root."""
-        batch = self.read_many((root_group_id,), module_versions=module_versions)
-        if batch.version_selection_required:
-            raise StudyStructureVersionSelectionRequired(
-                f"module {batch.version_selection_required[0]!r} needs an explicit version selection"
-            )
-        return batch.roots[0]
-
     def read_many(
         self,
         root_group_ids: Collection[str],
         *,
         allow_unavailable: bool = False,
         module_versions: Mapping[str, str] | None = None,
+        fragment_store: FragmentBatchReader | None = None,
     ) -> StudyStructureBatch:
         """Return every requested root in caller order over one shared module and summary read.
 
@@ -130,9 +131,15 @@ class StudyStructureService:
         versions = dict(module_versions or {})
         if not requested:
             return StudyStructureBatch(roots=(), unavailable_root_group_ids=())
-        modules = {module.group_id: module for module in self._curriculum.get_modules(requested)}
-        module_map: dict[str, CatalogueModule | None] = dict(modules)
-        course_summaries: dict[str, CourseSummary] = {}
+        if fragment_store is not None:
+            fragment = fragment_store.read(
+                requested,
+                allow_unavailable=allow_unavailable,
+                module_versions=versions,
+            )
+            if fragment is not None:
+                return fragment
+        modules, module_map, course_summaries = self._prefetch_modules(requested, versions)
         roots: list[StudyStructureModule] = []
         unavailable: list[str] = []
         selection_required: list[str] = []
@@ -158,6 +165,69 @@ class StudyStructureService:
             unavailable_root_group_ids=tuple(unavailable),
             version_selection_required=tuple(selection_required),
         )
+
+    def _prefetch_modules(
+        self,
+        roots: Collection[str],
+        module_versions: Mapping[str, str],
+    ) -> tuple[
+        dict[str, CatalogueModule],
+        dict[str, CatalogueModule | None],
+        dict[str, CourseSummary],
+    ]:
+        """Read every reachable module and every direct course summary in batched reads.
+
+        The walk follows module-rule references and module-version candidates to a fixed point, so
+        each reachable module is read once. An explicit selection outside a module's eligible set is
+        left for projection to refuse through the same version selection. Summaries are read in
+        batches of 1000. A missing module stays present in the map as ``None``.
+        """
+        modules: dict[str, CatalogueModule] = {}
+        module_map: dict[str, CatalogueModule | None] = {}
+        course_refs: set[str] = set()
+        pending: set[str] = set(roots) | set(module_versions)
+        loaded: set[str] = set()
+        while True:
+            batch = tuple(sorted(pending - loaded))
+            if not batch:
+                break
+            loaded.update(batch)
+            for module in self._curriculum.get_modules(batch):
+                modules[module.group_id] = module
+                module_map[module.group_id] = module
+            for group_id in batch:
+                module = modules.get(group_id)
+                if module is None:
+                    module_map.setdefault(group_id, None)
+                    continue
+                try:
+                    version, _reason = self._select_version(module, module_versions)
+                except ValueError:
+                    continue
+                if version is None or version.rule is None:
+                    continue
+                for child in self._iter_rule_nodes(version.rule):
+                    if child.node_type is ModuleRuleType.COURSE_UNIT_RULE:
+                        if child.referenced_group_id is not None:
+                            course_refs.add(child.referenced_group_id)
+                    elif child.node_type is ModuleRuleType.MODULE_RULE:
+                        if child.referenced_group_id is not None:
+                            pending.add(child.referenced_group_id)
+        course_summaries: dict[str, CourseSummary] = {}
+        ordered = sorted(course_refs)
+        for start in range(0, len(ordered), 1000):
+            for summary in self._curriculum.get_course_summaries(
+                tuple(ordered[start : start + 1000])
+            ):
+                course_summaries[summary.group_id] = summary
+        return modules, module_map, course_summaries
+
+    @staticmethod
+    def _iter_rule_nodes(rule: CatalogueModuleRule) -> Iterator[CatalogueModuleRule]:
+        """Yield one module rule tree's nodes in order, including the root."""
+        yield rule
+        for child in rule.children:
+            yield from StudyStructureService._iter_rule_nodes(child)
 
     def _project_root(
         self,
@@ -220,26 +290,6 @@ class StudyStructureService:
             return None, "ambiguous_version"
         return candidates[0], None
 
-    def _load_module(
-        self, group_id: str, module_map: dict[str, CatalogueModule | None]
-    ) -> CatalogueModule | None:
-        """Read one referenced module once and reuse the result for repeated references."""
-        if group_id not in module_map:
-            loaded = self._curriculum.get_modules((group_id,))
-            module_map[group_id] = loaded[0] if loaded else None
-        return module_map[group_id]
-
-    def _collect_course_refs(self, rule: CatalogueModuleRule) -> Iterator[str]:
-        """Yield direct course references of one module's rule tree, not nested module targets."""
-        if rule.node_type is ModuleRuleType.COURSE_UNIT_RULE:
-            if rule.referenced_group_id is not None:
-                yield rule.referenced_group_id
-            return
-        if rule.node_type is ModuleRuleType.MODULE_RULE:
-            return
-        for child in rule.children:
-            yield from self._collect_course_refs(child)
-
     def _project_module(
         self,
         module: CatalogueModule,
@@ -250,16 +300,7 @@ class StudyStructureService:
         module_map: dict[str, CatalogueModule | None],
         module_versions: Mapping[str, str],
     ) -> StudyStructureModule:
-        """Bulk-fetch one selected module's direct course cards once, then project its rule tree."""
-        missing = tuple(
-            dict.fromkeys(
-                group_id
-                for group_id in self._collect_course_refs(version.rule)
-                if group_id not in course_summaries
-            )
-        )
-        for summary in self._curriculum.get_course_summaries(missing):
-            course_summaries[summary.group_id] = summary
+        """Project one selected module's rule tree over the prefetched course cards."""
         return StudyStructureModule(
             module=ModuleSummary(
                 group_id=module.group_id,
@@ -340,7 +381,7 @@ class StudyStructureService:
             return None, "module_not_found"
         if referenced in ancestor_group_ids:
             return None, "module_cycle"
-        module = self._load_module(referenced, module_map)
+        module = module_map.get(referenced)
         if module is None:
             return None, "module_not_found"
         version, reason = self._select_version(module, module_versions)

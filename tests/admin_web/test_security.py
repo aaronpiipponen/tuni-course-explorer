@@ -12,6 +12,20 @@ import pytest
 from course_explorer_admin_web.security import SESSION_COOKIE_NAME
 from tests.admin_web import _support
 
+_FEEDBACK_ID = "3f1c2a64-5b7d-4e29-8c10-6a9d2b4e7f01"
+_FEEDBACK_ATTACHMENT_ID = "8e2d4b17-9c63-4a52-b0f8-1d7c3e5a9b24"
+_FEEDBACK_REQUESTS: dict[str, tuple[str, dict[str, object]]] = {
+    "list": (
+        "/api/feedback/list",
+        {"query": "synthetic feedback query", "filters": {"role": "student"}},
+    ),
+    "attachment": (
+        "/api/feedback/attachment",
+        {"feedback_id": _FEEDBACK_ID, "attachment_id": _FEEDBACK_ATTACHMENT_ID},
+    ),
+    "delete": ("/api/feedback/delete", {"feedback_id": _FEEDBACK_ID}),
+}
+
 
 def _empty_refusal(response: httpx.Response) -> None:
     """Assert one request was refused with the bare empty response the lock produces."""
@@ -87,6 +101,23 @@ def test_admin_lockout_persists_and_blocks_every_request(
     _empty_refusal(
         locked.get("/unknown", headers={"Cookie": f"{SESSION_COOKIE_NAME}={authenticated_cookie}"})
     )
+    for path, body in _FEEDBACK_REQUESTS.values():
+        _empty_refusal(
+            locked.post(
+                path,
+                json=body,
+                headers={"Origin": _support.ORIGIN, "X-CSRF-Token": _support.VALUE_SENTINEL},
+            )
+        )
+    # The promotion stream is a destructive action like any other, so the lock refuses it before
+    # its handler or its producer exists.
+    _empty_refusal(
+        locked.post(
+            "/api/datasets/copy-to-selected",
+            json={"source_dataset_id": "b" * 32, "confirm_restart": True},
+            headers={"Origin": _support.ORIGIN, "X-CSRF-Token": _support.VALUE_SENTINEL},
+        )
+    )
     _empty_refusal(locked.get(_support.STATIC_PROBE_PATH))
     # The registered console shell and its built assets are refused by the lock like every address.
     _empty_refusal(locked.get("/"))
@@ -116,6 +147,12 @@ def test_admin_lockout_persists_and_blocks_every_request(
         "anonymous-config-set",
         "config-read-wrong-csrf",
         "config-set-wrong-csrf",
+        "anonymous-feedback-list",
+        "anonymous-feedback-attachment",
+        "anonymous-feedback-delete",
+        "feedback-list-wrong-csrf",
+        "feedback-attachment-wrong-csrf",
+        "feedback-delete-wrong-csrf",
         "positive-control",
         "anonymous-probe",
         "authenticated-probe",
@@ -183,13 +220,13 @@ def test_admin_requests_enforce_host_origin_and_csrf(
         log_path = root / _support.COMMAND_LOG_PATH
         entries_before = log_path.read_bytes()
         refused = authenticated.post(
-            "/api/inference/datasets/delete",
-            json={"dataset_id": "b" * 32},
+            "/api/datasets/copy-to-selected",
+            json={"source_dataset_id": "b" * 32, "confirm_restart": True},
             headers={"Origin": _support.ORIGIN, "X-CSRF-Token": "wrong-token"},
         )
         assert refused.status_code == 403
         assert refused.content == b""
-        # A refused request executes no command and appends no entry.
+        # A refused request executes no command, starts no promotion producer and appends no entry.
         assert log_path.read_bytes() == entries_before
         return
 
@@ -227,6 +264,48 @@ def test_admin_requests_enforce_host_origin_and_csrf(
                 if read
                 else {"file": "config/web.toml", "key": "WEB_PORT", "value": "18026"}
             ),
+            headers={"Origin": _support.ORIGIN, "X-CSRF-Token": "wrong-token"},
+        )
+        assert refused.status_code == 403
+        assert refused.content == b""
+        assert log_path.read_bytes() == entries_before
+        return
+
+    anonymous_feedback = {
+        "anonymous-feedback-list": "list",
+        "anonymous-feedback-attachment": "attachment",
+        "anonymous-feedback-delete": "delete",
+    }.get(case)
+    if anonymous_feedback is not None:
+        # Every feedback route keeps the authenticated-session requirement, so an anonymous
+        # session reaches no command and records nothing.
+        csrf = _support.bootstrap(client)
+        path, body = _FEEDBACK_REQUESTS[anonymous_feedback]
+        refused = client.post(
+            path,
+            json=body,
+            headers={"Origin": _support.ORIGIN, "X-CSRF-Token": csrf},
+        )
+        assert refused.status_code == 401
+        assert refused.content == b""
+        assert not (root / _support.COMMAND_LOG_PATH).exists()
+        return
+
+    feedback_wrong_csrf = {
+        "feedback-list-wrong-csrf": "list",
+        "feedback-attachment-wrong-csrf": "attachment",
+        "feedback-delete-wrong-csrf": "delete",
+    }.get(case)
+    if feedback_wrong_csrf is not None:
+        # A feedback request without the session's own CSRF token is refused, and the refused
+        # request executes no command and appends no entry.
+        authenticated = _support.authenticated_client(application)
+        log_path = root / _support.COMMAND_LOG_PATH
+        entries_before = log_path.read_bytes()
+        path, body = _FEEDBACK_REQUESTS[feedback_wrong_csrf]
+        refused = authenticated.post(
+            path,
+            json=body,
             headers={"Origin": _support.ORIGIN, "X-CSRF-Token": "wrong-token"},
         )
         assert refused.status_code == 403
@@ -446,6 +525,7 @@ def test_admin_login_issues_protected_server_session(
     report = response.json()
     assert report["authenticated"] is True
     assert report["username"] == _support.OPERATOR_NAME
+    assert report["app_url"] == _support.APP_URL
     assert report["csrf_token"] != initial_csrf
     assert response.headers["cache-control"] == "no-store"
     assert client.get("/unknown").status_code == 404

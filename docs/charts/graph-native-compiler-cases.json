@@ -1,0 +1,23 @@
+{
+  "type": "bar",
+  "title": "Python and native prerequisite compilation per scenario",
+  "description": "Core-seconds for the Python compile and evaluation and for the native compile of five recorded fact bundles. The native compiler is far below the Python replay in every scenario and highest on the inferred bundle.",
+  "valueAxis": "Core-seconds",
+  "categories": [
+    "50 active, official",
+    "50 inactive, official",
+    "60 active, official",
+    "60 inactive, official",
+    "60 inactive, inferred"
+  ],
+  "series": [
+    {
+      "name": "Python compile and evaluate",
+      "values": [0.6083, 1.3393, 0.6396, 1.4575, 2.0297]
+    },
+    {
+      "name": "Native compile",
+      "values": [0.0024, 0.0039, 0.0032, 0.0055, 0.0513]
+    }
+  ]
+}

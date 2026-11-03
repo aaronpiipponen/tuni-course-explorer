@@ -19,12 +19,12 @@ from datetime import date
 from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict
+from sqlalchemy.orm import Session, sessionmaker
 
 from course_explorer.config import (
     DatabaseSettings,
     load_database_settings,
     load_normalization_settings,
-    load_search_settings,
 )
 from course_explorer.curriculum import (
     CatalogueCurriculumPeriod,
@@ -34,8 +34,8 @@ from course_explorer.curriculum import (
 from course_explorer.curriculum_repository import CurriculumRepository
 from course_explorer.db.session import database_context as _database_context
 from course_explorer.enums import ModuleType
-from course_explorer.search.lookup import CourseLookupService
-from course_explorer.search.projection import LookupProjectionCache, build_lookup_rows
+from course_explorer.search.projection import LookupProjection, build_lookup_rows
+from course_explorer.search.resolver import CourseResolver
 
 
 class CourseSummariesReport(BaseModel):
@@ -94,40 +94,52 @@ class CatalogueReport(BaseModel):
 
 
 def run_course_summaries_command(
-    identifiers: Collection[str], *, database_settings: DatabaseSettings | None = None
+    identifiers: Collection[str],
+    *,
+    database_settings: DatabaseSettings | None = None,
+    projection: LookupProjection | None = None,
+    session_factory: sessionmaker[Session] | None = None,
 ) -> CourseSummariesReport:
-    """Resolve canonical IDs/exact codes through the sole lookup owner into official summaries."""
+    """Resolve canonical IDs/exact codes through the shared resolver into official summaries.
+
+    A supplied projection answers the resolution without a database read. A supplied session factory
+    carries the serving engine and is never disposed here.
+    """
     materialized = tuple(identifiers)
     if not materialized:
         return CourseSummariesReport(results=())
-    search_settings = load_search_settings()
     resolved_settings = (
         database_settings if database_settings is not None else load_database_settings()
     )
-    with _database_context(resolved_settings) as factory:
-        lookup = CourseLookupService(CurriculumRepository(factory), search_settings)
-        resolved = lookup.resolve_courses(materialized)
+    with _database_context(resolved_settings, factory=session_factory) as factory:
+        resolver = CourseResolver(CurriculumRepository(factory), projection=projection)
+        resolved = resolver.resolve_courses(materialized)
     return CourseSummariesReport(results=tuple(record.summary for record in resolved))
 
 
 def run_catalogue_command(
     *,
     database_settings: DatabaseSettings | None = None,
-    projection_cache: LookupProjectionCache | None = None,
+    academic_year_start: int | None = None,
+    projection: LookupProjection | None = None,
+    session_factory: sessionmaker[Session] | None = None,
 ) -> CatalogueReport:
-    """Read the minimal official catalogue at the configured current academic year.
+    """Read the minimal official catalogue at one academic year.
 
-    A supplied projection cache answers both the course rows and the module identities it retains.
-    Otherwise the course summaries and the module lookup are read once from the one repository.
+    A supplied projection answers both the course rows and the module identities. Otherwise the
+    course summaries and the module lookup are read once from the one repository. A supplied
+    academic year is used as given, and otherwise the configured one is read here. A supplied
+    session factory carries the serving engine and is never disposed here.
     """
-    academic_year_start = load_normalization_settings().current_academic_year_start
+    academic_year_start = (
+        academic_year_start or load_normalization_settings().current_academic_year_start
+    )
     resolved_settings = (
         database_settings if database_settings is not None else load_database_settings()
     )
-    with _database_context(resolved_settings) as factory:
+    with _database_context(resolved_settings, factory=session_factory) as factory:
         repository = CurriculumRepository(factory)
-        if projection_cache is not None:
-            projection = projection_cache.get(repository)
+        if projection is not None:
             rows = projection.courses
             module_lookup = projection.modules
         else:

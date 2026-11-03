@@ -1,0 +1,65 @@
+{
+  "selectPlaceholder": { "en": "Not selected", "fi": "Ei valittu" },
+  "fields": [
+    {
+      "id": "type",
+      "kind": "select",
+      "label": { "en": "Type", "fi": "Tyyppi" },
+      "required": true,
+      "options": [
+        { "value": "bug", "label": { "en": "Bug", "fi": "Virheilmoitus" }, "publicIssueByDefault": true },
+        { "value": "feature_request", "label": { "en": "Feature request", "fi": "Ominaisuuspyyntö" }, "publicIssueByDefault": true },
+        { "value": "improvement", "label": { "en": "Improvement", "fi": "Parannusehdotus" }, "publicIssueByDefault": true },
+        { "value": "other", "label": { "en": "Other", "fi": "Muu" }, "publicIssueByDefault": false }
+      ]
+    },
+    {
+      "id": "title", "kind": "text",
+      "label": { "en": "Title", "fi": "Otsikko" },
+      "required": true, "maxLength": 150
+    },
+    {
+      "id": "message", "kind": "textarea",
+      "label": { "en": "Message", "fi": "Viesti" },
+      "required": true, "maxLength": 10000
+    },
+    {
+      "id": "affected_feature", "kind": "select",
+      "label": { "en": "Affected feature", "fi": "Toiminto" },
+      "required": false,
+      "options": [
+        { "value": "search", "label": { "en": "Search", "fi": "Haku" } },
+        { "value": "compare", "label": { "en": "Compare", "fi": "Vertailu" } },
+        { "value": "prerequisites", "label": { "en": "Prerequisites", "fi": "Esitiedot" } },
+        { "value": "discover", "label": { "en": "Discover", "fi": "Ehdotukset" } },
+        { "value": "structure", "label": { "en": "Structure of studies", "fi": "Opintojen rakenne" } },
+        { "value": "profiles_import", "label": { "en": "Profiles and import", "fi": "Profiilit ja tuonti" } },
+        { "value": "other", "label": { "en": "Other", "fi": "Muu" } }
+      ]
+    },
+    {
+      "id": "role", "kind": "select",
+      "label": { "en": "Role", "fi": "Rooli" },
+      "required": false,
+      "options": [
+        { "value": "student", "label": { "en": "Student", "fi": "Opiskelija" } },
+        { "value": "teacher", "label": { "en": "Teacher", "fi": "Opettaja" } },
+        { "value": "other", "label": { "en": "Other", "fi": "Muu" } },
+        { "value": "prefer_not_to_say", "label": { "en": "Prefer not to say", "fi": "En halua kertoa" } }
+      ]
+    },
+    {
+      "id": "screenshots", "kind": "attachment",
+      "label": { "en": "Screenshots", "fi": "Kuvakaappaukset" },
+      "required": false,
+      "acceptedMimeTypes": ["image/png", "image/jpeg"],
+      "maxFiles": 3, "maxBytesPerFile": 5242880
+    }
+  ],
+  "githubIssue": {
+    "typeField": "type",
+    "titleField": "title",
+    "bodyFields": ["message", "affected_feature"],
+    "attachmentField": "screenshots"
+  }
+}

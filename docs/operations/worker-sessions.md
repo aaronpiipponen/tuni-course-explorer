@@ -1,10 +1,10 @@
 # Worker sessions
 
-A worker session is one run of a remote stage on the worker, from the prepared copy of the selected dataset to the verified return of the result.
+A worker session is one run of a remote stage on the worker, from the prepared copy of the Working dataset to the verified return of the result.
 
 ## What a session binds
 
-The translation and inference stages are [remote stages](/docs/reference/glossary.md#administration). Each run of one of them is a [worker session](/docs/reference/glossary.md#administration), and one session binds the identity of the source dataset, the stage, the derived worker database, and the full input snapshot of the selected dataset.
+The translation and inference stages are [remote stages](/docs/reference/glossary.md#administration). Each run of one of them is a [worker session](/docs/reference/glossary.md#administration), and one session binds the identity of the source dataset, the stage, the derived worker database, and the full input snapshot of the Working dataset.
 
 The worker database name is derived from the session id with `ADMIN_WORKER_DATABASE_PREFIX`, and the name of the returned server database with `ADMIN_DATASET_DATABASE_PREFIX`. Both prefixes are in `config/worker.toml`. The session evidence lives under `ADMIN_STATE_ROOT`, which is in `config/database.toml`, and the worker holds the same evidence under its own copy of that path.
 
@@ -12,28 +12,13 @@ Each read of the session record, the control record, and the worker state checks
 
 ## Explicit setup and the recurring start
 
-Worker preparation and the recurring stage work are two separate operations.
+The worker is prepared and checked by two explicit operations. `setup worker` fast-forwards its checkout to one origin branch, installs its locked environment and prepares its resources, and `preflight` reads the same facts without changing anything. [Preparing the worker](/docs/getting-started/worker-stages.md#preparing-the-worker) states both operations, their options and their reports.
 
-`uv run python scripts/admin.py setup worker` fast-forwards the worker checkout to one origin branch, installs its locked environment, and prepares its pointed resources: the configured system packages, the database service image, the pinned model artifacts, and the pinned runtimes. `--branch BRANCH` selects the origin branch, and `--code-only` updates the code and its locked environment without preparing the pointed resources.
-
-`uv run python scripts/admin.py preflight` is the read-only check of the prepared code and the prepared resources. It changes nothing and returns a nonzero exit status when a resource is missing.
-
-The recurring start never fetches, installs, or downloads. It checks the installed locked environment without syncing it, and runs every worker helper without dependency resolution or download.
-
-```bash
-uv run python scripts/admin.py setup datasets
-uv run python scripts/admin.py setup worker
-uv run python scripts/admin.py preflight
-uv run python scripts/admin.py translation start
-uv run python scripts/admin.py translation status
-uv run python scripts/admin.py translation stop
-```
-
-Prerequisites: the subsystem files under `config/` and the ignored environment file hold the values these commands read, a dataset is selected, and the worker account runs the setup commands without an interactive prompt. [Setup and preflight](/docs/operations/setup-and-preflight.md) lists the same entries with their machine commands.
+A session start never fetches, installs or downloads. It checks the installed locked environment without syncing it and runs every worker helper without dependency resolution or download, so the prepared worker is a prerequisite of the first remote stage start.
 
 ## Starting a session
 
-A start captures a session when the stage holds none. The administration command dumps the selected dataset, including the embedding table data, into the session directory, records the digest of that dump and a verification of the selected database, and publishes the session record. A reservation that already holds session evidence is refused before any dump.
+A start captures a session when the stage holds none. The administration command dumps the Working dataset, including the embedding table data, into the session directory, records the digest of that dump and a verification of the Working database, and publishes the session record. A reservation that already holds session evidence is refused before any dump.
 
 Preparation brings the worker up in order:
 
@@ -68,13 +53,7 @@ A pause publishes a pause request, waits for the worker to exit, and releases th
 
 A stop is the authoritative end of a session. It publishes a stop request, waits for the worker to exit, and finalizes the session through its owning writer. The worker import writes the retained output into the worker's own copy of the dataset, and the inference stage publishes the accepted proposals and equivalence groups there. A session that already holds an import receipt is never imported a second time.
 
-The return follows the import, and it verifies before it promotes. The worker exports a fresh snapshot of the quiescent worker database, and the administration command downloads it, checks the digest and a fresh verification against that snapshot, restores it into the derived server database, writes the returned dataset receipt, selects the returned dataset, and rotates older datasets.
-
-![The selected dataset becomes a verified input copy that the worker restores into its own copy, where the remote stage runs and records checkpoints. The stage exports a verified return snapshot, that snapshot is restored and promoted as the selected dataset, and the worker copy is dropped only after the verified receipt exists. A worker session box owns the session commands, and its dashed links show the run control and the finalize and cleanup it performs.](/docs/diagrams/worker-session-return.svg)
-
-Only after the verified receipt exists does the session's cleanup drop the exact worker database, together with the transferred and generated evidence of the session. The owned resources and the local scratch go last.
-
-A dataset return updates the selected dataset that the configured copy resolves through its pointer. [Datasets](/docs/operations/datasets.md) describes the receipt chain, the promotion, and the rotation.
+The return follows the import and verifies before it promotes, and [the dataset return](/docs/operations/datasets.md#the-return-and-the-working-role) and [rotation](/docs/operations/datasets.md#rotation) state the receipt, and [failure outcomes](/docs/operations/datasets.md#failure-outcomes) states the cleanup of the worker copy.
 
 > [!CAUTION]
 > A stop that fails before the return completes leaves the selection in place and keeps the worker copy, the retained output, and the session evidence. The next stop verifies the recorded state again and continues from there.
@@ -82,7 +61,7 @@ A dataset return updates the selected dataset that the configured copy resolves 
 
 ### Resume and stop of a session that is not running
 
-A resume acts on a session that is prepared, paused, interrupted, stopped, or failed, and a stop acts on one that is prepared, interrupted, or paused as well as a live one. Neither launches anything: a resume re-arms the control to run, and the next start or resume launch runs the worker.
+A resume acts on a session that is prepared, paused, interrupted, stopped, or failed, and a stop acts on one that is prepared, interrupted, or paused as well as a live one. A resume re-arms the control to run, records starting and launches the worker again. A stop launches nothing.
 
 | Situation | Resume | Stop |
 |---|---|---|
@@ -129,11 +108,11 @@ The stage status carries the last mirrored `reboot_due` value inside the progres
 
 `uv run python scripts/admin.py <stage> status` reads the durable state and the owned process. It starts no service and reaches no worker, so a remote stage reports the last status its run recorded.
 
-A remote stage's status therefore refreshes from server state alone, while its two worker logs are read on demand. `uv run python scripts/admin.py logs read inference SESSION_ID worker-runner --lines N` and the same command with `worker-runtime` read the worker's own `runner.log` and `runtime.log` over the transport, and `keepalive` reads the shared session directory's `keepalive.log`. [The fixed log reads](/docs/backend/interfaces/command-line.md#the-fixed-log-reads) lists every source and its refusals.
+A remote stage's status therefore refreshes from server state alone, while its two worker logs are read on demand. `uv run python scripts/admin.py logs read inference SESSION_ID worker-runner --lines N` and the same command with `worker-runtime` read the worker's own `runner.log` and `runtime.log` over the transport, and `keepalive` reads the shared session directory's `keepalive.log`. [The fixed log reads](/docs/backend/interfaces/administration-commands.md#the-fixed-log-reads) lists every source and its refusals.
 
 The server-side logs live beside the session receipt. A local stage's detached worker writes `runner.out` and `runner.err` there, and the keepalive log of a remote session sits in the shared session directory. The inference stage launches its server process with its output sent to the null device, so its two runner streams are reported as unavailable rather than written. A stop removes the two runner streams and the keepalive log with the rest of the session's scratch.
 
-The coverage reports and the summaries read the selected dataset. The progress of a remote stage that has not returned is read from that stage's status instead, and the [Operator menu](/docs/operations/operator-menu.md#coverage-and-summaries) states that scope for every report entry.
+The coverage reports and the summaries read the dataset role each command names. The progress of a remote stage that has not returned is read from that stage's status instead, and the [Operator menu](/docs/operations/operator-menu.md#coverage-and-summaries) states that scope for every report entry.
 
 ## What a session keeps
 
@@ -143,7 +122,7 @@ A session keeps its evidence on both sides until its cleanup runs.
 |---|---|
 | Session record | The identity of the session, the source dataset, the stage, and the input snapshot |
 | Stage policy | The configuration identity the stage binds to the session |
-| Input snapshot and dump | The verified copy of the selected dataset that the worker restored |
+| Input snapshot and dump | The verified copy of the Working dataset that the worker restored |
 | Control record | The requested action of the session |
 | Worker state | The lifecycle, the completed count, and the measured active time of the run |
 | Ownership records | The runner and runtime processes the session owns |
@@ -151,3 +130,7 @@ A session keeps its evidence on both sides until its cleanup runs.
 | Return snapshot and dump | The verified export of the worker database at the return |
 | Import receipt | The proof that the retained output reached the worker's copy |
 | Returned dataset receipt | The proof that the return passed the server verification |
+
+### The inference policy identity
+
+The inference stage binds its policy to an identity that covers the generation, embedding runtime, context, selection, rerank and rerank-input settings and the prompt content hash. A session whose recorded identity differs from the running settings refuses at the worker with `canonical policy configuration does not match current settings`, and a session prepared from the running settings runs.

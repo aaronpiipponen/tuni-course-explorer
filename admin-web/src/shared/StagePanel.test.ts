@@ -1,9 +1,11 @@
 /**
- * Action-outcome proofs for the preparation stage panels and the inference run panel.
+ * Action-outcome and availability proofs for the preparation stage panels and the inference run
+ * panel.
  *
- * Each invocation mounts one real panel over one fetch boundary, answers the initial status once,
- * then answers the panel's Start action with a distinguishable running status. It proves that the
- * returned status is presented without another status read.
+ * Each action invocation mounts one real panel over one fetch boundary, answers the initial status
+ * once, then answers the panel's Start action with a distinguishable running status. It proves that
+ * the returned status is presented without another status read. The availability proof mounts the
+ * ingestion panel without a Working dataset and observes the disabled action row.
  */
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -158,11 +160,16 @@ describe.each(CASES)("$name action status", (kase) => {
     await act(async () => {
       root.render(
         kase.stage === null
-          ? createElement(InferenceRun, { session: SESSION, onRefusal })
+          ? createElement(InferenceRun, {
+              session: SESSION,
+              onRefusal,
+              workingPresent: true,
+            })
           : createElement(StagePanel, {
               stage: kase.stage,
               session: SESSION,
               onRefusal,
+              workingPresent: true,
             }),
       );
     });
@@ -187,5 +194,47 @@ describe.each(CASES)("$name action status", (kase) => {
         ? { action: "start" }
         : { stage: kase.stage, action: "start" },
     );
+  });
+});
+
+describe("stage action availability", () => {
+  let container: HTMLDivElement;
+  let root: Root;
+
+  beforeEach(() => {
+    calls.length = 0;
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+    install(CASES[0]);
+  });
+
+  afterEach(() => {
+    act(() => root.unmount());
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  it("disables the four stage actions without a Working dataset", async () => {
+    await act(async () => {
+      root.render(
+        createElement(StagePanel, {
+          stage: "ingestion",
+          session: SESSION,
+          onRefusal,
+          workingPresent: false,
+        }),
+      );
+    });
+    await settle();
+
+    const actions = ["start", "pause", "resume", "stop"] as const;
+    expect(
+      actions.map((action) => buttonNamed(wording.action[action]).disabled),
+    ).toEqual([true, true, true, true]);
+    expect(calls.filter((call) => call.method === "GET")).toEqual([
+      { method: "GET", path: "/api/preparation/status/ingestion", body: {} },
+    ]);
+    expect(calls.filter((call) => call.method === "POST")).toHaveLength(0);
   });
 });

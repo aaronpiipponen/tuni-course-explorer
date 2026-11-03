@@ -16,15 +16,21 @@ The diagram follows one request through the stages this page describes.
 
 ![The chosen basis supplies source identities to a bounded reverse read, and each candidate is compiled to its direct prerequisite options. The prerequisite mode decides eligibility, and the eligible candidates carry their prerequisite coverage and their inferred dependence into an ordered list.](/docs/diagrams/discovery-coverage.svg)
 
+## Report reuse
+
+The serving supervisor creates one next-course report region before it forks the workers, and every worker reads and writes the same region. The region is bounded by `WEB_NEXT_COURSE_REPORT_CACHE_BYTES`, and clock eviction removes complete reports when a new report needs space. The key is the canonical selected set, the canonical completed set, the chosen basis, the mode, the display language, the inference flag and the activity flag. A second key holds the request's raw selected and completed inputs with the same policy fields, and it answers a repeated request before any input is resolved. An alias names the canonical report it resolves to, and it answers only while that report is retained. Both **All** and **Partially covered** use the region under separate keys, and a repeated canonical request returns the held report before candidate discovery or compilation runs.
+
+The recommendation command reads the same region for the exclusion set. A report computed for the next-course list therefore answers the recommendation request with the same canonical inputs without another eligibility pass.
+
+The region belongs to one serving supervisor. A restart replaces it, and an in-place change to served data reaches it only after a restart.
+
 ## Candidate discovery
 
-Candidate discovery is a bounded reverse read from the basis, and the compiler decides eligibility afterwards. The read is a superset over the stored course versions, so it can name a course whose matching prerequisite option belongs to a version that is not the representative version. Such a candidate is dropped when the current representative version carries no matching option.
+Candidate discovery is a bounded reverse read from the basis, and the compiler decides eligibility afterwards. The official read returns every canonical course whose stored official prerequisite option names a source course, either directly or through a module that can contain one, under the request's activity scope. With the inference toggle on, the read also returns every active course whose stored inferred prerequisites name a source course.
 
-The source identities are the basis courses and, when the inference toggle is on, the members of each basis course's equivalence groups. The courses whose official substitution option names a source course join them.
+The read is a superset over the stored course versions, so it can name a course whose matching prerequisite option belongs to a version that is not the representative version. Such a candidate is dropped when the current representative version carries no matching option.
 
-The official read returns every canonical course whose stored official prerequisite option names a source course, either directly or through a module that can contain one. Module containment follows the module rules of every stored module version, and a cycle in those rules terminates. With the inference toggle on, the read also returns every active course whose stored inferred prerequisites name a source course.
-
-The candidate set leaves out the chosen basis courses before compilation.
+The source identities are the basis courses and, when the inference toggle is on, the members of each basis course's equivalence groups. The courses whose official substitution option names a source course join them. The candidate set leaves out the chosen basis courses before compilation. [Next-course coverage](/docs/backend/search-and-discovery/next-course-coverage.md#candidate-reads) states the two reverse reads and how module containment and the inference read are scoped.
 
 ## Eligibility under the mode
 
@@ -47,15 +53,9 @@ A candidate is never returned in these cases:
 
 ## Coverage and the inferred dependence mark
 
-Each result carries two prerequisite coverage values, one over its required prerequisites and one over its recommended ones. A value is the share of the course slots of the option the basis covers best within its category, so a partly covered option reads as the covered part of it. Each value is a fraction from 0 to 1, a category whose slot set is empty carries no value at all rather than 0.0, and under **Partially covered** the app shows each value it receives as the **Required** or the **Recommended** meter.
+Each result carries two prerequisite coverage values, one over its required prerequisites and one over its recommended ones. Each value is a fraction from 0 to 1, and a category whose slot set is empty carries no value at all rather than 0.0. The two categories are measured apart, so a course that carries no recommended prerequisite reports no recommended coverage, and a course that carries no required prerequisite reports no required coverage. A category that carries course prerequisites but covers none of them reports the real 0.0, and the app draws that meter under **Partially covered**. Under **All** the app draws no coverage meter, whatever values the result carries.
 
-- A direct course is one slot, and the basis covers it when it satisfies the course.
-- A course that a substitution replaces is one slot for that course, and the basis covers it only when the whole substitution is met.
-- A requirement that cannot be resolved to a course is one uncovered slot.
-- A free-choice requirement and a credit obligation supply no slot.
-- A course that several branches of one requirement name is one slot, so a repeated requirement does not raise a coverage value.
-
-The two categories are measured apart, so a course that carries no recommended prerequisite reports no recommended coverage, and a course that carries no required prerequisite reports no required coverage. A category that carries course prerequisites but covers none of them reports the real 0.0, and the app draws that meter under **Partially covered**. Under **All** the app draws no coverage meter, whatever values the result carries.
+[Satisfaction evaluation](/docs/backend/prerequisites/satisfaction-evaluation.md#coverage) states how the slots of a branch are counted and what each requirement kind adds, and [Next-course coverage](/docs/backend/search-and-discovery/next-course-coverage.md#coverage-values-and-the-marks) states how the discovery path reads those values.
 
 The inferred dependence mark distinguishes an official result from one that rests on inference. With the inference toggle off, no result carries the mark. With it on, a result carries the mark when it is eligible with the published inferred prerequisites and equivalence groups in force and the same candidate is ineligible when it is compiled from official prerequisites alone. A course whose official prerequisite the basis satisfies only through an inferred equivalence group carries the mark, and a course that is already eligible from its official prerequisites never does.
 
@@ -79,4 +79,4 @@ The report carries the two canonical course sets, the chosen basis, the mode, th
 
 Next courses read official prerequisites and the prerequisite inference stores, so a site serves them under either switch. A site whose `WEB_INFERENCE_ENABLED` is false in `config/web.toml` never reads inferred prerequisites for the request, whatever the request asked for: the route forwards the inference toggle combined with the site switch, so the toggle is effectively off, no result carries the inferred dependence mark, and no equivalence group joins the source identities. The command, its inputs, its eligibility rules and the script adapter are the same on both kinds of site.
 
-The service, the candidate reads, the eligibility decision, the coverage fold, and the tests that cover them are described in [Coverage and ranking](/docs/backend/search-and-discovery/coverage-and-ranking.md).
+The service, the candidate reads, the eligibility decision, the coverage fold, and the tests that cover them are described in [Next-course coverage](/docs/backend/search-and-discovery/next-course-coverage.md).

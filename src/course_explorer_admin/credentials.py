@@ -17,11 +17,11 @@ from typing import Literal
 import argon2
 from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
+from course_explorer import administration
 from course_explorer.administration import (
     administrative_json,
     atomic_write_private_text,
     load_private_model,
-    repository_root,
 )
 from course_explorer.validation import require_text
 
@@ -61,7 +61,7 @@ def read_admin_credential(*, root: Path | None = None) -> AdminCredential:
     symlinked, non-regular or schema-mismatching file raises ``ValueError`` rather than reporting an
     absent account, so a backend never treats unreadable credential state as a login attempt.
     """
-    resolved = repository_root() if root is None else root
+    resolved = administration.repository_root() if root is None else root
     return load_private_model(resolved / ADMIN_WEB_STATE_ROOT / PASSWORD_FILENAME, AdminCredential)
 
 
@@ -103,7 +103,7 @@ def set_admin_password(*, username: str, password: SecretStr) -> PasswordSetRepo
     checked_username = require_text(username, "username")
     if not password.get_secret_value().strip():
         raise ValueError("password must not be blank")
-    path = repository_root() / ADMIN_WEB_STATE_ROOT / PASSWORD_FILENAME
+    path = administration.repository_root() / ADMIN_WEB_STATE_ROOT / PASSWORD_FILENAME
     path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     if path.is_symlink() or (path.exists() and not path.is_file()):
         raise ValueError("administration credential state must be a regular non-symlink file")

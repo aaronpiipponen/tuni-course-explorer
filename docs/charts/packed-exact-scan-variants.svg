@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 396" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Isolated exact semantic scan cost by representation</title>
+  <desc id="d">Core-seconds for eight exact semantic scan variants on four fixed query vectors, warm and cold, showing the packed file and packed relation below the row-based reads.</desc>
+  <rect width="960" height="396" rx="12" fill="#232434"/>
+  <line x1="316" y1="32" x2="316" y2="320" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="316" y="342" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="448.4" y1="32" x2="448.4" y2="320" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="448.4" y="342" text-anchor="middle" font-size="14" fill="#a3a4b8">0.2</text>
+  <line x1="580.8" y1="32" x2="580.8" y2="320" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="580.8" y="342" text-anchor="middle" font-size="14" fill="#a3a4b8">0.4</text>
+  <line x1="713.2" y1="32" x2="713.2" y2="320" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="713.2" y="342" text-anchor="middle" font-size="14" fill="#a3a4b8">0.6</text>
+  <line x1="845.6" y1="32" x2="845.6" y2="320" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="845.6" y="342" text-anchor="middle" font-size="14" fill="#a3a4b8">0.8</text>
+  <text x="304" y="55" text-anchor="end" font-size="14" fill="#ececf2">Product exact SQL</text>
+  <rect x="316" y="40" width="461.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="785.5" y="55" font-size="14" fill="#a3a4b8">0.6971</text>
+  <text x="304" y="91" text-anchor="end" font-size="14" fill="#ececf2">Raw row SQL</text>
+  <rect x="316" y="76" width="339" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="663" y="91" font-size="14" fill="#a3a4b8">0.5121</text>
+  <text x="304" y="127" text-anchor="end" font-size="14" fill="#ececf2">Stored-centred row SQL</text>
+  <rect x="316" y="112" width="283.6" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="607.6" y="127" font-size="14" fill="#a3a4b8">0.4284</text>
+  <text x="304" y="163" text-anchor="end" font-size="14" fill="#ececf2">Native row scan, TOAST storage</text>
+  <rect x="316" y="148" width="199.9" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="523.9" y="163" font-size="14" fill="#a3a4b8">0.3019</text>
+  <text x="304" y="199" text-anchor="end" font-size="14" fill="#ececf2">Packed relation, warm</text>
+  <rect x="316" y="184" width="60.8" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="384.8" y="199" font-size="14" fill="#a3a4b8">0.0918</text>
+  <text x="304" y="235" text-anchor="end" font-size="14" fill="#ececf2">Packed relation, cold</text>
+  <rect x="316" y="220" width="174.1" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="498.1" y="235" font-size="14" fill="#a3a4b8">0.263</text>
+  <text x="304" y="271" text-anchor="end" font-size="14" fill="#ececf2">Packed file, warm</text>
+  <rect x="316" y="256" width="41.4" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="365.4" y="271" font-size="14" fill="#a3a4b8">0.0625</text>
+  <text x="304" y="307" text-anchor="end" font-size="14" fill="#ececf2">Packed file, cold</text>
+  <rect x="316" y="292" width="129.2" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="453.2" y="307" font-size="14" fill="#a3a4b8">0.1952</text>
+  <text x="580.8" y="372" text-anchor="middle" font-size="14" fill="#a3a4b8">Core-seconds (summed over all cores)</text>
+</svg>

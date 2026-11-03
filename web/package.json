@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit",
     "build": "vite build",
     "solver:build": "vite build --ssr src/solver/cli.ts --outDir .solver-cli --emptyOutDir",
-    "test": "vitest run && node --test tools/wiki/build.test.mjs",
+    "test": "vitest run && node --test tools/wiki/build.test.mjs tools/wiki/help-links.test.mjs",
     "format:check": "prettier --check .",
     "browser:install": "playwright install chromium --only-shell",
     "browser:test": "cd .. && uv run python -m tests.web.browser_runner"
@@ -22,6 +22,7 @@
     "@xyflow/react": "12.12.0",
     "elkjs": "0.12.0",
     "framer-motion": "14.6.0",
+    "pdfjs-dist": "6.4.299",
     "react": "19.3.1",
     "react-dom": "19.3.1"
   },

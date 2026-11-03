@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 396" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Light successful throughput at the stop level</title>
+  <desc id="d">Light successful requests per second at the stop level, or at the last valid level where the next level failed, for four stacks under the light-only and mixed profiles. The post-port light-only bar is the highest at 40.041, and the post-port mixed bar is its collapsed 750-user level at 2.919.</desc>
+  <rect width="960" height="396" rx="12" fill="#232434"/>
+  <line x1="358" y1="32" x2="358" y2="320" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="358" y="342" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="455.5" y1="32" x2="455.5" y2="320" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="455.5" y="342" text-anchor="middle" font-size="14" fill="#a3a4b8">10</text>
+  <line x1="553" y1="32" x2="553" y2="320" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="553" y="342" text-anchor="middle" font-size="14" fill="#a3a4b8">20</text>
+  <line x1="650.6" y1="32" x2="650.6" y2="320" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="650.6" y="342" text-anchor="middle" font-size="14" fill="#a3a4b8">30</text>
+  <line x1="748.1" y1="32" x2="748.1" y2="320" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="748.1" y="342" text-anchor="middle" font-size="14" fill="#a3a4b8">40</text>
+  <line x1="845.6" y1="32" x2="845.6" y2="320" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="845.6" y="342" text-anchor="middle" font-size="14" fill="#a3a4b8">50</text>
+  <text x="346" y="55" text-anchor="end" font-size="14" fill="#ececf2">Post-port, light only, 750</text>
+  <rect x="358" y="40" width="390.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="756.5" y="55" font-size="14" fill="#a3a4b8">40.041</text>
+  <text x="346" y="91" text-anchor="end" font-size="14" fill="#ececf2">Post-port, mixed, 750</text>
+  <rect x="358" y="76" width="28.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="394.5" y="91" font-size="14" fill="#a3a4b8">2.919</text>
+  <text x="346" y="127" text-anchor="end" font-size="14" fill="#ececf2">Pre-port, light only, 200</text>
+  <rect x="358" y="112" width="126.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="492.5" y="127" font-size="14" fill="#a3a4b8">12.967</text>
+  <text x="346" y="163" text-anchor="end" font-size="14" fill="#ececf2">Pre-port, mixed, 100</text>
+  <rect x="358" y="148" width="66.2" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="432.2" y="163" font-size="14" fill="#a3a4b8">6.785</text>
+  <text x="346" y="199" text-anchor="end" font-size="14" fill="#ececf2">Original admission, light only, 100</text>
+  <rect x="358" y="184" width="53.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="419.5" y="199" font-size="14" fill="#a3a4b8">5.485</text>
+  <text x="346" y="235" text-anchor="end" font-size="14" fill="#ececf2">Original admission, mixed, 60</text>
+  <rect x="358" y="220" width="36.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="402.5" y="235" font-size="14" fill="#a3a4b8">3.744</text>
+  <text x="346" y="271" text-anchor="end" font-size="14" fill="#ececf2">Pre-admission, light only, 100</text>
+  <rect x="358" y="256" width="52.7" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="418.7" y="271" font-size="14" fill="#a3a4b8">5.404</text>
+  <text x="346" y="307" text-anchor="end" font-size="14" fill="#ececf2">Pre-admission, mixed, 100</text>
+  <rect x="358" y="292" width="44.3" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="410.3" y="307" font-size="14" fill="#a3a4b8">4.541</text>
+  <text x="601.8" y="372" text-anchor="middle" font-size="14" fill="#a3a4b8">Light successful requests per second</text>
+</svg>

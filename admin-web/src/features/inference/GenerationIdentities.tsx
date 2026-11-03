@@ -8,7 +8,7 @@
 import { AutoMarker } from "../../shared/AutoMarker";
 import { count } from "../../shared/format";
 import { DataTable, Panel } from "../../shared/Panel";
-import type { SummaryView } from "./Inference";
+import { SummaryStateNote, type SummaryView } from "./summaryView";
 import { wording } from "../../shared/wording";
 
 /** Render the generation identities table from the shared summary read. */
@@ -51,9 +51,9 @@ export function GenerationIdentities({ view }: { view: SummaryView }) {
           ])}
           align={["", "", "", "", "", "r"]}
         />
-      ) : view.selectionEnabled === false ? (
-        <p className="note">{wording.selectionDisabled}</p>
-      ) : null}
+      ) : (
+        <SummaryStateNote view={view} />
+      )}
     </Panel>
   );
 }

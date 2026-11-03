@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 252" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Successful throughput of the arena A/B runs</title>
+  <desc id="d">Successful requests per second in the four concurrency-8 runs, two with MALLOC_ARENA_MAX unset and two with it set to 2, in the order they ran.</desc>
+  <rect width="960" height="252" rx="12" fill="#232434"/>
+  <line x1="173.2" y1="32" x2="173.2" y2="176" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="173.2" y="198" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="341.3" y1="32" x2="341.3" y2="176" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="341.3" y="198" text-anchor="middle" font-size="14" fill="#a3a4b8">10</text>
+  <line x1="509.4" y1="32" x2="509.4" y2="176" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="509.4" y="198" text-anchor="middle" font-size="14" fill="#a3a4b8">20</text>
+  <line x1="677.5" y1="32" x2="677.5" y2="176" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="677.5" y="198" text-anchor="middle" font-size="14" fill="#a3a4b8">30</text>
+  <line x1="845.6" y1="32" x2="845.6" y2="176" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="845.6" y="198" text-anchor="middle" font-size="14" fill="#a3a4b8">40</text>
+  <text x="161.2" y="55" text-anchor="end" font-size="14" fill="#ececf2">A, first run</text>
+  <rect x="173.2" y="40" width="509.4" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="690.6" y="55" font-size="14" fill="#a3a4b8">30.304</text>
+  <text x="161.2" y="91" text-anchor="end" font-size="14" fill="#ececf2">B, first run</text>
+  <rect x="173.2" y="76" width="507.1" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="688.3" y="91" font-size="14" fill="#a3a4b8">30.169</text>
+  <text x="161.2" y="127" text-anchor="end" font-size="14" fill="#ececf2">A, second run</text>
+  <rect x="173.2" y="112" width="414" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="595.2" y="127" font-size="14" fill="#a3a4b8">24.627</text>
+  <text x="161.2" y="163" text-anchor="end" font-size="14" fill="#ececf2">B, second run</text>
+  <rect x="173.2" y="148" width="411.2" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="592.4" y="163" font-size="14" fill="#a3a4b8">24.46</text>
+  <text x="509.4" y="228" text-anchor="middle" font-size="14" fill="#a3a4b8">Successful requests per second</text>
+</svg>

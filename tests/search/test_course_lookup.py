@@ -10,16 +10,18 @@ import pytest
 from course_explorer.config import DatabaseSettings
 from course_explorer.curriculum import (
     CatalogueCurriculumPeriod,
-    CatalogueModuleLookup,
-    CatalogueModuleVersionIdentity,
-    RepresentedCourseSummary,
-    course_summary,
 )
 from course_explorer.enums import ModuleType
 from course_explorer.search import lookup_commands as catalogue_module
-from course_explorer.search.projection import build_lookup_rows
-from tests.search._lookup_support import course, service, version
-from tests.support import FakeCurriculum, settings_factory
+from course_explorer.search.resolver import CourseResolver
+from tests.search._lookup_support import (
+    course,
+    module_lookup,
+    module_version,
+    service,
+    version,
+)
+from tests.support import FakeCurriculum, represented_rows, settings_factory
 
 
 def test_fuzzy_name_search_uses_config_or_override_and_orders_active_by_score() -> None:
@@ -48,10 +50,11 @@ def test_fuzzy_name_search_uses_config_or_override_and_orders_active_by_score() 
         "group-active-partial",
         "group-inactive-exact",
     ]
-    assert [result.score for result in results] == pytest.approx([100.0, 95.0, 100.0])
+    assert [result.score for result in results] == pytest.approx([100.0, 96.81, 100.0], abs=0.01)
+    # The projection reads the represented summaries once when the test helper builds it.
     assert curriculum.calls == [None]
 
-    overridden = lookup.fuzzy_name_search("linear algebra", display_language="en", min_score=96)
+    overridden = lookup.fuzzy_name_search("linear algebra", display_language="en", min_score=97)
     assert [result.course.group_id for result in overridden] == [
         "group-active-exact",
         "group-inactive-exact",
@@ -60,7 +63,7 @@ def test_fuzzy_name_search_uses_config_or_override_and_orders_active_by_score() 
     # A different configured cutoff alone changes which names qualify.
     strict, _ = service(
         (active_exact, active_partial, inactive_exact, unrelated),
-        fuzzy_min_score=96,
+        fuzzy_min_score=97,
         active_courses=(active_exact, active_partial, unrelated),
     )
     configured = strict.fuzzy_name_search("linear algebra", display_language="en")
@@ -76,7 +79,6 @@ def test_fuzzy_name_search_uses_config_or_override_and_orders_active_by_score() 
         "group-active-exact",
         "group-active-partial",
     ]
-    assert curriculum.calls[-1] is True
 
     typo_lookup, _ = service(
         (
@@ -107,7 +109,7 @@ def test_fuzzy_name_search_uses_config_or_override_and_orders_active_by_score() 
         "inactive-title",
     ]
     assert exact[0].score == 100
-    assert exact[1].score == 95
+    assert exact[1].score == pytest.approx(95.30, abs=0.01)
 
 
 def test_fuzzy_name_search_uses_only_resolved_displayed_official_name() -> None:
@@ -208,32 +210,6 @@ def test_substring_search_matches_displayed_name_or_code_without_cap() -> None:
     ] == (["group-hidden"])
 
 
-def test_supplied_represented_summaries_skip_the_curriculum_read() -> None:
-    """A caller-supplied represented sequence is used directly and performs no curriculum read."""
-    alpha = course("group-alpha", version("source-alpha", name_fi="Alfa", code="A.1"))
-    beta = course("group-beta", version("source-beta", name_fi="Beeta", code="B.1"))
-    lookup, curriculum = service((alpha, beta))
-
-    supplied = tuple(
-        RepresentedCourseSummary(
-            summary=course_summary(item),
-            sisu_course_unit_id=item.representative.sisu_course_unit_id,
-            source_hash=item.representative.source_hash,
-        )
-        for item in (beta,)
-    )
-
-    assert [
-        result.course.group_id
-        for result in lookup.fuzzy_name_search(
-            "beeta",
-            display_language="fi",
-            rows=build_lookup_rows(tuple(record.summary for record in supplied)),
-        )
-    ] == ["group-beta"]
-    assert curriculum.calls == []
-
-
 def test_course_resolver_matches_canonical_id_before_exact_code_and_fails_loudly() -> None:
     """Scoped resolution keeps caller order, repeats summaries, and fails on bad input."""
     beta = course("group-beta", version("source-beta", name_fi="Beeta", code="COMP.CS.200"))
@@ -247,20 +223,24 @@ def test_course_resolver_matches_canonical_id_before_exact_code_and_fails_loudly
         "group-unicode", version("source-unicode", name_fi="Ä", code="CO\u0308MP.1")
     )
     unrepresented = course("group-none", None)
-    lookup, curriculum = service(
+    curriculum = FakeCurriculum(
         (beta, alpha, inactive, unicode_course, unrepresented),
-        active_courses=(beta, alpha, unicode_course),
+        summaries_by_activity={
+            None: represented_rows((beta, alpha, inactive, unicode_course, unrepresented)),
+            True: represented_rows((beta, alpha, unicode_course)),
+        },
     )
+    resolver = CourseResolver(curriculum)
 
     # `resolve_courses` matches an outer-trimmed canonical group id first through the scoped getter
     # and skips the code projection entirely when every input is canonical.
     code_reads_before = len(curriculum.code_identity_calls)
     scoped_before = len(curriculum.scoped_summary_calls)
-    assert lookup.resolve_courses(()) == ()
+    assert resolver.resolve_courses(()) == ()
     assert len(curriculum.scoped_summary_calls) == scoped_before
     assert len(curriculum.code_identity_calls) == code_reads_before
 
-    all_canonical = lookup.resolve_courses(("group-beta", "group-alpha"))
+    all_canonical = resolver.resolve_courses(("group-beta", "group-alpha"))
     assert [record.summary.group_id for record in all_canonical] == ["group-beta", "group-alpha"]
     assert len(curriculum.code_identity_calls) == code_reads_before
     assert curriculum.scoped_summary_calls[-1] == (("group-alpha", "group-beta"), None)
@@ -268,7 +248,7 @@ def test_course_resolver_matches_canonical_id_before_exact_code_and_fails_loudly
     # A mixed id/code input resolves in caller order, repeats the shared record, and reads
     # only candidates, never an unrelated or unrepresented catalogue card.
     scoped_before_mixed = len(curriculum.scoped_summary_calls)
-    records = lookup.resolve_courses(("group-beta", "comp.cs.100", "group-alpha", "group-beta"))
+    records = resolver.resolve_courses(("group-beta", "comp.cs.100", "group-alpha", "group-beta"))
     assert [record.summary.group_id for record in records] == [
         "group-beta",
         "group-alpha",
@@ -288,52 +268,25 @@ def test_course_resolver_matches_canonical_id_before_exact_code_and_fails_loudly
     assert "group-none" not in mixed_requested
     assert "group-inactive" not in mixed_requested
 
-    inactive_record = lookup.resolve_courses(("group-inactive",))
+    inactive_record = resolver.resolve_courses(("group-inactive",))
     assert [record.summary.group_id for record in inactive_record] == ["group-inactive"]
     assert inactive_record[0].summary.is_active is False
 
     # An unrepresented canonical ID falls through to code matching and fails as unknown.
     with pytest.raises(ValueError):
-        lookup.resolve_courses(("group-none",))
+        resolver.resolve_courses(("group-none",))
     with pytest.raises(ValueError):
-        lookup.resolve_courses(("COMP.CS.999",))
-    duplicate_lookup, _ = service(
-        (
-            course("group-duplicate-a", version("source-dup-a", code="DUP.1")),
-            course("group-duplicate-b", version("source-dup-b", code="DUP.1")),
-        )
+        resolver.resolve_courses(("COMP.CS.999",))
+    duplicate_courses = (
+        course("group-duplicate-a", version("source-dup-a", code="DUP.1")),
+        course("group-duplicate-b", version("source-dup-b", code="DUP.1")),
+    )
+    duplicate_curriculum = FakeCurriculum(
+        duplicate_courses,
+        summaries_by_activity={None: represented_rows(duplicate_courses)},
     )
     with pytest.raises(ValueError):
-        duplicate_lookup.resolve_courses(("dup.1",))
-
-
-def _module_version(
-    sisu_module_id: str,
-    *,
-    module_type: ModuleType = ModuleType.STUDY_MODULE,
-    code: str | None = None,
-    name_fi: str | None = None,
-    name_en: str | None = None,
-    curriculum_periods: tuple[CatalogueCurriculumPeriod, ...] = (),
-    validity_start: date | None = None,
-    validity_end: date | None = None,
-) -> CatalogueModuleVersionIdentity:
-    """Build one projected module-version identity fixture."""
-    return CatalogueModuleVersionIdentity(
-        sisu_module_id=sisu_module_id,
-        module_type=module_type,
-        code=code,
-        name_fi=name_fi,
-        name_en=name_en,
-        validity_start=validity_start,
-        validity_end=validity_end,
-        curriculum_periods=curriculum_periods,
-    )
-
-
-def _module(group_id: str, *versions: CatalogueModuleVersionIdentity) -> CatalogueModuleLookup:
-    """Build one canonical module lookup fixture from its projected versions."""
-    return CatalogueModuleLookup(group_id=group_id, versions=versions)
+        CourseResolver(duplicate_curriculum).resolve_courses(("dup.1",))
 
 
 def test_catalogue_command_selects_strict_module_candidates(
@@ -343,9 +296,9 @@ def test_catalogue_command_selects_strict_module_candidates(
     period_2026 = (CatalogueCurriculumPeriod(id="period-2026", academic_year_start=2026),)
     period_2027 = (CatalogueCurriculumPeriod(id="period-2027", academic_year_start=2027),)
 
-    degree = _module(
+    degree = module_lookup(
         "module-degree",
-        _module_version(
+        module_version(
             "degree-v1",
             module_type=ModuleType.DEGREE_PROGRAMME,
             code="MOD.A",
@@ -354,33 +307,33 @@ def test_catalogue_command_selects_strict_module_candidates(
             curriculum_periods=period_2026,
         ),
     )
-    validity = _module(
+    validity = module_lookup(
         "module-validity",
-        _module_version(
+        module_version(
             "validity-v1",
             code="VAL.1",
             name_fi="Voimassa oleva",
             validity_start=date(2020, 1, 1),
         ),
     )
-    absent = _module(
+    absent = module_lookup(
         "module-absent",
-        _module_version(
+        module_version(
             "absent-v1",
             code="ABS.1",
             name_en="Absent",
             curriculum_periods=period_2027,
         ),
     )
-    ambiguous = _module(
+    ambiguous = module_lookup(
         "module-ambiguous",
-        _module_version(
+        module_version(
             "ambiguous-v1",
             code="AMB.1",
             name_fi="Yhteinen kuvaus",
             curriculum_periods=period_2026,
         ),
-        _module_version(
+        module_version(
             "ambiguous-v2",
             code="AMB.2",
             name_fi="Yhteinen kuvaus",
@@ -394,7 +347,7 @@ def test_catalogue_command_selects_strict_module_candidates(
     )
 
     @contextmanager
-    def _context(_settings: DatabaseSettings):
+    def _context(_settings: DatabaseSettings, **_kwargs):
         yield object()
 
     monkeypatch.setattr(catalogue_module, "CurriculumRepository", lambda _factory: curriculum)

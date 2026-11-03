@@ -18,7 +18,7 @@
 }
 .tile:hover {
   border-color: #b07be8;
-  box-shadow: 0 0 30px -8px rgb(78 0 142 / 50%);
+  box-shadow: 0 0 30px -8px rgb(90 30 156 / 50%);
 }
 .tile-trigger {
   position: absolute;
@@ -124,6 +124,20 @@
   border-color: #ff5c78;
   color: #2a0008;
   background: #ff5c78;
+}
+/* A Complete or Exclude toggle lights up when it turns on and dims back when it turns off. */
+.tile-actions button {
+  transition:
+    border-color 0.22s ease,
+    color 0.22s ease,
+    background-color 0.22s ease,
+    box-shadow 0.22s ease;
+}
+.tile-actions button.is-done {
+  box-shadow: 0 0 12px rgb(94 230 168 / 40%);
+}
+.tile-actions button.is-excl {
+  box-shadow: 0 0 12px rgb(255 92 120 / 40%);
 }
 .tile-tag {
   margin-left: 6px;

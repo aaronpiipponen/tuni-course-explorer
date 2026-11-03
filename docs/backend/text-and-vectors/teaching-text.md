@@ -45,11 +45,11 @@ Because official text always wins in the resolution, a read of a course never pr
 
 ## The coverage report
 
-A coverage report is a read-only report over the selected dataset. For each of the six cells it counts how many represented courses hold official text, a translation, a stale translation, or nothing, and it lists the stale rows in a fixed order with their stored and current source hashes. It also counts canonical courses, represented courses, and courses with no representative. A represented course with an effective name and no effective content or learning outcomes in either language is a Name-only course, and a represented course with no effective name, content, or learning outcomes in either language is an Unembeddable course.
+A coverage report is a read-only report over the dataset role it names. For each of the six cells it counts how many represented courses hold official text, a translation, a stale translation, or nothing, and it lists the stale rows in a fixed order with their stored and current source hashes. It also counts canonical courses, represented courses, and courses with no representative. A represented course with an effective name and no effective content or learning outcomes in either language is a Name-only course, and a represented course with no effective name, content, or learning outcomes in either language is an Unembeddable course.
 
 The report reads the same resolution as the effective catalogue, so its counts and the resolved text always agree. It reads the teaching text of the representatives without materializing whole courses.
 
-The [Operator menu](/docs/operations/operator-menu.md) reports it for the selected dataset, and a dataset verification records it together with the embedding and inference coverage of that dataset. [Datasets](/docs/operations/datasets.md) describes the verification.
+The [Operator menu](/docs/operations/operator-menu.md) reports it for the named role, and a dataset verification records it together with the embedding and inference coverage of that dataset. [Datasets](/docs/operations/datasets.md) describes the verification.
 
 ## Where the store is written
 

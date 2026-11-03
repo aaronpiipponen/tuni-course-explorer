@@ -4,16 +4,18 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 
 from course_explorer.curriculum import CatalogueCurriculumPeriod, CatalogueModule, CourseSummary
 from course_explorer.enums import ModuleRuleType, ModuleType
+from course_explorer.study_structure.fragments import StudyFragmentStore
 from course_explorer.study_structure.service import (
+    StudyStructureModule,
     StudyStructureRootUnavailable,
     StudyStructureRule,
     StudyStructureService,
-    StudyStructureVersionSelectionRequired,
 )
 from tests.prerequisite._graph_support import (
     catalogue_module,
@@ -50,6 +52,16 @@ class _InMemoryStructureRead:
             for group_id in sorted(set(group_ids))
             if group_id in self._summaries
         )
+
+
+def _read_one(
+    service: StudyStructureService,
+    root_group_id: str,
+    *,
+    module_versions: dict[str, str] | None = None,
+) -> StudyStructureModule:
+    """Return one root projected by the service's batch read."""
+    return service.read_many((root_group_id,), module_versions=module_versions).roots[0]
 
 
 def _periods(selection: str) -> tuple[CatalogueCurriculumPeriod, ...]:
@@ -202,17 +214,18 @@ def _assert_full_structure(selection: str) -> None:
     assert study_root.module.group_id == "module-group-study"
     assert study_root.rule.course is not None
     assert study_root.rule.course.group_id == "course-group-inactive"
-    # Both roots share one module read and one summary map, so the later root reads no identity
-    # the earlier root already loaded.
+    # Both roots share one reachable-module read and one summary map, so no root reads an identity
+    # the prefetch already loaded.
     assert read.module_calls == [("module-group-degree", "module-group-study")]
-    # The later root finds every course card in the shared summary map, so its only read is the
-    # empty scoped request the repository answers without I/O.
     assert read.summary_calls == [
-        ("course-group-a", "course-group-b", "course-group-c"),
-        ("course-group-inactive",),
-        (),
+        (
+            "course-group-a",
+            "course-group-b",
+            "course-group-c",
+            "course-group-inactive",
+        )
     ]
-    assert service.read("module-group-study") == study_root
+    assert _read_one(service, "module-group-study") == study_root
 
     assert root.module.group_id == "module-group-degree"
     assert root.module.sisu_module_id == "module-group-degree-v1"
@@ -295,10 +308,11 @@ def _assert_nested_missing_course() -> None:
             ),
         ),
     )
-    root = StudyStructureService(
+    service = StudyStructureService(
         _InMemoryStructureRead(modules, (course_summary("course-group-a"),)),
         academic_year_start=YEAR,
-    ).read("module-group-root")
+    )
+    root = _read_one(service, "module-group-root")
     missing, present = root.rule.children
     assert missing.course is None
     assert missing.unresolved == "course_not_represented"
@@ -321,9 +335,10 @@ def _assert_nested_missing_module() -> None:
             ),
         ),
     )
-    root = StudyStructureService(
-        _InMemoryStructureRead(modules, ()), academic_year_start=YEAR
-    ).read("module-group-root")
+    root = _read_one(
+        StudyStructureService(_InMemoryStructureRead(modules, ()), academic_year_start=YEAR),
+        "module-group-root",
+    )
     assert root.rule.module is None
     assert root.rule.unresolved == "module_not_found"
 
@@ -353,9 +368,12 @@ def _assert_ambiguous_nested_year() -> None:
             ),
         ),
     )
-    root = StudyStructureService(
-        _InMemoryStructureRead((root_module, ambiguous), ()), academic_year_start=YEAR
-    ).read("module-group-root")
+    root = _read_one(
+        StudyStructureService(
+            _InMemoryStructureRead((root_module, ambiguous), ()), academic_year_start=YEAR
+        ),
+        "module-group-root",
+    )
     assert root.rule.module is None
     assert root.rule.unresolved == "ambiguous_version"
 
@@ -385,9 +403,10 @@ def _assert_ancestor_cycle() -> None:
             ),
         ),
     )
-    root = StudyStructureService(
-        _InMemoryStructureRead(modules, ()), academic_year_start=YEAR
-    ).read("module-group-root")
+    root = _read_one(
+        StudyStructureService(_InMemoryStructureRead(modules, ()), academic_year_start=YEAR),
+        "module-group-root",
+    )
     study = root.rule.module
     assert study is not None
     assert study.module.group_id == "module-group-study"
@@ -395,15 +414,31 @@ def _assert_ancestor_cycle() -> None:
     assert study.rule.unresolved == "module_cycle"
 
 
-def _assert_unknown_root() -> None:
+def _assert_unknown_root(tmp_path: Path) -> None:
     service = StudyStructureService(_InMemoryStructureRead((), ()), academic_year_start=YEAR)
     with pytest.raises(StudyStructureRootUnavailable):
-        service.read("module-group-absent")
+        service.read_many(("module-group-absent",))
     batch = service.read_many(("module-group-absent",), allow_unavailable=True)
     assert (batch.roots, batch.unavailable_root_group_ids) == ((), ("module-group-absent",))
+    path = tmp_path / "unknown-root-fragments.bin"
+    StudyFragmentStore.build(
+        service,
+        ("module-group-absent",),
+        dataset_key="key",
+        academic_year_start=YEAR,
+        path=path,
+    )
+    fragment_read = _InMemoryStructureRead((), ())
+    fragment = StudyStructureService(fragment_read, academic_year_start=YEAR).read_many(
+        ("module-group-absent",),
+        allow_unavailable=True,
+        fragment_store=StudyFragmentStore.open(path, dataset_key="key", academic_year_start=YEAR),
+    )
+    assert fragment.unavailable_root_group_ids == ("module-group-absent",)
+    assert fragment_read.module_calls == []
 
 
-def _assert_ambiguous_root() -> None:
+def _assert_ambiguous_root(tmp_path: Path) -> None:
     module = catalogue_module(
         "module-group-root",
         (
@@ -420,13 +455,27 @@ def _assert_ambiguous_root() -> None:
         ),
     )
     service = StudyStructureService(_InMemoryStructureRead((module,), ()), academic_year_start=YEAR)
-    with pytest.raises(StudyStructureVersionSelectionRequired):
-        service.read("module-group-root")
     batch = service.read_many(("module-group-root",), allow_unavailable=True)
     # A root that needs an explicit version is neither projected nor reported unavailable.
     assert batch.roots == ()
     assert batch.unavailable_root_group_ids == ()
     assert batch.version_selection_required == ("module-group-root",)
+    path = tmp_path / "ambiguous-root-fragments.bin"
+    StudyFragmentStore.build(
+        service,
+        ("module-group-root",),
+        dataset_key="key",
+        academic_year_start=YEAR,
+        path=path,
+    )
+    fragment_read = _InMemoryStructureRead((module,), ())
+    fragment = StudyStructureService(fragment_read, academic_year_start=YEAR).read_many(
+        ("module-group-root",),
+        allow_unavailable=True,
+        fragment_store=StudyFragmentStore.open(path, dataset_key="key", academic_year_start=YEAR),
+    )
+    assert fragment.version_selection_required == ("module-group-root",)
+    assert fragment_read.module_calls == []
 
 
 @pytest.mark.parametrize(
@@ -442,7 +491,7 @@ def _assert_ambiguous_root() -> None:
         "ambiguous_root",
     ],
 )
-def test_structure_preserves_official_containers_rules_and_courses(scenario: str) -> None:
+def test_structure_preserves_official_containers_rules_and_courses(scenario: str, tmp_path) -> None:
     """Structure carries every official container, rule kind and reference, typed."""
     if scenario in {"exact_year", "validity"}:
         _assert_full_structure(scenario)
@@ -455,12 +504,12 @@ def test_structure_preserves_official_containers_rules_and_courses(scenario: str
     elif scenario == "ancestor_cycle":
         _assert_ancestor_cycle()
     elif scenario == "unknown_root":
-        _assert_unknown_root()
+        _assert_unknown_root(tmp_path)
     else:
-        _assert_ambiguous_root()
+        _assert_ambiguous_root(tmp_path)
 
 
-def test_explicit_versions_resolve_root_and_nested_structure() -> None:
+def test_explicit_versions_resolve_root_and_nested_structure(tmp_path: Path) -> None:
     """One explicit selection per group picks that exact root and nested version content."""
     nested_rule = module_rule(ModuleRuleType.MODULE_RULE, referenced_group_id="module-group-nested")
     root_rule = module_rule(
@@ -522,7 +571,8 @@ def test_explicit_versions_resolve_root_and_nested_structure() -> None:
     )
     service = StudyStructureService(read, academic_year_start=YEAR)
 
-    root = service.read(
+    root = _read_one(
+        service,
         "module-group-root",
         module_versions={"module-group-root": "root-v2", "module-group-nested": "nested-v2"},
     )
@@ -533,6 +583,51 @@ def test_explicit_versions_resolve_root_and_nested_structure() -> None:
     assert nested.module.sisu_module_id == "nested-v2"
     assert nested.rule.course is not None
     assert nested.rule.course.group_id == "course-group-nested-v2"
+
+    fragment_module = catalogue_module(
+        "module-group-fragment",
+        (
+            module_version(
+                "fragment-v1",
+                rule=module_rule(
+                    ModuleRuleType.COURSE_UNIT_RULE,
+                    referenced_group_id="course-group-root",
+                ),
+                curriculum_periods=_periods("exact_year"),
+            ),
+        ),
+    )
+    fragment_summaries = (course_summary("course-group-root"),)
+    path = tmp_path / "version-fragments.bin"
+    StudyFragmentStore.build(
+        StudyStructureService(
+            _InMemoryStructureRead((fragment_module,), fragment_summaries),
+            academic_year_start=YEAR,
+        ),
+        ("module-group-fragment",),
+        dataset_key="key",
+        academic_year_start=YEAR,
+        path=path,
+    )
+    store = StudyFragmentStore.open(path, dataset_key="key", academic_year_start=YEAR)
+    fragment_read = _InMemoryStructureRead((fragment_module,), fragment_summaries)
+    fragment = StudyStructureService(fragment_read, academic_year_start=YEAR).read_many(
+        ("module-group-fragment",),
+        allow_unavailable=True,
+        fragment_store=store,
+    )
+    assert tuple(root.module.group_id for root in fragment.roots) == ("module-group-fragment",)
+    assert fragment_read.module_calls == [] and fragment_read.summary_calls == []
+
+    bypass_read = _InMemoryStructureRead((fragment_module,), fragment_summaries)
+    bypass = StudyStructureService(bypass_read, academic_year_start=YEAR).read_many(
+        ("module-group-fragment",),
+        allow_unavailable=True,
+        module_versions={"module-group-fragment": "fragment-v1"},
+        fragment_store=store,
+    )
+    assert tuple(root.module.group_id for root in bypass.roots) == ("module-group-fragment",)
+    assert bypass_read.module_calls
 
 
 @pytest.mark.parametrize("selected", ["foreign-v1", "root-v0"])

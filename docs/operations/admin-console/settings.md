@@ -1,16 +1,16 @@
 # Settings
 
-The Settings tab edits the site's settings files and runs the maintenance actions for the dataset, the backups, the rebuilds and the worker.
+The Settings tab edits the site's settings files and holds the dataset roles and maintenance panels.
 
 ## Panel order
 
-The **Configuration** editor spans the tab first, then **Dataset** and **Backups**, **Rebuild** and **Worker provisioning**, and **Feature switches** last.
+The **Configuration** editor spans the tab first, then the **Datasets** panel, **Backups**, **Rebuild** and **Worker provisioning**, and **Feature switches** last.
 
-![The Settings tab with the configuration file list, the dataset panel, the backup list, the rebuild steps, the worker provisioning form and the feature switches](/docs/screenshots/admin-console-settings.png)
+![The Settings tab with the configuration file list, the Datasets panel, the backup list, the rebuild steps, the worker provisioning form and the feature switches](/docs/screenshots/admin-console-settings.png)
 
 ## Configuration editor
 
-The **Configuration** panel edits the values of one settings file at a time. It opens with no file selected and shows **Select a file to edit its keys.** The list names the subsystem files and the environment file. A subsystem file holds portable settings, and the environment file holds the values that change per machine.
+The **Configuration** panel edits the values of one settings file at a time. It opens with no file selected and shows **Select a file to edit its keys.** The list names the subsystem files and the environment file. A subsystem file holds non-secret settings, including site and worker identity, and the environment file holds credentials.
 
 1. Select a file in the list.
 2. Edit the value in the text field beside its key.
@@ -31,34 +31,9 @@ The affected process reads a saved change when it restarts. The open file reads 
 
 The [Configuration](/docs/backend/configuration.md) page describes how the settings files compose and how a saved value reaches a process.
 
-## Dataset
+## Datasets
 
-The **Dataset** panel shows the pointer, the selected dataset and its schema facts.
-
-| Row | Meaning |
-|---|---|
-| **pointer** | The pointer file that names the selected dataset. |
-| **selected dataset** | The identity of the dataset the site serves. |
-| **kind** | How the dataset entered the chain, **initial** or **returned**. |
-| **database** | The database name. |
-| **receipt records** | The schema head recorded by the dataset's receipt. |
-| **database head** | The schema head the database reports. |
-| **at head** | **yes** when the database matches this checkout's migration head, **no** when it differs, and **unknown** when no database head is reported. |
-
-The selected dataset, the kind and the database appear when the site reports the selected dataset enabled. When the site reports it disabled, the panel shows **The selected dataset is not enabled on this site.** in place of those rows.
-
-![The Dataset panel with the pointer, the selected dataset, its kind, database, receipt and database heads, and the Enroll or select dataset and Migrate selected dataset controls](/docs/screenshots/admin-console-settings-dataset.png)
-
-The panel shows the selected dataset and its schema facts above the two actions.
-
-**Enroll or select dataset** asks for confirmation first. It migrates the configured database to the migration head of the checkout, verifies it, writes the receipt and selects it. When a dataset is already selected, the action returns that selection and changes nothing. A successful enrollment shows a receipt note naming the dataset identity, its kind and its database, and shows the recorded head and the number of verified tables.
-
-**Migrate selected dataset** asks for confirmation first. It applies the migration head to the selected dataset and shows the live head and the number of verified tables.
-
-> [!IMPORTANT]
-> The migration refuses while any stage is not idle or while the database service is not running.
-
-[Datasets](/docs/operations/datasets.md) describes the dataset chain, the receipt and the migration.
+The **Datasets** panel holds both dataset roles, the retained inventory and the copy, migration and deletion actions. [Dataset roles](/docs/operations/admin-console/dataset-roles.md) describes the roles, the actions and their confirmations.
 
 ## Backups
 
@@ -68,18 +43,11 @@ The **Backups** panel lists one row per backup file, with its name, its modifica
 
 ## Rebuild
 
-The **Rebuild** panel lists the four steps of an app rebuild in order:
-
-1. **Build the site frontend**
-2. **Recreate the database and embedding containers**
-3. **Restart the site's web server**
-4. **Verify the web server's loopback bind**
-
-The restart step goes through the systemd manager that `ADMIN_SITE_WEB_SERVICE_SCOPE` names. With `user`, the step runs `systemctl --user restart` on the site's unit. With `system`, it runs `sudo -n /usr/bin/systemctl restart`, which needs the host's passwordless grant for that one unit and command. The unit read that the rebuild makes before its first step uses the same manager, and so does the web server status in **Dashboard**.
+The **Rebuild** panel lists the four steps of an app rebuild in order: **Build the site frontend**, **Recreate the database and embedding containers**, **Restart the site's web server** and **Verify the web server's loopback bind**. The web server status in **Dashboard** reads its unit from the same manager. [Setup and preflight](/docs/operations/setup-and-preflight.md#the-two-rebuild-scopes) states what each step runs and the manager the restart uses.
 
 **Rebuild app** asks for confirmation first. It runs the four steps and shows the steps it ran and the bind it verified.
 
-![The Rebuild app confirmation dialog with the rebuild question, Cancel and Confirm over the Settings tab](/docs/screenshots/admin-console-settings-rebuild-dialog.png)
+![The Rebuild app confirmation dialog with the rebuild question above Cancel and Confirm](/docs/screenshots/admin-console-settings-rebuild-dialog.png)
 
 **Rebuild admin panel** asks for confirmation first, and the dialog states that it signs all operators out. It builds the console, and the administration backend then restarts. The console returns to the sign-in screen with **The admin panel is restarting. Sign in again.**
 
@@ -112,6 +80,6 @@ Each switch writes its setting when selected. A successful write shows the writt
 
 ## When a read fails
 
-Each panel shows the failure of its own read. A failed read leaves the last successful report and its marker in place, and the next successful read clears the failure. A panel that has no successful read shows the failure. A failed save, deletion, rebuild, enrollment, migration or worker action shows its failure in its own panel.
+Each panel shows the failure of its own read. A failed read leaves the last successful report and its marker in place, and the next successful read clears the failure. A panel that has no successful read shows the failure. A failed save, deletion, rebuild or worker action shows its failure in its own panel.
 
 The [Administration console](/docs/operations/admin-console/README.md) describes the sign-in, the header, the confirmation dialog and the read markers.

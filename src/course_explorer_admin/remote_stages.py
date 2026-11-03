@@ -5,9 +5,9 @@ Each adapter extends the shared five-action lifecycle core with a worker bring-u
 Compose ``db``, remote session directory, the three uploads and the prepared acknowledgement), a
 detached worker-run launch, a progress poll that forwards no control, a foreground release hook for
 pause and a foreground finalize hook for stop. The whole worker database is returned, verified and
-selected through the dataset owner, then dropped only after the server receipt exists. Stage DTO
-logic lives in the two policy/status seams, and every transport construction goes
-through ``_transport``.
+published as Working through the dataset owner, then dropped only after the server receipt exists.
+Stage DTO logic lives in the two policy/status seams, and every transport construction goes through
+``_transport``.
 """
 
 from __future__ import annotations
@@ -56,7 +56,7 @@ from course_explorer_admin.lifecycle import (
     stage_state_root,
 )
 from course_explorer_admin.local_stages import (
-    require_selected_database_schema,
+    require_working_database_schema,
     stage_identity_sha256,
 )
 from course_explorer_admin.remote import (
@@ -107,7 +107,6 @@ def _worker_environment(extra: dict[str, str] | None = None) -> dict[str, str]:
     """Return the environment overrides every worker helper needs to resolve one session."""
     overrides = {
         "ADMIN_STATE_ROOT": str(_admin_settings().admin_state_root),
-        "SELECTED_DATASET_ENABLED": "0",
         "WORKER_GPU_REBOOT_INTERVAL_MINUTES": str(
             load_worker_gpu_reboot_settings().worker_gpu_reboot_interval_minutes
         ),
@@ -284,7 +283,6 @@ def _stop_owned_worker_database(
                 transport,
                 connection,
                 argv,
-                env={"SELECTED_DATASET_ENABLED": "0"},
                 timeout=timeout,
             )
         )
@@ -295,7 +293,6 @@ def _stop_owned_worker_database(
             transport,
             connection,
             (*prefix, "stop", "db"),
-            env={"SELECTED_DATASET_ENABLED": "0"},
             timeout=timeout,
         )
     )
@@ -304,7 +301,6 @@ def _stop_owned_worker_database(
             transport,
             connection,
             (*prefix, "rm", "-f", "db"),
-            env={"SELECTED_DATASET_ENABLED": "0"},
             timeout=timeout,
         )
     )
@@ -329,7 +325,6 @@ def _ensure_worker_database(
                 transport,
                 connection,
                 argv,
-                env={"SELECTED_DATASET_ENABLED": "0"},
                 timeout=timeout,
             )
         )
@@ -424,7 +419,6 @@ def _check_worker_dependencies(
         transport,
         connection,
         ("uv", "sync", "--locked", "--check", "--offline", "--no-python-downloads"),
-        env={"SELECTED_DATASET_ENABLED": "0"},
     )
 
 
@@ -511,7 +505,7 @@ class RemoteStage:
         """Worker readiness is checked during bring-up."""
 
     def require_database(self) -> None:
-        require_selected_database_schema()
+        require_working_database_schema()
 
     def _progress(self, status: WorkerControllerStatus) -> TranslationProgress | InferenceProgress:
         if self.name == "translation":
@@ -606,7 +600,7 @@ class RemoteStage:
         return call
 
     def _capture(self, context: LifecycleContext) -> WorkerDatasetSession:
-        """Snapshot the selected dataset once and publish the policy if it is absent."""
+        """Snapshot the Working dataset once and publish the policy if it is absent."""
         session_id = context.session.session_id
         directory = worker_dataset_session_directory(session_id)
         session_path = directory / "session.json"
@@ -1042,8 +1036,8 @@ def inference_stage(
     """Build the one inference remote adapter over the supplied bootstrap module pair.
 
     ``worker_module`` is the detached worker-host helper this adapter launches, and
-    ``server_worker_module`` is the server-side lifecycle worker that in turn runs this adapter, so a
-    caller that owns an additional explicit route supplies its own pair.
+    ``server_worker_module`` is the server-side lifecycle worker that in turn runs this adapter, so
+    a caller that owns an additional explicit route supplies its own pair.
     """
     connection = load_inference_controller_settings()
     return RemoteStage(

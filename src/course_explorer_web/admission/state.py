@@ -1,4 +1,5 @@
-"""The front router's in-memory admission state: the load score meter, the user counters and the heavy queue.
+"""The front router's in-memory admission state: the load score meter, the user counters and the
+heavy queue.
 
 The score combines the whole host's CPU utilisation with the light and heavy activity counted in
 the same window:
@@ -46,11 +47,10 @@ class _Identity:
 
 
 class AdmissionState:
-    """Hold one process's admission counters, its heavy queue and its graph costs.
+    """Hold one process's admission counters and its heavy queue.
 
-    ``cores`` is the host's core count that the CPU utilisation divides by. A graph cost belongs to
-    the one dataset identity it was measured under. Nothing here is persisted or shared between
-    processes.
+    ``cores`` is the host's core count that the CPU utilisation divides by. Nothing here is
+    persisted or shared between processes.
 
     The light and heavy buckets advance on ``time.monotonic()`` milliseconds, while the identity
     lifetime and the load window's sample index use wall-clock seconds. The activity timestamps of
@@ -76,8 +76,6 @@ class AdmissionState:
         self._running: set[str] = set()
         self._tickets: dict[str, str] = {}
         self._condition = asyncio.Condition()
-        self._graph_identity: str | None = None
-        self._graph_costs: dict[str, float] = {}
 
     @property
     def running_heavy(self) -> int:
@@ -206,19 +204,6 @@ class AdmissionState:
             self._heavy_running.pop(ticket, None)
             self._remove_ticket(ticket)
             self._condition.notify_all()
-
-    def graph_cost(self, dataset_identity: str, field: str) -> float | None:
-        """Return one cached graph cost for the current dataset identity, or ``None``."""
-        if dataset_identity != self._graph_identity:
-            return None
-        return self._graph_costs.get(field)
-
-    def record_graph_cost(self, dataset_identity: str, field: str, seconds: float) -> None:
-        """Store one built graph's cost, replacing the costs of a different dataset identity."""
-        if dataset_identity != self._graph_identity:
-            self._graph_identity = dataset_identity
-            self._graph_costs = {}
-        self._graph_costs[field] = seconds
 
     def expire(self, second: int) -> None:
         """Drop every identity that has been idle for its lifetime and holds no ticket."""

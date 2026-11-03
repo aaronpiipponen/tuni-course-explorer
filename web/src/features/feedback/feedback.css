@@ -1,0 +1,383 @@
+/*
+ * The standalone feedback page: one card holding the whole question form over the wiki and
+ * administration palette, with its labels, controls, styled select menu, image drop area,
+ * publication choice and saved outcome.
+ */
+.feedback-page {
+  height: 100dvh;
+  overflow-y: auto;
+  background: #13141b;
+  color: #ececf2;
+  font:
+    14px/1.6 Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+}
+.feedback-shell {
+  width: min(680px, 100%);
+  margin: 0 auto;
+  padding: 32px 20px 72px;
+}
+.feedback-return {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  margin-bottom: 4px;
+  color: #a98ae0;
+  font:
+    12px ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  text-decoration: none;
+}
+.feedback-return:hover {
+  text-decoration: underline;
+}
+.feedback-return:focus-visible,
+.feedback-submit:focus-visible,
+.feedback-drop:focus-within,
+.feedback-file-remove:focus-visible {
+  outline: 2px solid #a98ae0;
+  outline-offset: 3px;
+}
+.feedback-shell h1 {
+  margin: 0 0 20px;
+  color: #f5f3fa;
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.feedback-form h1 {
+  margin: 0;
+  font-size: 24px;
+}
+.feedback-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 20px;
+  border: 1px solid rgb(255 255 255 / 9%);
+  border-radius: 14px;
+  background: #181a22;
+}
+.feedback-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.feedback-label {
+  color: #cfd2dc;
+  font-weight: 500;
+}
+.feedback-input,
+.feedback-select,
+.feedback-textarea {
+  width: 100%;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 8px;
+  color: #ececf2;
+  background: #13141b;
+  font: inherit;
+}
+.feedback-input,
+.feedback-select {
+  min-height: 38px;
+  padding: 8px 12px;
+}
+.feedback-input:focus-visible,
+.feedback-select:focus-visible,
+.feedback-textarea:focus-visible {
+  border-color: #a98ae0;
+  outline: 2px solid rgb(169 138 224 / 45%);
+  outline-offset: 1px;
+}
+.feedback-input:disabled,
+.feedback-select:disabled,
+.feedback-textarea:disabled {
+  opacity: 0.6;
+}
+.feedback-select {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.feedback-select-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.feedback-select-value.is-placeholder {
+  color: #8a8fa0;
+}
+.feedback-select-chevron {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: #8a8fa0;
+  stroke-width: 1.5;
+  transition: transform 0.15s ease;
+}
+.feedback-select[data-state="open"] .feedback-select-chevron {
+  stroke: #a98ae0;
+  transform: rotate(180deg);
+}
+.feedback-select-menu {
+  z-index: 40;
+  min-width: var(--radix-dropdown-menu-trigger-width);
+  max-height: 280px;
+  padding: 4px;
+  overflow-y: auto;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 10px;
+  background: #181a22;
+  box-shadow:
+    0 18px 44px rgb(0 0 0 / 65%),
+    0 0 30px -12px rgb(90 30 156 / 55%);
+}
+.feedback-select-menu[data-state="open"] {
+  transform-origin: top center;
+  animation: feedback-menu-in 0.16s ease-out;
+}
+@keyframes feedback-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.feedback-select-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  color: #ececf2;
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+}
+.feedback-select-item[data-highlighted] {
+  background: rgb(169 138 224 / 16%);
+}
+.feedback-select-item[data-state="checked"] {
+  color: #fff;
+  font-weight: 500;
+}
+.feedback-select-item[data-state="checked"]::after {
+  color: #a98ae0;
+  font-size: 12px;
+  content: "✓";
+  animation: feedback-check-in 0.18s ease-out;
+}
+@keyframes feedback-check-in {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.feedback-textarea {
+  min-height: 96px;
+  max-height: 360px;
+  padding: 10px 12px;
+  resize: vertical;
+}
+.feedback-drop {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px;
+  border: 1px dashed rgb(255 255 255 / 25%);
+  border-radius: 10px;
+  color: rgb(255 255 255 / 55%);
+  font-size: 12px;
+  cursor: pointer;
+}
+.feedback-drop-choose {
+  color: #fff;
+  white-space: nowrap;
+  text-decoration: underline;
+}
+.feedback-drop-note {
+  color: rgb(255 255 255 / 45%);
+}
+.feedback-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+.feedback-files {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.feedback-file-row {
+  overflow: hidden;
+}
+.feedback-file-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+  padding: 6px 10px;
+  border: 1px solid rgb(255 255 255 / 9%);
+  border-radius: 8px;
+  background: #13141b;
+}
+.feedback-file-name {
+  min-width: 0;
+  overflow: hidden;
+  color: #cfd2dc;
+  font:
+    12px ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.feedback-file-remove {
+  flex: 0 0 auto;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid rgb(255 255 255 / 20%);
+  border-radius: 8px;
+  color: #f5f3fa;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.feedback-field-error,
+.feedback-error {
+  margin: 0;
+  color: #f0a3ae;
+  font-size: 13px;
+}
+.feedback-publication {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 18px;
+  border-top: 1px solid rgb(255 255 255 / 9%);
+}
+.feedback-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: #ececf2;
+  font-weight: 500;
+  cursor: pointer;
+}
+.feedback-toggle input {
+  display: grid;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  margin: 2px 0 0;
+  border: 1px solid rgb(255 255 255 / 30%);
+  border-radius: 5px;
+  background: #13141b;
+  cursor: pointer;
+  transition:
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    box-shadow 0.16s ease;
+  appearance: none;
+}
+.feedback-toggle input::after {
+  width: 10px;
+  height: 10px;
+  background: #f5f3fa;
+  clip-path: polygon(14% 44%, 0 65%, 40% 100%, 100% 16%, 84% 0%, 40% 68%);
+  content: "";
+  transform: scale(0);
+  transition: transform 0.16s cubic-bezier(0.22, 0.8, 0.2, 1);
+}
+.feedback-toggle input:checked {
+  border-color: #a98ae0;
+  background: rgb(169 138 224 / 22%);
+  /* The glow is a short press pulse, so the resting toggle stays calm. */
+  animation: feedback-toggle-press 0.32s ease-out;
+}
+@keyframes feedback-toggle-press {
+  from {
+    box-shadow: 0 0 0 0 rgb(169 138 224 / 0%);
+  }
+  35% {
+    box-shadow:
+      0 0 0 3px rgb(169 138 224 / 16%),
+      0 0 10px rgb(169 138 224 / 40%);
+  }
+  to {
+    box-shadow: 0 0 0 0 rgb(169 138 224 / 0%);
+  }
+}
+.feedback-toggle input:checked::after {
+  transform: scale(1);
+}
+.feedback-toggle input:focus-visible {
+  outline: 2px solid #a98ae0;
+  outline-offset: 2px;
+}
+.feedback-toggle input:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.feedback-explanation,
+.feedback-loading,
+.feedback-outcome {
+  margin: 0;
+  color: #8a8fa0;
+  font-size: 13px;
+}
+.feedback-actions {
+  display: flex;
+  justify-content: flex-start;
+}
+.feedback-submit {
+  min-height: 34px;
+  padding: 0 16px;
+  border: 1px solid #a98ae0;
+  border-radius: 8px;
+  color: #fff;
+  background: var(--color-accent-strong);
+  font:
+    500 13px Inter,
+    ui-sans-serif,
+    system-ui,
+    sans-serif;
+  cursor: pointer;
+}
+.feedback-submit:disabled {
+  opacity: 0.65;
+  cursor: default;
+}

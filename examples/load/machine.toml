@@ -1,0 +1,30 @@
+# Example machine configuration for the serving load tooling. Copy this file to
+# tools/load/machine.toml and replace the values with the machine's own. The three [stack]
+# host values must be 127.0.0.1.
+[stack]
+# The stack binds loopback only. The load client reaches it through its own SSH local forward.
+web_host = "127.0.0.1"
+web_port = 18026
+web_workers = 4
+web_memory_mib = 2200
+database_host = "127.0.0.1"
+database_port = 55433
+database_user = "course_explorer"
+embedding_host = "127.0.0.1"
+embedding_port = 8091
+database_container = "course-explorer-db"
+embedding_container = "course-explorer-embedding"
+cpu_cgroup_root = "/sys/fs/cgroup/cpu,cpuacct/course-explorer-load"
+memory_cgroup_root = "/sys/fs/cgroup/memory/course-explorer-load"
+
+[worker]
+host = "load-client.example.org"
+user = "load"
+directory = "C:\\course-explorer-load"
+k6 = "C:\\tools\\k6.exe"
+# The SSH target the load client reaches to open its forward to the stack's loopback port.
+tunnel_host = "server.example.org"
+tunnel_user = "operator"
+tunnel_port = 22
+# The loopback port on the load client that carries the forward.
+forward_port = 18026

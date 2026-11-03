@@ -139,6 +139,22 @@ export class BrowserStore {
     );
   }
 
+  /** Replace one saved profile's state with imported data and make it current. */
+  overwriteProfile(id: string, state: ProfileState): void {
+    this.#commit((latest) => {
+      const profile = latest.profiles[id];
+      if (!profile) throw new Error("Browser profile is unavailable");
+      return {
+        ...latest,
+        currentProfileId: id,
+        profiles: {
+          ...latest.profiles,
+          [id]: { name: profile.name, state: structuredClone(state) },
+        },
+      };
+    });
+  }
+
   /** Replace every stored profile with one imported envelope and publish it. */
   restoreState(state: BrowserState): void {
     this.#write(state);

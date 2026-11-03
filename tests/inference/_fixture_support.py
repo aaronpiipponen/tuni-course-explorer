@@ -1,9 +1,9 @@
 """Shared synthetic inference settings, run/evidence builders, and digest fixtures.
 
-This support module owns the one embedding configuration used to derive compatible
-hashes, the inference settings plus execution/run-spec builders the evidence tests
-share, the final inferred-store row-count helper, and the labelled fixture digest every inference
-fixture module reuses. It builds its values from the composed mapping.
+This support module owns the inference settings plus execution/run-spec builders the evidence tests
+share, the empty completion result with its descriptor and fact builders, the final inferred-store
+row-count helper, and the labelled fixture digest every inference fixture module reuses. It builds
+its values from the composed mapping.
 """
 
 from __future__ import annotations
@@ -13,41 +13,32 @@ from typing import Any
 
 from sqlalchemy import func, select
 
-from course_explorer.config import EmbeddingSettings, InferenceSettings
+from course_explorer.config import InferenceSettings
 from course_explorer.db.models import (
     InferredEquivalenceGroup,
     InferredPrerequisiteSet,
 )
 from course_explorer.db.session import session_scope
+from course_explorer.inference.context import (
+    RequestCourseDescriptor,
+    RequestCourseDescriptors,
+)
+from course_explorer.inference.domain import (
+    InferenceRoutingMetadata,
+    InferenceTargetResultV2,
+)
 from course_explorer.inference.evidence import (
+    InferenceCompletionFacts,
     InferenceExecutionProfile,
     InferencePipelineRunSpec,
 )
 from course_explorer.inference.routing import local_execution
 from tests.support import settings_factory
 
-POLICY_SHA256 = "1" * 64
-CATALOGUE_SHA256 = "2" * 64
-
 
 def fixture_sha256(seed: str) -> str:
     """Return one deterministic lowercase 64-character digest for a labelled fixture value."""
     return hashlib.sha256(seed.encode("utf-8")).hexdigest()
-
-
-def embedding_settings() -> EmbeddingSettings:
-    """Build the full required embedding configuration used to derive the compatible hash."""
-    return settings_factory(
-        EmbeddingSettings,
-        EMBEDDING_CONTEXT_SIZE=1024,
-        EMBEDDING_REQUEST_TIMEOUT_SECONDS=30,
-        EMBEDDING_GENERATION_BATCH_SIZE=16,
-        EMBEDDING_ARTIFACT_URL="https://example.test/model.gguf",
-        EMBEDDING_ARTIFACT_PATH="models/model.gguf",
-        EMBEDDING_ARTIFACT_SHA256="a" * 64,
-        EMBEDDING_SERVER_IMAGE="ghcr.io/ggml-org/llama.cpp:server@sha256:" + "b" * 64,
-        EMBEDDING_RUNTIME_REVISION="c" * 40,
-    )
 
 
 def inference_settings(**overrides: Any) -> InferenceSettings:
@@ -72,6 +63,33 @@ def run_spec(
         resolved,
         execution=execution if execution is not None else execution_profile(resolved),
     )
+
+
+def _empty_result() -> InferenceTargetResultV2:
+    """Build one complete target result with no finding."""
+    return InferenceTargetResultV2(
+        required=(),
+        recommended=(),
+        equivalence=(),
+        routing=InferenceRoutingMetadata(confidence=0.5, flags=(), suppressed=()),
+    )
+
+
+def _descriptors(target_group_id: str) -> RequestCourseDescriptors:
+    """Build one completion's target descriptors with no candidate."""
+    return RequestCourseDescriptors(
+        target=RequestCourseDescriptor(
+            group_id=target_group_id,
+            course_code="TARGET.1",
+            representative_source_sha256="a" * 64,
+        ),
+        candidates=(),
+    )
+
+
+def _facts() -> InferenceCompletionFacts:
+    """Build one completion's teaching-text identity over no candidate."""
+    return InferenceCompletionFacts(target_teaching_text_sha256="b" * 64, candidate_count=0)
 
 
 def final_store_counts(factory: object) -> tuple[int, int]:

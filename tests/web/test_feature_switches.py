@@ -1,4 +1,5 @@
-"""Server enforcement proofs for the two per-site feature switches and the serving identity."""
+"""Server enforcement proofs for the two per-site feature switches, the serving dataset identity,
+and the shared serving objects that the routes read."""
 
 from __future__ import annotations
 
@@ -10,11 +11,9 @@ import pytest
 from fastapi.testclient import TestClient
 from pydantic import BaseModel
 
-import course_explorer.administration as administration
 from course_explorer.administration import administrative_json, atomic_write_private_text
 from course_explorer.comparison import commands as comparison_commands
-from course_explorer.config import load_web_settings
-from course_explorer.datasets import DatasetReceipt, SelectedDatasetPointer
+from course_explorer.datasets import DatasetPointer, DatasetReceipt
 from course_explorer.hashing import json_sha256
 from course_explorer.next_courses import commands as next_courses_commands
 from course_explorer.prerequisite import commands as prerequisite_commands
@@ -30,28 +29,64 @@ from course_explorer_web.routes.prerequisite_inputs import PrerequisiteGraphRequ
 from course_explorer_web.routes.recommendations import RecommendationsRequest
 from course_explorer_web.routes.search import SearchRequest
 from course_explorer_web.serving import MEASURE_GRAPH_HEADER
-from course_explorer_web.serving_cache import serving_caches
+from course_explorer_web.serving_cache import (
+    preloaded_lookup_projection,
+    preloaded_serving_settings,
+    serving_caches,
+)
 from tests.datasets._support import sample_receipt
+from tests.web.conftest import refresh_serving_settings
 
 _DRAWING_LIMIT = 137
 _COMPACT_NODE_LIMIT = 4242
-_PROJECTION_ROUTES = ("/api/search", "/api/catalogue")
-_SOURCE_CACHE_ROUTES = ("/api/prerequisites", "/api/next-courses", "/api/recommendations")
 
 
-def _retained_cache_arguments(endpoint: str, serving) -> dict[str, object]:
-    """Return the cache keywords one route passes to its command boundary."""
-    cache = serving_caches(serving, load_web_settings())
-    if endpoint in _PROJECTION_ROUTES:
-        return {"projection_cache": cache.lookup_projection}
+def _assert_shared_read(endpoint: str, serving, kwargs: dict[str, object]) -> None:
+    """Prove a representative route reads the shared serving objects.
+
+    Every route receives the shared session factory. The search, comparison, prerequisites,
+    next-courses, recommendations and course-summaries routes receive the preloaded lookup
+    projection. The next-courses route receives the shared report cache, and the study-structure
+    route receives the shared fragment store and the configured academic year start.
+    """
+    bundle = preloaded_serving_settings()
+    cache = serving_caches(serving)
+    assert kwargs["session_factory"] is cache.database.factory()
+    if endpoint in (
+        "/api/search",
+        "/api/comparison",
+        "/api/prerequisites",
+        "/api/next-courses",
+        "/api/recommendations",
+        "/api/course-summaries",
+    ):
+        assert kwargs["projection"] is preloaded_lookup_projection()
+    if endpoint in ("/api/search", "/api/comparison", "/api/recommendations"):
+        assert kwargs["embedding_settings"] is bundle.embedding
+        assert kwargs["embedding_configuration_hash"] == bundle.embedding_configuration_hash
+    if endpoint == "/api/search":
+        assert kwargs["query_embedding_cache"] is cache.query_embeddings
+        assert kwargs["embedding_client"] is bundle.search_embedding_client
+        if bundle.web.embeddings_enabled:
+            reads = cache.artifacts.embedding_reads()
+            assert kwargs["hub"] == reads.hubs[0]
+            assert kwargs["search_group_count"] == reads.search.group_count
+        else:
+            assert kwargs["hub"] is None
+            assert kwargs["search_group_count"] is None
+    if endpoint in ("/api/comparison", "/api/recommendations"):
+        reads = cache.artifacts.embedding_reads()
+        assert kwargs["hub"] == reads.hubs[0]
+        assert kwargs["outcomes_hub"] == reads.hubs[1]
     if endpoint == "/api/recommendations":
-        return {
-            "source_cache": cache.prerequisite_sources,
-            "chunk_cache": cache.descriptive_chunks,
-        }
-    if endpoint in _SOURCE_CACHE_ROUTES:
-        return {"source_cache": cache.prerequisite_sources}
-    return {}
+        assert kwargs["shared_store"] is reads.shared_store
+        assert kwargs["next_course_cache"] is cache.next_course_reports
+        assert kwargs["centroid_cache"] is cache.course_centroids
+    if endpoint == "/api/next-courses":
+        assert kwargs["report_cache"] is cache.next_course_reports
+    if endpoint == "/api/study-structure":
+        assert kwargs["fragment_store"] is cache.artifacts.study_fragments
+        assert kwargs["academic_year_start"] == bundle.academic_year_start
 
 
 class _SentinelReport(BaseModel):
@@ -334,17 +369,14 @@ def _policy_expected(
     body: dict[str, object],
     site_enabled: bool,
     requested: bool | None,
-    serving,
 ) -> dict[str, object]:
-    """Return the exact keyword arguments a policy route passes to its command boundary."""
+    """Return the request fields and site policy a policy route delegates to its command."""
     expected = case.model.model_validate(body).model_dump()
     expected[case.policy_field] = (
         site_enabled and bool(requested) if case.requested_field is not None else site_enabled
     )
     if case.drawing_limit:
         expected["max_drawing_elements"] = _DRAWING_LIMIT
-    expected["database_settings"] = serving.settings
-    expected.update(_retained_cache_arguments(case.endpoint, serving))
     return expected
 
 
@@ -354,20 +386,35 @@ def _policy_expected(
     ids=("comparison", "recommendations"),
 )
 def test_disabled_embedding_features_refuse_reads(
-    monkeypatch: pytest.MonkeyPatch, case: _FeatureReadCase
+    monkeypatch: pytest.MonkeyPatch, case: _FeatureReadCase, embeddings_off: None
 ) -> None:
-    """An embeddings-off site refuses both embedding reads before its command runs."""
-    monkeypatch.setenv("WEB_EMBEDDINGS_ENABLED", "0")
+    """An embeddings-off site refuses both embedding reads before its command runs.
+
+    A read that needs no embedding feature still serves the catalogue from the same opened set,
+    whose embedding reads are absent.
+    """
     monkeypatch.setenv("WEB_INFERENCE_ENABLED", "1")
+    refresh_serving_settings()
 
     def refuse_reached_command(*_args: object, **_kwargs: object) -> None:
         raise AssertionError(f"{case.command} ran while embeddings are off")
 
     monkeypatch.setattr(case.owner, case.command, refuse_reached_command)
 
-    response = TestClient(app).post(case.endpoint, json=case.body)
+    client = TestClient(app)
+    response = client.post(case.endpoint, json=case.body)
 
     assert response.status_code == 403
+    catalogue = client.post("/api/catalogue", json={})
+    assert catalogue.status_code == 200
+    assert catalogue.json() == {
+        "courses": [],
+        "modules": [],
+        "dataset_identity": resolve_serving_dataset().identity,
+    }
+    off_cache = serving_caches(resolve_serving_dataset())
+    assert off_cache.artifacts.embeddings is None
+    assert off_cache.course_centroids is None
 
 
 @pytest.mark.parametrize(
@@ -393,6 +440,7 @@ def test_site_feature_switch_bounds_delegated_policy(
     monkeypatch.setenv("PREREQUISITE_GRAPH_MAX_ELEMENTS", str(_DRAWING_LIMIT))
     monkeypatch.setenv("PREREQUISITE_PATH_MAX_COMPACT_NODES", str(_COMPACT_NODE_LIMIT))
     monkeypatch.setenv(SERVING_GENERATION_ENV, "a" * 32)
+    refresh_serving_settings()
     body = {**case.body}
     if case.requested_field is not None:
         body[case.requested_field] = requested
@@ -415,7 +463,14 @@ def test_site_feature_switch_bounds_delegated_policy(
     if case.drawing_limit:
         expected_response["max_compact_nodes"] = _COMPACT_NODE_LIMIT
     assert response.json() == expected_response
-    assert received == [_policy_expected(case, body, site_enabled, requested, serving)]
+    expected = _policy_expected(case, body, site_enabled, requested)
+    received_kwargs = received[0]
+    assert {name: received_kwargs[name] for name in expected} == expected
+    assert received_kwargs["database_settings"] == serving.settings
+    _assert_shared_read(case.endpoint, serving, received_kwargs)
+    if case.endpoint == "/api/search":
+        # The search route reads a hub only when the embedding features are on.
+        assert (received_kwargs["hub"] is None) is (not site_enabled)
 
 
 def _write_dataset(state: Path, receipt: DatasetReceipt) -> None:
@@ -429,7 +484,7 @@ def _select_dataset(state: Path, dataset_id: str) -> None:
     """Point the real selected-dataset pointer at one written receipt."""
     atomic_write_private_text(
         state / "selected-dataset.json",
-        administrative_json(SelectedDatasetPointer(schema_version=1, dataset_id=dataset_id)),
+        administrative_json(DatasetPointer(schema_version=1, dataset_id=dataset_id)),
     )
 
 
@@ -444,7 +499,7 @@ class _Recorded:
 def _cached_read_expected(
     case: _CachedRead, serving
 ) -> tuple[tuple[object, ...], dict[str, object]]:
-    """Return the exact call a cached route makes on its command boundary."""
+    """Return the request fields a cached route delegates to its command boundary."""
     if case.endpoint == "/api/study-structure":
         kwargs: dict[str, object] = {
             "allow_unavailable": False,
@@ -465,7 +520,6 @@ def _cached_read_expected(
     if case.endpoint == "/api/prerequisites":
         kwargs["max_drawing_elements"] = _DRAWING_LIMIT
     kwargs["database_settings"] = serving.settings
-    kwargs.update(_retained_cache_arguments(case.endpoint, serving))
     return case.positional, kwargs
 
 
@@ -485,19 +539,19 @@ def test_cached_reads_report_one_serving_dataset_identity(
         dump_sha256="d" * 64,
         verification=initial.verification,
     )
-    for receipt in (initial, returned):
-        _write_dataset(state, receipt)
-    _select_dataset(state, initial.dataset_id)
-    monkeypatch.setattr(administration, "repository_root", lambda: tmp_path)
+    if selected:
+        for receipt in (initial, returned):
+            _write_dataset(state, receipt)
+        _select_dataset(state, initial.dataset_id)
     monkeypatch.setenv("ADMIN_STATE_ROOT", "state")
     monkeypatch.setenv("PREREQUISITE_PATH_MAX_COMPACT_NODES", str(_COMPACT_NODE_LIMIT))
     monkeypatch.setenv("PREREQUISITE_GRAPH_MAX_ELEMENTS", str(_DRAWING_LIMIT))
     monkeypatch.setenv("WEB_EMBEDDINGS_ENABLED", "1")
     monkeypatch.setenv("WEB_INFERENCE_ENABLED", "1")
     monkeypatch.setenv("POSTGRES_DB", "raw_test")
-    monkeypatch.setenv("SELECTED_DATASET_ENABLED", "1" if selected else "0")
     generation = "a" * 32
     monkeypatch.setenv(SERVING_GENERATION_ENV, generation)
+    refresh_serving_settings()
     calls: list[_Recorded] = []
 
     def sentinel(*args: object, **kwargs: object) -> _SentinelReport:
@@ -514,6 +568,14 @@ def test_cached_reads_report_one_serving_dataset_identity(
     assert feature.json()["dataset_identity"] == initial_identity
     response = client.post(case.endpoint, json=case.body)
     assert response.status_code == 200
+    if case.endpoint == "/api/catalogue":
+        assert response.json() == {
+            "courses": [],
+            "modules": [],
+            "dataset_identity": initial_identity,
+        }
+        assert calls == []
+        return
     expected_response: dict[str, object] = {
         "payload": "sentinel",
         "dataset_identity": initial_identity,
@@ -525,7 +587,9 @@ def test_cached_reads_report_one_serving_dataset_identity(
     served = calls[0].kwargs["database_settings"]
     assert served.postgres_db == ("selected_one" if selected else "raw_test")
     args, kwargs = _cached_read_expected(case, resolve_serving_dataset())
-    assert (calls[0].args, calls[0].kwargs) == (args, kwargs)
+    assert calls[0].args == args
+    assert {name: calls[0].kwargs[name] for name in kwargs} == kwargs
+    _assert_shared_read(case.endpoint, resolve_serving_dataset(), calls[0].kwargs)
     # The identity is an opaque digest, and no connection detail reaches either response.
     assert len(initial_identity) == 64
     for name in ("raw_test", "selected_one", "postgres", "password"):
@@ -535,6 +599,7 @@ def test_cached_reads_report_one_serving_dataset_identity(
     # A fresh serving generation changes the identity in both database modes.
     generation = "b" * 32
     monkeypatch.setenv(SERVING_GENERATION_ENV, generation)
+    refresh_serving_settings()
     next_identity = json_sha256([generation, initial_id], ensure_ascii=False)
     assert client.post("/api/features", json={}).json()["dataset_identity"] == next_identity
     response = client.post(case.endpoint, json=case.body)
@@ -546,12 +611,26 @@ def test_cached_reads_report_one_serving_dataset_identity(
     # A selected receipt switch changes the identity without changing the generation.
     if selected:
         _select_dataset(state, returned.dataset_id)
+        refresh_serving_settings()
         switched = json_sha256([generation, returned.dataset_id], ensure_ascii=False)
         assert switched != next_identity
         assert client.post("/api/features", json={}).json()["dataset_identity"] == switched
         response = client.post(case.endpoint, json=case.body)
         assert response.json()["dataset_identity"] == switched
         assert calls[-1].kwargs["database_settings"].postgres_db == "selected_two"
+
+        # Rewriting the selected receipt without touching the pointer is read on the next request.
+        rewritten = returned.model_copy(update={"database_name": "selected_three"})
+        atomic_write_private_text(
+            state / "datasets" / returned.dataset_id / "receipt.json",
+            administrative_json(rewritten),
+        )
+        refresh_serving_settings()
+        response = client.post(case.endpoint, json=case.body)
+        assert response.json()["dataset_identity"] == switched
+        assert resolve_serving_dataset().settings.postgres_db == "selected_three"
+        if case.endpoint != "/api/catalogue":
+            assert calls[-1].kwargs["database_settings"].postgres_db == "selected_three"
 
     # The ordinary paired resolver and the feature read agree on the resolved identity.
     features = json.loads(client.post("/api/features", json={}).text)
@@ -567,8 +646,10 @@ def test_cached_reads_report_one_serving_dataset_identity(
 def test_graph_read_marks_the_root_id_and_its_official_code_for_measurement(
     monkeypatch: pytest.MonkeyPatch, target: str, measured: bool
 ) -> None:
-    """A graph read is marked for measurement under the root's canonical id or exact official code."""
+    """A graph read is marked for measurement under the root's canonical id or exact official
+    code."""
     monkeypatch.setenv(SERVING_GENERATION_ENV, "a" * 32)
+    refresh_serving_settings()
     monkeypatch.setattr(
         prerequisite_commands,
         "run_prerequisite_command",

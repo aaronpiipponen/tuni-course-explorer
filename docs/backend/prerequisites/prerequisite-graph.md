@@ -7,7 +7,7 @@ The graph report is the input of the browser route worker. The machine route com
 own solver structure through the shared command owner and consumes no web graph report or web-only
 metadata.
 
-## Two structures per graph root
+## One structure and one drawing
 
 The **Prerequisites** tab opens a [graph root](/docs/reference/glossary.md#prerequisites-and-routes),
 the course at the top of the drawing. One graph read compiles that root's requirements into one
@@ -20,6 +20,8 @@ other.
 One graph read returns the solver structure, the drawing, the bindings and the drawing allowance.
 The browser worker reads the held structure with the live profile inputs and calculates the route,
 which ends in one route outcome.
+
+The diagram shows one graph read returning the structure, the drawing and the allowance, and the route calculation that reads the held structure.
 
 ![One graph read returns the solver structure with its support bindings, the drawing and the drawing allowance. The browser route calculation reads the held structure with the live profile inputs and returns a route outcome.](/docs/diagrams/prerequisite-graph-report.svg)
 
@@ -133,7 +135,7 @@ Display identity depends only on what the drawing shows: the displayed kind, the
 the drawn children a box leads to. Provenance, mark state, child order and multiplicity never
 separate equal drawings, so one box can stand for several source occurrences while the calculation
 keeps its ordered, multiplicity-preserving pieces.
-[Shared drawing identity](/docs/backend/prerequisites/prerequisite-compiler.md#shared-drawing-identity)
+[Shared drawing identity](/docs/backend/prerequisites/display-projection.md#shared-drawing-identity)
 describes the identity and the compact bindings.
 
 A saved node mark names one drawn box. It never changes a display identity. A box may stand for
@@ -163,8 +165,8 @@ The graph report carries the requirement structure and the drawing, and the brow
 drawn box's state from them. A course box reads the profile's completed set, its excluded courses
 and the chosen basis. A module or numeric box is automatically fulfilled only when every calculation
 piece bound to it is satisfied in the unmarked completed-only and chosen-basis contexts, and its own
-manual mark applies to the whole box. `evaluateNodeStates` in `web/src/solver/satisfaction.ts` owns
-that evaluation, and the page reads the held report without changing it.
+manual mark applies to the whole box. The page evaluates each drawn box's state from the report and
+writes nothing into it.
 
 A graph request carries the root, the selected and completed course sets, the **Recommended** and
 **Inferred** toggles and the activity scope. It carries no marks, no calculation basis and no
@@ -217,4 +219,4 @@ A graph whose element count is above the limit is reported with `display=null`, 
 carries the solver structure, the counts and the located reasons. The refusal affects the
 drawing only: the calculation and the separate route calculation give the same result either way.
 
-[Compact graph identity and projection](/docs/experiments/graph-and-route-algorithms/compact-graph-identity-and-projection.md#drawing-allowance) gives the drawings allowed and refused at the 500-element limit.
+[Graph report payload and projection](/docs/experiments/graph-and-route-algorithms/graph-report-payload-and-projection.md#drawing-allowance) gives the drawings allowed and refused at the 500-element limit.

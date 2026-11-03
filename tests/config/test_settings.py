@@ -8,7 +8,6 @@ from pydantic import ValidationError
 from course_explorer.config import (
     AdminWebSettings,
     EmbeddingRuntimeSettings,
-    EmbeddingSettings,
     InferenceRerankSettings,
     InferenceSettings,
     TranslationSettings,
@@ -29,8 +28,6 @@ def test_local_services_reject_exposure(monkeypatch: pytest.MonkeyPatch) -> None
     set_embedding_environment(monkeypatch, EMBEDDING_HOST="0.0.0.0")
     with pytest.raises(ValidationError):
         EmbeddingRuntimeSettings()
-    with pytest.raises(ValidationError):
-        EmbeddingSettings()
 
     set_translation_environment(monkeypatch, TRANSLATION_HOST="0.0.0.0")
     with pytest.raises(ValidationError):

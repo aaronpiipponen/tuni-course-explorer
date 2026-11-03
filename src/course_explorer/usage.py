@@ -15,7 +15,8 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
-from course_explorer.administration import repository_root, utc_now
+from course_explorer import administration
+from course_explorer.administration import utc_now
 
 _USAGE_RELATIVE_PATH = Path("data") / "usage" / "requests"
 
@@ -37,20 +38,28 @@ class UsageRecord(BaseModel):
 
 
 class UsageRouteSummary(BaseModel):
-    """One route's request count and arithmetic mean duration inside a report window."""
+    """One route's request count and duration summary inside a report window.
+
+    ``mean_duration_seconds`` is the arithmetic mean and ``p95_duration_seconds`` and
+    ``p99_duration_seconds`` are the exact nearest-rank percentiles, all in elapsed serving
+    seconds.
+    """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     route: str
     requests: int
     mean_duration_seconds: float
+    p95_duration_seconds: float
+    p99_duration_seconds: float
 
 
 class UsageReport(BaseModel):
-    """One window's request total, overall mean duration and per-route summaries.
+    """One window's request total, duration summary and per-route summaries.
 
-    ``mean_duration_seconds`` is ``None`` and ``routes`` is empty when the window holds no
-    recorded request.
+    ``mean_duration_seconds``, ``p95_duration_seconds`` and ``p99_duration_seconds`` are the
+    overall arithmetic mean and exact nearest-rank percentiles in elapsed serving seconds. They
+    are ``None`` and ``routes`` is empty when the window holds no recorded request.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -59,6 +68,8 @@ class UsageReport(BaseModel):
     window_end: datetime
     requests: int
     mean_duration_seconds: float | None
+    p95_duration_seconds: float | None
+    p99_duration_seconds: float | None
     routes: tuple[UsageRouteSummary, ...]
 
 
@@ -72,7 +83,7 @@ def append_usage_record(
     """
     record = UsageRecord(hour=hour, route=route, status=status, duration_seconds=duration_seconds)
     line = record.model_dump_json().encode("utf-8") + b"\n"
-    path = _usage_file(repository_root())
+    path = _usage_file(administration.repository_root())
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
     try:
@@ -109,7 +120,7 @@ def read_usage_report(
     window_start = current_hour - timedelta(hours=hours - 1)
     window_end = current_hour + timedelta(hours=1)
     retention_start = current_hour - timedelta(days=retention_days)
-    path = _usage_file(repository_root())
+    path = _usage_file(administration.repository_root())
     if not path.exists():
         return _empty_report(window_start, window_end)
 
@@ -155,7 +166,24 @@ def _empty_report(window_start: datetime, window_end: datetime) -> UsageReport:
         window_end=window_end,
         requests=0,
         mean_duration_seconds=None,
+        p95_duration_seconds=None,
+        p99_duration_seconds=None,
         routes=(),
+    )
+
+
+def _duration_percentiles(durations: list[float]) -> tuple[float, float]:
+    """Return the exact nearest-rank p95 and p99 of one nonempty duration list.
+
+    For ``n`` values sorted ascending, p95 is the value at zero-based index
+    ``(95 * n + 99) // 100 - 1`` and p99 at ``(99 * n + 99) // 100 - 1``. The helper sorts one
+    local copy, so the supplied order does not matter.
+    """
+    ordered = sorted(durations)
+    count = len(ordered)
+    return (
+        ordered[(95 * count + 99) // 100 - 1],
+        ordered[(99 * count + 99) // 100 - 1],
     )
 
 
@@ -169,17 +197,25 @@ def _summarize(
     for record in records:
         durations_by_route.setdefault(record.route, []).append(record.duration_seconds)
     durations = [record.duration_seconds for record in records]
+    p95_duration_seconds, p99_duration_seconds = _duration_percentiles(durations)
+    routes: list[UsageRouteSummary] = []
+    for route, route_durations in sorted(durations_by_route.items()):
+        route_p95, route_p99 = _duration_percentiles(route_durations)
+        routes.append(
+            UsageRouteSummary(
+                route=route,
+                requests=len(route_durations),
+                mean_duration_seconds=sum(route_durations) / len(route_durations),
+                p95_duration_seconds=route_p95,
+                p99_duration_seconds=route_p99,
+            )
+        )
     return UsageReport(
         window_start=window_start,
         window_end=window_end,
         requests=len(records),
         mean_duration_seconds=sum(durations) / len(durations),
-        routes=tuple(
-            UsageRouteSummary(
-                route=route,
-                requests=len(route_durations),
-                mean_duration_seconds=sum(route_durations) / len(route_durations),
-            )
-            for route, route_durations in sorted(durations_by_route.items())
-        ),
+        p95_duration_seconds=p95_duration_seconds,
+        p99_duration_seconds=p99_duration_seconds,
+        routes=tuple(routes),
     )

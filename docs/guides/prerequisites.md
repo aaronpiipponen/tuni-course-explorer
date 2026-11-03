@@ -8,23 +8,23 @@ The requirements of one course open at the top of the drawing as the graph root.
 
 1. Open the **Prerequisites** tab.
 2. Select **Choose course**.
-3. Type part of a course name or a code in the filter box. Matching courses appear below it, and [**Active only**](/docs/guides/search.md#active-only) decides whether inactive courses appear in that list. This is the same **Active only** setting as the graph's, so changing it in the picker also changes the drawing and the route.
+3. Type part of a course name or a code in the filter box. Matching courses appear below it, and [**Active only**](/docs/guides/search.md#active-only) decides whether inactive courses appear in that list. This is the same **Active only** setting as the graph's, so changing it in the picker also changes the drawing and the route. On a desktop screen **Active only** sits inside the filter bar at its right, and on a phone it sits below the field.
 4. Select one of the results. Its drawing opens, and the course is named beside **Change** above the drawing.
 
 A [course menu](/docs/guides/README.md#shared-course-state) anywhere in the app also holds **Open prerequisite graph**, which opens that course as the graph root straight away.
 
-Once a course is open, **Change** reopens the picker with the same filter box, and **Recenter** brings the drawing back to the graph root. On a phone the full-width root button at the top of the **Graph options** sheet reopens the picker, and **Recenter** sits in the rail over the drawing.
+Once a course is open, **Change** reopens the picker with the same filter box, and choosing another course animates the drawing into the new root. **Recenter** brings the drawing back to the graph root. On a phone the full-width root button at the top of the **Graph options** sheet reopens the picker, and **Recenter** sits in the rail over the drawing. Choosing **Open prerequisite graph** in any course menu changes the root the same way.
 
 ![The Prerequisites tab with the basis switch, the Recommended, Active only and Inferred toggles and the help button above the drawing, the opened course beside Change and Recenter, and a drawing with course boxes joined by an AND group and an OR group. Every course box holds Complete and Exclude, and the minimum route button sits at the top left.](/docs/screenshots/prerequisite-graph.png)
 
 ## Read the drawing
 
-The drawing runs from the graph root at the top down through everything that course requires.
+The drawing runs from the graph root at the top down through everything that course requires. A drawing with only its root shows a bottom notice **No prerequisites with these options.** with a hint that names a setting to change, such as **Consider turning Recommended on.** or **Consider turning Active only off.** The hint changes with the settings that could keep a prerequisite out of the drawing, and the notice stays until the drawing changes.
 
 - A course box holds the course code and name, its credits, and an **active** or **inactive** label. **Complete** and **Exclude** sit along the bottom of the box.
 - **AND** joins requirements that all have to be met, and **OR** joins requirements of which one is enough. A group that reads **pick 2** states how many of its options are needed, and other group boxes state a number of courses or a credit amount.
 - A box such as **5 cr other** is a credit requirement that the official data does not break into courses. It carries the same **Complete** and **Exclude** controls as a module.
-- A module box names the module and the number of courses it holds. Select the box to open the list of those member courses. The courses of a module inside another module join the outer module's list, so the drawing shows one box for the outermost module and that box lists every course. For a module, that list ends with **Add all module courses to structure**, which adds every member course to your selection and to your structure of studies, in the same way as the route's add button described below. The action reports the number of courses it added in a bottom notice with a **Structure of studies** link.
+- A module box names the module and the number of courses it holds. Select the box to open the list of those member courses. The courses of a module inside another module join the outer module's list, so the drawing shows one box for the outermost module and that box lists every course. For a module, that list ends with **Add all module courses to structure**, which adds every member course to your selection and to your structure of studies, in the same way as the route's add button described below. The action reports the number of courses it added in a bottom notice whose **Unplaced studies** words open that list.
 - A course that the graph needs outside its module also appears as its own course box with its own prerequisites, even when it is a member of a module. A prerequisite of a member that comes from outside the module joins the module box, and a prerequisite that is another module joins that module's box.
 - A small box with a short reason names a part of the official requirement that could not be turned into courses.
 
@@ -34,11 +34,11 @@ Identical drawn structure under one parent is drawn once for every box kind. Two
 
 Marks show on the box. A completed course box is tinted green, an excluded one red, and the graph root is highlighted. An inactive course box is drawn fainter. Hovering a box fades every connection that does not lead to it. Drag inside the drawing to move it, and scroll or pinch to zoom in and out.
 
-On a phone the drawing fills the pane from the top of the window to the bottom bar. The name of the root course and the names of the course boxes wrap to their full text, and a box grows to fit them. A header across the top names the root and opens **Graph options**, and a rail at the top right holds **Recenter**, **Zoom in** and **Zoom out**. Drag and pinch inside the drawing with a finger to move and zoom the drawing without moving the page, and neither gesture moves the page or changes the tab.
+On a phone the drawing fills the pane from the top of the window to the bottom bar. The name of the root course and the names of the course boxes wrap to their full text, and a box grows to fit them. A settings pill floats at the top right of the drawing, shows the root code and opens **Graph options**, and a rail below it holds **Recenter**, **Zoom in** and **Zoom out**. Drag and pinch inside the drawing with a finger to move and zoom the drawing without moving the page, and neither gesture moves the page or changes the tab.
 
 ## Graph options
 
-On desktop the controls above the drawing decide what the drawing shows and what the calculation reads, and the root name, **Change** and **Recenter** stay in that row. On a phone the same controls sit in the **Graph options** sheet, which the header opens. The sheet begins with one full-width button that shows the course code, its name on one line with an ellipsis, and a swap icon, and the whole button reopens the root picker. The controls follow in two columns: the route basis switch takes a full row, **Recommended** and **Inferred** share the row below on a site that serves the inference features, and the **?** sits at the bottom right. [Using the app on a phone](/docs/guides/phone.md) describes the phone shell and this sheet.
+On desktop the controls above the drawing decide what the drawing shows and what the calculation reads, and the root name, **Change** and **Recenter** stay in that row. On a phone the same controls sit in the **Graph options** sheet, which the settings pill over the drawing opens. The sheet begins with one full-width button that shows the course code, its name on one line with an ellipsis, and a swap icon, and the whole button reopens the root picker. The controls follow in two columns: the route basis switch takes a full row, **Recommended** and **Inferred** share the row below on a site that serves the inference features, and the **?** sits at the bottom right. [Using the app on a phone](/docs/guides/phone.md) describes the phone shell and this sheet.
 
 | Control | What it changes |
 |---|---|
@@ -47,7 +47,7 @@ On desktop the controls above the drawing decide what the drawing shows and what
 | **Inferred** | On a site that serves the inference features, adds prerequisites found by analysis to the drawing and to the route calculation. A connection is dashed only when all of its prerequisites are inferred. |
 | **Active only** | Leaves inactive courses out of the drawing and out of the route. Your selected or completed inactive courses and the graph root are shown either way. |
 
-The two toggles work separately on a site that serves both: an inferred recommended prerequisite takes part in the drawing only while both **Recommended** and **Inferred** are on. The **?** button opens a drawer that explains the options the site serves and ends with an **Exploring prerequisites** link to this guide.
+The two toggles work separately on a site that serves both: an inferred recommended prerequisite takes part in the drawing only while both **Recommended** and **Inferred** are on. The **?** button opens a drawer that explains the options the site serves, the minimum route and how to read the drawing. The **Completed / Selected**, **Find minimum route** and **Exploring prerequisites** entries link to the relevant section of this guide. Where the site serves inference, the **Inferred** entry links the option to this guide and its explanation to the inference experiments.
 
 A completed course is always selected, so **Selected** counts every completed course as covered as well. The [Discover tab](/docs/guides/discover.md#set-the-basis) reads the same two options as its basis.
 
@@ -64,7 +64,7 @@ The drawing and the route use the same requirements, described in [Prerequisite 
 
 ### Mark a course, module or requirement as completed
 
-On a course box, **Complete** marks that course completed. That completion is shared with every other tab. A selected course is completed in place. For a course that is not selected, the dialog **Mark completed?** offers **Cancel** and **Add and complete**, and **Add and complete** adds the course to Unplaced studies and completes it. **Cancel** changes nothing. This is described in [shared course state](/docs/guides/README.md#shared-course-state). The shared course menu's **Mark completed** runs the same action.
+On a course box, **Complete** marks that course completed, and the box takes its completed tint. That completion is shared with every other tab. For a course that is not selected, **Complete** opens the **Mark completed?** dialog, whose outcomes and notices are described in [shared course state](/docs/guides/README.md#shared-course-state). The shared course menu's **Mark completed** runs the same action.
 
 On a module box or a requirement box, **Complete** settles that one requirement for the drawing and the route without changing your selected or completed courses. A module that your own courses satisfy carries the **fulfilled** mark. A module you mark yourself reads **Completed**.
 
@@ -85,7 +85,7 @@ When the route basis is **Selected**, a course box that counts as covered throug
 
 ## When the drawing is too large
 
-A very large drawing is not drawn. The tab reports "This prerequisite tree is too large to draw." together with the number of drawing elements and the drawing limit, and it suggests turning off **Recommended** or **Inferred**, or turning on **Active only**, to shrink the graph. On a site that serves no inference features the suggestion names **Recommended** and **Active only** alone.
+A very large drawing is not drawn. The tab reports "This prerequisite graph is too large to draw." together with the number of drawing elements and the drawing limit, and it suggests turning off **Recommended** or **Inferred**, or turning on **Active only**, to shrink the graph. On a site that serves no inference features the suggestion names **Recommended** and **Active only** alone.
 
 The refusal affects the drawing only. The route reads the same requirements whether the drawing is shown or refused, and **Find minimum route** is available on the same screen.
 
@@ -109,9 +109,9 @@ The panel reports the result. On a desktop it sits at the top right of the drawi
 |---|---|
 | **Exact minimum route** | The route with the fewest new credits that the rules allow, its credits, and the tag **exact**. |
 | **Approximate route** | A route from a quicker search, because the exact search was too large. The panel gives its credits, the tag **approximate**, and the note **Not guaranteed to be the minimum.** |
-| **No route found** | No route and no total, with the tag **timeout**, which the graph root box also shows. The note states that the exact search was too large and that the second search gave up, and it names the root failure. |
-| **Route unresolved** | No route and no total, with the tag **unresolved**, because a requirement cannot be resolved to courses and a cheaper route may exist. Each unresolved requirement is named below the note with its reason. |
-| **No route exists** | No route and no total, with the tag **no solution**. The note states that no route meets every requirement, and each blocked requirement is named below it with its reason. |
+| **timeout** | No route and no total. The header reads **The exact search was too large and the approximation gave up.**, the tag reads **timeout**, and the note reads **No route or total is available.** The graph root box carries the same tag. |
+| **unresolved** | No route and no total, with the tag **unresolved**. The header reads **Some requirements cannot be resolved:** and each unresolved requirement is named below it with its reason. |
+| **no solution** | No route and no total, with the tag **no solution**. The header reads **No route meets every requirement.**, the note reads **Blocked requirements:**, and each blocked requirement is named below it with its reason. |
 | **Shortfall** | A route that is only as large as the active courses allow, with the tag **shortfall**, because a module rule falls below its own bound while **Active only** is on. Each module rule that falls short is named with its achieved and required count or credits. |
 
 An exact route that adds nothing shows the note **Nothing new**.
@@ -128,7 +128,7 @@ The credits, the preference between routes of equal cost, and the treatment of e
 2. Select **Expand** in the route panel.
 3. Select **Add all missing courses to structure**. Every course of the route that is not in your selection is added to it, and each added course appears in the Structure of studies tab, under [**Unplaced studies**](/docs/guides/structure-of-studies.md#unplaced-studies) when no module places it.
 
-The action adds the courses whether or not the programme list of the structure of studies holds a programme. It reports the number of courses it added in a bottom notice with a **Structure of studies** link, or that every route course is already in your selection.
+The action adds the courses whether or not the programme list of the structure of studies holds a programme. It reports the number of courses it added in a bottom notice whose **Unplaced studies** words open that list, or that every route course is already in your selection in a notice without a link.
 
 ## Clear the route
 

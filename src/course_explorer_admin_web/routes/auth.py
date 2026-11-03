@@ -74,7 +74,7 @@ def _report(grant: SessionGrant, settings: AdminWebSettings) -> SessionReport:
         csrf_token=grant.csrf_token,
         username=grant.username,
         poll_seconds=settings.admin_web_poll_seconds,
-        app_url=settings.admin_web_app_url,
+        app_url=settings.web_app_url,
         repository_url=settings.admin_web_repository_url,
     )
 

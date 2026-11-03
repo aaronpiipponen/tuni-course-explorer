@@ -107,6 +107,11 @@ function Harness() {
       panel.lastSuccess === null ? "never" : "read",
     ),
     createElement("span", { className: "failure" }, panel.failure ?? "none"),
+    createElement(
+      "span",
+      { className: "loading" },
+      panel.loading ? "loading" : "idle",
+    ),
   );
 }
 
@@ -203,6 +208,7 @@ describe("one panel's automatic read loop", () => {
     expect(text("failure")).toBe("none");
     expect(text("report")).toBe("1");
     expect(text("marker")).toBe("read");
+    expect(text("loading")).toBe("idle");
 
     // No interval of a hidden page issues another read.
     await advance(POLL_SECONDS * 3);

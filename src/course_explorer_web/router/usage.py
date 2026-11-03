@@ -9,9 +9,14 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from course_explorer.administration import utc_now
 from course_explorer.usage import append_usage_record, rounded_usage_hour
-from course_explorer_web.serving import route_of
+from course_explorer_web.feedback_intake import (
+    FEEDBACK_DEFINITION_PATH,
+    FEEDBACK_SUBMISSION_PATH,
+)
+from course_explorer_web.serving import SHELL_ROUTES, route_of
 
-_SHELL_ROUTES = frozenset({"/", "/docs"})
+# The two fixed feedback API paths report their own labels like the other API routes do.
+_FEEDBACK_ROUTES = frozenset({FEEDBACK_DEFINITION_PATH, FEEDBACK_SUBMISSION_PATH})
 _ASSET_ROUTE = "/assets"
 _UNMATCHED_ROUTE = "unmatched"
 
@@ -59,15 +64,15 @@ class UsageMiddleware:
 def _route_label(scope: Scope) -> str:
     """Return one request's fixed route label from its path.
 
-    Exactly the two shell paths and the nine fixed API paths report themselves. The mounted asset
-    directory reports one fixed label for a served file and a missing one alike. Every other path
-    reports the unmatched label, so no requested path, asset name or query is ever part of the
-    label.
+    Exactly the three shell paths, the nine fixed API paths and the two feedback API paths
+    report themselves. The mounted asset directory reports one fixed label for a served file and a
+    missing one alike. Every other path reports the unmatched label, so no requested path, asset
+    name or query is ever part of the label.
     """
     path = scope["path"]
-    if path in _SHELL_ROUTES:
+    if path in SHELL_ROUTES:
         return path
-    if route_of(path) is not None:
+    if route_of(path) is not None or path in _FEEDBACK_ROUTES:
         return path
     if path == _ASSET_ROUTE or path.startswith(f"{_ASSET_ROUTE}/"):
         return _ASSET_ROUTE

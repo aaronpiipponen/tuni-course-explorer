@@ -11,6 +11,11 @@ export function setLanguage(
   store.updateCurrent((state) => ({ ...state, language }));
 }
 
+/** Open the Compare tab. */
+export function openComparison(): void {
+  setActiveTab("compare");
+}
+
 /** Select a prerequisite root and open its tab. */
 export function openPrerequisites(
   store: BrowserStore,

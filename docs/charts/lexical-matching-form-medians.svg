@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 252" role="img"
      aria-labelledby="t d" font-family="system-ui, sans-serif">
   <title id="t">Median SQL time by lexical form</title>
-  <desc id="d">Median SQL time over the 16 cells of the first recorded pass for exact code equality, projection substring, raw lower() substring and trigram matching over an 11,086-row lexical projection.</desc>
+  <desc id="d">Median SQL time over the 16 cells of one recorded pass for exact code equality, projection substring, raw lower() substring and trigram matching over an 11,086-row lexical projection.</desc>
   <rect width="960" height="252" rx="12" fill="#232434"/>
   <line x1="248.8" y1="32" x2="248.8" y2="176" stroke="#a3a4b8" stroke-width="1"/>
   <text x="248.8" y="198" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
@@ -27,5 +27,5 @@
   <text x="236.8" y="163" text-anchor="end" font-size="14" fill="#ececf2">Trigram name</text>
   <rect x="248.8" y="148" width="499.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
   <text x="756.3" y="163" font-size="14" fill="#a3a4b8">40.7</text>
-  <text x="555.6" y="228" text-anchor="middle" font-size="14" fill="#a3a4b8">First-pass median SQL time (ms)</text>
+  <text x="555.6" y="228" text-anchor="middle" font-size="14" fill="#a3a4b8">Median SQL time (ms)</text>
 </svg>

@@ -229,7 +229,7 @@ class LocalWorkerTransport:
         self.path = Path(path)
         self._root = self.path.parent
         self._checkout = Path(os.environ["TRANSLATION_CONTROLLER_WORKER_PROJECT_ROOT"])
-        self._data_root = Path(os.environ["S7D_WORKER_DATA_ROOT"])
+        self._data_root = Path(os.environ["TEST_WORKER_DATA_ROOT"])
         self._runner = mechanics.SubprocessRunner()
 
     def _map(self, remote: PurePosixPath) -> Path:
@@ -268,7 +268,7 @@ class LocalWorkerTransport:
         return (
             sys.executable,
             "-m",
-            os.environ.get("S7D_BOOTSTRAP_MODULE", "tests.admin._real_worker_support"),
+            os.environ.get("TEST_WORKER_BOOTSTRAP_MODULE", "tests.admin._real_worker_support"),
             str(self._root),
             mode,
             stage,
@@ -546,9 +546,10 @@ def main(argv: list[str] | None = None) -> int:
         raise SystemExit("only the export child mode remains")
 
     import course_explorer_admin.remote as remote
+    from tests.support.repository import redirect_repository_root
 
     root = Path(args.root)
-    _redirect_repository_root(root)
+    redirect_repository_root(root)
     remote.dump_database = _export_fake_dump
     remote.read_dataset_verification = lambda settings: sample_verification()
     session = remote.load_worker_dataset_session(args.session_id)
@@ -557,18 +558,6 @@ def main(argv: list[str] | None = None) -> int:
     snapshot = remote.export_worker_database(session, runner=mechanics.SubprocessRunner())
     print(administrative_json(snapshot), end="")
     return 0
-
-
-def _redirect_repository_root(root: Path) -> None:
-    import course_explorer.administration as administration
-    import course_explorer_admin.datasets as datasets_module
-    import course_explorer_admin.lifecycle as lifecycle
-    import course_explorer_admin.remote as remote
-
-    administration.repository_root = lambda: root
-    datasets_module.repository_root = lambda: root
-    lifecycle.repository_root = lambda: root
-    remote.repository_root = lambda: root
 
 
 if __name__ == "__main__":

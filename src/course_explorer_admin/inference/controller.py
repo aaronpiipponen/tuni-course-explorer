@@ -19,7 +19,7 @@ from pydantic import Field, computed_field, field_validator, model_validator
 from course_explorer.administration import load_private_model
 from course_explorer.config import (
     load_administrative_dataset_settings,
-    load_embedding_settings,
+    load_embedding_runtime_settings,
     load_inference_context_settings,
     load_inference_rerank_input_settings,
     load_inference_rerank_settings,
@@ -254,7 +254,7 @@ def inference_configuration_sha256() -> str:
     generation = load_inference_settings()
     mapping = {
         "generation": generation.model_dump(mode="json"),
-        "embedding": load_embedding_settings().model_dump(mode="json"),
+        "embedding": load_embedding_runtime_settings().model_dump(mode="json"),
         "context": load_inference_context_settings().model_dump(mode="json"),
         "selection": load_inference_selection_settings().model_dump(mode="json"),
         "rerank": load_inference_rerank_settings().model_dump(mode="json"),

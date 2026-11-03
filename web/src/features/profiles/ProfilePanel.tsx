@@ -7,6 +7,7 @@ import type { BrowserStore } from "../../state/store";
 import { ErrorNotice } from "../../shared/ErrorNotice";
 import { TRASH } from "../../shared/icons";
 import { useReducedMotion } from "../../shared/useReducedMotion";
+import { useScrollbarShift } from "../../shared/useScrollbarShift";
 import { useWording } from "../../shared/useWording";
 import { usePhoneTabsOnClose } from "../../shared/usePhoneTabsOnClose";
 import { ProfileNotice } from "./ProfileNotice";
@@ -50,6 +51,8 @@ export function ProfilePanel({
     name: "",
     current: false,
   });
+  const [list, setList] = useState<HTMLDivElement | null>(null);
+  useScrollbarShift(list);
   const collapsed = { opacity: 0, height: 0 };
   const rowTransition = reducedMotion
     ? { duration: 0 }
@@ -60,68 +63,70 @@ export function ProfilePanel({
   };
   return (
     <>
-      <div className="profile-list">
-        <AnimatePresence initial={false}>
-          {Object.entries(profiles).map(([id, profile]) => (
-            <motion.div
-              className="profile-item"
-              key={id}
-              initial={collapsed}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={collapsed}
-              transition={rowTransition}
-            >
-              <div
-                className={`profile-row${id === currentProfileId ? " current" : ""}`}
+      <div className="profile-list thin-scrollbar" ref={setList}>
+        <div className="profile-list-inner">
+          <AnimatePresence initial={false}>
+            {Object.entries(profiles).map(([id, profile]) => (
+              <motion.div
+                className="profile-item"
+                key={id}
+                initial={collapsed}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={collapsed}
+                transition={rowTransition}
               >
-                <button
-                  className="profile-select"
-                  type="button"
-                  aria-pressed={id === currentProfileId}
-                  onClick={() => onSwitch(id)}
+                <div
+                  className={`profile-row${id === currentProfileId ? " current" : ""}`}
                 >
-                  <span className="profile-row-name">{profile.name}</span>
-                  <span className="profile-meta">
-                    {t("{selected} selected · {completed} completed", {
-                      selected: profile.state.selectedCourseIds.length,
-                      completed: profile.state.completedCourseIds.length,
-                    })}
-                  </span>
-                </button>
-                <button
-                  className="profile-icon"
-                  type="button"
-                  aria-label={t("Rename {name}", { name: profile.name })}
-                  onClick={() => {
-                    setRenaming(id);
-                    setRenameName(profile.name);
-                    setRenameFailed(false);
-                    setRenameOpen(true);
-                  }}
-                >
-                  ✎
-                </button>
-                {Object.keys(profiles).length > 1 && (
                   <button
-                    className="profile-icon delete"
+                    className="profile-select"
                     type="button"
-                    aria-label={t("Delete {name}", { name: profile.name })}
+                    aria-pressed={id === currentProfileId}
+                    onClick={() => onSwitch(id)}
+                  >
+                    <span className="profile-row-name">{profile.name}</span>
+                    <span className="profile-meta">
+                      {t("{selected} selected · {completed} completed", {
+                        selected: profile.state.selectedCourseIds.length,
+                        completed: profile.state.completedCourseIds.length,
+                      })}
+                    </span>
+                  </button>
+                  <button
+                    className="profile-icon"
+                    type="button"
+                    aria-label={t("Rename {name}", { name: profile.name })}
                     onClick={() => {
-                      setDeleting({
-                        id,
-                        name: profile.name,
-                        current: id === currentProfileId,
-                      });
-                      setDeleteOpen(true);
+                      setRenaming(id);
+                      setRenameName(profile.name);
+                      setRenameFailed(false);
+                      setRenameOpen(true);
                     }}
                   >
-                    {TRASH}
+                    ✎
                   </button>
-                )}
-              </div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
+                  {Object.keys(profiles).length > 1 && (
+                    <button
+                      className="profile-icon delete"
+                      type="button"
+                      aria-label={t("Delete {name}", { name: profile.name })}
+                      onClick={() => {
+                        setDeleting({
+                          id,
+                          name: profile.name,
+                          current: id === currentProfileId,
+                        });
+                        setDeleteOpen(true);
+                      }}
+                    >
+                      {TRASH}
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
       </div>
       <form className="profile-save" onSubmit={submit}>
         <label htmlFor="profile-name">{t("New profile")}</label>

@@ -9,14 +9,13 @@ before inactive then by descending relevance.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Protocol
 
 from pydantic import BaseModel, ConfigDict
 
-from course_explorer.config import EmbeddingSettings, SearchSettings
-from course_explorer.curriculum import CourseSummary, CurriculumRead, RepresentedCourseSummary
-from course_explorer.embeddings.generation import embedding_configuration_sha256
+from course_explorer.config import SearchSettings
+from course_explorer.curriculum import CourseSummary, RepresentedCourseSummary
 from course_explorer.embeddings.provider import EmbeddingProvider
 
 
@@ -51,9 +50,10 @@ class SemanticSearchRead(Protocol):
         *,
         hub: Sequence[float],
         min_score: float,
-        embedding_configuration_hash: str,
         include_inactive: bool,
-    ) -> tuple[SemanticCourseScore, ...]: ...
+    ) -> tuple[SemanticCourseScore, ...]:
+        """Return every exact-version best-chunk score at or above the threshold."""
+        ...
 
 
 class CourseSearchService:
@@ -61,50 +61,39 @@ class CourseSearchService:
 
     def __init__(
         self,
-        curriculum: CurriculumRead,
         repository: SemanticSearchRead,
         provider: EmbeddingProvider,
-        embedding_settings: EmbeddingSettings,
+        hub: Sequence[float],
         search_settings: SearchSettings,
     ) -> None:
-        self._curriculum = curriculum
         self._repository = repository
         self._provider = provider
-        self._embedding_settings = embedding_settings
+        self._hub = hub
         self._search_settings = search_settings
 
     def search_courses(
         self,
         query: str,
         *,
+        represented: Mapping[str, RepresentedCourseSummary],
         min_score: float | None = None,
         include_inactive: bool = True,
-        represented: Sequence[RepresentedCourseSummary] | None = None,
     ) -> tuple[CourseSearchResult, ...]:
         """Embed one query, filter current compatible scores, and pair them with official summaries."""
         threshold = (
             self._search_settings.semantic_search_min_score if min_score is None else min_score
         )
         query_vector = self._provider.embed((query,))[0]
-        configuration_hash = embedding_configuration_sha256(self._embedding_settings)
         scores = self._repository.search(
             query_vector,
-            hub=self._embedding_settings.embedding_hub_vector,
+            hub=self._hub,
             min_score=threshold,
-            embedding_configuration_hash=configuration_hash,
             include_inactive=include_inactive,
         )
 
-        if represented is None:
-            records = self._curriculum.list_represented_summaries(
-                active_only=None if include_inactive else True
-            )
-        else:
-            records = represented
-        by_group = {record.summary.group_id: record for record in records}
         results = []
         for score in scores:
-            record = by_group.get(score.group_id)
+            record = represented.get(score.group_id)
             if record is None:
                 continue
             if (

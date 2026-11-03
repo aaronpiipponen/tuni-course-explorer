@@ -7,6 +7,9 @@
  * canonical ID. Module rows take the programme-first order ahead of that key, and one row carries a
  * whole canonical group with every eligible candidate. Strings compare by Unicode code point, and
  * no locale collation applies.
+ *
+ * Normalization and sort keys are built once per catalogue array, so typing a query scans
+ * precomputed text and never repeats normalization for every keystroke.
  */
 import type {
   CatalogueCourse,
@@ -27,28 +30,18 @@ function officialDisplayName(
     : (values.name_en ?? values.name_fi);
 }
 
-function matches(
-  normalizedQuery: string,
-  name: DisplayedName,
-  code: string | null,
-) {
-  if (code !== null && normalizeLookup(code).includes(normalizedQuery))
-    return true;
-  return name !== null && normalizeLookup(name).includes(normalizedQuery);
-}
-
 /** Compare two strings by Unicode code point, preserving Python lexical ordering. */
 export function compareCodePoints(left: string, right: string): number {
-  const leftPoints = Array.from(left, (character) => character.codePointAt(0)!);
-  const rightPoints = Array.from(right, (character) =>
-    character.codePointAt(0)!,
-  );
-  const length = Math.min(leftPoints.length, rightPoints.length);
-  for (let index = 0; index < length; index++) {
-    if (leftPoints[index] !== rightPoints[index])
-      return leftPoints[index] < rightPoints[index] ? -1 : 1;
+  let leftIndex = 0;
+  let rightIndex = 0;
+  while (leftIndex < left.length && rightIndex < right.length) {
+    const leftPoint = left.codePointAt(leftIndex)!;
+    const rightPoint = right.codePointAt(rightIndex)!;
+    if (leftPoint !== rightPoint) return leftPoint < rightPoint ? -1 : 1;
+    leftIndex += leftPoint > 0xffff ? 2 : 1;
+    rightIndex += rightPoint > 0xffff ? 2 : 1;
   }
-  return leftPoints.length - rightPoints.length;
+  return Number(leftIndex < left.length) - Number(rightIndex < right.length);
 }
 
 type SortKey = {
@@ -80,6 +73,50 @@ function compareKeys(left: SortKey, right: SortKey): number {
   return 0;
 }
 
+type CourseEntry = {
+  course: CatalogueCourse;
+  active: boolean;
+  normalizedCode: string;
+  normalizedName: Record<DisplayLanguage, string | null>;
+  key: Record<DisplayLanguage, SortKey>;
+};
+
+const courseIndexes = new WeakMap<
+  readonly CatalogueCourse[],
+  readonly CourseEntry[]
+>();
+
+function buildCourseEntry(course: CatalogueCourse): CourseEntry {
+  const key = (language: DisplayLanguage): SortKey =>
+    nameCodeKey(
+      course.group_id,
+      officialDisplayName(course, language),
+      course.code,
+    );
+  const normalizedName = (language: DisplayLanguage) => {
+    const name = officialDisplayName(course, language);
+    return name === null ? null : normalizeLookup(name);
+  };
+  return {
+    course,
+    active: course.is_active,
+    normalizedCode: normalizeLookup(course.code),
+    normalizedName: { en: normalizedName("en"), fi: normalizedName("fi") },
+    key: { en: key("en"), fi: key("fi") },
+  };
+}
+
+function courseIndex(
+  courses: readonly CatalogueCourse[],
+): readonly CourseEntry[] {
+  let index = courseIndexes.get(courses);
+  if (index === undefined) {
+    index = courses.map(buildCourseEntry);
+    courseIndexes.set(courses, index);
+  }
+  return index;
+}
+
 /**
  * Return every official course whose displayed name or code contains the query.
  *
@@ -93,29 +130,93 @@ export function narrowCourses(
 ): readonly CatalogueCourse[] {
   const normalizedQuery = normalizeLookup(query);
   if (!normalizedQuery) return [];
-  const matchesQuery = courses.filter((course) => {
-    if (activeOnly && !course.is_active) return false;
-    return matches(
-      normalizedQuery,
-      officialDisplayName(course, language),
-      course.code,
-    );
+  const rows: CourseEntry[] = [];
+  for (const entry of courseIndex(courses)) {
+    if (activeOnly && !entry.active) continue;
+    const name = entry.normalizedName[language];
+    if (
+      !entry.normalizedCode.includes(normalizedQuery) &&
+      !(name !== null && name.includes(normalizedQuery))
+    )
+      continue;
+    rows.push(entry);
+  }
+  rows.sort((left, right) => {
+    if (left.active !== right.active) return left.active ? -1 : 1;
+    return compareKeys(left.key[language], right.key[language]);
   });
-  return [...matchesQuery].sort((left, right) => {
-    if (left.is_active !== right.is_active) return left.is_active ? -1 : 1;
-    return compareKeys(
-      nameCodeKey(
-        left.group_id,
-        officialDisplayName(left, language),
-        left.code,
-      ),
-      nameCodeKey(
-        right.group_id,
-        officialDisplayName(right, language),
-        right.code,
-      ),
+  return rows.map((row) => row.course);
+}
+
+type ModuleCandidate = CatalogueReport["modules"][number]["candidates"][number];
+
+type CandidateEntry = {
+  candidate: ModuleCandidate;
+  normalizedCode: string;
+  normalizedName: Record<DisplayLanguage, string | null>;
+  key: Record<DisplayLanguage, SortKey>;
+};
+
+type ModuleEntry = {
+  groupId: string;
+  candidates: readonly ModuleCandidate[];
+  /** Each language's candidates in the row's exact tie-break order. */
+  ordered: Record<DisplayLanguage, readonly CandidateEntry[]>;
+};
+
+const moduleIndexes = new WeakMap<
+  CatalogueReport["modules"],
+  readonly ModuleEntry[]
+>();
+
+function buildCandidateEntry(
+  groupId: string,
+  candidate: ModuleCandidate,
+): CandidateEntry {
+  const key = (language: DisplayLanguage): SortKey =>
+    nameCodeKey(
+      groupId,
+      officialDisplayName(candidate, language),
+      candidate.code,
     );
+  const normalizedName = (language: DisplayLanguage) => {
+    const name = officialDisplayName(candidate, language);
+    return name === null ? null : normalizeLookup(name);
+  };
+  return {
+    candidate,
+    normalizedCode: normalizeLookup(candidate.code ?? ""),
+    normalizedName: { en: normalizedName("en"), fi: normalizedName("fi") },
+    key: { en: key("en"), fi: key("fi") },
+  };
+}
+
+function moduleIndex(
+  modules: CatalogueReport["modules"],
+): readonly ModuleEntry[] {
+  let index = moduleIndexes.get(modules);
+  if (index !== undefined) return index;
+  index = modules.map((module) => {
+    const candidates = module.candidates.map((candidate) =>
+      buildCandidateEntry(module.group_id, candidate),
+    );
+    const order = (language: DisplayLanguage) =>
+      [...candidates].sort((left, right) => {
+        const keyOrder = compareKeys(left.key[language], right.key[language]);
+        if (keyOrder !== 0) return keyOrder;
+        return compareCodePoints(
+          left.candidate.sisu_module_id,
+          right.candidate.sisu_module_id,
+        );
+      });
+    return {
+      groupId: module.group_id,
+      candidates: module.candidates,
+      ordered: { en: order("en"), fi: order("fi") },
+    };
   });
+  moduleIndexes.set(modules, index);
+  return index;
 }
 
 /**
@@ -136,55 +237,40 @@ export function narrowModules(
 ): readonly ModuleLookupGroup[] {
   const normalizedQuery = normalizeLookup(query);
   if (!normalizedQuery) return [];
-  const rows: { group: ModuleLookupGroup; name: DisplayedName }[] = [];
-  for (const module of modules) {
-    const matching = module.candidates
-      .filter((candidate) =>
-        matches(
-          normalizedQuery,
-          officialDisplayName(candidate, language),
-          candidate.code,
-        ),
-      )
-      .sort((left, right) => {
-        const order = compareKeys(
-          nameCodeKey(
-            module.group_id,
-            officialDisplayName(left, language),
-            left.code,
-          ),
-          nameCodeKey(
-            module.group_id,
-            officialDisplayName(right, language),
-            right.code,
-          ),
-        );
-        if (order !== 0) return order;
-        return compareCodePoints(left.sisu_module_id, right.sisu_module_id);
-      });
-    if (matching.length === 0) continue;
-    const display = matching[0];
+  const rows: {
+    group: ModuleLookupGroup;
+    programme: boolean;
+    key: SortKey;
+  }[] = [];
+  for (const entry of moduleIndex(modules)) {
+    let display: CandidateEntry | null = null;
+    for (const candidate of entry.ordered[language]) {
+      const name = candidate.normalizedName[language];
+      if (
+        candidate.normalizedCode.includes(normalizedQuery) ||
+        (name !== null && name.includes(normalizedQuery))
+      ) {
+        display = candidate;
+        break;
+      }
+    }
+    if (display === null) continue;
     rows.push({
       group: {
-        group_id: module.group_id,
-        module_type: display.module_type,
-        code: display.code,
-        name_fi: display.name_fi,
-        name_en: display.name_en,
-        candidates: module.candidates,
+        group_id: entry.groupId,
+        module_type: display.candidate.module_type,
+        code: display.candidate.code,
+        name_fi: display.candidate.name_fi,
+        name_en: display.candidate.name_en,
+        candidates: entry.candidates,
       },
-      name: officialDisplayName(display, language),
+      programme: display.candidate.module_type === "DegreeProgramme",
+      key: display.key[language],
     });
   }
-  return rows
-    .sort((left, right) => {
-      const leftProgramme = left.group.module_type === "DegreeProgramme";
-      const rightProgramme = right.group.module_type === "DegreeProgramme";
-      if (leftProgramme !== rightProgramme) return leftProgramme ? -1 : 1;
-      return compareKeys(
-        nameCodeKey(left.group.group_id, left.name, left.group.code),
-        nameCodeKey(right.group.group_id, right.name, right.group.code),
-      );
-    })
-    .map((row) => row.group);
+  rows.sort((left, right) => {
+    if (left.programme !== right.programme) return left.programme ? -1 : 1;
+    return compareKeys(left.key, right.key);
+  });
+  return rows.map((row) => row.group);
 }

@@ -1,13 +1,21 @@
 {
-  "type": "line",
-  "title": "Judged supported share by emitted finding confidence",
-  "description": "Three lines show the share of required options, recommended options and equivalence groups judged supported at the five confidence levels common to all three categories. None of the lines rises steadily with confidence.",
+  "type": "bar",
+  "title": "Judged supported share in the confidence bins that hold at least 10 findings",
+  "description": "Required options stay between 0.36 and 0.56 across four bins, recommended options sit at 0.61 and 0.77, and equivalence groups move from 0.75 to 0.78, 0.77 and 0.69.",
   "valueAxis": "Supported share (0 to 1)",
-  "xAxis": "Emitted confidence",
-  "x": [0.6, 0.7, 0.75, 0.8, 0.9],
+  "categories": [
+    "Required options at 0.70",
+    "Required options at 0.80",
+    "Required options at 0.85",
+    "Required options at 0.90",
+    "Recommended options at 0.70",
+    "Recommended options at 0.80",
+    "Equivalence groups at 0.80",
+    "Equivalence groups at 0.85",
+    "Equivalence groups at 0.90",
+    "Equivalence groups at 0.95"
+  ],
   "series": [
-    { "name": "Required options", "values": [0.57, 0.36, 0.5, 0.39, 0.56] },
-    { "name": "Recommended options", "values": [0.8, 0.61, 0.67, 0.77, 1] },
-    { "name": "Equivalence groups", "values": [1, 0.6, 0.33, 0.75, 0.77] }
+    { "name": "Supported share", "values": [0.36, 0.39, 0.52, 0.56, 0.61, 0.77, 0.75, 0.78, 0.77, 0.69] }
   ]
 }

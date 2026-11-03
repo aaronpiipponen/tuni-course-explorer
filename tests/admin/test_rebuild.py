@@ -11,26 +11,32 @@ its own build or restart of this checkout's own administration unit.
 from __future__ import annotations
 
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
+from course_explorer import administration
+from course_explorer.config import ENVIRONMENT_ONLY_SETTINGS_SOURCE, SETTINGS_SOURCE_MARKER
 from course_explorer_admin import mechanics, rebuild, server
+from course_explorer_admin.lifecycle import InferenceProgress, LifecycleState, write_lifecycle_state
+from tests.admin._rebuild_support import (
+    _ADMIN_UNIT,
+    _OWNED_PROCESS,
+    _SENTINEL,
+    _UNIT,
+    _WEB_HOST,
+    _WEB_PORT,
+    _WEB_WORKERS,
+    _RebuildProcessBoundary,
+)
+from tests.support import REPO_ROOT, public_environment
 
-_UNIT = "synthetic-site-web.service"
-_ADMIN_UNIT = "synthetic-site-admin.service"
 _OTHER_UNIT = "synthetic-other-site.service"
-_WEB_HOST = "127.0.0.1"
-_WEB_PORT = 18026
-_WEB_WORKERS = 2
 _STOP_TIMEOUT_SECONDS = "77"
 _STARTUP_ATTEMPTS = "3"
 _POLL_INTERVAL_SECONDS = "0.01"
-_MAIN_PID = 4242
-_RESTARTED_PID = 5252
-_SENTINEL = "synthetic-failure-output"
 _OTHER_ADDRESS = "192.0.2.10"
-_OWNED_PROCESS = 'users:(("python",pid={owner},fd=4))'
 _REBUILD_STEPS = (
     "up",
     "-d",
@@ -42,178 +48,6 @@ _REBUILD_STEPS = (
     "db",
     "embedding",
 )
-
-
-class _RebuildProcessBoundary:
-    """Answer the fixed rebuild process reads and record every command in order.
-
-    The web unit is answered with this checkout's web launcher and the administration unit with this
-    checkout's administration launcher, so an owner that selects the wrong unit or the wrong launcher
-    is refused before it mutates anything. The administration build and restart outcomes are decided
-    by their own flags, so one double serves the site rebuild, the administration build and the
-    administration restart. The double answers both the user-manager and the system-manager command
-    forms, and the public-contract assertions verify that the configured manager selects the form.
-    """
-
-    def __init__(
-        self,
-        *,
-        root: Path,
-        unit: str,
-        working_directory: Path | None = None,
-        fail_step: str | None = None,
-        listeners: tuple[tuple[str, str], ...] = (),
-        admin_unit: str = _ADMIN_UNIT,
-        admin_loaded: bool = True,
-        admin_working_directory: Path | None = None,
-        admin_launcher: Path | None = None,
-        fail_admin_build: bool = False,
-        fail_admin_restart: bool = False,
-    ) -> None:
-        self.root = root
-        self.unit = unit
-        self.working_directory = root if working_directory is None else working_directory
-        self.fail_step = fail_step
-        self.listeners = listeners
-        self.admin_unit = admin_unit
-        self.admin_loaded = admin_loaded
-        self.admin_working_directory = admin_working_directory
-        self.admin_launcher = admin_launcher
-        self.fail_admin_build = fail_admin_build
-        self.fail_admin_restart = fail_admin_restart
-        self.calls: list[tuple[tuple[str, ...], float | None]] = []
-        self.restarted = False
-        self.admin_restart_queued = False
-
-    def run(
-        self,
-        argv,
-        *,
-        cwd: Path | None = None,
-        env: object = None,
-        stdin_path: Path | None = None,
-        stdout_path: Path | None = None,
-        timeout: float | None = None,
-    ) -> subprocess.CompletedProcess[bytes]:
-        command = tuple(argv)
-        self.calls.append((command, timeout))
-        if command[:3] == ("systemctl", "--user", "show"):
-            return self._completed(command, self._unit_properties(command[3]))
-        if command[:2] == ("systemctl", "show"):
-            return self._completed(command, self._unit_properties(command[2]))
-        if command[:3] == ("systemctl", "--user", "restart"):
-            if self.fail_step == "restart":
-                self._fail(command)
-            self.restarted = True
-            return self._completed(command, b"")
-        if command[:4] == ("sudo", "-n", "/usr/bin/systemctl", "restart"):
-            if self.fail_step == "restart":
-                self._fail(command)
-            self.restarted = True
-            return self._completed(command, b"")
-        if command[:4] == ("systemctl", "--user", "--no-block", "restart"):
-            if self.fail_admin_restart:
-                self._fail(command)
-            self.admin_restart_queued = True
-            return self._completed(command, b"")
-        if command[:2] == ("git", "branch"):
-            return self._completed(command, b"synthetic-branch\n")
-        if command[:2] == ("git", "rev-parse"):
-            return self._completed(command, ("c" * 40 + "\n").encode())
-        if command[0] == "npm":
-            if "admin-web" in command and self.fail_admin_build:
-                self._fail(command)
-            if "admin-web" not in command and self.fail_step == "frontend":
-                self._fail(command)
-            return self._completed(command, b"")
-        if command[: len(mechanics.compose_prefix(non_interactive=True))] == (
-            mechanics.compose_prefix(non_interactive=True)
-        ):
-            if self.fail_step == "containers":
-                self._fail(command)
-            return self._completed(command, b"")
-        if command[0] == "ss":
-            return self._completed(command, self._listener_listing())
-        raise AssertionError(f"the rebuild ran an unexpected process command: {command[0]}")
-
-    def _fail(self, command: tuple[str, ...]) -> None:
-        raise subprocess.CalledProcessError(
-            1, list(command), output=_SENTINEL.encode(), stderr=_SENTINEL.encode()
-        )
-
-    def _completed(
-        self, command: tuple[str, ...], stdout: bytes
-    ) -> subprocess.CompletedProcess[bytes]:
-        return subprocess.CompletedProcess(list(command), 0, stdout=stdout, stderr=b"")
-
-    def _unit_properties(self, unit: str) -> bytes:
-        if unit == self.admin_unit:
-            load_state = "loaded" if self.admin_loaded else "not-found"
-            working_directory = (
-                self.root if self.admin_working_directory is None else self.admin_working_directory
-            )
-            launcher = (
-                self.root / "scripts" / "run_admin_web.sh"
-                if self.admin_launcher is None
-                else self.admin_launcher
-            )
-        else:
-            load_state = "loaded"
-            working_directory = self.working_directory
-            launcher = self.root / "scripts" / "run_web.sh"
-        return "".join(
-            f"{name}={value}\n"
-            for name, value in (
-                ("LoadState", load_state),
-                ("ActiveState", "active"),
-                ("SubState", "running"),
-                ("MainPID", str(_RESTARTED_PID if self.restarted else _MAIN_PID)),
-                ("ActiveEnterTimestampMonotonic", "1000000"),
-                ("WorkingDirectory", str(working_directory)),
-                (
-                    "ExecStart",
-                    "{ path=/usr/bin/bash ; argv[]=/usr/bin/bash "
-                    f"{launcher} ; ignore_errors=no ; "
-                    "start_time=[n/a] ; stop_time=[n/a] }",
-                ),
-            )
-        ).encode()
-
-    def _listener_listing(self) -> bytes:
-        return "".join(
-            f"LISTEN 0 2048 {address} 0.0.0.0:* {owners.format(owner=_RESTARTED_PID)}\n"
-            for address, owners in self.listeners
-        ).encode()
-
-    def labels(self) -> list[str]:
-        """Return the recorded commands as their step labels, in execution order."""
-        labels: list[str] = []
-        for command, _ in self.calls:
-            if command[:3] == ("systemctl", "--user", "show") or command[:2] == (
-                "systemctl",
-                "show",
-            ):
-                labels.append("unit")
-            elif command[:3] == ("systemctl", "--user", "restart") or command[:4] == (
-                "sudo",
-                "-n",
-                "/usr/bin/systemctl",
-                "restart",
-            ):
-                labels.append("restart")
-            elif command[:4] == ("systemctl", "--user", "--no-block", "restart"):
-                labels.append("admin-restart")
-            elif command[0] == "git":
-                labels.append("git")
-            elif command[0] == "npm" and "admin-web" in command:
-                labels.append("admin-frontend")
-            elif command[0] == "npm":
-                labels.append("frontend")
-            elif command[0] == "ss":
-                labels.append("bind")
-            else:
-                labels.append("containers")
-        return labels
 
 
 def _bind_rebuild_roots(
@@ -231,8 +65,7 @@ def _bind_rebuild_roots(
     monkeypatch.setenv("ADMIN_POLL_INTERVAL_SECONDS", _POLL_INTERVAL_SECONDS)
     root = tmp_path / "checkout"
     root.mkdir()
-    monkeypatch.setattr(rebuild, "repository_root", lambda: root)
-    monkeypatch.setattr(server, "repository_root", lambda: root)
+    monkeypatch.setattr(administration, "repository_root", lambda: root)
     return root
 
 
@@ -287,6 +120,9 @@ def test_rebuild_runs_only_the_remaining_fixed_steps(
             "git",
             "frontend",
             "containers",
+            "unit",
+            "git",
+            "git",
             "restart",
             "unit",
             "git",
@@ -296,13 +132,26 @@ def test_rebuild_runs_only_the_remaining_fixed_steps(
         "wrong-site-unit": ["unit"],
         "build-failure": ["unit", "git", "git", "frontend"],
         "container-failure": ["unit", "git", "git", "frontend", "containers"],
-        "restart-failure": ["unit", "git", "git", "frontend", "containers", "restart"],
+        "restart-failure": [
+            "unit",
+            "git",
+            "git",
+            "frontend",
+            "containers",
+            "unit",
+            "git",
+            "git",
+            "restart",
+        ],
         "non-loopback-listener": [
             "unit",
             "git",
             "git",
             "frontend",
             "containers",
+            "unit",
+            "git",
+            "git",
             "restart",
             "unit",
             "git",
@@ -325,13 +174,16 @@ def test_rebuild_runs_only_the_remaining_fixed_steps(
         assert failed.value.returncode == 1
         assert _SENTINEL not in str(failed.value)
 
-    assert boundary.labels() == expected_labels
+    assert [label for label in boundary.labels() if label not in {"unit", "git"}] == [
+        label for label in expected_labels if label not in {"unit", "git"}
+    ]
 
+    bridge = mechanics.compose_prefix(non_interactive=True, interpreter=True)
     # Every rebuild step is bounded by the configured foreground subprocess ceiling.
     step_timeouts = {
         timeout
         for command, timeout in boundary.calls
-        if command[0] in {"npm", "ss", "uv"} or "restart" in command
+        if command[: len(bridge)] == bridge or command[0] in {"npm", "ss"}
     }
     expected_steps = [label for label in expected_labels if label != "unit" and label != "git"]
     assert step_timeouts == ({float(_STOP_TIMEOUT_SECONDS)} if expected_steps else set())
@@ -364,8 +216,8 @@ def test_rebuild_runs_only_the_remaining_fixed_steps(
         assert restarts[0][-1] != _OTHER_UNIT
     else:
         assert restarts == []
-    prefixes = mechanics.compose_prefix(non_interactive=True)
-    compose = next((command for command in commands if command[0] == "uv"), None)
+    prefixes = bridge
+    compose = next((command for command in commands if command[: len(prefixes)] == prefixes), None)
     if "containers" in expected_labels:
         assert compose == (*prefixes, *_REBUILD_STEPS)
     else:
@@ -437,7 +289,9 @@ def test_admin_maintenance_commands_act_only_on_their_own_unit(
         "build": ["unit", "admin-frontend"] if attempted else ["unit"],
         "restart": ["unit", "admin-restart"] if attempted else ["unit"],
     }[action]
-    assert boundary.labels() == expected_labels
+    assert [label for label in boundary.labels() if label not in {"unit", "git"}] == [
+        label for label in expected_labels if label not in {"unit", "git"}
+    ]
 
     commands = [recorded for recorded, _ in boundary.calls]
     # Only the configured administration unit is addressed, and only its own frontend is built.
@@ -478,3 +332,111 @@ def test_admin_maintenance_commands_act_only_on_their_own_unit(
 
     # The administration commands retain no receipt, state file or any other file in the checkout.
     assert list(root.rglob("*")) == []
+
+
+_DEPLOY_SCRIPT = Path(__file__).resolve().parents[2] / "deploy" / "deploy.sh"
+_STAGE_GUARD = (
+    "from course_explorer_admin.datasets import require_stages_idle; require_stages_idle()"
+)
+
+
+def test_deploy_refuses_busy_stages_before_mutation(tmp_path: Path) -> None:
+    """The deploy script stops at a non-idle stage before any build or restart.
+
+    The real script runs against a scratch checkout holding only a Python wrapper, which recognizes
+    the exact guard string and runs it with this suite's interpreter after binding the checkout.
+    Rejecting npm, sudo, systemctl and ss stubs come first on the child path, and every other
+    interpreter invocation is rejected and logged.
+    """
+    root = tmp_path / "checkout"
+    (root / ".venv" / "bin").mkdir(parents=True)
+    stubs = tmp_path / "bin"
+    stubs.mkdir()
+    invocation_log = tmp_path / "invocations.log"
+    mutation_log = tmp_path / "mutations.log"
+    guard_log = tmp_path / "guard.log"
+    child = tmp_path / "guard.py"
+    admin_state = "data/admin-tests/deploy-guard"
+    stage_root = root / admin_state / "inference" / "current"
+    stage_root.mkdir(parents=True)
+    write_lifecycle_state(
+        stage_root,
+        LifecycleState(
+            session_id="e" * 32,
+            lifecycle="running",
+            requested_action="run",
+            progress=InferenceProgress(kind="inference"),
+            work_complete=False,
+            active_seconds=0.0,
+        ),
+    )
+    child.write_text(
+        "\n".join(
+            (
+                "from pathlib import Path",
+                "from course_explorer import administration",
+                f"administration.repository_root = lambda: Path({str(root)!r})",
+                "from course_explorer_admin.datasets import require_stages_idle",
+                "require_stages_idle()",
+            )
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    wrapper = root / ".venv" / "bin" / "python"
+    wrapper.write_text(
+        "\n".join(
+            (
+                "#!/usr/bin/bash",
+                "set -euo pipefail",
+                f'printf "%s\\n" "$*" >> "{invocation_log}"',
+                f'if [[ $# -eq 2 && "$1" == "-c" && "$2" == "{_STAGE_GUARD}" ]]; then',
+                f'  printf "guard\\n" >> "{guard_log}"',
+                f'  exec "{sys.executable}" "{child}"',
+                "fi",
+                f'printf "rejected\\n" >> "{mutation_log}"',
+                "exit 64",
+            )
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    wrapper.chmod(0o700)
+    for name in ("npm", "sudo", "systemctl", "ss"):
+        stub = stubs / name
+        stub.write_text(
+            "\n".join(
+                (
+                    "#!/usr/bin/bash",
+                    f'printf "%s %s\\n" "{name}" "$*" >> "{mutation_log}"',
+                    "exit 1",
+                )
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        stub.chmod(0o700)
+
+    environment = public_environment()
+    environment.update(
+        {
+            SETTINGS_SOURCE_MARKER: ENVIRONMENT_ONLY_SETTINGS_SOURCE,
+            "INFERENCE_CONTROLLER_STATE_ROOT": f"{admin_state}/inference",
+            "HOME": str(tmp_path),
+            "PATH": f"{stubs}:/usr/bin:/bin",
+            "PYTHONPATH": str(REPO_ROOT / "src"),
+        }
+    )
+    result = subprocess.run(
+        ("bash", str(_DEPLOY_SCRIPT), "a" * 40),
+        cwd=root,
+        env=environment,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+
+    assert result.returncode != 0
+    assert guard_log.read_text(encoding="utf-8") == "guard\n"
+    assert not mutation_log.exists()
+    assert invocation_log.read_text(encoding="utf-8").strip() == f"-c {_STAGE_GUARD}"

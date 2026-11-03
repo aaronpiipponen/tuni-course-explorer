@@ -1,18 +1,33 @@
-/** Two-path app/docs history state, independent from the persistent browser profile. */
+/**
+ * The app, documentation and feedback paths as browser history state, independent of the persistent
+ * browser profile.
+ */
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 
 function resetWindowScroll(): void {
   window.scrollTo(0, 0);
 }
 
-/** Track app or documentation navigation and reset the app entrance state. */
+function pageAt(pathname: string): "app" | "docs" | "feedback" {
+  if (pathname === "/docs") return "docs";
+  if (pathname === "/feedback") return "feedback";
+  return "app";
+}
+
+const PAGE_PATH: Record<"app" | "docs" | "feedback", string> = {
+  app: "/",
+  docs: "/docs",
+  feedback: "/feedback",
+};
+
+/** Track app, documentation or feedback navigation and reset the app entrance state. */
 export function usePage(): {
-  page: "app" | "docs";
+  page: "app" | "docs" | "feedback";
   entranceKey: number;
-  navigate: (page: "app" | "docs") => void;
+  navigate: (page: "app" | "docs" | "feedback") => void;
 } {
-  const [page, setPage] = useState<"app" | "docs">(() =>
-    location.pathname === "/docs" ? "docs" : "app",
+  const [page, setPage] = useState<"app" | "docs" | "feedback">(() =>
+    pageAt(location.pathname),
   );
   const [entranceKey, setEntranceKey] = useState(0);
   useLayoutEffect(() => {
@@ -23,25 +38,27 @@ export function usePage(): {
     return () => document.documentElement.classList.remove("app-active");
   }, [page]);
   const navigate = useCallback(
-    (next: "app" | "docs") => {
+    (next: "app" | "docs" | "feedback") => {
       if (next === page) return;
-      history.pushState({}, "", next === "docs" ? "/docs" : "/");
+      history.pushState({}, "", PAGE_PATH[next]);
       setPage(next);
-      if (page === "docs" && next === "app") setEntranceKey((key) => key + 1);
+      if (page !== "app" && next === "app") setEntranceKey((key) => key + 1);
     },
     [page],
   );
   useEffect(() => {
     const pop = () => {
-      const next = location.pathname === "/docs" ? "docs" : "app";
+      const next = pageAt(location.pathname);
       setPage((previous) => {
-        if (previous === "docs" && next === "app")
+        if (previous !== "app" && next === "app")
           setEntranceKey((key) => key + 1);
         return next;
       });
     };
     const show = () => {
-      if (location.pathname !== "/docs") {
+      // The app's entrance is the root path alone. A restored documentation or feedback page
+      // keeps its own scroll position.
+      if (location.pathname === "/") {
         resetWindowScroll();
         setEntranceKey((key) => key + 1);
       }

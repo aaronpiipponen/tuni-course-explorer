@@ -1,7 +1,7 @@
 /** One keyed, cancellable request to the selected discovery endpoint. */
 import { useEffect, useState } from "react";
 import { readCachedReport } from "../../app/cachedRead";
-import { useReadCache } from "../../app/useReadCache";
+import { useDiscoveryCache } from "../../app/useDiscoveryCache";
 import { readNextCourses, readRecommendations } from "../../api/discovery";
 import type {
   DiscoveryRequest,
@@ -21,7 +21,7 @@ export function useDiscovery(
   loading: boolean;
   error: Error | null;
 } {
-  const cache = useReadCache();
+  const cache = useDiscoveryCache();
   const key = JSON.stringify([list, request]);
   const [result, setResult] = useState<{
     key: string;

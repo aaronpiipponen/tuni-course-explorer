@@ -1,8 +1,8 @@
 """Database-backed composition for the machine-readable prerequisite graph and route operations.
 
 This module owns the process-level orchestration behind `scripts/prerequisites.py` and the fixed
-web `/api/prerequisites` graph read. One preparation resolves caller inputs through the official
-lookup owner, compiles the native calculation structure exactly once, projects the one drawing
+web `/api/prerequisites` graph read. One preparation resolves caller inputs through the shared
+official resolver, compiles the native calculation structure exactly once, projects the one drawing
 through its configured allowance, and shares that preparation between the graph presentation and
 the machine route calculation. The route operation runs the shared TypeScript solver through Node
 outside the serving path. The command is read-only toward official, inferred and accepted
@@ -19,25 +19,25 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
 
-from course_explorer.administration import repository_root
-from course_explorer.config import DatabaseSettings, load_database_settings, load_search_settings
+from sqlalchemy.orm import Session, sessionmaker
+
+from course_explorer import administration
+from course_explorer.config import (
+    DatabaseSettings,
+    load_database_settings,
+    load_search_settings,
+)
 from course_explorer.curriculum_repository import CurriculumRepository
 from course_explorer.db.session import database_context as _database_context
 from course_explorer.prerequisite._helpers import _PrerequisiteModel
-from course_explorer.prerequisite.equivalence_repository import InferredEquivalenceRepository
 from course_explorer.prerequisite.graph import PrerequisiteGraphCompiler
 from course_explorer.prerequisite.projection import (
     PrerequisiteDrawingAllowance,
     PrerequisiteDrawingGraph,
-    project_prerequisite_graph,
-)
-from course_explorer.prerequisite.repository import InferredPrerequisiteRepository
-from course_explorer.prerequisite.source_cache import (
-    PrerequisiteSourceFactCache,
-    ReusingCurriculumGraphRead,
 )
 from course_explorer.prerequisite.structure import PrerequisiteSolverStructure
-from course_explorer.search.lookup import CourseLookupService
+from course_explorer.search.projection import LookupProjection
+from course_explorer.search.resolver import CourseResolver
 
 _BOX_KEY = re.compile(r"^s:.+:d:[0-9a-f]{24}$")
 
@@ -61,18 +61,12 @@ class PrerequisiteGraphReport(_PrerequisiteModel):
 
 @dataclass(frozen=True)
 class _PrerequisiteCommandContext:
-    """One ephemeral prepared command input shared by both public prerequisite operations."""
+    """One ephemeral prepared command input shared by both prerequisite operations."""
 
     solver: PrerequisiteSolverStructure
     display: PrerequisiteDrawingGraph | None
     drawing: PrerequisiteDrawingAllowance
-    basis: PrerequisiteCalculationBasis
-    selected_group_ids: tuple[str, ...]
-    completed_group_ids: tuple[str, ...]
-    excluded_group_ids: tuple[str, ...]
     basis_group_ids: tuple[str, ...]
-    completed_node_keys: tuple[str, ...]
-    excluded_node_keys: tuple[str, ...]
 
 
 def _validate_node_keys(keys: Collection[str], *, label: str) -> tuple[str, ...]:
@@ -102,12 +96,14 @@ def _prepare_prerequisite_command(
     max_drawing_elements: int | None = None,
     include_display: bool = True,
     database_settings: DatabaseSettings | None = None,
-    source_cache: PrerequisiteSourceFactCache | None = None,
+    projection: LookupProjection | None = None,
+    session_factory: sessionmaker[Session] | None = None,
 ) -> _PrerequisiteCommandContext:
     """Resolve one request's canonical inputs and compile and project its native structure once.
 
-    A supplied source cache answers the compiler's raw course and module reads with the facts it
-    retains for this dataset.
+    The native fact loader reads the request's course and module facts through this process's
+    database fact handle. A supplied projection answers the caller-input resolution without a
+    database read. A supplied session factory carries the serving engine and is never disposed here.
     """
     normalized_basis = PrerequisiteCalculationBasis(basis)
     normalized_completed_node_keys = _validate_node_keys(completed_node_keys, label="completed")
@@ -115,14 +111,13 @@ def _prepare_prerequisite_command(
     completed_inputs = tuple(completed_codes)
     selected_inputs = tuple(selected_codes)
     excluded_inputs = tuple(excluded_codes)
-    search_settings = load_search_settings()
     connection_settings = (
         database_settings if database_settings is not None else load_database_settings()
     )
-    with _database_context(connection_settings) as factory:
+    with _database_context(connection_settings, factory=session_factory) as factory:
         curriculum = CurriculumRepository(factory)
-        lookup = CourseLookupService(curriculum, search_settings)
-        resolved = lookup.resolve_courses(
+        resolver = CourseResolver(curriculum, projection=projection)
+        resolved = resolver.resolve_courses(
             (target_code, *selected_inputs, *completed_inputs, *excluded_inputs)
         )
         target_group_id = resolved[0].summary.group_id
@@ -148,15 +143,12 @@ def _prepare_prerequisite_command(
             if normalized_basis is PrerequisiteCalculationBasis.SELECTED
             else canonical_completed
         )
-        inferred_sets = InferredPrerequisiteRepository(factory)
-        equivalence_groups = InferredEquivalenceRepository(factory)
-        graph_read = (
-            ReusingCurriculumGraphRead(curriculum, source_cache)
-            if source_cache is not None
-            else curriculum
+        from course_explorer.prerequisite import native_handle
+
+        compiler = PrerequisiteGraphCompiler(
+            native_handle=native_handle.worker_handle(connection_settings)
         )
-        compiler = PrerequisiteGraphCompiler(graph_read, inferred_sets, equivalence_groups)
-        structure = compiler.compile_structure(
+        compilation = compiler.compile(
             target_group_id,
             include_recommended=include_recommended,
             include_inferred=include_inferred,
@@ -165,23 +157,14 @@ def _prepare_prerequisite_command(
             excluded_group_ids=canonical_excluded,
             completed_node_keys=normalized_completed_node_keys,
             excluded_node_keys=normalized_excluded_node_keys,
+            max_drawing_elements=max_drawing_elements,
+            include_display=include_display,
         )
-    compilation = project_prerequisite_graph(
-        structure,
-        max_drawing_elements=max_drawing_elements,
-        include_display=include_display,
-    )
     return _PrerequisiteCommandContext(
         solver=compilation.solver,
         display=compilation.display,
         drawing=compilation.drawing,
-        basis=normalized_basis,
-        selected_group_ids=effective_selected,
-        completed_group_ids=canonical_completed,
-        excluded_group_ids=canonical_excluded,
         basis_group_ids=calculation_basis,
-        completed_node_keys=normalized_completed_node_keys,
-        excluded_node_keys=normalized_excluded_node_keys,
     )
 
 
@@ -192,7 +175,7 @@ def _run_node_solver(request: dict[str, Any]) -> Any:
     `FileNotFoundError`, and a nonzero exit or unparsable output raises `RuntimeError` carrying the
     process's standard error.
     """
-    bundle = repository_root() / "web" / ".solver-cli" / "cli.js"
+    bundle = administration.repository_root() / "web" / ".solver-cli" / "cli.js"
     if not bundle.is_file():
         raise FileNotFoundError(
             f"the TypeScript solver bundle {bundle} is missing; run `{_NODE_SOLVER_BUILD_COMMAND}`"
@@ -244,7 +227,8 @@ def run_prerequisite_command(
     excluded_node_keys: Collection[str] = (),
     max_drawing_elements: int | None = None,
     database_settings: DatabaseSettings | None = None,
-    source_cache: PrerequisiteSourceFactCache | None = None,
+    projection: LookupProjection | None = None,
+    session_factory: sessionmaker[Session] | None = None,
 ) -> PrerequisiteGraphReport:
     """Compose one lookup, one compile and one projection of the permitted drawing."""
     context = _prepare_prerequisite_command(
@@ -260,7 +244,8 @@ def run_prerequisite_command(
         excluded_node_keys=excluded_node_keys,
         max_drawing_elements=max_drawing_elements,
         database_settings=database_settings,
-        source_cache=source_cache,
+        projection=projection,
+        session_factory=session_factory,
     )
     return PrerequisiteGraphReport(
         solver=context.solver,
@@ -281,6 +266,7 @@ def run_minimum_route_command(
     basis: str = "completed",
     completed_node_keys: Collection[str] = (),
     excluded_node_keys: Collection[str] = (),
+    projection: LookupProjection | None = None,
 ) -> dict[str, Any]:
     """Compose one lookup and one compile, then solve through the bundled TypeScript solver.
 
@@ -299,5 +285,6 @@ def run_minimum_route_command(
         completed_node_keys=completed_node_keys,
         excluded_node_keys=excluded_node_keys,
         include_display=False,
+        projection=projection,
     )
     return _node_route(context)

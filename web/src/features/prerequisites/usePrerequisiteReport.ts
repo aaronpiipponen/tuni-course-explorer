@@ -3,8 +3,9 @@
  *
  * A cached structural input publishes its held response without a request. A resolved new input
  * reads once on a miss, and leaving the pane aborts the pending read without dropping successful
- * values. A same-root read keeps the last successful graph while it runs. `ready` is true only for
- * the settled response of the active root and its exact graph key.
+ * values. A new root keeps the last successful graph on screen while its own report loads, so the
+ * drawing can animate into the new root. `ready` is true only for the settled response of the
+ * active root and its exact graph key.
  */
 import { useEffect, useRef, useState } from "react";
 import { readCachedReport } from "../../app/cachedRead";
@@ -66,8 +67,9 @@ export function usePrerequisiteReport(
     setResult((current) => ({
       root,
       key: graphKey,
-      // A same-root input refresh retains the last successful graph. A different root never shows it.
-      report: current.root === root ? current.report : null,
+      // The previous drawing stays visible while the next root or input reads, so the graph can
+      // animate from it instead of flashing a waiting state.
+      report: current.report,
       loading: true,
       error: null,
     }));
@@ -117,19 +119,19 @@ export function usePrerequisiteReport(
   if (graphInputsPending) {
     // The retained structural input keeps the held drawing until the classification settles.
     return {
-      report: result.root === root ? result.report : null,
+      report: result.report,
       loading: true,
       error: null,
       ready: false,
     };
   }
   if (!graphKey) {
-    // A root with no resolved structural key shows the ordinary waiting state.
-    return { report: null, loading: true, error: null, ready: false };
+    // A root with no resolved structural key keeps the held drawing while it waits.
+    return { report: result.report, loading: true, error: null, ready: false };
   }
   if (result.key !== graphKey || result.root !== root)
     return {
-      report: result.root === root ? result.report : null,
+      report: result.report,
       loading: true,
       error: null,
       ready: false,

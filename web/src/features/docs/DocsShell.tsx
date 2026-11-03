@@ -63,10 +63,10 @@ export function DocsShell({ returnToApp }: { returnToApp: () => void }) {
   useEffect(() => {
     document.title =
       pageId === null
-        ? "Page not found · TUNI Course Explorer docs"
+        ? "Page not found · course-explorer docs"
         : pageId === "home"
-          ? "Docs · TUNI Course Explorer"
-          : `${DOCS_PAGES[pageId].title} · TUNI Course Explorer docs`;
+          ? "Docs · course-explorer"
+          : `${DOCS_PAGES[pageId].title} · course-explorer docs`;
     if (previousPage.current !== pageId) {
       window.scrollTo({ top: 0 });
       previousPage.current = pageId;

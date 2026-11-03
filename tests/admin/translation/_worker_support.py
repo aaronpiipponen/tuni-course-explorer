@@ -29,7 +29,6 @@ from course_explorer.enums import (
 )
 from course_explorer.teaching_text.service import DerivedTranslationInput
 from course_explorer.translation.service import TranslationRunReport, TranslationSelectionCount
-from course_explorer_admin import datasets as datasets_module
 from course_explorer_admin import mechanics, remote, worker_session
 from course_explorer_admin.remote import WorkerDatasetSession, worker_dataset_session_directory
 from course_explorer_admin.translation.controller import (
@@ -45,6 +44,7 @@ from tests.config._support import (
 )
 from tests.datasets._support import sample_verification
 from tests.inference._http_support import completion_response
+from tests.support.repository import scratch_repository
 
 SESSION_ID = "0123456789abcdef0123456789abcdef"
 REVISION = "a" * 40
@@ -58,7 +58,6 @@ TRANSLATION_ENV = {
     **POSTGRES_KEYS,
     **TRANSLATION_KEYS,
     "POSTGRES_PASSWORD": "synthetic-secret",
-    "SELECTED_DATASET_ENABLED": "0",
     "ADMIN_STATE_ROOT": "data/admin",
     "TRANSLATION_ARTIFACT_PATH": "models/model.gguf",
     "TRANSLATION_ARTIFACT_SHA256": "d" * 64,
@@ -108,15 +107,13 @@ def configure(monkeypatch: pytest.MonkeyPatch, root: Path) -> None:
         monkeypatch.setenv(key, value)
     for key, value in ADMIN_DATASET_KEYS.items():
         monkeypatch.setenv(key, value)
+    root = scratch_repository(root)
     monkeypatch.setattr(administration, "repository_root", lambda: root)
-    monkeypatch.setattr(remote, "repository_root", lambda: root)
-    monkeypatch.setattr(datasets_module, "repository_root", lambda: root)
     # The canonical worker run is invoked with the raw session database pinned and the selected
     # dataset explicitly disabled. The test sets exactly that environment.
     monkeypatch.setenv(
         "POSTGRES_DB", load_administrative_dataset_settings().database_name(SESSION_ID, worker=True)
     )
-    monkeypatch.setenv("SELECTED_DATASET_ENABLED", "0")
     # Script the shared canonical restore at its boundary. The canonical worker test and the
     # disposable SQL proof own the real restore mechanics.
     monkeypatch.setattr(

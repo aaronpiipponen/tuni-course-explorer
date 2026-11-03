@@ -2,20 +2,32 @@
 
 This module is the one product owner of database resource lifetimes: every command and report
 that opens a short-lived engine resolves its settings elsewhere and holds them through
-:func:`database_context`, while :func:`session_scope` keeps the commit/rollback contract. It reads
-no environment implicitly and invents no state location.
+:func:`database_context`, while :func:`session_scope` keeps the commit/rollback contract. A caller
+that owns a longer-lived factory supplies it to :func:`database_context` and keeps its engine. It
+reads no environment implicitly and invents no state location. A settings value exposes the
+connection URL of the database it names, so one engine lifetime serves the curriculum store and the
+separate feedback application store alike.
 """
 
 from collections.abc import Iterator
 from contextlib import contextmanager
+from typing import Protocol
 
 from sqlalchemy import Engine, create_engine
+from sqlalchemy.engine import URL
 from sqlalchemy.orm import Session, sessionmaker
 
-from course_explorer.config import DatabaseSettings
+
+class DatabaseConnectionSettings(Protocol):
+    """Settings value that names one application database by its connection URL."""
+
+    @property
+    def sqlalchemy_url(self) -> URL:
+        """Return the connection URL of the database the settings value names."""
+        ...
 
 
-def create_database_engine(settings: DatabaseSettings) -> Engine:
+def create_database_engine(settings: DatabaseConnectionSettings) -> Engine:
     """Create a SQLAlchemy 2 engine from validated database settings."""
     return create_engine(settings.sqlalchemy_url, pool_pre_ping=True)
 
@@ -26,8 +38,19 @@ def create_session_factory(engine: Engine) -> sessionmaker[Session]:
 
 
 @contextmanager
-def database_context(settings: DatabaseSettings) -> Iterator[sessionmaker[Session]]:
-    """Create one session factory and dispose its engine on every command exit."""
+def database_context(
+    settings: DatabaseConnectionSettings,
+    *,
+    factory: sessionmaker[Session] | None = None,
+) -> Iterator[sessionmaker[Session]]:
+    """Yield one session factory and dispose an engine this context created.
+
+    A supplied factory is yielded as given and never disposed, so its owner keeps the engine's
+    lifetime. Without one, this context creates an engine and disposes it on exit.
+    """
+    if factory is not None:
+        yield factory
+        return
     engine = create_database_engine(settings)
     try:
         yield create_session_factory(engine)

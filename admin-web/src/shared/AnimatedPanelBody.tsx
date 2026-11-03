@@ -9,7 +9,14 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
 /** Render the transitioned body of one panel around its children. */
-export function AnimatedPanelBody({ children }: { children: ReactNode }) {
+export function AnimatedPanelBody({
+  children,
+  follow = false,
+}: {
+  children: ReactNode;
+  /** Track the content's height directly, for a body whose content animates itself. */
+  follow?: boolean;
+}) {
   const viewport = useRef<HTMLDivElement>(null);
   const content = useRef<HTMLDivElement>(null);
   const [height, setHeight] = useState<number | null>(null);
@@ -35,7 +42,7 @@ export function AnimatedPanelBody({ children }: { children: ReactNode }) {
 
   return (
     <div
-      className="panel-body"
+      className={`panel-body${follow ? " follow" : ""}`}
       ref={viewport}
       style={height === null ? undefined : { height }}
     >

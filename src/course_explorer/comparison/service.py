@@ -11,16 +11,17 @@ percentages that estimate equivalence.
 
 from __future__ import annotations
 
-import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Literal
 
+import numpy
 from pydantic import BaseModel, ConfigDict
 
 from course_explorer.config import SearchSettings
 from course_explorer.embeddings.read import TeachingEmbeddingChunk, centre_chunks
+from course_explorer.embeddings.vector_math import unit_row
 from course_explorer.enums import (
     DESCRIPTIVE_TEACHING_TEXT_FIELDS,
     TeachingTextField,
@@ -58,18 +59,14 @@ class ComparisonMeters(_ComparisonModel):
     overlap: DirectionalOverlap
 
 
-def _unit(vector: Sequence[float]) -> tuple[float, ...]:
+def _unit(vector: numpy.ndarray | Sequence[float]) -> numpy.ndarray:
     """Return the vector's unit form, raising on a zero-length vector."""
-    norm = math.sqrt(sum(component * component for component in vector))
-    if norm == 0.0:
-        raise ValueError("cannot compare a zero-length teaching embedding")
-    return tuple(component / norm for component in vector)
+    return unit_row(numpy.asarray(vector, dtype=numpy.float64))
 
 
-def _cosine(left: Sequence[float], right: Sequence[float]) -> float:
+def _cosine(left: numpy.ndarray, right: numpy.ndarray) -> float:
     """Return the cosine between two vectors, clipped to `[-1, 1]`."""
-    dot = sum(a * b for a, b in zip(_unit(left), _unit(right), strict=True))
-    return max(-1.0, min(1.0, dot))
+    return max(-1.0, min(1.0, float(numpy.dot(_unit(left), _unit(right)))))
 
 
 def _percent(cosine: float) -> float:
@@ -103,18 +100,14 @@ def _field_chunks(
     return tuple(chunk for chunk in chunks if chunk.field == field and chunk.language == language)
 
 
-def _centroid(chunks: Sequence[TeachingEmbeddingChunk]) -> tuple[float, ...]:
+def _centroid(chunks: Sequence[TeachingEmbeddingChunk]) -> numpy.ndarray:
     """Return the character-count-weighted mean of the chunks' unit vectors."""
     total = sum(chunk.character_count for chunk in chunks)
     if total <= 0:
         raise ValueError("cannot build a teaching centroid from zero character weight")
-    dimension = len(chunks[0].embedding)
-    sums = [0.0] * dimension
-    for chunk in chunks:
-        unit = _unit(chunk.embedding)
-        for index, component in enumerate(unit):
-            sums[index] += component * chunk.character_count
-    return tuple(component / total for component in sums)
+    units = numpy.asarray([_unit(chunk.embedding) for chunk in chunks], dtype=numpy.float64)
+    weights = numpy.asarray([chunk.character_count for chunk in chunks], dtype=numpy.float64)
+    return (units * weights[:, None]).sum(axis=0) / total
 
 
 def _field_similarity(
@@ -148,8 +141,8 @@ def _overall_similarity(
     }
     cosines: list[float] = []
     for language in TeachingTextLanguage:
-        a_centroids: list[tuple[float, ...]] = []
-        b_centroids: list[tuple[float, ...]] = []
+        a_centroids: list[numpy.ndarray] = []
+        b_centroids: list[numpy.ndarray] = []
         included: list[float] = []
         for field, weight in weights.items():
             a_chunks = _field_chunks(a, field, language)
@@ -171,35 +164,40 @@ def _overall_similarity(
 
 
 def _weighted_sum(
-    vectors: Sequence[Sequence[float]], weights: Sequence[float], total_weight: float
-) -> tuple[float, ...]:
+    vectors: Sequence[numpy.ndarray], weights: Sequence[float], total_weight: float
+) -> numpy.ndarray:
     """Return the weight-normalized sum of the supplied vectors."""
-    dimension = len(vectors[0])
-    sums = [0.0] * dimension
-    for vector, weight in zip(vectors, weights, strict=True):
-        for index, component in enumerate(vector):
-            sums[index] += component * weight
-    return tuple(component / total_weight for component in sums)
+    matrix = numpy.asarray(vectors, dtype=numpy.float64)
+    weights_array = numpy.asarray(weights, dtype=numpy.float64)
+    return (matrix * weights_array[:, None]).sum(axis=0) / total_weight
 
 
 def _prepare_descriptive_chunks(
     chunks: Sequence[TeachingEmbeddingChunk],
-) -> Mapping[TeachingTextLanguage, tuple[tuple[tuple[float, ...], int], ...]]:
-    """Normalize descriptive chunks once and group their vectors and character weights."""
-    grouped: dict[TeachingTextLanguage, list[tuple[tuple[float, ...], int]]] = {}
+) -> Mapping[TeachingTextLanguage, tuple[numpy.ndarray, numpy.ndarray]]:
+    """Normalize descriptive chunks once into one unit matrix and weight row per language."""
+    grouped: dict[TeachingTextLanguage, tuple[list[numpy.ndarray], list[int]]] = {}
     for chunk in chunks:
         if chunk.field in DESCRIPTIVE_TEACHING_TEXT_FIELDS:
-            grouped.setdefault(chunk.language, []).append(
-                (_unit(chunk.embedding), chunk.character_count)
+            units, weights = grouped.setdefault(chunk.language, ([], []))
+            units.append(_unit(chunk.embedding))
+            weights.append(chunk.character_count)
+    return MappingProxyType(
+        {
+            language: (
+                numpy.asarray(units, dtype=numpy.float64),
+                numpy.asarray(weights, dtype=numpy.float64),
             )
-    return MappingProxyType({language: tuple(values) for language, values in grouped.items()})
+            for language, (units, weights) in grouped.items()
+        }
+    )
 
 
 @dataclass(frozen=True, init=False)
 class PreparedTeachingOverlap:
     """One request-local descriptive-vector projection reused across overlap comparisons."""
 
-    _by_language: Mapping[TeachingTextLanguage, tuple[tuple[tuple[float, ...], int], ...]]
+    _by_language: Mapping[TeachingTextLanguage, tuple[numpy.ndarray, numpy.ndarray]]
 
     def __init__(self, chunks: Sequence[TeachingEmbeddingChunk]) -> None:
         object.__setattr__(self, "_by_language", _prepare_descriptive_chunks(chunks))
@@ -211,32 +209,18 @@ class PreparedTeachingOverlap:
         other_by_language = _prepare_descriptive_chunks(chunks)
         a_in_b_languages: list[float] = []
         b_in_a_languages: list[float] = []
-        for language, a_chunks in other_by_language.items():
-            b_chunks = self._by_language.get(language)
-            if b_chunks is None:
+        for language, (a_units, a_weights) in other_by_language.items():
+            prepared = self._by_language.get(language)
+            if prepared is None:
                 continue
-            a_total = sum(weight for _, weight in a_chunks)
-            b_total = sum(weight for _, weight in b_chunks)
+            b_units, b_weights = prepared
+            a_total = float(a_weights.sum())
+            b_total = float(b_weights.sum())
             if a_total <= 0 or b_total <= 0:
                 raise ValueError("cannot weight overlap by a zero total character count")
-            scores = [
-                [max(-1.0, min(1.0, math.sumprod(a_vector, b_vector))) for b_vector, _ in b_chunks]
-                for a_vector, _ in a_chunks
-            ]
-            a_mean = (
-                sum(
-                    weight * max(0.0, max(row))
-                    for (_, weight), row in zip(a_chunks, scores, strict=True)
-                )
-                / a_total
-            )
-            b_mean = (
-                sum(
-                    weight * max(0.0, max(row[b_index] for row in scores))
-                    for b_index, (_, weight) in enumerate(b_chunks)
-                )
-                / b_total
-            )
+            scores = numpy.clip(a_units @ b_units.T, -1.0, 1.0)
+            a_mean = float((a_weights * numpy.clip(scores.max(axis=1), 0.0, None)).sum() / a_total)
+            b_mean = float((b_weights * numpy.clip(scores.max(axis=0), 0.0, None)).sum() / b_total)
             a_in_b_languages.append(a_mean)
             b_in_a_languages.append(b_mean)
         if not a_in_b_languages:
@@ -245,32 +229,6 @@ class PreparedTeachingOverlap:
             a_in_b=overlap_percent(_mean(a_in_b_languages), floor=floor, ceiling=ceiling),
             b_in_a=overlap_percent(_mean(b_in_a_languages), floor=floor, ceiling=ceiling),
         )
-
-
-def teaching_overlap(
-    a: Sequence[TeachingEmbeddingChunk],
-    b: Sequence[TeachingEmbeddingChunk],
-    *,
-    hub: Sequence[float],
-    outcomes_hub: Sequence[float],
-    floor: float,
-    ceiling: float,
-) -> DirectionalOverlap:
-    """Return the reusable directional content/outcome overlap between two hub-centred collections.
-
-    For each language with at least one descriptive chunk on both sides, every source chunk's best
-    centred cosine against the destination chunks of that language (content may match outcomes) is
-    averaged by character weight, then mapped through the configured floor/ceiling calibration, so a
-    partial match reads as a partial percentage. The two directions are computed independently and
-    available languages are averaged equally. With no common descriptive-text language both
-    directions are `None`. This is an embedding/window-weighted text approximation that estimates
-    equivalence from text.
-    """
-    return PreparedTeachingOverlap(centre_chunks(b, hub, outcomes_hub=outcomes_hub)).compare(
-        centre_chunks(a, hub, outcomes_hub=outcomes_hub),
-        floor=floor,
-        ceiling=ceiling,
-    )
 
 
 def compare_teaching_chunks(
@@ -290,11 +248,8 @@ def compare_teaching_chunks(
         learning_outcome_similarity=_field_similarity(
             centred_a, centred_b, TeachingTextField.OUTCOMES
         ),
-        overlap=teaching_overlap(
-            a,
-            b,
-            hub=hub,
-            outcomes_hub=outcomes_hub,
+        overlap=PreparedTeachingOverlap(centred_b).compare(
+            centred_a,
             floor=settings.comparison_overlap_floor,
             ceiling=settings.comparison_overlap_ceiling,
         ),

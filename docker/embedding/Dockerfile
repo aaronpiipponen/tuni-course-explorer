@@ -7,7 +7,7 @@ ARG EMBEDDING_SERVER_IMAGE
 FROM ${EMBEDDING_SERVER_IMAGE}
 ARG EMBEDDING_SERVER_IMAGE
 # Compose expands EMBEDDING_SERVER_IMAGE in FROM without running the Python
-# EmbeddingSettings validator, so this build layer enforces the same immutable
+# EmbeddingRuntimeSettings validator, so this build layer enforces the same immutable
 # digest pin on the build path. It performs format validation: the deployment
 # value is config-owned in config/search.toml.
 RUN set -eu; \

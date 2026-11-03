@@ -22,7 +22,6 @@ from course_explorer.inference.prompts import load_prompt_pack
 from course_explorer.inference.target_pass import prepare_target_request, target_work_identity
 from course_explorer.teaching_text.repository import DerivedTranslationRepository
 from course_explorer.teaching_text.service import TeachingTextService
-from tests.inference._fixture_support import embedding_settings
 from tests.inference._http_support import InferenceHttpBoundary, install_inference_http
 from tests.inference._scheduling_support import (
     build_pool,
@@ -31,6 +30,7 @@ from tests.inference._scheduling_support import (
     seed_courses,
 )
 from tests.inference._target_support import TARGET_CODE, TARGET_GROUP_ID, target_settings
+from tests.support import embedding_settings
 
 CANDIDATES = tuple(f"rc-{index:02d}" for index in range(50))
 

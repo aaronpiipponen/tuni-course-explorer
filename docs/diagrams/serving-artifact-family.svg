@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 580" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Serving artifact family and preload</title>
+  <desc id="d">The serving-artifacts command writes the current build, the embedding directory and the
+  derived tables. The supervisor opens the current build and the embedding directory, builds the
+  shared regions and forks the worker processes, which inherit the opened set and read the derived
+  tables at request time.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="580" rx="12" fill="#232434"/>
+
+  <rect x="340" y="32" width="280" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="58" text-anchor="middle" font-size="16" fill="#ececf2">serving-artifacts command</text>
+  <text x="480" y="80" text-anchor="middle" font-size="14" fill="#a3a4b8">one build</text>
+
+  <rect x="340" y="120" width="280" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="146" text-anchor="middle" font-size="16" fill="#ececf2">Artifact family</text>
+  <text x="480" y="168" text-anchor="middle" font-size="14" fill="#a3a4b8">database and academic year</text>
+
+  <rect x="40" y="216" width="280" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="180" y="242" text-anchor="middle" font-size="16" fill="#ececf2">Current build</text>
+  <text x="180" y="264" text-anchor="middle" font-size="14" fill="#a3a4b8">catalogue and study fragments</text>
+
+  <rect x="340" y="216" width="280" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="242" text-anchor="middle" font-size="16" fill="#ececf2">Embedding directory</text>
+  <text x="480" y="264" text-anchor="middle" font-size="14" fill="#a3a4b8">hub pair, centroids, chunks</text>
+
+  <rect x="640" y="216" width="280" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="780" y="242" text-anchor="middle" font-size="16" fill="#ececf2">Derived tables</text>
+  <text x="780" y="264" text-anchor="middle" font-size="14" fill="#a3a4b8">packed groups and neighbours</text>
+
+  <rect x="340" y="328" width="280" height="64" rx="8"
+        fill="#2e3045" stroke="#a98ae0" stroke-width="1.5"/>
+  <text x="480" y="354" text-anchor="middle" font-size="16" fill="#ececf2">Supervisor</text>
+  <text x="480" y="376" text-anchor="middle" font-size="14" fill="#a3a4b8">opens the build and preloads</text>
+
+  <rect x="340" y="432" width="280" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="458" text-anchor="middle" font-size="16" fill="#ececf2">Worker processes</text>
+  <text x="480" y="480" text-anchor="middle" font-size="14" fill="#a3a4b8">inherit the opened set</text>
+
+  <line x1="480" y1="96" x2="480" y2="120" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <text x="492" y="112" font-size="14" fill="#a3a4b8">writes</text>
+
+  <polyline points="480,184 480,200 180,200 180,216" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="480" y1="184" x2="480" y2="216" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <polyline points="620,64 780,64 780,216" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="628" y="56" font-size="14" fill="#a3a4b8">writes tables</text>
+
+  <polyline points="180,280 180,304 300,304 300,360 340,360" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="480" y1="280" x2="480" y2="328" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <text x="488" y="310" font-size="14" fill="#a3a4b8">opens</text>
+
+  <line x1="480" y1="392" x2="480" y2="432" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <text x="488" y="416" font-size="14" fill="#a3a4b8">forks</text>
+
+  <polyline points="780,280 780,464 620,464" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+  <text x="640" y="456" font-size="14" fill="#a3a4b8">request reads</text>
+
+  <rect x="40" y="508" width="280" height="44" rx="8" fill="none"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <line x1="56" y1="530" x2="96" y2="530" stroke="#a3a4b8" stroke-width="1.5"
+        stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+  <text x="108" y="535" font-size="14" fill="#a3a4b8">Request-time read</text>
+</svg>

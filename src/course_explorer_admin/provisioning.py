@@ -19,7 +19,7 @@ from pathlib import Path, PurePosixPath
 
 from pydantic import BaseModel, ConfigDict
 
-from course_explorer.administration import repository_root
+from course_explorer import administration
 from course_explorer.config import (
     WorkerConnectionSettings,
     WorkerSetupSettings,
@@ -43,7 +43,9 @@ def _repository_project_name() -> str:
     The locked code-only sync reinstalls this editable project so a pyproject-only change refreshes
     the installed distribution, which uv's editable-install freshness otherwise ignores.
     """
-    metadata = tomllib.loads((repository_root() / "pyproject.toml").read_text(encoding="utf-8"))
+    metadata = tomllib.loads(
+        (administration.repository_root() / "pyproject.toml").read_text(encoding="utf-8")
+    )
     return metadata["project"]["name"]
 
 
@@ -90,7 +92,7 @@ def _update_worker_code(
     *, branch: str = "main", runner: mechanics.ProcessRunner
 ) -> WorkerCodeReport:
     """Update the worker checkout body."""
-    root = repository_root()
+    root = administration.repository_root()
     _validate_branch(runner, root, branch)
     setup = load_worker_setup_settings()
     server_branch, server_revision = mechanics.read_checkout_identity(
@@ -119,7 +121,7 @@ def preflight_worker(*, runner: mechanics.ProcessRunner) -> ProvisioningReport:
     The checkout identity is the branch and HEAD, and the read installs, builds and downloads
     nothing.
     """
-    root = repository_root()
+    root = administration.repository_root()
     setup = load_worker_setup_settings()
     branch, revision = mechanics.read_checkout_identity(
         lambda argv: runner.run(tuple(argv), cwd=root).stdout
@@ -165,7 +167,6 @@ def _sync_worker_dependencies(
     transport.run(
         ("uv", "sync", "--locked", "--reinstall-package", _PROJECT_NAME),
         cwd=PurePosixPath(str(connection.worker_project_root)),
-        env={"SELECTED_DATASET_ENABLED": "0"},
         timeout=setup.worker_setup_timeout_seconds,
     )
 
@@ -314,7 +315,6 @@ def _bootstrap_worker(
     transport.run(
         ("bash", "-c", script),
         cwd=PurePosixPath(str(worker_root)),
-        env={"SELECTED_DATASET_ENABLED": "0"},
         timeout=setup.worker_setup_timeout_seconds,
     )
 
@@ -335,7 +335,6 @@ def _prepare_worker_resources(
             "prepare",
         ),
         cwd=PurePosixPath(str(connection.worker_project_root)),
-        env={"SELECTED_DATASET_ENABLED": "0"},
         timeout=setup.worker_setup_timeout_seconds,
     )
 
@@ -356,7 +355,6 @@ def _read_worker_resources(
             "check",
         ),
         cwd=PurePosixPath(str(connection.worker_project_root)),
-        env={"SELECTED_DATASET_ENABLED": "0"},
     )
     return WorkerResourcesReport.model_validate_json(payload.decode("utf-8"))
 

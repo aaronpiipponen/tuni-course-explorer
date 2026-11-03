@@ -43,6 +43,11 @@ export function setActiveTab(tab: TabId): void {
   listeners.forEach((listener) => listener());
 }
 
+/** Read this browser tab's open app tab without subscribing. */
+export function getActiveTab(): TabId {
+  return getSnapshot();
+}
+
 /** Subscribe one component to this browser tab's open app tab. */
 export function useActiveTab(): TabId {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);

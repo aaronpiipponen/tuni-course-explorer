@@ -4,8 +4,6 @@ This report measures whether solving each identical structural subexpression onc
 
 **Evidence status:** Comparative. **Run date:** 19 October 2026.
 
-The matrix held eleven courses, 110 scenarios and 330 paired comparisons, with three repetitions per variant.
-
 ## The question
 
 A solver structure can contain the same subtree at several occurrences. The required and recommended option pools can hold identical alternatives, an official option and an inferred option can compile to the same structure, and several branches can reach the same requirement group. The exact search evaluates each occurrence in place.
@@ -22,7 +20,7 @@ The measured answer is negative for the exact search. The route fields match in 
 
 The baseline is an instrumented copy of the [product exact search](/docs/backend/prerequisites/minimum-route-solver.md), run on the same compiled tree and basis with the same allocation limit. The prototype wraps that evaluator and adds a memo that lives for one route calculation. A memo is a table of already solved subexpressions, keyed by structure and evaluation context.
 
-Each subexpression receives one interned structural identity. The identity retains the expression kind and every semantic field that changes evaluation. It drops the fields that record provenance, which is what allows an official option and an inferred option, or a required alternative and a recommended alternative, to share one solve.
+Each subexpression receives one interned structural identity. The identity retains the expression kind and every semantic field that changes evaluation. It drops the fields that record provenance, which is what allows an official option and an inferred option, or a required alternative and a recommended alternative, to share one solve. Interning gives each distinct structure one integer and builds every parent key from its children's integers, so a key stays the same size at every occurrence and every depth.
 
 | Kept in the structural identity | Dropped from the structural identity |
 |---|---|
@@ -36,32 +34,19 @@ The memo is disabled when the tree carries canonical excluded course identities,
 
 Provenance independence has a second effect. A reused obligation reconstructs one valid derivation from the representative occurrence's labels. The baseline exact search unions the labels of every valid derivation. A repeated occurrence can therefore light a different subset of duplicate occurrences while returning the same route.
 
-## Targets, toggles and repetitions
+## Method and setup
 
-The matrix fixed eight target courses and three control courses.
+### Matrix and variants
 
-| Role | Courses |
-|---|---|
-| Target | MATH.MA.880, MATH.MA.725, PSY.324, KAT.MARK.399, KAT.MARK.310, KAT.MARK.304, KIE.SUY.420, YKT.SOA.303 |
-| Control | COMP.CS.500, COMP.CS.110, COMP.CS.200 |
+The experiment used the shared matrix of the graph and route line on one read-only selected dataset: eight target courses, three controls, five toggle combinations and two bases. The [graph and route experiments overview](/docs/experiments/graph-and-route-algorithms/README.md#the-matrix-the-samples-and-what-they-share) lists the courses and the five combinations, and [the courses and the bases](/docs/experiments/graph-and-route-algorithms/README.md#the-courses-and-the-bases) states how the nonempty basis is chosen. That matrix gives 110 scenarios, and each scenario ran both variants three times, which gives 660 runs.
 
-Every course ran with five toggle combinations and two bases.
+Two variants ran in every scenario. The baseline is an instrumented copy of the product exact search. The prototype is the same evaluator with the interned-ID memo. A nested tuple key representation was tried and did not complete the matrix, so every speed table in this report measures the baseline and the interned-ID prototype only. The [failed approaches](#failed-approaches) section states why the tuple representation failed.
 
-| Combination | Recommended | Inferred | Active only |
-|---|---|---|---|
-| required-only | off | off | on |
-| recommended | on | off | on |
-| inferred | off | on | on |
-| recommended+inferred | on | on | on |
-| recommended+inferred-active-off | on | on | off |
+Each comparison paired the same repetition number, and within a scenario the three baseline repetitions ran before the three prototype repetitions, with an explicit garbage collection before each run. A scenario's reported time is the median of its three runs per variant.
 
-The empty basis had no completed courses. The nonempty basis was the first up to five distinct active official course leaves in compiled tree order, excluding the target, taken from the default required-only active-only tree. The same set was used for every combination and retained for the calculation.
+The control courses in the course table are COMP.CS.110, COMP.CS.200 and COMP.CS.500. MATH.MA.880 and YKT.SOA.303 had no eligible active official course leaf in their default tree, so their nonempty basis is empty and those rows repeat the empty basis.
 
-MATH.MA.880 and YKT.SOA.303 had no eligible active official course leaf in that default tree. Their nonempty basis is empty, so their nonempty rows repeat the empty basis. Those rows are not an independent basis test.
-
-Each of the 110 scenarios ran three repetitions per variant, which gives 660 runs and 330 paired comparisons. Each comparison used the same repetition number. The run orders the three baseline repetitions before the three prototype repetitions within a scenario, and an explicit garbage collection ran before each run and after each scenario. A scenario's reported time is the median of its three runs per variant. A course total sums its ten scenario medians.
-
-## Measurement boundaries
+### Measurement boundaries
 
 The experiment separated four component measurements, one derived total and one fixed limit.
 
@@ -75,20 +60,11 @@ The experiment separated four component measurements, one derived total and one 
 
 Total solve time is a sum of two medians, not one continuous timer. The tree build and the satisfaction pass sit outside both solve totals. The exact attempt timer ends when the allocation limit raises its exception.
 
+### Run conditions
+
 The allocation limit was fixed at 700,000 for the whole matrix. It counts compact nodes and traces. The exact attempt stops when the count first exceeds the limit, and the greedy restart is not bounded by it.
 
-| Run condition | Value |
-|---|---|
-| Hardware | 4-core aarch64 server, 23.6 GB of RAM |
-| Dataset | One selected dataset, read only, fixed for the whole matrix |
-| Concurrency | One course at a time, with no other experiment process |
-| Python | 3.14.3 |
-| Repetitions | Three per variant per scenario |
-| Address-space cap | 4.295 GB per process |
-| Per-solve timeout | 120 s |
-| Allocation limit | 700,000 compact nodes and traces |
-
-The final matrix ran alone. Every process ran under the 4.295 GB address-space cap and refused to start without it. A 120 s alarm recorded a timeout instead of a result. The final matrix recorded no timeout. Python garbage collection could run inside a timed region, and the explicit collection before a run is outside the timer.
+The runs took one course at a time, with Python 3.14.3, under a 4.295 GB address-space cap and a 120 s per-solve timeout. The [graph and route experiments overview](/docs/experiments/graph-and-route-algorithms/README.md#the-dataset-and-the-machines) states the machine.
 
 ## Route outcomes
 
@@ -101,13 +77,11 @@ The final matrix ran alone. Every process ran under the 4.295 GB address-space c
 | No route exists | `no_solution` | no | 2 |
 | Total | | | 110 |
 
-Across the 330 paired comparisons the route outcome, total new credits and course set are identical in every case. The core comparison found 0 mismatches out of 330. Its fields were the route outcome, total new credits, the new course set and the new unexpandable content. Every scenario also has the same route outcome and credit total in both variants. No Shortfall outcome occurred.
-
-The 660 final runs include no timeouts, no memory errors and no errors raised by the measurement.
+Across the 330 paired comparisons the route outcome, total new credits, new course set and new unexpandable content matched in every case, while occurrence evidence differed in 117. Every scenario also has the same route outcome and credit total in both variants. No Shortfall outcome occurred.
 
 ## Solve time by course
 
-The ratio is the baseline total divided by the prototype total. A value above one means the prototype is faster. Each total sums the ten scenario medians for one course, with the exact attempt and the greedy fallback included. The ratio is computed from the unrounded millisecond totals, before the seconds are rounded to 0.01, so the two control rows can show 0.00 s and carry a ratio below one.
+The ratio is the baseline total divided by the prototype total. A value above one means the prototype is faster. Each total sums the ten scenario medians for one course, with the exact attempt and the greedy fallback included. The two totals measure the baseline and the interned-ID prototype, each with its exact attempt and greedy fallback. The ratio is computed from the unrounded millisecond totals, before the seconds are rounded to 0.01, so the two control rows can show 0.00 s and carry a ratio below one.
 
 | Course | Build total, 10 scenarios (s) | Build median (s) | Baseline total (s) | Prototype total (s) | Ratio | Max occurrences | Max unique | Core mismatches | Evidence mismatches |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -133,7 +107,7 @@ Course totals mix exact, approximate, unresolved and no-solution scenarios, so a
 
 ## Exact search
 
-The exact search did not become materially faster. Scenarios above 10 ms move in both directions, and the largest exact attempts sit close to parity. The table lists nine scenarios selected to span a range of times and both directions. All Exact minimum route and Route unresolved scenarios above 10 ms stay within 0.92x to 1.16x.
+The exact search did not become materially faster. Scenarios above 10 ms move in both directions, and the largest exact attempts sit close to parity. The two columns measure the baseline exact search and the interned-ID prototype. The table lists nine scenarios selected to span a range of times and both directions.
 
 | Course | Combination | Basis | Baseline exact (ms) | Prototype exact (ms) | Ratio | Outcome |
 |---|---|---|---:|---:|---:|---|
@@ -163,32 +137,26 @@ No consistent exact-speed gain appears. The measurements do not identify which p
 
 ## Approximate and no-route cases
 
-The mixed cases split into gains and losses. The table lists the six scenario pairs with the largest changes. The two MATH active-only-off pairs also lose slightly, at 0.95x to 0.97x, and are outside the table.
+The mixed cases split into gains and losses. The four recommended+inferred combinations gain, because the exact attempt reaches the 700,000 limit sooner in the prototype while the greedy fallback stays close. YKT.SOA.303 recommended+inferred-active-off loses because its greedy fallback dominates the total. PSY.324 recommended-only loses because the prototype does more work before returning No route exists. The four time columns measure the baseline and the interned-ID prototype, each with its exact attempt and greedy fallback. The table lists one empty-basis row for each of these six cases. The nonempty rows of the same combinations repeat the direction.
 
-| Course | Combination | Basis | Occurrences | Baseline exact (ms) | Baseline greedy (ms) | Baseline total (ms) | Prototype exact (ms) | Prototype greedy (ms) | Prototype total (ms) | Ratio | Outcome |
-|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| MATH.MA.880 | recommended+inferred | empty | 7,211 | 5,141.0 | 1,449.5 | 6,590.5 | 2,221.0 | 1,459.0 | 3,680.0 | 1.79x | approximate |
-| MATH.MA.880 | recommended+inferred | nonempty | 7,211 | 5,162.7 | 1,452.2 | 6,614.8 | 2,186.5 | 1,454.6 | 3,641.1 | 1.82x | approximate |
-| MATH.MA.725 | recommended+inferred | empty | 19,756 | 5,058.8 | 1,247.0 | 6,305.8 | 2,182.7 | 1,213.0 | 3,395.7 | 1.86x | approximate |
-| MATH.MA.725 | recommended+inferred | nonempty | 19,756 | 5,056.1 | 1,170.7 | 6,226.9 | 2,237.4 | 1,170.4 | 3,407.7 | 1.83x | approximate |
-| PSY.324 | recommended+inferred | empty | 986 | 3,962.8 | 35.0 | 3,997.9 | 2,781.4 | 34.5 | 2,815.9 | 1.42x | approximate |
-| PSY.324 | recommended+inferred | nonempty | 986 | 3,900.6 | 34.5 | 3,935.1 | 2,700.3 | 34.4 | 2,734.7 | 1.44x | approximate |
-| YKT.SOA.303 | recommended+inferred | empty | 123,883 | 6,873.3 | 4,534.7 | 11,408.0 | 5,520.8 | 4,394.2 | 9,915.0 | 1.15x | approximate |
-| YKT.SOA.303 | recommended+inferred | nonempty | 123,883 | 6,908.4 | 4,516.0 | 11,424.3 | 5,590.4 | 4,285.8 | 9,876.2 | 1.16x | approximate |
-| PSY.324 | recommended | empty | 350 | 468.0 | 0.0 | 468.0 | 774.7 | 0.0 | 774.7 | 0.60x | no_solution |
-| PSY.324 | recommended | nonempty | 350 | 429.2 | 0.0 | 429.2 | 803.7 | 0.0 | 803.7 | 0.53x | no_solution |
-| YKT.SOA.303 | recommended+inferred-active-off | empty | 477,533 | 6,821.9 | 18,294.1 | 25,116.0 | 8,772.8 | 18,350.1 | 27,122.9 | 0.93x | approximate |
-| YKT.SOA.303 | recommended+inferred-active-off | nonempty | 477,533 | 6,814.1 | 18,241.1 | 25,055.2 | 8,888.1 | 18,280.9 | 27,169.1 | 0.92x | approximate |
+| Course | Combination | Basis | Baseline exact (ms) | Baseline greedy (ms) | Prototype exact (ms) | Prototype greedy (ms) | Ratio | Outcome |
+|---|---|---|---:|---:|---:|---:|---:|---|
+| MATH.MA.880 | recommended+inferred | empty | 5,141.0 | 1,449.5 | 2,221.0 | 1,459.0 | 1.79x | approximate |
+| MATH.MA.725 | recommended+inferred | empty | 5,058.8 | 1,247.0 | 2,182.7 | 1,213.0 | 1.86x | approximate |
+| PSY.324 | recommended+inferred | empty | 3,962.8 | 35.0 | 2,781.4 | 34.5 | 1.42x | approximate |
+| YKT.SOA.303 | recommended+inferred | empty | 6,873.3 | 4,534.7 | 5,520.8 | 4,394.2 | 1.15x | approximate |
+| YKT.SOA.303 | recommended+inferred-active-off | empty | 6,821.9 | 18,294.1 | 8,772.8 | 18,350.1 | 0.93x | approximate |
+| PSY.324 | recommended | empty | 468.0 | 0.0 | 774.7 | 0.0 | 0.60x | no_solution |
 
 The chart compares the exact attempt and the greedy fallback for five empty-basis mixed scenarios.
 
 ![Exact attempt and greedy fallback for five empty-basis mixed scenarios, showing that the greedy fallback dominates YKT.SOA.303 active-only-off while the prototype shortens the exact attempt in the MATH and PSY cases.](/docs/charts/graph-route-dedup-mixed-attempts.svg)
 
-The four faster pairs are approximate. In MATH.MA.880 and MATH.MA.725 recommended+inferred, the baseline exact attempt reaches 700,000 after about 5.1 s and the prototype after about 2.2 s. The greedy fallback is close in both variants, about 1.45 s against 1.46 s on MATH.MA.880 and about 1.2 s in both variants on MATH.MA.725. The shortened exact attempt is the gain, and both outcomes are Approximate route. The same cause gives PSY.324 recommended+inferred its 1.42x to 1.44x and YKT.SOA.303 recommended+inferred its 1.15x to 1.16x.
+In MATH.MA.880 and MATH.MA.725 recommended+inferred, the baseline exact attempt reaches 700,000 after about 5.1 s and the prototype after about 2.2 s. The greedy fallback is close in both variants, about 1.45 s against 1.46 s on MATH.MA.880 and about 1.2 s in both variants on MATH.MA.725. The shortened exact attempt is the gain, and both outcomes are Approximate route. The same cause gives PSY.324 recommended+inferred its 1.42x to 1.44x and YKT.SOA.303 recommended+inferred its 1.15x to 1.16x.
 
 The YKT.SOA.303 active-only-off case is the opposite. The greedy fallback takes about 18.3 s in both variants and dominates a total of 25.1 s to 27.2 s. The prototype exact attempt takes about 8.8 s against 6.8 s, so the ratio is 0.92x to 0.93x. A faster greedy search is not the cause of the measured gains, because the fallback times are close wherever both variants reach it.
 
-PSY.324 recommended-only is a No route exists outcome, not an approximate one. The baseline exact attempt returns it quickly, at 468.0 ms and 429.2 ms. The prototype does more label and reuse work before reaching the same state, at 774.7 ms and 803.7 ms, for 0.60x and 0.53x.
+The two MATH active-only-off pairs also lose slightly, at 0.95x to 0.97x. PSY.324 recommended-only is a No route exists outcome, not an approximate one. The baseline exact attempt returns it quickly, at 468.0 ms and 429.2 ms. The prototype does more label and reuse work before reaching the same state, at 774.7 ms and 803.7 ms, for 0.60x and 0.53x.
 
 The allocation limit binds the largest trees. Eighteen scenarios exceed it, 16 ending in Approximate route and two in No route found. Both variants exceed it in every one of those scenarios. Deduplication does not bring the largest trees below 700,000. The compact count reaches the limit in those scenarios, with nodes and traces redistributed rather than reduced.
 
@@ -196,9 +164,9 @@ The gains are therefore not a general algorithmic gain. They come from where the
 
 ## Occurrence evidence
 
-The route outcome, credits and course set matched in every comparison. The occurrence evidence did not. In 117 of the 330 comparisons, at least one evidence field differs. The evidence comparison covered the selected occurrence set and its count, the per-course evidence and the problem count.
+The route fields matched everywhere, and the occurrence evidence did not. The evidence comparison covered the selected occurrence set and its count, the per-course evidence and the problem count.
 
-Eight courses show differences. COMP.CS.500 has 12, KAT.MARK.304 has 18, KAT.MARK.310 has 15, KAT.MARK.399 has 12, KIE.SUY.420 has 30, MATH.MA.725 has 12, PSY.324 has 12 and YKT.SOA.303 has 6. Their sum is 117. MATH.MA.880, COMP.CS.110 and COMP.CS.200 show none. The evidence mismatch column of the course table gives the count for each course.
+The course table's evidence column gives the differing comparisons for each course. Eight courses show differences, from six differing comparisons on YKT.SOA.303 to 30 on KIE.SUY.420. MATH.MA.880, COMP.CS.110 and COMP.CS.200 show none.
 
 The chart plots the differing comparisons for each course.
 
@@ -220,55 +188,59 @@ The tree build is a separate cost and is not part of either solve total. Build t
 
 In several large cases the build is comparable to or larger than the solve. On YKT.SOA.303 active-only-off, the 36.4 s build is larger than either total solve. On MATH.MA.880 recommended+inferred, the 3.2 s build is close to the 3.7 s prototype total and about half the 6.6 s baseline total. On MATH.MA.725 recommended+inferred, the 5.9 s build is close to the 6.3 s baseline solve and exceeds the 3.4 s prototype solve.
 
-The build is a cold compile per scenario. It is not a browser payload, a cache measurement or an HTTP measurement. The experiment recommended treating the tree build and payload as the first cost for a browser route solver.
+The build is a cold compile per scenario. It is not a browser payload, a cache measurement or an HTTP measurement. A browser route solver meets the build and payload before any solve, and the browser cost of both is untested.
 
-## Failed validation and corrections
+## Failed approaches
 
-Two prototype defects appeared before the final matrix. Both are preserved and excluded from the speed table.
+### Empty-support partitions
 
-| Attempt | What happened | Correction | In final speed data |
-|---|---|---|---|
-| First control validation on COMP.CS.500 | The reuse step promoted an empty-support partition to the neutral empty-set partition. That fabricated a zero-cost route, so the validation failed. | Reuse skips every partition with empty support. | No |
-| First structural key | The nested tuple key rebuilt a key per occurrence and exhausted the 4.295 GB address space on YKT.SOA.303 with 123,883 static occurrences. The run stopped partway. | Interned structural IDs keep a constant-size signature per structure, and the resumed run used them. | No |
+A reuse step that took every partition of a representative frontier, including partitions with empty support, promoted a discarded alternative to the neutral empty-set partition on the COMP.CS.500 control. That fabricated a zero-cost route, so the control validation failed. The failure produced a false route rather than a slow one. The applied rule skips every partition with empty support, so a discarded alternative cannot become the neutral empty set. The failed run is not part of the speed data, and the extra cost of skipping empty partitions was not measured.
 
-The first failure produced a false route, not a slow route. It was not accepted as speed evidence. The final run skips empty-support partitions, so a discarded alternative cannot become the neutral empty set.
+### Nested tuple structural keys
 
-The tuple-key run stopped on memory. The final run interns structural IDs, so the key per occurrence is constant in size. The partial run and its resume are preserved. The resume rewrote the scenario and basis rows, so its log holds duplicate scenario lines but no duplicate runs.
+A structural key built as a nested tuple per occurrence does not stay constant size. Each lookup builds a key that contains the whole subtree below the occurrence, so the key size follows the subtree size. The memo then holds a key of that size for every distinct structure it solves. On a tree with many occurrences the keys grow with the subtree, not with the number of distinct structures.
 
-Before the matrix, the instrumented baseline was checked against the product calculation on COMP.CS.500 with recommended and inferred on. Route outcome, credits, course set and evidence matched exactly. The baseline used in every comparison is that instrumented copy.
+```text
+nested key(node) = (kind, fields, nested key(child 0), nested key(child 1), ...)
+interned key(node) = (kind, fields, child id 0, child id 1, ...)
+```
 
-Both pre-fix validation runs are excluded from the speed table and from the 660 final runs. Every timing, outcome and ratio in the result tables comes from the final matrix. The validation table lists the excluded runs.
+The experiment ran this representation under the same 4.295 GB address-space cap and 700,000 allocation limit as the matrix reported here. On YKT.SOA.303 the run completed the 123,883-occurrence scenarios with approximate routes and ended before the 477,533-occurrence Active only off scenarios returned. The record names no single scenario that exhausted the address space. The run contributes no speed value, so every speed table in this report compares the baseline with the interned-ID prototype only.
+
+The applied representation interns one integer per distinct structure and builds each parent key from its children's integers. A key is then the same size at every occurrence and every depth, and the memo holds one key per distinct structure and evaluation context rather than one nested key per occurrence. The interned-ID prototype completed the matrix where the tuple representation did not.
 
 ## Interpretation
 
-Observation: the route fields matched in all 330 comparisons. The evidence differed in 117. The exact search showed no consistent direction above 10 ms. Eighteen scenarios exceeded the allocation limit in both variants. Tree build was comparable to or larger than solve in several large cases.
+Observation: the route fields matched in all comparisons, the occurrence evidence differed, the exact search showed no consistent direction above 10 ms, 18 scenarios exceeded the allocation limit in both variants, and tree build was comparable to or larger than solve in several large cases.
 
 Interpretation: the sharing changes how much exact-attempt work occurs before the limit and how occurrence labels are reconstructed. It does not change whether the exact attempt succeeds, and the greedy fallback changes only slightly in either direction. On the largest tree the fallback dominates, so the exact-attempt difference contributes little to the total, and the prototype's longer exact attempt there makes the total slower.
 
 Failed hypothesis: solving each structural subexpression once would make the exact search materially faster while preserving the same route and the same occurrence evidence. The route half held. The exact-speed half and the evidence half did not.
 
+The nested tuple representation failed on memory before it completed the matrix, so the exact-speed result rests on the interned-ID prototype.
+
 ## Limitations
 
-- The matrix covers one selected dataset, 11 courses, five toggle combinations and two bases on one 4-core aarch64 server.
-- MATH.MA.880 and YKT.SOA.303 repeat the empty basis in their nonempty rows, so those rows are not independent basis tests.
-- Each scenario has three repetitions per variant. The reported values are medians, with no distribution test, confidence interval or outlier removal.
-- The run orders the three baseline repetitions before the three prototype repetitions within a scenario. A fixed order and cache warmth may favor the prototype.
-- Python garbage collection can run inside a timed region. The explicit collection before each run is outside the timer.
-- Total solve time is the sum of two medians, not one continuous timer. Tree build and satisfaction sit outside it.
-- The tree build is a cold compile per scenario, not a browser payload or cache measurement. No browser, HTTP request, payload size or per-solve memory peak was measured.
+- Within a scenario the three baseline repetitions ran before the three prototype repetitions, with an explicit garbage collection before each run. A drift across the six runs would load onto one variant, and no interleaving or randomization was measured.
+- The structural identity drops origin, official kind, inferred category and inference metadata. Two occurrences that differ only in provenance share one solve, so the evidence comparison is the check on what that sharing changes.
+- The memo is disabled when the tree carries canonical excluded course identities, completed node keys or excluded node keys. The measured cases do not cover a tree with those marks.
+- Total solve time is the sum of two medians, not one continuous timer. The exact attempt timer ends when the allocation limit raises its exception, and tree build and satisfaction sit outside the total.
 - The approximate times depend on the fixed 700,000 allocation limit and on where the exact attempt stops.
+- The medians carry no distribution test, confidence interval or outlier removal.
+- The tree build is a cold compile per scenario, not a browser payload or cache measurement. No browser, HTTP request, payload size or per-solve memory peak was measured.
 - The route comparison is a parity check on measured fields over these inputs. It does not establish a general equivalence between the two evaluators, route quality, teaching quality or a general timing bound.
 - The occurrence evidence difference means occurrence-based reporting is not preserved, even where the route is identical.
-- The pre-fix validation runs are excluded from the speed data. Their correction cost is not measured.
+- The nested tuple representation did not complete the matrix, so every speed comparison uses the interned-ID prototype. The empty-support failure produced a false route, and its cost is not in the speed data.
 
 ## Where the line ended
 
 The deduplication mechanic was not promoted. On this evidence it did not make the exact search materially faster, did not avoid the 700,000 allocation limit and changed occurrence evidence.
 
-The experiment recommended treating tree build and payload as the first cost to measure for a browser route solver. It also recommended revisiting structural sharing only for large duplicate subtrees, with the occurrence reconstruction the product uses preserved exactly, and re-measuring the cases where the prototype helps against the cases where it costs. The helping cases are MATH.MA.880 and MATH.MA.725 recommended+inferred at about 1.8x. The costly cases are YKT.SOA.303 active-only-off at about 0.92x and PSY.324 recommended-only at about 0.53x.
+The tree build and payload come before any browser solve. Their browser cost and sharing only large duplicate subtrees, with the product's occurrence reconstruction preserved exactly, are untested. The helping cases are MATH.MA.880 and MATH.MA.725 recommended+inferred at about 1.8x. The costly cases are YKT.SOA.303 active-only-off at about 0.92x and PSY.324 recommended-only at about 0.53x.
 
 ## Untested questions
 
 - Whether sharing only large duplicate subtrees keeps the exact attempt below the allocation limit or lowers tree build and payload cost. Untested.
 - Whether a memo entry can carry every occurrence's derivation, rather than one representative derivation, and preserve the selected occurrence set exactly at an acceptable cost. Untested.
+- Whether a structural key represented by a fixed-size digest, rather than an interned integer or a nested tuple, keeps the memo identity exact while bounding memory. Untested.
 - Whether a browser measurement of tree build, payload and cache changes the balance between the cases where the prototype helps and the cases where it costs. Untested.

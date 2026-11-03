@@ -13,7 +13,9 @@ def test_comparison_command_rejects_blank_inputs_before_io(monkeypatch) -> None:
         command_module, "load_search_settings", lambda: pytest.fail("settings load reached")
     )
     monkeypatch.setattr(
-        command_module, "load_embedding_settings", lambda: pytest.fail("settings load reached")
+        command_module,
+        "load_embedding_runtime_settings",
+        lambda: pytest.fail("settings load reached"),
     )
     monkeypatch.setattr(
         command_module, "load_database_settings", lambda: pytest.fail("settings load reached")

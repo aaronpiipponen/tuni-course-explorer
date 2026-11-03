@@ -16,7 +16,7 @@ import { useWebFeatures } from "./useWebFeatures";
 import { ErrorNotice } from "../shared/ErrorNotice";
 import { ProfileButton } from "../features/profiles/ProfileButton";
 import { LanguageSwitch } from "../shared/LanguageSwitch";
-import { DOCS_REPOSITORY_URL } from "../features/docs/registry";
+import { DOCS_REPOSITORY_URL } from "../features/docs/repository";
 import {
   COMPARE_ICON,
   DISCOVER_ICON,
@@ -26,6 +26,11 @@ import {
   STRUCTURE_ICON,
 } from "../shared/icons";
 import { AppFooter } from "./AppFooter";
+import {
+  PHONE_RISE_EASE,
+  PHONE_RISE_SECONDS,
+  usePhoneSurfaceClosing,
+} from "../shared/phoneMotion";
 import { useMediaQuery } from "../shared/useMediaQuery";
 import { isUnhandledEscape } from "../shared/escape";
 import { OVERLAY_SELECTORS, PHONE_SHELL_QUERY } from "../shared/viewport";
@@ -40,7 +45,10 @@ import { useReducedMotion } from "../shared/useReducedMotion";
 const PHONE_TABS_SCROLL_TRAVEL = 6;
 const PHONE_TABS_SCROLL_QUIET_MS = 260;
 
-/** Hide the phone bottom bar while a scroll surface moves down, and restore it at the top or on the way up. */
+/**
+ * Hide the phone bottom bar while a scroll surface moves down, and restore it at the top or on the
+ * way up.
+ */
 function usePhoneTabsAutoHide(activeTab: TabId) {
   const setHidden = useCallback((hidden: boolean) => {
     setPhoneTabsHidden(hidden);
@@ -60,6 +68,9 @@ function usePhoneTabsAutoHide(activeTab: TabId) {
       const top = Math.max(0, target.scrollTop);
       const previous = lastTop.get(target);
       lastTop.set(target, top);
+      // A course drag records the moved position alone, so autoscroll freezes the bar instead of
+      // hiding or revealing it underneath the contact.
+      if (document.body.classList.contains("course-dragging")) return;
       if (top <= 0) {
         setHidden(false);
         return;
@@ -109,7 +120,13 @@ const TAB_ICONS: Record<TabId, ReactElement> = {
 };
 
 /** Render the phone tab bar and its More sheet. */
-export function PhoneTabBar({ openDocs }: { openDocs: () => void }) {
+export function PhoneTabBar({
+  openDocs,
+  openFeedback,
+}: {
+  openDocs: () => void;
+  openFeedback: () => void;
+}) {
   const storedTab = useActiveTab();
   const { embeddings_enabled } = useWebFeatures();
   const activeTab = effectiveTab(storedTab, embeddings_enabled);
@@ -120,6 +137,7 @@ export function PhoneTabBar({ openDocs }: { openDocs: () => void }) {
   const [moreOpen, setMoreOpen] = useState(false);
   const phone = useMediaQuery(PHONE_SHELL_QUERY);
   usePhoneTabsOnClose(moreOpen);
+  usePhoneSurfaceClosing(moreOpen);
   const moreButtonRef = useRef<HTMLButtonElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const closeMore = useCallback(() => {
@@ -187,7 +205,10 @@ export function PhoneTabBar({ openDocs }: { openDocs: () => void }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: reducedMotion ? 0 : 0.16 }}
+            transition={{
+              duration: reducedMotion ? 0 : PHONE_RISE_SECONDS,
+              ease: PHONE_RISE_EASE,
+            }}
           />
         )}
         {moreOpen && (
@@ -200,8 +221,8 @@ export function PhoneTabBar({ openDocs }: { openDocs: () => void }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 24 }}
             transition={{
-              duration: reducedMotion ? 0 : 0.22,
-              ease: [0.22, 0.8, 0.2, 1],
+              duration: reducedMotion ? 0 : PHONE_RISE_SECONDS,
+              ease: PHONE_RISE_EASE,
             }}
           >
             <header className="phone-more-head">
@@ -222,19 +243,35 @@ export function PhoneTabBar({ openDocs }: { openDocs: () => void }) {
               <div className="phone-more-secondary-inner">
                 <div className="phone-more-row phone-more-utilities">
                   <LanguageSwitch />
-                  <a
-                    className="phone-more-docs"
-                    href="/docs"
-                    onClick={(event) => {
-                      event.preventDefault();
-                      closeMore();
-                      openDocs();
-                    }}
-                  >
-                    {t("Docs")}
-                  </a>
+                  <div className="phone-more-links">
+                    <a
+                      className="phone-more-docs"
+                      href="/feedback"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        closeMore();
+                        openFeedback();
+                      }}
+                    >
+                      {t("Feedback")}
+                    </a>
+                    <a
+                      className="phone-more-docs"
+                      href="/docs"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        closeMore();
+                        openDocs();
+                      }}
+                    >
+                      {t("Docs")}
+                    </a>
+                  </div>
                 </div>
-                <AppFooter repositoryUrl={DOCS_REPOSITORY_URL} />
+                <AppFooter
+                  repositoryUrl={DOCS_REPOSITORY_URL}
+                  measures={false}
+                />
               </div>
             </div>
           </motion.section>

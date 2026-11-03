@@ -1,8 +1,8 @@
 {
   "type": "bar",
   "title": "Median SQL time by lexical form",
-  "description": "Median SQL time over the 16 cells of the first recorded pass for exact code equality, projection substring, raw lower() substring and trigram matching over an 11,086-row lexical projection.",
-  "valueAxis": "First-pass median SQL time (ms)",
+  "description": "Median SQL time over the 16 cells of one recorded pass for exact code equality, projection substring, raw lower() substring and trigram matching over an 11,086-row lexical projection.",
+  "valueAxis": "Median SQL time (ms)",
   "categories": [
     "Exact code, projection",
     "Substring, projection",

@@ -1,1 +1,1 @@
-"""The administration backend routes: authentication and the five console feature areas."""
+"""The administration backend routes: authentication and the six console feature areas."""

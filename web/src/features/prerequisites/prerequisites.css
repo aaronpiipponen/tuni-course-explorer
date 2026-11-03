@@ -178,17 +178,18 @@
   .phone-sheet .root-choice {
     grid-column: 1 / -1;
   }
+  /* The settings pill floats over the graph, and the canvas reaches the top of the screen. */
   .prereq-phone-head {
     position: absolute;
     z-index: 6;
-    top: 0;
-    right: 0;
-    left: 0;
+    top: 8px;
+    right: 12px;
     display: flex;
     align-items: center;
-    padding: 8px 12px;
-    border-bottom: 1px solid rgb(255 255 255 / 14%);
-    background: #0a0a0f;
+    pointer-events: none;
+  }
+  .prereq-phone-head > .phone-options-trigger {
+    pointer-events: auto;
   }
   .tab-pane[data-tab="prerequisites"] {
     padding: 0;

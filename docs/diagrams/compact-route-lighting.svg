@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 360" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Route lighting through projection contexts and members</title>
+  <desc id="d">A chosen drawing node is paired with the projection context that has the same owner and
+  piece. The context selects the relationship members it owns. The root and the source and target
+  endpoints of those members become the drawn route's selected nodes and lit members.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="360" rx="12" fill="#232434"/>
+
+  <text x="48" y="60" font-size="16" fill="#a3a4b8">Route lighting</text>
+
+  <rect x="48" y="88" width="248" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="172" y="114" text-anchor="middle" font-size="16" fill="#ececf2">Selected drawing node</text>
+  <text x="172" y="136" text-anchor="middle" font-size="14" fill="#a3a4b8">one chosen occurrence</text>
+
+  <rect x="356" y="88" width="248" height="64" rx="8"
+        fill="#2e3045" stroke="#a98ae0" stroke-width="1.5"/>
+  <text x="480" y="114" text-anchor="middle" font-size="16" fill="#ececf2">Projection context</text>
+  <text x="480" y="136" text-anchor="middle" font-size="14" fill="#a3a4b8">owner, piece, child slots</text>
+
+  <rect x="664" y="88" width="248" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="788" y="114" text-anchor="middle" font-size="16" fill="#ececf2">Drawn route</text>
+  <text x="788" y="136" text-anchor="middle" font-size="14" fill="#a3a4b8">nodes and lit members</text>
+
+  <rect x="356" y="232" width="248" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="258" text-anchor="middle" font-size="16" fill="#ececf2">Relationship member</text>
+  <text x="480" y="280" text-anchor="middle" font-size="14" fill="#a3a4b8">source and target node</text>
+
+  <line x1="296" y1="120" x2="356" y2="120" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="604" y1="120" x2="664" y2="120" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+
+  <line x1="480" y1="152" x2="480" y2="232" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <text x="490" y="200" font-size="14" fill="#a3a4b8">member IDs</text>
+
+  <polyline points="604,264 632,264 632,196 788,196 788,152" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="642" y="188" font-size="14" fill="#a3a4b8">endpoints</text>
+</svg>

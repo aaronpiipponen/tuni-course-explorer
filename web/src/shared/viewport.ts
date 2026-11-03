@@ -28,3 +28,12 @@ export const OVERLAY_SELECTORS = {
   blocking:
     '.sdrawer.open, .help-drawer[data-state="open"], .root-picker.open, .compare-picker-overlay.open, [role="dialog"], [role="menu"]',
 } as const;
+
+/**
+ * The overlays that keep a desktop course drag away from the pointer.
+ *
+ * The structure's module drawer and help drawer are outside the set, so a course can be dragged
+ * while either is open. Dialogs, menus and the pickers still own the pointer.
+ */
+export const DRAG_BLOCKING_SELECTORS =
+  '.root-picker.open, .compare-picker-overlay.open, [role="dialog"]:not(.help-drawer), [role="menu"]';

@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 328" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Candidate 4 findings beside the reference by category</title>
+  <desc id="d">Findings emitted by candidate 4 and findings held by the corrected reference, by category, over the 49 valid tuning targets. Required findings are over-produced at 35 against 24, recommended findings are under-produced at 14 against 35, and equivalence groups are close at 17 against 21.</desc>
+  <rect width="960" height="328" rx="12" fill="#232434"/>
+  <rect x="61" y="33" width="14" height="14" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="96" y="45" font-size="14" fill="#a3a4b8">Reference</text>
+  <rect x="208.6" y="33" width="14" height="14" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="243.6" y="45" font-size="14" fill="#a3a4b8">Emitted</text>
+  <line x1="156.4" y1="72" x2="156.4" y2="252" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="156.4" y="274" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="337.1" y1="72" x2="337.1" y2="252" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="337.1" y="274" text-anchor="middle" font-size="14" fill="#a3a4b8">10</text>
+  <line x1="517.8" y1="72" x2="517.8" y2="252" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="517.8" y="274" text-anchor="middle" font-size="14" fill="#a3a4b8">20</text>
+  <line x1="698.5" y1="72" x2="698.5" y2="252" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="698.5" y="274" text-anchor="middle" font-size="14" fill="#a3a4b8">30</text>
+  <line x1="879.2" y1="72" x2="879.2" y2="252" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="879.2" y="274" text-anchor="middle" font-size="14" fill="#a3a4b8">40</text>
+  <text x="144.4" y="107" text-anchor="end" font-size="14" fill="#ececf2">Required</text>
+  <rect x="156.4" y="80" width="433.7" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="598.1" y="95" font-size="14" fill="#a3a4b8">24</text>
+  <rect x="156.4" y="104" width="632.5" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="796.9" y="119" font-size="14" fill="#a3a4b8">35</text>
+  <text x="144.4" y="167" text-anchor="end" font-size="14" fill="#ececf2">Recommended</text>
+  <rect x="156.4" y="140" width="632.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="796.9" y="155" font-size="14" fill="#a3a4b8">35</text>
+  <rect x="156.4" y="164" width="253" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="417.4" y="179" font-size="14" fill="#a3a4b8">14</text>
+  <text x="144.4" y="227" text-anchor="end" font-size="14" fill="#ececf2">Equivalence</text>
+  <rect x="156.4" y="200" width="379.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="543.9" y="215" font-size="14" fill="#a3a4b8">21</text>
+  <rect x="156.4" y="224" width="307.2" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="471.6" y="239" font-size="14" fill="#a3a4b8">17</text>
+  <text x="517.8" y="304" text-anchor="middle" font-size="14" fill="#a3a4b8">Findings</text>
+</svg>

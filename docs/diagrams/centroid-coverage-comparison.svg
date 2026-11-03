@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 560" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Chunk-pair and centroid coverage on the same chunks</title>
+  <desc id="d">Both coverage formulas start from hub-centred unit chunk vectors. Chunk-pair coverage
+  compares every candidate chunk with every basis chunk and reports two different overlap meters.
+  Centroid coverage takes the unit mean of each course's chunks, compares one dot product per basis
+  course and reports one value for both meters. The near-duplicate cut at 90 percent and the shared
+  relatedness and thresholds apply to both.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="560" rx="12" fill="#232434"/>
+
+  <rect x="300" y="40" width="360" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="66" text-anchor="middle" font-size="16" fill="#ececf2">Hub-centred unit chunk vectors</text>
+  <text x="480" y="88" text-anchor="middle" font-size="14" fill="#a3a4b8">content chunks and outcomes chunks</text>
+
+  <text x="48" y="136" font-size="16" fill="#a3a4b8">Chunk-pair coverage</text>
+  <text x="532" y="136" font-size="16" fill="#a3a4b8">Centroid coverage</text>
+
+  <rect x="48" y="152" width="380" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="238" y="178" text-anchor="middle" font-size="16" fill="#ececf2">Candidate and basis chunks</text>
+  <text x="238" y="200" text-anchor="middle" font-size="14" fill="#a3a4b8">every chunk pair compared</text>
+
+  <rect x="48" y="240" width="380" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="238" y="266" text-anchor="middle" font-size="16" fill="#ececf2">Best match per candidate chunk</text>
+  <text x="238" y="288" text-anchor="middle" font-size="14" fill="#a3a4b8">weighted by character count</text>
+
+  <rect x="48" y="328" width="380" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="238" y="354" text-anchor="middle" font-size="16" fill="#ececf2">Overlap meters</text>
+  <text x="238" y="376" text-anchor="middle" font-size="14" fill="#a3a4b8">two different values</text>
+
+  <rect x="532" y="152" width="380" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="722" y="178" text-anchor="middle" font-size="16" fill="#ececf2">One centroid per course</text>
+  <text x="722" y="200" text-anchor="middle" font-size="14" fill="#a3a4b8">unit mean of hub-centred chunks</text>
+
+  <rect x="532" y="240" width="380" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="722" y="266" text-anchor="middle" font-size="16" fill="#ececf2">One dot product per basis course</text>
+  <text x="722" y="288" text-anchor="middle" font-size="14" fill="#a3a4b8">maximum over basis courses</text>
+
+  <rect x="532" y="328" width="380" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="722" y="354" text-anchor="middle" font-size="16" fill="#ececf2">Overlap meters</text>
+  <text x="722" y="376" text-anchor="middle" font-size="14" fill="#a3a4b8">one value for both meters</text>
+
+  <line x1="480" y1="104" x2="480" y2="120" stroke="#a3a4b8" stroke-width="1.5"/>
+  <line x1="238" y1="120" x2="722" y2="120" stroke="#a3a4b8" stroke-width="1.5"/>
+  <line x1="238" y1="120" x2="238" y2="152" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="722" y1="120" x2="722" y2="152" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+
+  <line x1="238" y1="216" x2="238" y2="240" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="238" y1="304" x2="238" y2="328" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="722" y1="216" x2="722" y2="240" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="722" y1="304" x2="722" y2="328" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+
+  <line x1="238" y1="392" x2="238" y2="408" stroke="#a3a4b8" stroke-width="1.5"/>
+  <line x1="722" y1="392" x2="722" y2="408" stroke="#a3a4b8" stroke-width="1.5"/>
+  <line x1="238" y1="408" x2="722" y2="408" stroke="#a3a4b8" stroke-width="1.5"/>
+  <line x1="480" y1="408" x2="480" y2="424" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+
+  <rect x="260" y="424" width="440" height="64" rx="8"
+        fill="#2e3045" stroke="#a98ae0" stroke-width="1.5"/>
+  <text x="480" y="450" text-anchor="middle" font-size="16" fill="#ececf2">Near-duplicate cut at 90 percent</text>
+  <text x="480" y="472" text-anchor="middle" font-size="14" fill="#a3a4b8">shared relatedness and thresholds</text>
+
+  <text x="48" y="524" font-size="14" fill="#a3a4b8">Only the coverage step changes. Relatedness, thresholds and tie order are the same in both.</text>
+</svg>

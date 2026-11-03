@@ -10,7 +10,7 @@
   --docs-muted: #8a8fa0;
   --docs-accent: #a98ae0;
   --docs-accent-bg: rgb(169 138 224 / 12%);
-  --docs-tuni: #4e008e;
+  --docs-accent-strong: var(--color-accent-strong);
   --docs-layout-max: 1380px;
   --docs-sidebar-width: 272px;
   --docs-nav-padding-end: 14px;
@@ -65,7 +65,54 @@
 }
 .docs-active {
   scroll-behavior: smooth;
-  scroll-padding-top: calc(var(--docs-header-height, 58px) + 26px);
+  --docs-scrollbar-inset: 4px;
+  /* The search results are an overlay, so the article never gains or loses a scrollbar as they
+     grow: the gutter stays reserved whether or not the page scrolls. */
+  scrollbar-gutter: stable;
+}
+/* One wiki scrollbar, shared by the page itself and the search results. */
+.docs-active::-webkit-scrollbar,
+.docs-shell .docs-results::-webkit-scrollbar {
+  width: 14px;
+  height: 14px;
+}
+.docs-active::-webkit-scrollbar-button,
+.docs-shell .docs-results::-webkit-scrollbar-button {
+  display: none;
+}
+.docs-active::-webkit-scrollbar-track,
+.docs-shell .docs-results::-webkit-scrollbar-track,
+.docs-active::-webkit-scrollbar-corner,
+.docs-shell .docs-results::-webkit-scrollbar-corner {
+  background: transparent;
+}
+.docs-active::-webkit-scrollbar-thumb,
+.docs-shell .docs-results::-webkit-scrollbar-thumb {
+  min-height: 40px;
+  border: var(--docs-scrollbar-inset, 4px) solid transparent;
+  border-radius: 999px;
+  background: rgb(169 138 224 / 55%);
+  background-clip: padding-box;
+}
+.docs-active::-webkit-scrollbar-thumb:hover,
+.docs-shell .docs-results::-webkit-scrollbar-thumb:hover {
+  background: rgb(169 138 224 / 80%);
+  background-clip: padding-box;
+}
+@supports not selector(::-webkit-scrollbar) {
+  .docs-active,
+  .docs-shell .docs-results {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(169 138 224 / 55%) transparent;
+  }
+}
+/*
+ * Anchor targets clear the sticky header on the target itself. Padding the document scroller
+ * instead would also pull a focused field in the header into the padded area, and revealing it
+ * scrolls the whole page to the top.
+ */
+.docs-shell :is(h1, h2, h3, h4, h5, h6)[id] {
+  scroll-margin-top: calc(var(--docs-header-height, 58px) + 26px);
 }
 .docs-shell .docs-header {
   position: sticky;
@@ -92,32 +139,11 @@
 .docs-shell .docs-logo {
   display: flex;
   align-items: center;
-  gap: 10px;
   color: var(--docs-head);
-  font-size: 15px;
-  font-weight: 600;
 }
 .docs-shell .docs-logo:hover,
 .docs-shell .docs-home-link:hover {
   text-decoration: none;
-}
-.docs-shell .docs-logo i {
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 7px;
-  background: var(--docs-tuni);
-  color: #fff;
-  font:
-    600 12px Inter,
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    Roboto,
-    sans-serif;
-  font-style: normal;
 }
 .docs-shell .docs-home-link {
   padding-left: 12px;
@@ -169,11 +195,28 @@
   left: 0;
   right: 0;
   display: none;
-  padding: 6px;
+  /* The phone field sits in the article, so the panel must clear the content below it. */
+  z-index: 25;
+  /* The results scroll inside the panel and never run past the window. */
+  max-height: calc(100dvh - var(--docs-header-height, 58px) - 20px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  --docs-results-gap: 6px;
+  padding: var(--docs-results-gap);
   border: 1px solid var(--docs-line2);
   border-radius: 10px;
   background: var(--docs-raised);
   box-shadow: 0 18px 50px rgb(0 0 0 / 45%);
+}
+/*
+ * A scrolling list leaves the scrollbar thumb inset inside its track, so a row would look
+ * further from the scrollbar than from the panel edge. The row gives that inset back. The field
+ * marks the gutter only when a scrollbar takes space, so a short list keeps plain padding.
+ */
+.docs-shell .docs-results[data-gutter] {
+  padding-right: calc(
+    var(--docs-results-gap) - var(--docs-scrollbar-inset, 4px)
+  );
 }
 .docs-shell .docs-results.open {
   display: block;
@@ -237,8 +280,8 @@
   text-decoration: none;
 }
 .docs-shell .docs-button.primary {
-  border-color: var(--docs-tuni);
-  background: var(--docs-tuni);
+  border-color: var(--docs-accent-strong);
+  background: var(--docs-accent-strong);
   color: #fff;
 }
 .docs-shell .docs-button.primary:hover {
@@ -385,18 +428,18 @@
   font-weight: 500;
 }
 .docs-shell .docs-nav a.home.on {
-  border-left-color: var(--docs-tuni);
+  border-left-color: var(--docs-accent-strong);
   background: linear-gradient(
     100deg,
-    rgb(78 0 142 / 28%),
+    rgb(90 30 156 / 28%),
     rgb(169 138 224 / 8%)
   );
-  box-shadow: inset 2px 0 0 var(--docs-tuni);
+  box-shadow: inset 2px 0 0 var(--docs-accent-strong);
 }
 .docs-shell .docs-nav a.home.on:hover {
   background: linear-gradient(
     100deg,
-    rgb(78 0 142 / 40%),
+    rgb(90 30 156 / 40%),
     rgb(169 138 224 / 12%)
   );
 }
@@ -540,11 +583,6 @@
   font-size: 13.5px;
   line-height: 1.5;
 }
-.docs-shell .docs-sample {
-  margin-top: 30px;
-  color: var(--docs-muted);
-  font-size: 12.5px;
-}
 .docs-shell .docs-pn {
   display: flex;
   justify-content: space-between;
@@ -675,9 +713,6 @@
 .docs-shell .docs-markdown h2:hover .anc,
 .docs-shell .docs-markdown h2:focus-within .anc {
   opacity: 1;
-}
-.docs-shell .docs-markdown h2 {
-  scroll-margin-top: calc(var(--docs-header-height, 58px) + 26px);
 }
 .docs-shell .docs-markdown code {
   padding: 1px 6px;
@@ -829,7 +864,7 @@
     overflow-x: auto;
   }
 }
-/* The header group ends where the centered layout's sidebar content ends, and the search fills it. */
+/* The header group ends where the centered sidebar content ends, and the search fills it. */
 @media (min-width: 2560px) {
   .docs-shell .docs-header-start {
     display: flex;
@@ -873,16 +908,6 @@
   }
   .docs-shell .docs-header {
     gap: 6px;
-  }
-  .docs-shell .docs-logo {
-    gap: 6px;
-    font-size: 12px;
-    line-height: 1;
-  }
-  .docs-shell .docs-logo i {
-    width: 22px;
-    height: 22px;
-    font-size: 10px;
   }
   .docs-shell .docs-home-link {
     padding-left: 6px;
@@ -1147,10 +1172,10 @@
   border-color: transparent;
   background: linear-gradient(
     100deg,
-    rgb(78 0 142 / 28%),
+    rgb(90 30 156 / 28%),
     rgb(169 138 224 / 8%)
   );
-  box-shadow: inset 2px 0 0 var(--docs-tuni);
+  box-shadow: inset 2px 0 0 var(--docs-accent-strong);
 }
 
 /* A double-nested row starts at its vertical guide, so its normal rounded highlight and accent

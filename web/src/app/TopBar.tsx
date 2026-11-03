@@ -8,10 +8,17 @@ import { useAction } from "../shared/useAction";
 import { ErrorNotice } from "../shared/ErrorNotice";
 import { useHeaderHeight } from "../shared/useHeaderHeight";
 import { useWording } from "../shared/useWording";
+import { BrandMark } from "../shared/BrandMark";
 import { useWebFeatures } from "./useWebFeatures";
 
 /** Render the application header and its navigation controls. */
-export function TopBar({ openDocs }: { openDocs: () => void }) {
+export function TopBar({
+  openDocs,
+  openFeedback,
+}: {
+  openDocs: () => void;
+  openFeedback: () => void;
+}) {
   const storedTab = useActiveTab();
   const { embeddings_enabled } = useWebFeatures();
   const activeTab = effectiveTab(storedTab, embeddings_enabled);
@@ -21,11 +28,7 @@ export function TopBar({ openDocs }: { openDocs: () => void }) {
   useHeaderHeight(headerRef, "--app-header-height");
   return (
     <header className="topbar" ref={headerRef}>
-      <div className="brand">
-        <span className="brand-text">tuni</span>
-        <span>/</span>
-        <span className="brand-text">course-explorer</span>
-      </div>
+      <BrandMark site />
       <nav aria-label={t("Main navigation")}>
         {visibleTabs(embeddings_enabled).map((tab) => (
           <button
@@ -39,6 +42,16 @@ export function TopBar({ openDocs }: { openDocs: () => void }) {
         ))}
       </nav>
       <div className="topbar-actions">
+        <a
+          className="docs-link"
+          href="/feedback"
+          onClick={(event) => {
+            event.preventDefault();
+            openFeedback();
+          }}
+        >
+          {t("Feedback")}
+        </a>
         <a
           className="docs-link"
           href="/docs"

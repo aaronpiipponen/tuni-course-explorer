@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 600" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Paired comparison of two candidate packets</title>
+  <desc id="d">The first 100 held-out targets each feed a CE-only packet and an RRF packet of 50
+  candidates. Each packet is answered once by DeepSeek V4.1 Flash. The 205 findings that only one
+  answer emitted were judged blind, giving a judged support score of 0.63 for the CE-only answer and
+  0.56 for the RRF answer. The 52 shared findings were not judged.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="600" rx="12" fill="#232434"/>
+
+  <rect x="300" y="40" width="360" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="66" text-anchor="middle" font-size="16" fill="#ececf2">Paired targets</text>
+  <text x="480" y="88" text-anchor="middle" font-size="14" fill="#a3a4b8">first 100 of 200 held-out targets</text>
+
+  <rect x="64" y="144" width="380" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="254" y="170" text-anchor="middle" font-size="16" fill="#ececf2">CE-only packet</text>
+  <text x="254" y="192" text-anchor="middle" font-size="14" fill="#a3a4b8">50 candidates, cross-encoder order</text>
+
+  <rect x="516" y="144" width="380" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="706" y="170" text-anchor="middle" font-size="16" fill="#ececf2">RRF packet</text>
+  <text x="706" y="192" text-anchor="middle" font-size="14" fill="#a3a4b8">50 candidates, fused rank order</text>
+
+  <rect x="64" y="248" width="380" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="254" y="274" text-anchor="middle" font-size="16" fill="#ececf2">CE-only answer</text>
+  <text x="254" y="296" text-anchor="middle" font-size="14" fill="#a3a4b8">one DeepSeek V4.1 Flash sample</text>
+
+  <rect x="516" y="248" width="380" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="706" y="274" text-anchor="middle" font-size="16" fill="#ececf2">RRF answer</text>
+  <text x="706" y="296" text-anchor="middle" font-size="14" fill="#a3a4b8">one sample, same model and settings</text>
+
+  <rect x="300" y="352" width="360" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="378" text-anchor="middle" font-size="16" fill="#ececf2">Differing findings</text>
+  <text x="480" y="400" text-anchor="middle" font-size="14" fill="#a3a4b8">205 judged, blind to the packet</text>
+
+  <rect x="64" y="456" width="380" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="254" y="482" text-anchor="middle" font-size="16" fill="#ececf2">CE-only judged support</text>
+  <text x="254" y="504" text-anchor="middle" font-size="14" fill="#a3a4b8">0.63, 57 supported of 98</text>
+
+  <rect x="516" y="456" width="380" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="706" y="482" text-anchor="middle" font-size="16" fill="#ececf2">RRF judged support</text>
+  <text x="706" y="504" text-anchor="middle" font-size="14" fill="#a3a4b8">0.56, 52 supported of 107</text>
+
+  <line x1="480" y1="104" x2="480" y2="124" stroke="#a3a4b8" stroke-width="1.5"/>
+  <line x1="254" y1="124" x2="706" y2="124" stroke="#a3a4b8" stroke-width="1.5"/>
+  <line x1="254" y1="124" x2="254" y2="144" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="706" y1="124" x2="706" y2="144" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <line x1="254" y1="208" x2="254" y2="248" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="706" y1="208" x2="706" y2="248" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <line x1="254" y1="312" x2="254" y2="332" stroke="#a3a4b8" stroke-width="1.5"/>
+  <line x1="706" y1="312" x2="706" y2="332" stroke="#a3a4b8" stroke-width="1.5"/>
+  <line x1="254" y1="332" x2="706" y2="332" stroke="#a3a4b8" stroke-width="1.5"/>
+  <line x1="480" y1="332" x2="480" y2="352" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <line x1="480" y1="416" x2="480" y2="436" stroke="#a3a4b8" stroke-width="1.5"/>
+  <line x1="254" y1="436" x2="706" y2="436" stroke="#a3a4b8" stroke-width="1.5"/>
+  <line x1="254" y1="436" x2="254" y2="456" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="706" y1="436" x2="706" y2="456" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <text x="64" y="548" font-size="14" fill="#a3a4b8">Both packets for one target shared the target, prompt, schema and settings.</text>
+  <text x="64" y="572" font-size="14" fill="#a3a4b8">The 52 findings that both answers of a pair emitted were not judged.</text>
+</svg>

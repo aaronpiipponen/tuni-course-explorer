@@ -20,7 +20,7 @@ export type CoursePick = {
 };
 
 /** Props one caller supplies to the element that opens its course menu. */
-export type CourseCardTriggerProps = Pick<
+type CourseCardTriggerProps = Pick<
   ComponentPropsWithoutRef<"button">,
   | "className"
   | "type"

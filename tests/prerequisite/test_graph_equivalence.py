@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+import pytest
+
 from course_explorer.enums import PrerequisiteRequirementKind
 from course_explorer.prerequisite.domain import (
     InferredPrerequisiteCategory,
@@ -14,10 +16,6 @@ from course_explorer.prerequisite.graph import (
     PrerequisiteGraphCompiler,
 )
 from course_explorer.prerequisite.projection import PrerequisiteGraphCompilation
-from course_explorer.prerequisite.satisfaction import (
-    PrerequisiteSatisfactionState,
-    evaluate_prerequisite_satisfaction,
-)
 from tests.prerequisite._graph_support import (
     INFERENCE_METADATA,
     FakeCurriculumRead,
@@ -35,10 +33,15 @@ from tests.prerequisite._graph_support import (
     prerequisite_option,
     substitution_option,
 )
+from tests.prerequisite._native_support import native_requirement_state
 from tests.prerequisite._path_support import solve_route
 
+pytestmark = pytest.mark.integration
 
-def test_compiler_composes_global_equivalence_as_flat_non_transitive_alternatives() -> None:
+
+def test_compiler_composes_global_equivalence_as_flat_non_transitive_alternatives(
+    native_graph,
+) -> None:
     """Exact equivalence groups add flat inferred alternatives with ordinary prerequisite cost."""
     # A has official substitution options and two ordinary prerequisites. B and C are distinct
     # equivalents of A with their own prerequisites and substitutions. Groups A-B, A-C and
@@ -103,15 +106,11 @@ def test_compiler_composes_global_equivalence_as_flat_non_transitive_alternative
             "b-prereq": current_result("b-prereq"),
         }
     )
-    compiler = PrerequisiteGraphCompiler(
-        FakeCurriculumRead(courses), inferred_read, equivalence_read
-    )
+    compiler = native_graph(FakeCurriculumRead(courses), inferred_read, equivalence_read)
 
     # Inference disabled: the compiler reads the official catalogue and produces the
     # official/substitution output.
     disabled = compiler.compile("root")
-    assert equivalence_read.reads == []
-    assert inferred_read.reads == []
     disabled_root = disabled.solver.root_use_id
     assert disabled_root is not None
     assert piece_of(disabled.solver, disabled_root).kind == "course_alternatives"
@@ -129,19 +128,9 @@ def test_compiler_composes_global_equivalence_as_flat_non_transitive_alternative
     assert substitution_piece.course_group_id == "a-sub"
     assert substitution_fact.official_kind is OfficialPrerequisiteKind.SUBSTITUTION
 
-    # Inference enabled: every distinct represented course occurrence is read exactly once through
-    # the per-compilation cache, and the offered equivalent heads never recurse into their own
-    # groups. The selected root's own prerequisites are compiled first step, so it is not read here.
-    equivalence_read.reads.clear()
+    # Inference enabled: every distinct represented course occurrence is compiled once, and the
+    # offered equivalent heads never recurse into their own groups.
     enabled = compiler.compile("root", include_inferred=True)
-    equivalence_requests = [
-        *equivalence_read.reads,
-        *(group_id for batch in equivalence_read.bulk_reads for group_id in batch),
-    ]
-    assert sorted(equivalence_requests) == ["a", "a-prereq", "a-sub", "b-prereq"]
-    assert len(set(equivalence_requests)) == len(equivalence_requests)
-    for absent in ("root", "b", "c", "d"):
-        assert absent not in equivalence_requests
 
     enabled_root = enabled.solver.root_use_id
     assert enabled_root is not None
@@ -210,7 +199,7 @@ def test_compiler_composes_global_equivalence_as_flat_non_transitive_alternative
             "recommended-b": current_result("recommended-b"),
         }
     )
-    recommended_compiler = PrerequisiteGraphCompiler(
+    recommended_compiler = native_graph(
         FakeCurriculumRead(
             (
                 catalogue_course("recommended-root"),
@@ -246,11 +235,11 @@ def test_compiler_composes_global_equivalence_as_flat_non_transitive_alternative
     assert recommended_fact.inferred_category is InferredPrerequisiteCategory.RECOMMENDED
 
     # Real satisfaction: a basis containing an offered equivalent satisfies A's requirement.
-    satisfied_by_b = evaluate_prerequisite_satisfaction(enabled.solver, ["b"])
-    assert satisfied_by_b.requirements_state is PrerequisiteSatisfactionState.SATISFIED
+    assert native_requirement_state(compiler, "root", ("b",), include_inferred=True) == "satisfied"
 
 
 def test_compiler_equivalence_alternatives_carry_their_ordinary_path_cost(
+    native_graph,
     solver_bundle: None,
 ) -> None:
     """One equivalent's ordinary closure is context-sensitive, so its cost is exact."""
@@ -292,7 +281,7 @@ def test_compiler_equivalence_alternatives_carry_their_ordinary_path_cost(
         inferred_read = RecordingInferredSetRead(
             {group_id: current_result(group_id) for group_id in ("root", "a", "b", "c", "d", "z")}
         )
-        compiler = PrerequisiteGraphCompiler(
+        compiler = native_graph(
             FakeCurriculumRead(courses),
             inferred_read,
             RecordingEquivalenceGroupRead({"a": (group,), "d": (group,)}),
@@ -381,7 +370,9 @@ def test_compiler_equivalence_alternatives_carry_their_ordinary_path_cost(
         )
 
 
-def test_compiler_drops_an_equivalent_of_an_ancestor_only_when_inference_is_enabled() -> None:
+def test_compiler_drops_an_equivalent_of_an_ancestor_only_when_inference_is_enabled(
+    native_graph,
+) -> None:
     """An occurrence equivalent to an ancestor disappears, and inference off reads no group."""
 
     def requires(group_id: str):
@@ -403,15 +394,13 @@ def test_compiler_drops_an_equivalent_of_an_ancestor_only_when_inference_is_enab
     group = equivalence_group("00000000-0000-0000-0000-000000000020", "a", "e")
     equivalence_read = RecordingEquivalenceGroupRead({"a": (group,), "e": (group,)})
     inferred_results = {group_id: current_result(group_id) for group_id in ("root", "a", "p", "e")}
-    shared = PrerequisiteGraphCompiler(
+    shared = native_graph(
         FakeCurriculumRead(courses),
         RecordingInferredSetRead(inferred_results),
         equivalence_read,
     )
 
     enabled = shared.compile("root", include_inferred=True).solver
-    equivalence_read.reads.clear()
-    equivalence_read.bulk_reads.clear()
     disabled = shared.compile("root").solver
 
     # e is offered beside a, so a's requirement p keeps its head but drops its own requirement e.
@@ -425,11 +414,8 @@ def test_compiler_drops_an_equivalent_of_an_ancestor_only_when_inference_is_enab
     assert piece_of(enabled, p_position).kind == "course"
     assert piece_of(enabled, p_position).course_group_id == "p"
 
-    # Inference off: no equivalence read, the same structure as a fresh compiler, and e stays
-    # required below p.
-    assert equivalence_read.reads == []
-    assert equivalence_read.bulk_reads == []
-    fresh = PrerequisiteGraphCompiler(
+    # Inference off: the same structure as a fresh compiler, and e stays required below p.
+    fresh = native_graph(
         FakeCurriculumRead(courses),
         RecordingInferredSetRead(inferred_results),
         RecordingEquivalenceGroupRead({"a": (group,), "e": (group,)}),

@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 448" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Python and native prerequisite compilation per scenario</title>
+  <desc id="d">Core-seconds for the Python compile and evaluation and for the native compile of five recorded fact bundles. The native compiler is far below the Python replay in every scenario and highest on the inferred bundle.</desc>
+  <rect width="960" height="448" rx="12" fill="#232434"/>
+  <rect x="61" y="33" width="14" height="14" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="96" y="45" font-size="14" fill="#a3a4b8">Python compile and evaluate</text>
+  <rect x="359.8" y="33" width="14" height="14" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="394.8" y="45" font-size="14" fill="#a3a4b8">Native compile</text>
+  <line x1="240.4" y1="72" x2="240.4" y2="372" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="240.4" y="394" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="361.4" y1="72" x2="361.4" y2="372" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="361.4" y="394" text-anchor="middle" font-size="14" fill="#a3a4b8">0.5</text>
+  <line x1="482.5" y1="72" x2="482.5" y2="372" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="482.5" y="394" text-anchor="middle" font-size="14" fill="#a3a4b8">1</text>
+  <line x1="603.5" y1="72" x2="603.5" y2="372" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="603.5" y="394" text-anchor="middle" font-size="14" fill="#a3a4b8">1.5</text>
+  <line x1="724.6" y1="72" x2="724.6" y2="372" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="724.6" y="394" text-anchor="middle" font-size="14" fill="#a3a4b8">2</text>
+  <line x1="845.6" y1="72" x2="845.6" y2="372" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="845.6" y="394" text-anchor="middle" font-size="14" fill="#a3a4b8">2.5</text>
+  <text x="228.4" y="107" text-anchor="end" font-size="14" fill="#ececf2">50 active, official</text>
+  <rect x="240.4" y="80" width="147.3" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="395.7" y="95" font-size="14" fill="#a3a4b8">0.6083</text>
+  <rect x="240.4" y="104" width="0.6" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="249" y="119" font-size="14" fill="#a3a4b8">0.0024</text>
+  <text x="228.4" y="167" text-anchor="end" font-size="14" fill="#ececf2">50 inactive, official</text>
+  <rect x="240.4" y="140" width="324.2" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="572.6" y="155" font-size="14" fill="#a3a4b8">1.3393</text>
+  <rect x="240.4" y="164" width="0.9" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="249.3" y="179" font-size="14" fill="#a3a4b8">0.0039</text>
+  <text x="228.4" y="227" text-anchor="end" font-size="14" fill="#ececf2">60 active, official</text>
+  <rect x="240.4" y="200" width="154.8" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="403.2" y="215" font-size="14" fill="#a3a4b8">0.6396</text>
+  <rect x="240.4" y="224" width="0.8" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="249.2" y="239" font-size="14" fill="#a3a4b8">0.0032</text>
+  <text x="228.4" y="287" text-anchor="end" font-size="14" fill="#ececf2">60 inactive, official</text>
+  <rect x="240.4" y="260" width="352.8" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="601.2" y="275" font-size="14" fill="#a3a4b8">1.4575</text>
+  <rect x="240.4" y="284" width="1.3" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="249.7" y="299" font-size="14" fill="#a3a4b8">0.0055</text>
+  <text x="228.4" y="347" text-anchor="end" font-size="14" fill="#ececf2">60 inactive, inferred</text>
+  <rect x="240.4" y="320" width="491.3" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="739.7" y="335" font-size="14" fill="#a3a4b8">2.0297</text>
+  <rect x="240.4" y="344" width="12.4" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="260.8" y="359" font-size="14" fill="#a3a4b8">0.0513</text>
+  <text x="543" y="424" text-anchor="middle" font-size="14" fill="#a3a4b8">Core-seconds</text>
+</svg>

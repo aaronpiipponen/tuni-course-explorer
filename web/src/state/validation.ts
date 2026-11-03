@@ -20,6 +20,7 @@ import { initialPrerequisitesState } from "../features/prerequisites/state";
 import { initialSearchState } from "../features/search/state";
 import {
   initialStructureState,
+  type CourseHolder,
   type StructureChoices,
 } from "../features/structure/state";
 import { validateSisuPlan } from "../features/structure/sisu";
@@ -258,6 +259,33 @@ function moduleVersionsField(
   );
 }
 
+/** Validate one stored course-holder map. */
+function courseHoldersField(
+  value: unknown,
+  message: string,
+): Record<string, CourseHolder> {
+  const saved = objectValue(value, message);
+  return Object.fromEntries(
+    Object.entries(saved).map(([id, raw]) => {
+      const holder = objectValue(raw, message);
+      return [
+        identity(id, message),
+        {
+          group_id: identity(holder.group_id, message),
+          name_fi:
+            holder.name_fi === null || holder.name_fi === undefined
+              ? null
+              : stringField(holder.name_fi, message),
+          name_en:
+            holder.name_en === null || holder.name_en === undefined
+              ? null
+              : stringField(holder.name_en, message),
+        },
+      ];
+    }),
+  );
+}
+
 function projectStructure(value: unknown) {
   const message = sliceMessage("structure");
   const saved = objectValue(value, message);
@@ -281,6 +309,14 @@ function projectStructure(value: unknown) {
       saved.placedCourseIds === undefined
         ? []
         : uniqueIdentityArray(saved.placedCourseIds, message),
+    courseHolders:
+      saved.courseHolders === undefined
+        ? undefined
+        : courseHoldersField(saved.courseHolders, message),
+    courseOrder:
+      saved.courseOrder === undefined
+        ? []
+        : uniqueIdentityArray(saved.courseOrder, message),
   };
 }
 
@@ -290,7 +326,7 @@ function projectStructure(value: unknown) {
  * A supplied structure requires its ordered programme list and its per-group version selections.
  * Unknown fields are dropped.
  */
-export function validateProfileState(value: unknown): ProfileState {
+function validateProfileState(value: unknown): ProfileState {
   const saved = objectValue(value, STATE_MESSAGE);
   const defaults = initialProfileState();
   const selectedCourseIds =

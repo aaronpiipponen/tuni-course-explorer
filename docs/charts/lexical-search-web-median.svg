@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 388" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Search web median before and after the native fuzzy stage</title>
+  <desc id="d">Whole-request search web medians in seconds for the four fixed queries, with the query-embedding cache cleared, before and after the fuzzy-name token coverage moved to the native lookup library.</desc>
+  <rect width="960" height="388" rx="12" fill="#232434"/>
+  <rect x="61" y="33" width="14" height="14" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="96" y="45" font-size="14" fill="#a3a4b8">Before</text>
+  <rect x="183.4" y="33" width="14" height="14" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="218.4" y="45" font-size="14" fill="#a3a4b8">After</text>
+  <line x1="257.2" y1="72" x2="257.2" y2="312" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="257.2" y="334" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="453.3" y1="72" x2="453.3" y2="312" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="453.3" y="334" text-anchor="middle" font-size="14" fill="#a3a4b8">0.05</text>
+  <line x1="649.5" y1="72" x2="649.5" y2="312" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="649.5" y="334" text-anchor="middle" font-size="14" fill="#a3a4b8">0.1</text>
+  <line x1="845.6" y1="72" x2="845.6" y2="312" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="845.6" y="334" text-anchor="middle" font-size="14" fill="#a3a4b8">0.15</text>
+  <text x="245.2" y="107" text-anchor="end" font-size="14" fill="#ececf2">XYKSJV20-M001</text>
+  <rect x="257.2" y="80" width="402.9" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="668.1" y="95" font-size="14" fill="#a3a4b8">0.1027</text>
+  <rect x="257.2" y="104" width="212.6" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="477.8" y="119" font-size="14" fill="#a3a4b8">0.0542</text>
+  <text x="245.2" y="167" text-anchor="end" font-size="14" fill="#ececf2">XYKSJV20-M001 MARIH.319</text>
+  <rect x="257.2" y="140" width="418.9" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="684.1" y="155" font-size="14" fill="#a3a4b8">0.1068</text>
+  <rect x="257.2" y="164" width="278.1" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="543.3" y="179" font-size="14" fill="#a3a4b8">0.0709</text>
+  <text x="245.2" y="227" text-anchor="end" font-size="14" fill="#ececf2">Fullwidth literal</text>
+  <rect x="257.2" y="200" width="493.1" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="758.3" y="215" font-size="14" fill="#a3a4b8">0.1257</text>
+  <rect x="257.2" y="224" width="318.5" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="583.7" y="239" font-size="14" fill="#a3a4b8">0.0812</text>
+  <text x="245.2" y="287" text-anchor="end" font-size="14" fill="#ececf2">tietokanta suunnittlu</text>
+  <rect x="257.2" y="260" width="446" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="711.2" y="275" font-size="14" fill="#a3a4b8">0.1137</text>
+  <rect x="257.2" y="284" width="269.9" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="535.1" y="299" font-size="14" fill="#a3a4b8">0.0688</text>
+  <text x="551.4" y="364" text-anchor="middle" font-size="14" fill="#a3a4b8">Web median (s)</text>
+</svg>

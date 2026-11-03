@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 388" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Recommendation cost of each candidate prefilter variant at 50 courses</title>
+  <desc id="d">Recommendation stage and complete command time for the baseline, the database prefilter and the two cached variants on a 50-course basis.</desc>
+  <rect width="960" height="388" rx="12" fill="#232434"/>
+  <rect x="61" y="33" width="14" height="14" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="96" y="45" font-size="14" fill="#a3a4b8">Recommendation stage</text>
+  <rect x="301" y="33" width="14" height="14" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="336" y="45" font-size="14" fill="#a3a4b8">Complete command</text>
+  <line x1="265.6" y1="72" x2="265.6" y2="312" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="265.6" y="334" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="383.3" y1="72" x2="383.3" y2="312" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="383.3" y="334" text-anchor="middle" font-size="14" fill="#a3a4b8">2</text>
+  <line x1="501" y1="72" x2="501" y2="312" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="501" y="334" text-anchor="middle" font-size="14" fill="#a3a4b8">4</text>
+  <line x1="618.6" y1="72" x2="618.6" y2="312" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="618.6" y="334" text-anchor="middle" font-size="14" fill="#a3a4b8">6</text>
+  <line x1="736.3" y1="72" x2="736.3" y2="312" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="736.3" y="334" text-anchor="middle" font-size="14" fill="#a3a4b8">8</text>
+  <line x1="854" y1="72" x2="854" y2="312" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="854" y="334" text-anchor="middle" font-size="14" fill="#a3a4b8">10</text>
+  <text x="253.6" y="107" text-anchor="end" font-size="14" fill="#ececf2">Baseline</text>
+  <rect x="265.6" y="80" width="467.6" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="741.2" y="95" font-size="14" fill="#a3a4b8">7.947</text>
+  <rect x="265.6" y="104" width="571.4" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="845" y="119" font-size="14" fill="#a3a4b8">9.711</text>
+  <text x="253.6" y="167" text-anchor="end" font-size="14" fill="#ececf2">Database prefilter</text>
+  <rect x="265.6" y="140" width="281.6" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="555.2" y="155" font-size="14" fill="#a3a4b8">4.786</text>
+  <rect x="265.6" y="164" width="373.9" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="647.5" y="179" font-size="14" fill="#a3a4b8">6.354</text>
+  <text x="253.6" y="227" text-anchor="end" font-size="14" fill="#ececf2">Cached, after summaries</text>
+  <rect x="265.6" y="200" width="212.3" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="485.9" y="215" font-size="14" fill="#a3a4b8">3.608</text>
+  <rect x="265.6" y="224" width="308" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="581.6" y="239" font-size="14" fill="#a3a4b8">5.234</text>
+  <text x="253.6" y="287" text-anchor="end" font-size="14" fill="#ececf2">Cached, before summaries</text>
+  <rect x="265.6" y="260" width="200.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="474.1" y="275" font-size="14" fill="#a3a4b8">3.408</text>
+  <rect x="265.6" y="284" width="293" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="566.6" y="299" font-size="14" fill="#a3a4b8">4.98</text>
+  <text x="559.8" y="364" text-anchor="middle" font-size="14" fill="#a3a4b8">Time (s)</text>
+</svg>

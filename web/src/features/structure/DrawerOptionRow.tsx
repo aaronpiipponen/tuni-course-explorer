@@ -1,28 +1,22 @@
-/** Official choice option row: the main button selects it. Only a course also has its own Complete button. */
-import type { StructureOption } from "./model";
+/**
+ * Official choice option row whose main button selects the option and, for a course, completes it.
+ */
+import type { StructureEntry } from "./model";
 import type { DisplayLanguage } from "../../state/types";
 import { courseCredits, courseName } from "../../shared/course/presentation";
 import { moduleName } from "./presentation";
 import { uiText } from "../../shared/wording";
 
 function cells(
-  option: StructureOption,
+  entry: Exclude<StructureEntry, { kind: "note" }>,
   language: DisplayLanguage,
 ): [string, string, string] {
-  if (option.entries.length !== 1)
-    return [
-      "",
-      uiText(language, "{count} items", { count: option.entries.length }),
-      "",
-    ];
-  const entry = option.entries[0];
   if (entry.kind === "course")
     return [
       entry.course.code,
       courseName(entry.course, language),
       courseCredits(entry.course, language),
     ];
-  if (entry.kind === "note") return ["", entry.text, ""];
   if (entry.node.module)
     return [
       entry.node.module.code ?? "",
@@ -34,21 +28,21 @@ function cells(
 
 /** Render one official choice option row with its course completion button. */
 export function DrawerOptionRow({
-  option,
+  entry,
   selected,
   language,
   onChoose,
   completion,
   disabled = false,
 }: {
-  option: StructureOption;
+  entry: Exclude<StructureEntry, { kind: "note" }>;
   selected: boolean;
   language: DisplayLanguage;
   onChoose(): void;
   completion?: { completed: boolean; onToggle(): void };
   disabled?: boolean;
 }) {
-  const [code, name, rule] = cells(option, language);
+  const [code, name, rule] = cells(entry, language);
   return (
     <div className={`prow opt${selected ? " cur" : ""}`}>
       <button
@@ -68,7 +62,7 @@ export function DrawerOptionRow({
           aria-pressed={completion.completed}
           aria-label={uiText(
             language,
-            completion.completed ? "Mark not completed" : "Mark completed",
+            completion.completed ? "Remove completion" : "Mark completed",
           )}
           disabled={disabled}
           onClick={completion.onToggle}

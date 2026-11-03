@@ -4,15 +4,16 @@
  * It posts one credential attempt over a live session's CSRF token, clears the password field after
  * every submit, and reports one refusal without retrying the attempt. A supplied session is used as
  * it is, and a missing one is read from the site once, so the screen works after the console's
- * protected session has ended without a bootstrap of its own. A wrong credential stays in the screen
- * as its own message, while a `403` is the terminal admission refusal the shell's handling consumes.
- * A missing live session and a site or CSRF refusal answer that same status.
+ * protected session has ended without a bootstrap of its own. A wrong credential stays in the
+ * screen as its own message, while a `403` is the terminal admission refusal the shell's handling
+ * consumes. A missing live session and a site or CSRF refusal answer that same status.
  */
 import { useState, type FormEvent } from "react";
 import { ApiError, handleAdmissionFailure } from "../api/http";
 import { fetchSession, login } from "../api/auth";
 import type { SessionReport } from "../api/types";
 import { wording } from "../shared/wording";
+import { BrandMark } from "./BrandMark";
 
 /** Render the sign-in screen. */
 export function SignIn({
@@ -59,8 +60,7 @@ export function SignIn({
         onSubmit={(event) => void onSubmit(event)}
       >
         <div className="logo">
-          <i>T</i>
-          {wording.brand}
+          <BrandMark />
         </div>
         <h1>{text.heading}</h1>
         <label className="field">

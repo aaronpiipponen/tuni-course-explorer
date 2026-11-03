@@ -20,7 +20,7 @@ The whole packet is sent or the target course fails. A request whose packet fits
 
 The diagram follows one target course from its effective text through candidate selection, generation, and validation to the stored inferred set. The accent outline marks the label-safe model inputs, which exclude official prerequisite structure from candidate selection and the model input. The official prerequisite structure enters only at the proposal, which deduplicates the accepted result.
 
-![Effective text feeds a candidate pool, a rerank, and a packet. A local language model generates a result, validation accepts it, a proposal deduplicates it against the official prerequisites, and publication writes the inferred set. The accent outline marks the label-safe model inputs, which exclude official prerequisite structure from candidate selection and every model input.](/docs/diagrams/inference-pipeline.svg)
+![Effective text feeds a candidate pool, a rerank, and a packet. A local language model generates a result, validation accepts it, a proposal deduplicates it against the official prerequisites, and publication writes the inferred sets and equivalence groups. The accent outline marks the label-safe model inputs, which exclude official prerequisite structure from candidate selection and every model input.](/docs/diagrams/inference-pipeline.svg)
 
 ## Label safety
 
@@ -56,7 +56,7 @@ Model output is untrusted input. A result is accepted only when it parses as str
 
 An accepted result states one complete answer for its target course, so a partial or contradictory answer is refused rather than repaired. [Inference pipeline](/docs/backend/inference/inference-pipeline.md) lists the exact contract rules, the finding-flag vocabulary, and the emitted schema.
 
-The measurements that selected the prompt behind this contract and defined its finding-flag vocabulary are in [Prompt and structured-output tuning](/docs/experiments/inference/prompt-and-structured-output-tuning.md).
+The finding-flag experiments are in [Prompt and flag schema tuning](/docs/experiments/inference/prompt-and-flag-schema-tuning.md), and the prompt selection measurements are in [Prompt sweeps and the v9 selection](/docs/experiments/inference/prompt-sweeps-and-v9-selection.md).
 
 ### Direct prerequisites and suppression
 
@@ -66,7 +66,7 @@ The model classifies each candidate and records every non-direct candidate with 
 
 An accepted result becomes a proposal, composed from that one result. Composition applies the only deduction against official data: an inferred option that an official option already names in full is absorbed, an official option of the other category removes its members from the inferred option, and an equivalence group that repeats the target course plus one official single-course substitute is dropped. Every other option and group is kept with its own finding flags. The configuration selects the retained-recommendation and no-cutoff policies through `INFERENCE_RECOMMENDATION_POLICY` (`include`) and `INFERENCE_FINDING_FILTER_POLICY` (`none`), so no confidence threshold, drop, or demotion rule narrows the output. [Inference pipeline](/docs/backend/inference/inference-pipeline.md) states the exact rule.
 
-A rule built from the ByteShape model's confidence and finding flags is fitted on the 100 fit targets and applied to the distinct 50 validation targets, and it fails on both, so the policy retains the measured output unfiltered. [Held-out local model quality](/docs/experiments/inference/held-out-model-quality.md#confidence-and-flags-as-a-filter) states that fit and its validation, and [Confidence calibration and corrected reference judgments](/docs/experiments/inference/confidence-and-corrected-references.md) states the confidence bins, the target-level routing check and the corrected reference.
+[Confidence and flag calibration](/docs/experiments/inference/confidence-and-flag-calibration.md) records the confidence bins, the target-level routing check and the filter's fit and validation. [Reference answers and judging](/docs/experiments/inference/reference-answers-and-judging.md) states the corrected-reference method.
 
 Publication writes the accepted proposals into the inferred sets and the equivalence groups of the catalogue. An accepted result is written as the whole stored result of its target course, and each stored set and group is written in one step. Publication reads only the courses that an accepted result names. It reruns no selection, no rerank, and no model work.
 
@@ -78,8 +78,64 @@ Inference is a remote stage, and both language models run on the worker. Each is
 
 Each artifact is pinned by a revision and a SHA-256 digest. `INFERENCE_RUNTIME_REVISION` in `config/inference.toml` pins the serving runtime, `INFERENCE_PRIMARY_MODEL_REVISION` and `INFERENCE_PRIMARY_ARTIFACT_REVISION` pin the source model and the quantized artifact, and `INFERENCE_PRIMARY_ARTIFACT_SHA256` pins the artifact bytes. The cross-encoder is pinned the same way through `INFERENCE_RERANK_MODEL_REVISION`, `INFERENCE_RERANK_ARTIFACT_REVISION`, and `INFERENCE_RERANK_ARTIFACT_SHA256`, and it shares the pinned runtime revision with the language model.
 
-`INFERENCE_HOST` and `INFERENCE_RERANK_HOST` accept only a loopback address, so the worker serves the models to itself. `INFERENCE_LOCAL_VARIANTS` names two ordered keys for the language model, ordered by increasing context. A key that is loaded counts the tokens of a request, and the run loads the first key when no key is loaded. The example sets the two keys to 131072 and 163840 tokens. The measured fit and throughput of those keys are in [Local model hardware and throughput](/docs/experiments/inference/local-model-hardware-and-throughput.md).
+`INFERENCE_HOST` and `INFERENCE_RERANK_HOST` accept only a loopback address, so the worker serves the models to itself. `INFERENCE_LOCAL_VARIANTS` names two ordered keys for the language model, ordered by increasing context. A key that is loaded counts the tokens of a request, and the run loads the first key when no key is loaded. [Inference scheduling and disposition](/docs/backend/inference/inference-scheduling.md#the-fit-rule) lists the two keys and their configured context sizes. The measured fit and throughput of those keys are in [Local model hardware and throughput](/docs/experiments/inference/local-model-hardware-and-throughput.md).
 
 The execution identity is built from the pinned model and runtime identities, the prompt version, the result schema version, the pipeline version and the route. Each target adds its canonical identity, its activity context and the digest of its rendered input, so work produced under different values has a distinct identity. The stored output records the identity that produced it.
+
+### The generation artifact and runtime keys
+
+The language model is served from one quantized artifact, and every key in this table is required in `config/inference.toml`. The source model and the artifact carry their own repository and revision, and the artifact's digest is checked against the downloaded bytes.
+
+| Key | Meaning | Example |
+|---|---|---|
+| `INFERENCE_PRIMARY_MODEL_REPOSITORY` | The source model's repository in `owner/repository` form | `Qwen/Qwen3.8-27B-FP8` |
+| `INFERENCE_PRIMARY_MODEL_REVISION` | The source model's pinned commit | a 40-character commit |
+| `INFERENCE_PRIMARY_ARTIFACT_REPOSITORY` | The repository that holds the quantized artifact, in `owner/repository` form | `vmarcelo/Qwen3.8-27B-MIX_GGUF` |
+| `INFERENCE_PRIMARY_ARTIFACT_REVISION` | The artifact's pinned commit | a 40-character commit |
+| `INFERENCE_PRIMARY_ARTIFACT_FILE` | The artifact's GGUF file name, with no directory | `Qwen3.8-27B-IQ3-MIX.gguf` |
+| `INFERENCE_PRIMARY_ARTIFACT_PATH` | The repository-relative path of the artifact, whose basename must equal the file name | `models/qwen3.8-27b-iq3-mix-f922f9d9/Qwen3.8-27B-IQ3-MIX.gguf` |
+| `INFERENCE_PRIMARY_ARTIFACT_QUANT` | The artifact's quantization, one literal | `IQ3_MIX` |
+| `INFERENCE_PRIMARY_ARTIFACT_SHA256` | The SHA-256 digest the downloaded bytes must match | a 64-character digest |
+| `INFERENCE_PARALLEL` | The parallel sequence slots the runtime serves, as a positive integer | 1 |
+| `INFERENCE_GPU_LAYERS` | The model layers offloaded to the GPU, either `all` or a nonnegative integer | `all` |
+| `INFERENCE_FLASH_ATTENTION` | The flash-attention mode, whose only valid value is `on` | `on` |
+| `INFERENCE_REQUEST_TIMEOUT_SECONDS` | The bound of one generation request in seconds, above zero and at most 600 | 600 |
+| `INFERENCE_TEMPERATURE` | The temperature of the first attempt of one calculation, whose only valid value is zero | 0.0 |
+| `INFERENCE_RETRY_TEMPERATURE` | The temperature of every attempt after the first, above zero and at most 2 | 0.3 |
+| `INFERENCE_SEED` | The base seed, a nonnegative integer advanced by the durable lifetime attempt ordinal | 0 |
+| `INFERENCE_CHAT_TEMPLATE_KWARGS` | The chat-template flags, required to be exactly `{ enable_thinking = false }` | `{ enable_thinking = false }` |
+| `INFERENCE_PROMPT_VERSION` | The prompt version, which pairs with schema version `v2` | `v9` |
+| `INFERENCE_SCHEMA_VERSION` | The result schema version, one literal | `v2` |
+| `INFERENCE_PIPELINE_VERSION` | The pipeline version, one literal | `v1` |
+| `INFERENCE_PROPOSAL_VERSION` | The proposal composition version, one literal | `v1` |
+| `INFERENCE_ROUTING_POLICY` | The routing policy, one literal | `solo_fit_only` |
+| `INFERENCE_RECOMMENDATION_POLICY` | The retained-recommendation policy, one literal | `include` |
+| `INFERENCE_FINDING_FILTER_POLICY` | The finding filter policy, one literal | `none` |
+| `INFERENCE_CONTROLLER_HEALTH_ATTEMPTS` | The runtime health reads one start makes, one configured interval apart, from 1 to 600 | 120 |
+
+Each entry of `INFERENCE_LOCAL_VARIANTS` states its own alias, port, context size, KV cache type, batch and micro-batch sizes, speculation type, MTP draft count and achieved maximum context. [Inference scheduling and disposition](/docs/backend/inference/inference-scheduling.md#the-fit-rule) states the fit rule with its output cap `INFERENCE_MAX_TOKENS` and fit margin `INFERENCE_FIT_HEADROOM_TOKENS`, and [Failures, retries, and isolation](/docs/backend/inference/inference-scheduling.md#failures-retries-and-isolation) states the preparation attempt bound `INFERENCE_MAX_ATTEMPTS` and the retry waits `INFERENCE_RETRY_BACKOFF_SECONDS`, `INFERENCE_RETRY_MAX_BACKOFF_SECONDS` and `INFERENCE_RETRY_POLL_SECONDS`.
+
+### The rerank artifact and serving keys
+
+The cross-encoder is a separate pinned artifact served by the same runtime revision at its own loopback address and port.
+
+| Key | Meaning | Example |
+|---|---|---|
+| `INFERENCE_RERANK_PORT` | The loopback port the cross-encoder serves | 18083 |
+| `INFERENCE_RERANK_MODEL_ALIAS` | The short ASCII alias a rerank request names | `bge-reranker-v2-m3-q8` |
+| `INFERENCE_RERANK_MODEL_REPOSITORY` | The cross-encoder's source repository in `owner/repository` form | `BAAI/bge-reranker-v2-m3` |
+| `INFERENCE_RERANK_MODEL_REVISION` | The source model's pinned commit | a 40-character commit |
+| `INFERENCE_RERANK_ARTIFACT_REPOSITORY` | The repository that holds the quantized cross-encoder | `gpustack/bge-reranker-v2-m3-GGUF` |
+| `INFERENCE_RERANK_ARTIFACT_REVISION` | The artifact's pinned commit | a 40-character commit |
+| `INFERENCE_RERANK_ARTIFACT_FILE` | The artifact's GGUF file name, with no directory | `bge-reranker-v2-m3-Q8_0.gguf` |
+| `INFERENCE_RERANK_ARTIFACT_PATH` | The repository-relative path of the artifact, whose basename must equal the file name | `models/bge-reranker-v2-m3-3093af03/bge-reranker-v2-m3-Q8_0.gguf` |
+| `INFERENCE_RERANK_ARTIFACT_QUANT` | The artifact's quantization, one literal | `Q8_0` |
+| `INFERENCE_RERANK_ARTIFACT_SHA256` | The SHA-256 digest the downloaded bytes must match | a 64-character digest |
+| `INFERENCE_RERANK_CONTEXT_SIZE` | The serving context in tokens, from 1 to 8192 | 8192 |
+| `INFERENCE_RERANK_BATCH_SIZE` | The physical batch and micro-batch, from 1 to 8192 and no greater than the context | 2048 |
+| `INFERENCE_RERANK_REQUEST_TIMEOUT_SECONDS` | The bound of one cross-encoder request in seconds, above zero and at most 60 | 60 |
+| `INFERENCE_RERANK_TEXT_LAYOUT` | The order of the teaching-text fields in one pair, one literal | `content-first` |
+
+`INFERENCE_RERANK_REQUEST_TIMEOUT_SECONDS` belongs to the rerank runtime identity, so a changed value selects a different rerank input identity.
 
 The module layout, the identities, and the stored tables behind the behavior on this page are described in [Inference pipeline](/docs/backend/inference/inference-pipeline.md).

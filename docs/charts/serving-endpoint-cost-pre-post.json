@@ -1,0 +1,20 @@
+{
+  "type": "bar",
+  "title": "Core-seconds per request before the CPU port and on the product",
+  "description": "Eight representative endpoint shapes measured on three samples per side. Every product bar is lower than its pre-port bar. The product bars span 0.2029 core-seconds for a basis-20 inactive next-course read to 0.9296 for a basis-60 inactive recommendation, against 1.9979 and 6.4053 on the pre-port tree.",
+  "valueAxis": "Core-seconds per request",
+  "categories": [
+    "Search, inactive title",
+    "Recommendations, 20 active",
+    "Recommendations, 20 inactive",
+    "Recommendations, 50 active",
+    "Recommendations, 60 inactive",
+    "Next courses, 20 inactive",
+    "Next courses, 60 inactive",
+    "Largest graph, inferred"
+  ],
+  "series": [
+    { "name": "Pre-port", "values": [0.8111, 1.3611, 1.2002, 3.6121, 6.4053, 1.9979, 2.9071, 1.266] },
+    { "name": "Product", "values": [0.2288, 0.5035, 0.4586, 0.705, 0.9296, 0.2029, 0.6299, 0.238] }
+  ]
+}

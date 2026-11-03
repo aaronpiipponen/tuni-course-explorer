@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 680" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Prompt sweep funnel</title>
+  <desc id="d">Thirteen prompt variants entered the sweep and all thirteen completed the 10-target
+  screen. Eight continued to the fixed 20-target set, six completed the full 50 targets, and the six
+  were judged blind in one pass each. Seven variants stopped before the full 50 and carry no support
+  verdicts. The c4 flags variant became v9.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="680" rx="12" fill="#232434"/>
+
+  <rect x="320" y="40" width="320" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="66" text-anchor="middle" font-size="16" fill="#ececf2">13 prompt variants</text>
+  <text x="480" y="88" text-anchor="middle" font-size="14" fill="#a3a4b8">each from the v8 bytes</text>
+
+  <rect x="320" y="144" width="320" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="170" text-anchor="middle" font-size="16" fill="#ececf2">10-target screen</text>
+  <text x="480" y="192" text-anchor="middle" font-size="14" fill="#a3a4b8">13 completed</text>
+
+  <rect x="320" y="248" width="320" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="274" text-anchor="middle" font-size="16" fill="#ececf2">Fixed 20 targets</text>
+  <text x="480" y="296" text-anchor="middle" font-size="14" fill="#a3a4b8">eight continued</text>
+
+  <rect x="320" y="352" width="320" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="378" text-anchor="middle" font-size="16" fill="#ececf2">Full 50 targets</text>
+  <text x="480" y="400" text-anchor="middle" font-size="14" fill="#a3a4b8">six completed</text>
+
+  <rect x="320" y="456" width="320" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="482" text-anchor="middle" font-size="16" fill="#ececf2">Blind judgment</text>
+  <text x="480" y="504" text-anchor="middle" font-size="14" fill="#a3a4b8">six, one pass each</text>
+
+  <rect x="320" y="560" width="320" height="64" rx="8" fill="#5a1e9c" stroke="#a98ae0" stroke-width="1.5"/>
+  <text x="480" y="586" text-anchor="middle" font-size="16" fill="#ececf2">v9 selected</text>
+  <text x="480" y="608" text-anchor="middle" font-size="14" fill="#ececf2">from the c4 flags variant</text>
+
+  <rect x="680" y="176" width="232" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="796" y="202" text-anchor="middle" font-size="16" fill="#ececf2">Seven stopped</text>
+  <text x="796" y="224" text-anchor="middle" font-size="14" fill="#a3a4b8">no support verdicts</text>
+
+  <line x1="480" y1="104" x2="480" y2="144" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="480" y1="208" x2="480" y2="248" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="480" y1="312" x2="480" y2="352" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="480" y1="416" x2="480" y2="456" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="480" y1="520" x2="480" y2="560" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+
+  <line x1="640" y1="176" x2="680" y2="176" stroke="#a3a4b8" stroke-width="1.5"
+        stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+  <polyline points="640,280 700,280 700,240" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+
+  <rect x="48" y="612" width="236" height="44" rx="8" fill="none" stroke="#4a4c6b" stroke-width="1.5"/>
+  <line x1="64" y1="634" x2="104" y2="634" stroke="#a3a4b8" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="116" y="639" font-size="14" fill="#a3a4b8">stopped, not judged</text>
+</svg>

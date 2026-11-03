@@ -19,6 +19,7 @@ from fastapi.testclient import TestClient
 from pydantic import SecretStr
 from starlette.staticfiles import StaticFiles
 
+from course_explorer import administration
 from course_explorer.config import AdminWebSettings
 from course_explorer_admin import credentials
 from course_explorer_admin.mechanics import ProcessRunner
@@ -111,7 +112,7 @@ def site_root(
     """Create one temporary checkout root and store its account through the real password owner."""
     root = tmp_path / "checkout"
     root.mkdir()
-    monkeypatch.setattr(credentials, "repository_root", lambda: root)
+    monkeypatch.setattr(administration, "repository_root", lambda: root)
     credentials.set_admin_password(username=OPERATOR_NAME, password=SecretStr(password))
     return root
 
@@ -120,7 +121,7 @@ def set_account_password(
     monkeypatch: pytest.MonkeyPatch, root: Path, *, password: str = REPLACEMENT_PASSWORD
 ) -> None:
     """Replace one temporary site's stored account through the same real password owner."""
-    monkeypatch.setattr(credentials, "repository_root", lambda: root)
+    monkeypatch.setattr(administration, "repository_root", lambda: root)
     credentials.set_admin_password(username=OPERATOR_NAME, password=SecretStr(password))
 
 
@@ -136,7 +137,7 @@ def admin_web_settings(**overrides: object) -> AdminWebSettings:
         "ADMIN_WEB_ANONYMOUS_SESSION_WINDOW_SECONDS": 60,
         "ADMIN_WEB_COMMAND_LOG_LIMIT": 200,
         "ADMIN_WEB_POLL_SECONDS": 10,
-        "ADMIN_WEB_APP_URL": APP_URL,
+        "WEB_APP_URL": APP_URL,
         "ADMIN_WEB_REPOSITORY_URL": REPOSITORY_URL,
     }
     values.update(overrides)

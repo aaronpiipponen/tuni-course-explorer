@@ -1,0 +1,26 @@
+{
+  "type": "bar",
+  "title": "Warm recommendation endpoint core-seconds with the Python scorer and the native scorer",
+  "description": "Warm recommendation endpoint core-seconds for the Python scorer and the native scorer at bases 20, 40, 50 and 60, in active-only and including-inactive scope.",
+  "valueAxis": "Core-seconds",
+  "categories": [
+    "Basis 20, active",
+    "Basis 20, inactive",
+    "Basis 40, active",
+    "Basis 40, inactive",
+    "Basis 50, active",
+    "Basis 50, inactive",
+    "Basis 60, active",
+    "Basis 60, inactive"
+  ],
+  "series": [
+    {
+      "name": "Python scorer",
+      "values": [0.2297, 0.3098, 0.4323, 0.4721, 0.7968, 0.9698, 0.6657, 0.8276]
+    },
+    {
+      "name": "Native scorer",
+      "values": [0.1695, 0.2099, 0.2796, 0.3068, 0.4436, 0.5778, 0.4138, 0.5122]
+    }
+  ]
+}

@@ -3,7 +3,7 @@
  *
  * The description names the replacement with the operation that applies it, states the place that
  * already displays the replacement when one does, lists the courses it pulls out of the nodes they
- * are in now, and states the outcome for the replaced programme: its customisation is discarded and
+ * are in, and states the outcome for the replaced programme: its customisation is discarded and
  * its uncompleted courses leave the structure, while its completed courses are kept when it holds
  * one. A replacement that pulls a course asks through **Keep** and **Pull** beside **Cancel**,
  * so one answer replaces the programme without moving those courses and the other moves them in.
@@ -11,17 +11,17 @@
 import { useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { ErrorNotice } from "../../shared/ErrorNotice";
-import { courseName } from "../../shared/course/presentation";
 import type { DisplayLanguage } from "../../state/types";
-import type { PulledCourse } from "./edits";
+import type { PulledCourse, PulledModule } from "./edits";
 import { useWording } from "../../shared/useWording";
+import { PulledItemList } from "./CourseMoveConfirmDialog";
 import { usePhoneTabsOnClose } from "../../shared/usePhoneTabsOnClose";
 
 type Target = {
   operation: "replace";
   name: string;
   replacementName: string;
-  /** The node that displays the replacement programme now, supplied when a visible node does. */
+  /** The node that displays the replacement programme, supplied when a visible node does. */
   moduleFrom?: (language: DisplayLanguage) => string;
   /** Whether the replaced programme holds a completed course. */
   hasCompletedCourses: boolean;
@@ -34,6 +34,7 @@ export function ProgrammeConfirmDialog({
   replacementName,
   moduleFrom,
   moves,
+  moduleMoves,
   hasCompletedCourses,
   busy,
   error,
@@ -44,9 +45,11 @@ export function ProgrammeConfirmDialog({
   operation: "replace" | null;
   name: string;
   replacementName: string;
-  /** The courses the replacement programme pulls out of the nodes they are in now. */
+  /** The courses the replacement programme pulls out of the nodes they are in. */
   moves: readonly PulledCourse[];
-  /** The node that displays the replacement programme now, supplied when a visible node does. */
+  /** The highest-level official modules the replacement pulls with everything they hold. */
+  moduleMoves: readonly PulledModule[];
+  /** The node that displays the replacement programme, supplied when a visible node does. */
   moduleFrom?: (language: DisplayLanguage) => string;
   /** Whether the replaced programme holds a completed course. */
   hasCompletedCourses: boolean;
@@ -76,6 +79,7 @@ export function ProgrammeConfirmDialog({
     setRetained(current);
   const shown = current ?? retained;
   const placement = shown?.moduleFrom?.(language) ?? null;
+  const pulls = moves.length + moduleMoves.length;
   return (
     <Dialog.Root
       open={operation !== null}
@@ -111,22 +115,13 @@ export function ProgrammeConfirmDialog({
                     )}{" "}
                   </span>
                 )}
-                {moves.length > 0 && (
+                {pulls > 0 && (
                   <span>
                     {t("Move them here, or keep them where they are now.")}
                   </span>
                 )}
-                {moves.length > 0 && (
-                  <ul className="move-list">
-                    {moves.map((move) => (
-                      <li key={move.course.group_id}>
-                        {t("{course} · {place}", {
-                          course: courseName(move.course, language),
-                          place: move.from(language),
-                        })}
-                      </li>
-                    ))}
-                  </ul>
+                {pulls > 0 && (
+                  <PulledItemList moves={moves} moduleMoves={moduleMoves} />
                 )}
                 {t(
                   shown.hasCompletedCourses
@@ -137,13 +132,13 @@ export function ProgrammeConfirmDialog({
             </>
           )}
           {error && <ErrorNotice error={error} language={language} />}
-          <div className="dialog-foot">
+          <div className="dialog-foot dialog-foot-wrap">
             <Dialog.Close asChild>
               <button className="dialog-cancel" type="button" disabled={busy}>
                 {t("Cancel")}
               </button>
             </Dialog.Close>
-            {moves.length > 0 ? (
+            {pulls > 0 ? (
               <>
                 <button
                   className="dialog-cancel"

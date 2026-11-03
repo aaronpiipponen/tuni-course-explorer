@@ -4,6 +4,7 @@ import { readWebFeatures } from "../api/features";
 import type { WebFeatures as WebFeaturesReport } from "../api/types";
 import { ErrorNotice } from "../shared/ErrorNotice";
 import { useWording } from "../shared/useWording";
+import { DiscoveryCacheProvider } from "./DiscoveryCacheProvider";
 import { ReadCacheProvider } from "./ReadCacheProvider";
 import { WebFeaturesContext } from "./webFeaturesContext";
 
@@ -44,7 +45,11 @@ export function WebFeatures({ children }: { children: ReactNode }) {
   return (
     <WebFeaturesContext.Provider value={loaded.features}>
       <ReadCacheProvider datasetIdentity={loaded.features.dataset_identity}>
-        {children}
+        <DiscoveryCacheProvider
+          datasetIdentity={loaded.features.dataset_identity}
+        >
+          {children}
+        </DiscoveryCacheProvider>
       </ReadCacheProvider>
     </WebFeaturesContext.Provider>
   );

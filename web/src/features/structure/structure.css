@@ -7,14 +7,29 @@
   padding: 24px 24px 40px;
   transition: padding 0.4s cubic-bezier(0.22, 0.8, 0.2, 1);
 }
+@media (min-width: 901px) {
+  .tab-pane:has(.structure-layout.with-help) {
+    padding-right: 440px;
+  }
+}
 .tab-pane:has(.structure-layout.with-drawer) {
   padding-right: 480px;
 }
 .structure-tree {
   width: 100%;
 }
+.structure-help-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 4px;
+}
 .snode {
   margin-top: 20px;
+}
+/* A row opens from nothing or leaves the tree inside a clipped box, so its own content never
+   paints over the rows below while the box grows or collapses. */
+.snode.is-clipping {
+  overflow: hidden;
 }
 .rule-group-section {
   padding-bottom: 8px;
@@ -49,7 +64,7 @@
   background: rgb(255 255 255 / 3.5%);
 }
 .snode.active > .sh {
-  background: rgb(78 0 142 / 30%);
+  background: rgb(90 30 156 / 30%);
   box-shadow: inset 0 0 0 1px rgb(176 123 232 / 45%);
 }
 .chev {
@@ -67,7 +82,7 @@
 }
 .chev:hover {
   border-color: #b07be8;
-  box-shadow: 0 0 18px -4px rgb(78 0 142 / 50%);
+  box-shadow: 0 0 18px -4px rgb(90 30 156 / 50%);
 }
 .chev svg {
   width: 14px;
@@ -87,8 +102,11 @@
   min-width: 0;
   flex: 1;
   grid-template-columns: minmax(100px, 13fr) minmax(0, 1fr) auto;
-  align-items: baseline;
+  align-items: center;
   gap: 4px 14px;
+}
+.scnt-inline {
+  display: none;
 }
 .shead-open {
   display: grid;
@@ -166,12 +184,6 @@
   border-radius: 5px;
   font-size: 10px;
 }
-.schosen {
-  overflow: hidden;
-  color: #fff;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 .structure-layout.with-drawer .shead-main {
   grid-template-columns: minmax(100px, 1fr) auto auto;
 }
@@ -205,9 +217,38 @@
   gap: 12px;
   margin: 10px 0 4px;
 }
+.structure-course-slot {
+  min-width: 0;
+}
+/* A held card shows that it is picked up before any movement. Releasing without movement keeps
+   the press a click on the card itself. A ring inside the card edge marks the pickup without
+   tinting the card face or being cut off by the row's clipping. */
+.structure-course-slot.is-armed .tile {
+  border-color: #b07be8;
+  box-shadow: inset 0 0 0 2px rgb(176 123 232 / 50%);
+  transform: translateY(-1px) scale(1.01);
+}
+.structure-course-slot.is-armed .structure-course-motion {
+  overflow: visible;
+}
+.structure-course-slot .tile {
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .structure-course-slot.is-armed .tile {
+    transform: none;
+  }
+}
 .structure-course-motion {
   min-width: 0;
   overflow: hidden;
+}
+/* The destination slot stays empty while the lifted copy flies into it. */
+.structure-course-motion.is-receiving {
+  visibility: hidden;
 }
 .structure-card {
   width: 236px;
@@ -281,7 +322,7 @@
 .programme-menu-trigger:hover,
 .programme-menu-trigger[data-state="open"] {
   border-color: #b07be8;
-  background: rgb(78 0 142 / 25%);
+  background: rgb(90 30 156 / 25%);
 }
 .programme-menu {
   min-width: 220px;
@@ -361,7 +402,7 @@
   margin-right: 14px;
 }
 .prow.cur {
-  background: rgb(78 0 142 / 30%);
+  background: rgb(90 30 156 / 30%);
 }
 .prow .add {
   color: #b07be8;
@@ -408,11 +449,56 @@
 .module-version-picker .plist {
   margin-top: 6px;
 }
-/* The Cancel control of a version hand-off sits above the picker's own list. */
-.module-version-cancel {
+/* The version prompt scrolls its cards within a bounded height. */
+.module-versions {
   display: flex;
-  justify-content: flex-end;
-  margin-bottom: 8px;
+  max-height: min(50vh, 360px);
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  /* The gutter matches the dialog's own padding, centering the scrollbar against the options. */
+  padding-right: 26px;
+}
+/* Each version is one compact card with the action centered against the whole card, the name on
+   one ellipsized line and the official facts on one ellipsized line below. */
+.dialog-option.module-version-option {
+  display: grid;
+  margin-top: 0;
+  grid-template-columns: 96px minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto;
+  gap: 2px 12px;
+  align-items: center;
+}
+.dialog-option.module-version-option > .dialog-code {
+  grid-column: 1;
+  grid-row: 1;
+}
+.dialog-option.module-version-option > .dialog-name {
+  grid-column: 1 / 3;
+  grid-row: 2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dialog-option.module-version-option > .module-version-add {
+  grid-column: 3;
+  grid-row: 1 / 4;
+  align-self: center;
+  color: #b07be8;
+  text-align: right;
+  font:
+    12px "JetBrains Mono",
+    ui-monospace,
+    monospace;
+  white-space: nowrap;
+}
+.dialog-option.module-version-option .module-version-label {
+  grid-column: 1 / 3;
+  grid-row: 3;
+  padding-bottom: 0;
+}
+.structure-root-overlay .root-module-row > .add {
+  display: none;
 }
 .structure-root-overlay .root-module-row {
   grid-template-columns: 112px minmax(0, 1fr);
@@ -473,6 +559,15 @@
     transform 0.45s cubic-bezier(0.22, 0.8, 0.2, 1),
     visibility 0s;
 }
+/* The header and body share one wrapper, so a target change animates them together while the
+   drawer frame stays in place. */
+.sdrawer-content {
+  display: flex;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
 .dh {
   display: flex;
   flex: none;
@@ -481,7 +576,7 @@
   gap: 12px;
   padding: 18px 20px;
   border-bottom: 1px solid #b07be8;
-  background: linear-gradient(135deg, #4e008e, #2c0a52);
+  background: linear-gradient(135deg, var(--color-accent-strong), #2c0a52);
 }
 .dh > div {
   display: grid;
@@ -503,12 +598,9 @@
 .db {
   flex: 1;
   overflow-y: auto;
-  padding: 18px 20px 40px;
-  scrollbar-width: none;
+  padding: 18px 2px 40px 20px;
+  scrollbar-gutter: stable;
   overscroll-behavior: contain;
-}
-.db::-webkit-scrollbar {
-  display: none;
 }
 .dsum {
   display: flex;
@@ -589,12 +681,23 @@
 .drawer-selection-toggle:hover {
   color: #fff;
   border-color: #b07be8;
-  background: rgb(78 0 142 / 25%);
+  background: rgb(90 30 156 / 25%);
 }
 .drawer-selection-toggle.is-done {
   border-color: #5ee6a8;
   color: #00170d;
   background: #5ee6a8;
+}
+/* The drawer's Complete toggle lights up and dims back, matching the course tiles. */
+.drawer-selection-toggle {
+  transition:
+    border-color 0.22s ease,
+    color 0.22s ease,
+    background-color 0.22s ease,
+    box-shadow 0.22s ease;
+}
+.drawer-selection-toggle.is-done {
+  box-shadow: 0 0 12px rgb(94 230 168 / 40%);
 }
 .dfoot {
   display: flex;
@@ -632,7 +735,7 @@
   border-color: #b07be8;
   box-shadow:
     0 0 0 4px rgb(176 123 232 / 14%),
-    0 24px 90px -10px rgb(78 0 142 / 70%);
+    0 24px 90px -10px rgb(90 30 156 / 70%);
 }
 .bar svg {
   flex: none;
@@ -670,30 +773,61 @@
   width: 16px;
   height: 16px;
 }
+/* The panel opens with a fade and a drop, and closes at once: a picked result clears the query in
+   the same frame, so a closing fade would show the emptied panel over the drawer. */
 .dres {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
   left: 0;
   z-index: 8;
-  max-height: 62vh;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 12px 12px 8px;
+  max-height: calc(62vh + 2px);
+  overflow: hidden;
+  padding: 0;
   border: 1px solid #b07be8;
   border-radius: 14px;
   background: #0a0a0f;
-  box-shadow:
-    0 30px 80px rgb(0 0 0 / 90%),
-    0 0 50px -10px rgb(78 0 142 / 50%);
+  box-shadow: 0 30px 80px rgb(0 0 0 / 90%);
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
   transform: translateY(-10px);
-  transition:
-    opacity 0.2s ease,
-    transform 0.32s cubic-bezier(0.22, 0.8, 0.2, 1),
-    visibility 0s linear 0.32s;
+}
+/* The results box holds only the results, so its scrollbar spans the result list. */
+.dres-results {
+  max-height: 62vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 8px 0 6px 10px;
+}
+.dres-results[data-scrollable="false"] {
+  padding-right: 10px;
+}
+.dres-results > .tier:first-child {
+  margin-top: 4px;
+}
+/* The panel ends at its last result, so the last section adds no trailing margin or list padding
+   on top of the panel's own bottom inset. */
+.dres-results > .tier:last-child {
+  margin-bottom: 0;
+}
+.dres-results > .tier:last-child .plist {
+  padding-bottom: 0;
+}
+/* The drawer's empty note keeps equal space above and below inside the collapsed results box. */
+.dres-results > .dnote {
+  margin: 0;
+  padding: 16px 8px;
+}
+/* The section's empty note lines up with the heading text above it. */
+.dres-results .tier .dnote {
+  margin-left: 12px;
+}
+.dseg-row {
+  margin-top: 8px;
+}
+.dseg-row .dseg {
+  margin: 0;
 }
 .dres.open {
   opacity: 1;
@@ -720,9 +854,6 @@
 .dres .plist .lookup-virtual-row > .prow {
   border: 1px solid rgb(255 255 255 / 12%);
   border-radius: 10px;
-}
-.dres .dseg {
-  margin: 0;
 }
 .seg {
   display: flex;
@@ -754,7 +885,7 @@
 }
 .dseg button.on {
   color: #fff;
-  background: #4e008e;
+  background: var(--color-accent-strong);
 }
 .dlist {
   transition:
@@ -785,6 +916,18 @@
 }
 .sdrawer .dres .prow.root-module-row {
   grid-template-columns: 100px minmax(0, 1fr);
+}
+/* A long result name takes at most two lines and ends with an ellipsis. The rest never paints
+   past the row, and the row grows to the two-line height instead of clipping one line. */
+.sdrawer .dres .prow .pn {
+  display: -webkit-box;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  text-overflow: ellipsis;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 .tile.structure-card.added {
   border-style: dashed;
@@ -881,16 +1024,64 @@ body.structure-drawer-open .structure-root-anchor {
   display: block;
   max-height: 300px;
   overflow-y: auto;
+  padding: 8px 0 8px 8px;
+  border: 1px solid var(--color-line);
+  border-radius: 12px;
+}
+.structure-root-overlay .sempty {
+  padding-left: 8px;
 }
 .structure-root-overlay .plist .lookup-virtual-row > .prow {
   border-top: 1px solid rgb(255 255 255 / 12%);
 }
-.structure-root-overlay
-  .plist
-  .lookup-virtual-spacer
-  > .lookup-virtual-row:first-child
-  > .prow {
-  border-top: 0;
+/* Desktop result rows use the same spaced cards, accent code and action column as the course
+   pickers, while the phone rows keep their own two-line card layout. */
+@media (min-width: 681px) {
+  .structure-root-overlay .plist {
+    padding: 8px 0 2px 8px;
+    background: transparent;
+  }
+  .structure-root-overlay .plist[data-scrollable="false"] {
+    padding-right: 8px;
+  }
+  .structure-root-overlay .plist .lookup-virtual-row > .prow {
+    grid-template-columns: 100px minmax(0, 1fr) auto;
+    gap: 12px;
+    min-height: 38px;
+    padding: 0 14px;
+    border: 1px solid rgb(255 255 255 / 12%);
+    border-radius: 10px;
+    background: #0a0a0f;
+  }
+  .structure-root-overlay .plist .lookup-virtual-row > .prow:hover {
+    background: rgb(255 255 255 / 4%);
+  }
+  .structure-root-overlay .root-module-row > .scode {
+    overflow: hidden;
+    color: #b07be8;
+    font:
+      11px "JetBrains Mono",
+      ui-monospace,
+      monospace;
+    text-overflow: ellipsis;
+  }
+  .structure-root-overlay .root-module-row > .sname {
+    font-weight: 500;
+    font-size: 13px;
+  }
+  .structure-root-overlay .root-module-row > .add {
+    display: inline;
+    color: #b07be8;
+    text-align: right;
+    font:
+      12px "JetBrains Mono",
+      ui-monospace,
+      monospace;
+  }
+  .structure-root-overlay .sempty {
+    padding: 23px 8px 8px;
+    color: rgb(255 255 255 / 55%);
+  }
 }
 .module-lookup-controls {
   background: #0a0a0f;
@@ -953,8 +1144,6 @@ body.structure-drawer-open .structure-root-anchor {
     min-height: 0;
     max-height: none;
     overflow-y: auto;
-    padding-bottom: 8px;
-    border: 0;
     background: transparent;
   }
   /* At phone widths the version hand-off scrolls inside its own bound, while the ordinary root
@@ -1027,7 +1216,9 @@ body.structure-drawer-open .structure-root-anchor {
     padding: 14px 12px;
   }
   .sdrawer .db {
-    padding: 12px 12px 24px;
+    padding: 12px 0 24px 12px;
+    --scrollbar-size: 12px;
+    --scrollbar-inset: 2px;
   }
   .sdrawer .prow:not(.opt) {
     min-height: 44px;
@@ -1180,6 +1371,7 @@ body.structure-drawer-open .structure-root-anchor {
     margin-top: 6px;
   }
   .structure-tree .sh {
+    align-items: center;
     gap: 8px;
   }
   .structure-layout .shead-main,
@@ -1191,16 +1383,23 @@ body.structure-drawer-open .structure-root-anchor {
     grid-column: 1;
     grid-row: 1;
   }
-  .structure-tree .scnt {
-    min-width: 0;
-    grid-column: 1;
-    grid-row: 2;
-    text-align: left;
+  /* The credit counts ride the subtitle line right after the kind tag. */
+  .structure-tree .scnt-inline {
+    display: inline;
+    color: rgb(255 255 255 / 55%);
+    white-space: nowrap;
+  }
+  .structure-tree .scnt-inline > b {
+    color: #fff;
+    font-weight: 500;
+  }
+  .structure-tree .shead-main > .scnt {
+    display: none;
   }
   .structure-tree .programme-menu-trigger {
     grid-column: 2;
     grid-row: 1;
-    align-self: start;
+    align-self: center;
     justify-self: end;
   }
   .structure-tree .hair {
@@ -1260,4 +1459,56 @@ body.structure-drawer-open .structure-root-anchor {
 }
 .structure-tree .structure-card[data-title-lines="1"] .tile-actions {
   margin-top: 0;
+}
+
+/* The active drag lifts one copy above the pane, marks the insertion slot and keeps the source
+   grid free of a second card. */
+body.course-dragging {
+  cursor: grabbing;
+  user-select: none;
+  -webkit-user-select: none;
+}
+/* The preview changes the tree's flow, so the structure pane holds its scroll position itself
+   and never lets scroll anchoring move it during the capture or the ghost. */
+body.course-dragging .tab-pane:has(.structure-pane) {
+  overflow-anchor: none;
+}
+.structure-course-ghost {
+  box-sizing: border-box;
+  width: var(--drag-ghost-width, 0);
+  height: var(--drag-ghost-height, 0);
+  border: 2px dashed #b07be8;
+  border-radius: 14px;
+  background: rgb(90 30 156 / 12%);
+  pointer-events: none;
+}
+.structure-course-lifted {
+  position: fixed;
+  z-index: 1000;
+  margin: 0;
+  pointer-events: none;
+}
+.structure-course-lifted .structure-card {
+  width: 100%;
+  height: 100%;
+}
+/* The pickup highlight carries from the held card into the lifted copy, so the cue never
+   disappears between the hold and the first movement. */
+.structure-course-lifted .tile {
+  border-color: #b07be8;
+  box-shadow:
+    inset 0 0 0 2px rgb(176 123 232 / 50%),
+    0 24px 70px rgb(0 0 0 / 70%),
+    0 0 40px -10px rgb(90 30 156 / 60%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .structure-course-lifted .tile {
+    border-color: #b07be8;
+    box-shadow: 0 0 0 2px rgb(176 123 232 / 22%);
+  }
+}
+@media (max-width: 600px) {
+  .structure-course-ghost {
+    width: 100%;
+  }
 }

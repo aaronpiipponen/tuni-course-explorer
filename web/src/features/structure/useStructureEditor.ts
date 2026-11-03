@@ -11,6 +11,7 @@ import { useProfileSelector } from "../../state/useProfileSelector";
 import { useAction } from "../../shared/useAction";
 import {
   applyStructure,
+  clearCourseOrder,
   programmeForest,
   resetCompletionChange,
   resetUnplaced,
@@ -24,6 +25,7 @@ import {
   type StructureState,
 } from "./state";
 import {
+  courseHolders,
   indexResolved,
   nextChoices,
   officialHomes,
@@ -36,15 +38,17 @@ import {
 import {
   clearedScopePlacements,
   hasScopedEdits,
+  restoreScopeContents,
+  officialPulls,
   insideScope,
-  keepCoursePlacements,
+  officialPlacementTarget,
   placeCourse,
   placeModule,
+  moveResetOptions,
   placeModuleWithCourses,
   removalPlacements,
-  resetScope,
-  scopePulls,
   type PulledCourse,
+  type PulledModule,
 } from "./edits";
 import { moduleName, nodeWordingKind, resolvedNodeLabel } from "./presentation";
 import type {
@@ -52,8 +56,13 @@ import type {
   CourseMoveRequest,
 } from "./CourseMoveConfirmDialog";
 import { toggleCompleted } from "../../state/course-actions";
-import { displayContents, moduleSource, courseSource } from "./display";
-import type { DisplayLanguage } from "../../state/types";
+import {
+  courseSource,
+  displayContents,
+  holderCourses,
+  moduleSource,
+} from "./display";
+import type { DisplayLanguage, ProfileState } from "../../state/types";
 import { uiText } from "../../shared/wording";
 import {
   forgetRemovedModuleVersions,
@@ -62,7 +71,31 @@ import {
 import type { ExtraContent } from "./usePlacedContent";
 import { readProspectiveStructure } from "./structureReads";
 
-/** One module operation source: rendered content, or a catalogue identity read before it applies. */
+/** Find the official rule entry that renders one module, with the choice path that reaches it. */
+function findRuleModule(
+  root: StructureNode,
+  moduleId: string,
+): StructureRuleItem | null {
+  const walk = (node: StructureNode): StructureRuleItem | null => {
+    const entries =
+      node.kind === "choice"
+        ? node.options.flatMap((option) => option.entries)
+        : node.entries;
+    for (const entry of entries) {
+      if (entry.kind !== "node") continue;
+      if (entry.node.module?.group_id === moduleId && entry.origin)
+        return { entry, origin: entry.origin };
+      const nested = walk(entry.node);
+      if (nested) return nested;
+    }
+    return null;
+  };
+  return walk(root);
+}
+
+/**
+ * One module operation source: rendered content or a catalogue identity read before it applies.
+ */
 export type ModuleOperationSource =
   | { kind: "loaded"; module: ModuleSummary }
   | {
@@ -156,7 +189,7 @@ export function useStructureEditor({
   };
   const projectionFor = (state: StructureState, ctx: PlacedContent) =>
     indexResolved(resolveStructure(forestFor(state, ctx), state, ctx));
-  /** The open profile's stored structure, as the interfaces that compare without writing read it. */
+  /** The open profile's stored structure, read by the interfaces that compare without writing. */
   const storedStructure = (): StructureState => {
     const snapshot = store.getSnapshot();
     return snapshot.profiles[snapshot.currentProfileId].state.structure;
@@ -176,6 +209,10 @@ export function useStructureEditor({
     removed: readonly string[] = [],
     nextProgrammes?: (current: StructureState) => string[],
     moduleVersions?: Readonly<Record<string, string>>,
+    complete?: (
+      state: ProfileState,
+      change: StructureChange,
+    ) => StructureChange,
   ) => {
     applyStructure(store, (state) => {
       const current = state.structure;
@@ -186,7 +223,7 @@ export function useStructureEditor({
       const forest = forestFor({ ...current, programmeGroupIds }, ctx);
       const next = updateEdits(current);
       const projection = resolveStructure(forest, next, ctx);
-      return {
+      const change: StructureChange = {
         next: {
           programmeGroupIds,
           ...next,
@@ -196,15 +233,17 @@ export function useStructureEditor({
             projection,
           ),
           placedCourseIds: projection.subtree.map((course) => course.group_id),
+          courseHolders: courseHolders(projection),
+          courseOrder: [...current.courseOrder],
         },
         removedCourseIds: removed,
       };
+      return complete ? complete(state, change) : change;
     });
   };
   const choose = (node: StructureNode, optionKey: string) =>
     runAction(() => {
       if (locked) return;
-      if (nextChoices(edits.choices, node, optionKey) === edits.choices) return;
       commit((current) => {
         requireNode(current, content, node.key);
         return {
@@ -216,7 +255,7 @@ export function useStructureEditor({
         uiText(
           messageLanguage,
           (edits.choices[node.key]?.length ?? 0)
-            ? "Selection changed: completed courses kept, other courses dropped"
+            ? "Selection changed"
             : "Selection made",
         ),
       );
@@ -244,20 +283,32 @@ export function useStructureEditor({
       });
       commit((current) => {
         requireNode(current, ctx, node.key);
-        const homes = officialHomes(forestFor(current, ctx), current, ctx);
+        const forest = forestFor(current, ctx);
+        const homes = officialHomes(forest, current, ctx);
         return {
           ...asEdits(current),
-          coursePlacements: placeCourse(current, homes, id, node.key)
-            .coursePlacements,
+          coursePlacements: placeCourse(
+            current,
+            homes,
+            id,
+            officialPlacementTarget(
+              forest,
+              current,
+              ctx,
+              "coursePlacements",
+              id,
+              node.key,
+            ),
+          ).coursePlacements,
         };
       }, ctx);
     });
   /**
    * Prepare one module operation's records and the moves it authorizes, on the supplied state.
    *
-   * An official selection extends the stored choices along the item's choice path first, so an owner
-   * inside the selected option exists before the module is placed. The module source is the
-   * visible node that renders the module now, and `moveKey` names that source together with the node
+   * An official selection extends the stored choices along the item's choice path first, so an
+   * owner inside the selected option exists before the module is placed. The module source is the
+   * visible node that renders the module, and `moveKey` names that source together with the node
    * key the module itself renders at and the pulled courses with the nodes they leave, so the write
    * compares the authorized moves against the latest state once. A module the ordered programme
    * list holds is taken out of that list as it is placed, so its entry resolves at the destination
@@ -273,10 +324,19 @@ export function useStructureEditor({
     targetKey: string,
     item: StructureRuleItem | null,
     pull = true,
+    reset?: "keep" | "all",
   ): {
     edits: StructureEdits;
     moves: readonly PulledCourse[];
+    moduleMoves: readonly PulledModule[];
+    programmeIds: readonly string[];
     moduleFrom: ResolvedNode | null;
+    resetMoves: readonly PulledCourse[];
+    resetModuleMoves: readonly PulledModule[];
+    resetProgrammeIds: readonly string[];
+    resetOptions: "reset" | "reset-all" | "both" | undefined;
+    sourceKey: string | null;
+    destinationKey: string;
     moveKey: string;
   } => {
     const id = module.group_id;
@@ -307,15 +367,41 @@ export function useStructureEditor({
       },
       ctx,
     );
+    const sourceNode = before.moduleAt.get(id)?.node ?? null;
     const placed = placeModuleWithCourses(
       afterForest,
       edits,
       ctx,
       id,
       targetKey,
-      before.moduleAt.get(id)?.node ?? null,
+      sourceNode,
       pull,
+      reset,
     );
+    // The reset lists read the moved module at its own new place, so the preview and the write
+    // see one state. A clean official module needs no reset, a structural edit needs the restoring
+    // reset, and completions need the destructive one.
+    const movedIndex = indexResolved(
+      resolveStructure(afterForest, placed.edits, ctx),
+    );
+    const destination = movedIndex.byKey.get(placed.destinationKey);
+    if (!destination) throw new Error("Structure target is unavailable");
+    const destinationNode: StructureNode = destination.node;
+    const resetPulls =
+      sourceNode === null
+        ? null
+        : officialPulls(afterForest, placed.edits, ctx, destinationNode);
+    const resetOptions =
+      sourceNode === null
+        ? undefined
+        : moveResetOptions(
+            afterForest,
+            placed.edits,
+            ctx,
+            movedIndex,
+            destinationNode.key,
+            completedCourseIds,
+          );
     const source = moduleSource(beforeTree, id);
     // The forest wrapper is the programme level, so a top-level entry moves with its list place.
     const moduleFrom =
@@ -330,19 +416,34 @@ export function useStructureEditor({
       move.course.group_id,
       before.courseAt.get(move.course.group_id)?.node.key ?? null,
     ]);
+    const moduleIds: [string, string | null][] = placed.moduleMoves.map(
+      (move) => [
+        move.module.group_id,
+        before.moduleAt.get(move.module.group_id)?.node.key ?? null,
+      ],
+    );
     return {
       edits: placed.edits,
       moves: placed.moves,
+      moduleMoves: placed.moduleMoves,
+      programmeIds: placed.programmeIds,
       moduleFrom,
+      resetMoves: resetPulls?.courses ?? [],
+      resetModuleMoves: resetPulls?.modules ?? [],
+      resetProgrammeIds: resetPulls?.programmeIds ?? [],
+      resetOptions,
+      sourceKey: sourceNode?.key ?? null,
+      destinationKey: placed.destinationKey,
       moveKey: JSON.stringify([
         moduleFrom?.node.key ?? null,
         before.moduleAt.get(id)?.node.key ?? null,
         moveIds.sort((left, right) => (left[0] < right[0] ? -1 : 1)),
+        moduleIds.sort((left, right) => (left[0] < right[0] ? -1 : 1)),
       ]),
     };
   };
   /**
-   * Read the stored envelope and refuse a profile, ordered programme list or selection that moved on.
+   * Read the stored envelope and refuse a profile, programme list or selection that moved on.
    *
    * A profile that differs returns null. A different programme list raises the programmes message
    * and a different selection key raises the version-selection message.
@@ -414,11 +515,29 @@ export function useStructureEditor({
     const preview = modulePlacement(state, ctx, module, targetKey, item);
     const source = preview.moduleFrom;
     let pulls = true;
-    if (source || preview.moves.length > 0) {
+    let reset: "keep" | "all" | undefined;
+    if (source || preview.moves.length > 0 || preview.moduleMoves.length > 0) {
       const answer = await confirmMoves({
         holder: module,
         moves: preview.moves,
+        moduleMoves: preview.moduleMoves,
         moduleFrom: source ? modulePlaceText(source) : undefined,
+        resetOptions: preview.resetOptions,
+      });
+      if (answer === false) return;
+      pulls = answer !== "keep";
+      if (answer === "reset" || answer === "reset-all")
+        reset = answer === "reset" ? "keep" : "all";
+    }
+    // A reset returns the module's own official courses from the nodes that render them.
+    if (
+      reset !== undefined &&
+      (preview.resetMoves.length > 0 || preview.resetModuleMoves.length > 0)
+    ) {
+      const answer = await confirmMoves({
+        holder: module,
+        moves: preview.resetMoves,
+        moduleMoves: preview.resetModuleMoves,
       });
       if (answer === false) return;
       pulls = answer !== "keep";
@@ -432,6 +551,7 @@ export function useStructureEditor({
       moduleVersions,
     });
     let applied: readonly PulledCourse[] = [];
+    let resetKeys: { heldKey: string; restoredKey: string } | null = null;
     commit(
       (current) => {
         if (!sameIdList(current.programmeGroupIds, programmes))
@@ -443,17 +563,41 @@ export function useStructureEditor({
           targetKey,
           item,
           pulls,
+          reset,
         );
         if (placement.moveKey !== preview.moveKey)
           throw new Error("Structure moves changed while confirming a module");
+        if (reset !== undefined && placement.sourceKey !== null)
+          resetKeys = {
+            heldKey: placement.sourceKey,
+            restoredKey: placement.destinationKey,
+          };
         applied = placement.moves;
         return placement.edits;
       },
       latestContent,
       [],
-      (current) =>
-        withoutProgrammeGroupId(current.programmeGroupIds, module.group_id),
+      (current) => {
+        const pulled = new Set(pulls ? preview.programmeIds : []);
+        if (reset !== undefined)
+          for (const id of preview.resetProgrammeIds) pulled.add(id);
+        return current.programmeGroupIds.filter(
+          (id) => id !== module.group_id && !pulled.has(id),
+        );
+      },
       moduleVersions,
+      reset === "all"
+        ? (state, change) =>
+            resetKeys === null
+              ? change
+              : resetCompletionChange(
+                  state,
+                  resetKeys.heldKey,
+                  latestContent,
+                  change,
+                  resetKeys.restoredKey,
+                )
+        : undefined,
     );
     notify((messageLanguage) => {
       // A kept course stays where it is, so only a pulled one is reported as moved.
@@ -567,6 +711,15 @@ export function useStructureEditor({
    */
   const addModule = (module: CatalogueModule, node: StructureNode): void => {
     if (locked) return;
+    // A module the target node's own rule names, in an option included, is selected at that
+    // official place. Every other module is placed into the target node: one the tree renders
+    // elsewhere moves there with its whole structure, and one it does not render adopts its
+    // official contents.
+    const official = findRuleModule(node, module.group_id);
+    if (official?.entry.kind === "node" && official.entry.node.module) {
+      void selectRuleModule(official.entry.node.module, official);
+      return;
+    }
     void runModuleOperation(
       {
         kind: "read",
@@ -632,16 +785,28 @@ export function useStructureEditor({
     });
   const placeRuleCourse = (course: CourseSummary, item: StructureRuleItem) => {
     commit((current) => {
-      requireNode(current, content, item.origin.ownerKey);
       let choices = current.choices;
       for (const step of item.origin.choicePath)
         if (!(choices[step.node.key] ?? []).includes(step.optionKey))
           choices = nextChoices(choices, step.node, step.optionKey);
+      // An option can nest a choice, so the owner of a row inside one exists only after the
+      // path's options are chosen. The target is checked against that selected state.
+      const selected = { ...current, choices };
+      requireNode(selected, content, item.origin.ownerKey);
+      const forest = forestFor(selected, content);
+      const next = { ...asEdits(selected), choices };
       return placeCourse(
-        { ...asEdits(current), choices },
-        officialHomes(forestFor(current, content), current, content),
+        next,
+        officialHomes(forest, selected, content),
         course.group_id,
-        item.origin.ownerKey,
+        officialPlacementTarget(
+          forest,
+          next,
+          content,
+          "coursePlacements",
+          course.group_id,
+          item.origin.ownerKey,
+        ),
       );
     }, content);
   };
@@ -741,31 +906,36 @@ export function useStructureEditor({
    * addition, a move out of an official home or a deselection inside that scope is compared
    * against the scope's own official defaults in its own place, which is the rendering the holder
    * shows when an addition first places it. A record that leaves the rendered contents unchanged
-   * is not a difference. It reads and derives only.
+   * is not a difference. A displayed card order that differs from the unranked order the same
+   * scope draws without saved ranks is a difference as well, while a rank list that changes no
+   * displayed sequence is not. It reads and derives only.
    */
   const hasNodeEdits = (node: StructureNode): boolean => {
     const current = storedStructure();
+    const forest = forestFor(current, content);
     return hasScopedEdits(
-      forestFor(current, content),
+      forest,
       asEdits(current),
       content,
       node.key,
+      current.courseOrder,
     );
   };
   /**
-   * The courses one reset returns to its scope from the nodes that render them now.
+   * The courses one reset returns to its scope from the nodes that render them.
    *
    * The reset returns every course whose official home is inside that scope and which another node
-   * renders now, so an interface can ask about them before the write and keep them where they are.
+   * renders, so an interface can ask about them before the write and keep them where they are.
    */
-  const resetPulls = (node: StructureNode): readonly PulledCourse[] => {
+  const resetPulls = (node: StructureNode) => {
     const current = storedStructure();
-    return scopePulls(
+    const pulls = officialPulls(
       forestFor(current, content),
       asEdits(current),
       content,
-      node.key,
+      node,
     );
+    return { moves: pulls.courses, moduleMoves: pulls.modules };
   };
   /**
    * Reset one node to its official contents.
@@ -798,25 +968,22 @@ export function useStructureEditor({
         const forest = forestFor(current, content);
         requireNode(current, content, node.key);
         const before = resolveStructure(forest, current, content);
-        const homes = officialHomes(forest, current, content);
-        const cleared = resetScope(current, homes, node.key);
-        const scoped = pull
-          ? cleared
-          : keepCoursePlacements(
-              cleared,
-              current,
-              scopePulls(forest, current, content, node.key),
-            );
-        const affected = indexResolved(before).byKey.get(node.key);
+        const beforeIndex = indexResolved(before);
+        const { edits: scoped } = restoreScopeContents(
+          forest,
+          current,
+          content,
+          node,
+          pull,
+        );
+        const affected = beforeIndex.byKey.get(node.key);
         if (!affected) throw new Error("Structure target is unavailable");
-        // A course this node held through a placement does not fall back into another node.
+        // A course this node showed does not fall back into another node it leaves alone.
         const kept = clearedScopePlacements(
           affected,
-          current,
           forest,
           scoped,
           content,
-          node.key,
           (key) => key === UNPLACED_KEY || insideScope(node.key, key),
           state.completedCourseIds,
         );
@@ -825,6 +992,12 @@ export function useStructureEditor({
           coursePlacements: { ...scoped.coursePlacements, ...kept },
         };
         const projection = resolveStructure(forest, edits, content);
+        // The reset scope's cards, and the cards the reset restores into it, lose their ranks.
+        const orderCleared = new Set(
+          affected.subtree.map((course) => course.group_id),
+        );
+        for (const [id, at] of indexResolved(projection).courseAt)
+          if (insideScope(node.key, at.node.key)) orderCleared.add(id);
         const ordinary: StructureChange = {
           next: {
             programmeGroupIds: [...current.programmeGroupIds],
@@ -837,6 +1010,8 @@ export function useStructureEditor({
             placedCourseIds: projection.subtree.map(
               (course) => course.group_id,
             ),
+            courseHolders: courseHolders(projection),
+            courseOrder: clearCourseOrder(current.courseOrder, orderCleared),
           },
         };
         return removeCompletedCourses
@@ -852,6 +1027,135 @@ export function useStructureEditor({
         ),
       );
     });
+  /**
+   * Move or reorder one displayed course with one atomic structure write.
+   *
+   * `targetKey` is a displayed programme, module or Unplaced studies holder. A null
+   * `beforeCourseId` appends to that holder's direct course grid. The destination's displayed
+   * sequence becomes the saved rank of its cards, and a rank of no other holder is derived. The
+   * write returns true after it lands and false for an invalid, unchanged or failed operation.
+   */
+  const dropCourse = (
+    courseId: string,
+    targetKey: string,
+    beforeCourseId: string | null,
+  ): boolean => {
+    let applied = false;
+    let wrote = false;
+    runAction(() => {
+      if (locked) return;
+      applyStructure(store, (state) => {
+        const current = state.structure;
+        const forest = forestFor(current, content);
+        const projection = resolveStructure(forest, current, content);
+        const index = indexResolved(projection);
+        const selected = new Set(state.selectedCourseIds);
+        const target = index.byKey.get(targetKey);
+        if (
+          !target ||
+          !["programme", "module", "unplaced"].includes(target.node.kind) ||
+          target.node.transparent
+        )
+          return null;
+        const placed = index.courseAt.get(courseId);
+        // The displayed holder is the grid the user sees, not the inner choice or transparent
+        // rule that owns the course, so a reorder inside one grid never becomes a placement.
+        const source =
+          courseSource(projection, courseId) ??
+          (selected.has(courseId) ? index.byKey.get(UNPLACED_KEY) : undefined);
+        if (!source) return null;
+        if (placed === undefined && !content.courses.has(courseId)) return null;
+        // The loose list is every selected course the tree does not place anywhere.
+        const loose = state.selectedCourseIds.flatMap((id) => {
+          if (projection.subtree.some((course) => course.group_id === id))
+            return [];
+          const course = content.courses.get(id);
+          return course ? [course] : [];
+        });
+        const ordered = (holder: ResolvedNode) =>
+          holderCourses(
+            holder,
+            displayContents(holder).courses,
+            loose,
+            current.courseOrder,
+          );
+        const currentIds = ordered(target).map((item) => item.course.group_id);
+        const destination = currentIds.filter((id) => id !== courseId);
+        if (beforeCourseId !== null) {
+          const at = destination.indexOf(beforeCourseId);
+          if (at < 0) return null;
+          destination.splice(at, 0, courseId);
+        } else destination.push(courseId);
+        const sameHolder = source.node.key === targetKey;
+        if (
+          sameHolder &&
+          destination.join("\u0000") === currentIds.join("\u0000")
+        )
+          return null;
+        const edits = sameHolder
+          ? asEdits(current)
+          : {
+              ...asEdits(current),
+              coursePlacements: placeCourse(
+                current,
+                officialHomes(forest, current, content),
+                courseId,
+                officialPlacementTarget(
+                  forest,
+                  current,
+                  content,
+                  "coursePlacements",
+                  courseId,
+                  targetKey,
+                ),
+              ).coursePlacements,
+            };
+        const finalProjection = resolveStructure(forest, edits, content);
+        if (
+          !sameHolder &&
+          !indexResolved(finalProjection).courseAt.has(courseId) &&
+          !(
+            edits.coursePlacements[courseId] === UNPLACED_KEY &&
+            selected.has(courseId)
+          )
+        )
+          return null;
+        const destinationSet = new Set(destination);
+        const anchor = current.courseOrder.findIndex((id) =>
+          destinationSet.has(id),
+        );
+        const remaining = current.courseOrder.filter(
+          (id) => !destinationSet.has(id),
+        );
+        const insertAt =
+          anchor < 0
+            ? remaining.length
+            : current.courseOrder
+                .slice(0, anchor)
+                .filter((id) => !destinationSet.has(id)).length;
+        const courseOrder = [
+          ...remaining.slice(0, insertAt),
+          ...destination,
+          ...remaining.slice(insertAt),
+        ];
+        wrote = true;
+        return {
+          next: {
+            programmeGroupIds: [...current.programmeGroupIds],
+            ...edits,
+            moduleVersions: { ...current.moduleVersions },
+            placedCourseIds: finalProjection.subtree.map(
+              (course) => course.group_id,
+            ),
+            courseHolders: courseHolders(finalProjection),
+            courseOrder,
+          },
+        };
+      });
+      applied = wrote;
+    });
+    return applied;
+  };
   return {
     choose,
     addCourse,
@@ -865,6 +1169,7 @@ export function useStructureEditor({
     hasNodeEdits,
     resetPulls,
     resetNode,
+    dropCourse,
     pendingModuleId,
     error: error ?? actionError,
   };

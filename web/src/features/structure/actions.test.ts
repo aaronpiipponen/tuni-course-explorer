@@ -135,6 +135,7 @@ const writeStructure = (
       moduleVersions: {},
       ...edits,
       placedCourseIds: resolved.subtree.map((item) => item.group_id),
+      courseOrder: [],
     },
     ...change,
   }));
@@ -143,7 +144,7 @@ const writeStructure = (
 
 describe("structure selection actions", () => {
   beforeEach(() => localStorage.clear());
-  it("applyStructure leaves deselected completions loose and drops them only on explicit full removal", () => {
+  it("leaves deselected completions loose and drops them only on full removal", () => {
     const store = createBrowserStore(localStorage);
     const write = (
       next: {
@@ -162,6 +163,7 @@ describe("structure selection actions", () => {
           coursePlacements: {},
           modulePlacements: {},
           placedCourseIds: [...next.placedCourseIds],
+          courseOrder: [],
         },
         removedCourseIds: removed,
         discardUncompletedCourseIds: discard,
@@ -316,6 +318,7 @@ describe("structure selection actions", () => {
           moduleVersions: {},
           ...edits,
           placedCourseIds: resolved.subtree.map((item) => item.group_id),
+          courseOrder: [],
         },
       }));
       store = createBrowserStore(localStorage);
@@ -401,6 +404,13 @@ describe("structure selection actions", () => {
           "not-rendered-module": "not-rendered-module-v1",
         },
         placedCourseIds: [...state.structure.placedCourseIds],
+        courseOrder: [
+          "loose-done",
+          "completed-course",
+          "pending-course",
+          "sibling-course",
+          "loose-course",
+        ],
       },
     }));
     resetUnplaced(store, content);
@@ -421,6 +431,8 @@ describe("structure selection actions", () => {
     ]);
     expect(state.structure.choices[`${programme}/2`]).toBeUndefined();
     expect(state.structure.modulePlacements["bucket-module"]).toBeNull();
+    // Unplaced studies clears the ranks of its direct and grouped courses, and outside ranks stay.
+    expect(state.structure.courseOrder).toEqual(["sibling-course"]);
     const after = resolveStructure(tree, state.structure, content);
     expect(
       after.children[0].children[0].subtree.map((item) => item.group_id),
@@ -495,15 +507,15 @@ describe("structure selection actions", () => {
     writeStructure(store, ["prog-d"], edits, content);
     toggleCompleted(store, "shared");
     store = createBrowserStore(localStorage);
-    // Adding the later holder lists the shared course and the node it is in now.
+    // Adding the later holder lists the shared course and the node it is in.
     const moves = programmeMoves(
       store.getSnapshot().profiles.default.state.structure,
       { kind: "add", groupId: "prog-c", versionId: "prog-c-v1" },
       content,
     );
-    expect(moves.map((move) => move.course.group_id)).toEqual(["shared"]);
-    expect(moves[0].from("en")).toBe("Module B");
-    expect(moves[0].from("fi")).toBe("Moduuli B");
+    expect(moves.moves.map((move) => move.course.group_id)).toEqual(["shared"]);
+    expect(moves.moves[0].from("en")).toBe("Module B");
+    expect(moves.moves[0].from("fi")).toBe("Moduuli B");
     changeProgrammes(
       store,
       { kind: "add", groupId: "prog-c", versionId: "prog-c-v1" },
@@ -603,6 +615,7 @@ describe("structure selection actions", () => {
         moduleVersions: {},
         ...modulePlacement.edits,
         placedCourseIds: moduleProjection.subtree.map((item) => item.group_id),
+        courseOrder: [],
       },
     }));
     store = createBrowserStore(localStorage);
@@ -617,6 +630,20 @@ describe("structure selection actions", () => {
       moduleKey,
     );
     expect(state.completedCourseIds).toContain("shared");
+    // Adding the holder as a programme clears the completions of the scope it leaves.
+    changeProgrammes(
+      store,
+      { kind: "add", groupId: "mod-e", versionId: "mod-e-v1" },
+      withE,
+      false,
+      true,
+      undefined,
+      "all",
+    );
+    store = createBrowserStore(localStorage);
+    state = store.getSnapshot().profiles.default.state;
+    expect(state.structure.programmeGroupIds).toEqual(["prog-d", "mod-e"]);
+    expect(state.completedCourseIds).not.toContain("shared");
   });
 
   it("replaces or resets only the named programme while preserving completions", () => {
@@ -681,6 +708,15 @@ describe("structure selection actions", () => {
             "prog-b": "prog-b-v1",
           },
           placedCourseIds: [...state.structure.placedCourseIds],
+          courseOrder: [
+            "b-optional",
+            "b-required",
+            "outside-held",
+            "a-required",
+            "a-optional",
+            "a-manual",
+            "loose-done",
+          ],
         },
       }));
       // A version that disagrees with the stored selection of the same group is refused, and the
@@ -747,6 +783,12 @@ describe("structure selection actions", () => {
       );
       expect(state.structure.placedCourseIds).toContain("a-required");
       expect(state.structure.placedCourseIds).toContain("b-optional");
+      // The named scope's ranks clear while the other programme's order stays as it was.
+      expect(state.structure.courseOrder).toEqual(
+        operation === "replace"
+          ? ["b-optional", "b-required", "outside-held", "loose-done"]
+          : ["b-optional", "b-required", "loose-done"],
+      );
       expect(state.structure.placedCourseIds).not.toContain("a-optional");
       expect(state.structure.placedCourseIds).not.toContain("a-manual");
       // A replacement forgets the replaced programme's selection and keeps every other one. A
@@ -982,6 +1024,14 @@ describe("structure selection actions", () => {
           "b-module": "b-module-v1",
         },
         placedCourseIds: [...state.structure.placedCourseIds],
+        courseOrder: [
+          "b-module-course",
+          "b-optional",
+          "b-default",
+          "a-default",
+          "a-optional",
+          "loose",
+        ],
       },
     }));
     changeProgrammes(store, { kind: "delete", groupId: "prog-b" }, content);
@@ -1003,6 +1053,11 @@ describe("structure selection actions", () => {
       "a-default",
       "a-optional",
     ]);
+    expect(state.structure.courseOrder).toEqual([
+      "a-default",
+      "a-optional",
+      "loose",
+    ]);
     // Deleting the last programme leaves the completed course loose and clears the last scope.
     changeProgrammes(store, { kind: "delete", groupId: "prog-a" }, content);
     store = createBrowserStore(localStorage);
@@ -1014,6 +1069,7 @@ describe("structure selection actions", () => {
     );
     expect(state.selectedCourseIds).not.toContain("a-optional");
     expect(state.structure.choices).toEqual({});
+    expect(state.structure.courseOrder).toEqual(["loose"]);
     expect(state.structure.placedCourseIds).toEqual([]);
   });
 });

@@ -1,39 +1,34 @@
 # Exact and approximate semantic retrieval
 
-Four fixed stored vectors are the queries in a comparison of exact SQL, centred SQL, bounded NumPy and approximate HNSW retrieval on one 58,962-chunk catalogue.
+Five semantic reads ran over one fixed catalogue snapshot and four stored query vectors, and a served request measured the endpoint that serves the read.
 
-**Evidence status:** Comparative. **Run date:** 21 October 2026.
+**Evidence status:** Comparative. **Run dates:** 21 and 28 October 2026.
 
 ## The question
 
-The experiment asked whether an exact semantic read can be made cheaper without changing its result, and what recall a bounded approximate HNSW read loses against the exact read. It compared five reads on the same fixed vectors and the same source catalogue snapshot:
+The comparison asked whether an exact semantic read can be cheaper without changing its result, and what recall a bounded approximate index loses against the exact read. A second measurement asked what the read costs inside the served search request.
 
-- the [semantic search](/docs/backend/search-and-discovery/search.md#semantic) read the product serves, used as the reference or exact oracle
-- a representative-filter pushdown that applies the product's representative grouping and identity filter inside SQL
+Five reads ran on the same fixed vectors and the same catalogue snapshot:
+
+- the product's semantic read, used as the exact reference
+- a representative-filter pushdown that applies the representative grouping and identity filter inside SQL
 - a centred SQL read over a fixture column that stores the hub-subtracted vector
 - a bounded exact NumPy read over every compatible chunk
 - an approximate HNSW index over the centred vectors, at two candidate bounds and two `ef_search` values
 
-The comparison measured result sets, order, score differences and recall. It also measured fixture setup, read time, arithmetic time and index build time, and the memory and storage of each fixture. No product setting changed, and no approximate configuration is a product setting.
+The comparison measured result sets, order, score differences and recall, with read time and the memory and storage each fixture used. HNSW is a graph index for approximate nearest-neighbour search. The fixed-vector reads did not measure the query embedding request, which the served request includes. The embedding runtime is measured in [Machine translation as retrieval-preserving transformation](/docs/experiments/search-and-translation/translation-and-retrieval.md).
 
 ## Catalogue and fixed queries
 
 The catalogue copy held 11,086 represented courses, of which 4,543 were active, and 58,962 compatible teaching-text [chunks](/docs/reference/glossary.md#capture-and-data-preparation). A chunk was compatible when it was completed, carried a vector, and matched the embedding configuration hash of the run.
 
-Four stored descriptive chunk vectors were frozen before the comparison. Each came from a different canonical course, one from learning outcomes and three from content, all in English at chunk index 0. The vectors are query inputs for a vector-query measurement. They are not embeddings of any lexical string, and they are not a semantic-quality oracle.
+Four stored descriptive chunk vectors were frozen before the comparison. Each came from a different canonical course, one from learning outcomes and three from content, all English at chunk index 0. They are query inputs for a vector-query measurement. They are not embeddings of any lexical string, and they are not a semantic-quality oracle.
 
-| Query | Source field | Language | Chunk index | Exact results |
-|---|---|---|---:|---:|
-| vector-1 | outcomes | en | 0 | 240 |
-| vector-2 | content | en | 0 | 168 |
-| vector-3 | content | en | 0 | 479 |
-| vector-4 | content | en | 0 | 592 |
-
-The exact results column is the number of courses the exact read returned at the 0.3 threshold after the representative filter. The comparison included active and inactive courses. The product order places active courses first, then descending score, then canonical identity.
+The exact read returned 240, 168, 479 and 592 courses for the four vectors at the 0.3 threshold, after the representative filter. The comparison included active and inactive courses. The product order places active courses first, then descending score, then canonical identity.
 
 ## Scoring and centring
 
-The embedding hub is the mean of the catalogue's unit chunk vectors. Semantic search subtracts the hub from the query vector and from each stored vector, then measures cosine similarity. The score for one course is the maximum over its current representative chunks.
+The [embedding hub](/docs/reference/glossary.md#capture-and-data-preparation) is the mean of the catalogue's unit chunk vectors. Semantic search subtracts the hub from the query vector and from each stored vector, then measures cosine similarity. The score for one course is the maximum over its representative chunks.
 
 ```text
 hub = mean of the catalogue's unit chunk vectors
@@ -41,56 +36,49 @@ score(q, course) = max over chunk vectors v of course of cos(v - hub, q - hub)
 cos(a, b) = (a . b) / (||a|| ||b||)
 ```
 
-The [semantic read and the service](/docs/backend/search-and-discovery/search-queries.md#the-semantic-read-and-the-service) show the SQL form as `1 - ((c - hub) <=> (q - hub))`, where `<=>` is the cosine distance operator. The product read groups by canonical course and current representative identity, keeps a course when its best chunk reaches the threshold, and returns every such course. `SEMANTIC_SEARCH_MIN_SCORE` sets the threshold, and the example sets 0.30. A score runs from -1 to 1, and an unrelated course scores close to zero after centring.
+The product's semantic read is the packed exact scan described in [Packed exact semantic search](/docs/experiments/search-and-translation/packed-exact-semantic-search.md). It returns one score for each stored group, where a group is a canonical course identity with its representative version, and the score is the greatest centred cosine among the group's chunks. Every group at or above the threshold is kept. `SEMANTIC_SEARCH_MIN_SCORE` sets the threshold, and the example sets 0.30. A score runs from -1 to 1, and an unrelated course scores close to zero after centring.
 
-The product read computes the subtraction in SQL. The centred SQL leg instead read a fixture column that already held `embedding - hub`, with no vector index. The approximate leg built an HNSW index on that centred column. The exact, pushdown and centred SQL reads ran without a vector index. The HNSW leg built the only vector index.
+| Read | What it did | Vector index |
+|---|---|---|
+| Exact reference | The product search service with a test provider, the representative filter and the product order | None |
+| Representative pushdown | The representative grouping and identity join inside SQL | None |
+| Centred SQL | A fixture column holding `embedding - hub` | None |
+| Bounded exact NumPy | Scored every compatible chunk in batches of 512 and kept each chunk identity's maximum | None |
+| Approximate HNSW | An index on the centred column, at two candidate bounds and two `ef_search` values | One HNSW index |
 
-## Exact read and representative pushdown
+The reference in this comparison was the product's semantic read through its search service, with a test provider that returned the fixed query vector, so no embedding request ran. The centred SQL leg read a fixture column that already held `embedding - hub`. The approximate leg built an HNSW index on that centred column with `vector_cosine_ops`, `m` 16 and `ef_construction` 64. The exact, pushdown and centred SQL reads ran without a vector index, and the HNSW leg built the only one.
 
-The reference is the product semantic read, run through the product search service with a test provider that returned the fixed query vector. No embedding request ran, so the reference timing covers the database read, the representative filter and the order, not the embedding service.
+## Exact reads compared
 
-The representative-filter pushdown moved the representative grouping and identity join into SQL and applied the same threshold and order. It preserved the exact set, order and scores on all four vectors.
+The three exact alternatives were compared with the reference on set, order and score. The maximum score delta is the largest difference between a returned score and the exact score. Recall is the share of the reference's course results that a read returned.
 
-| Query | Oracle results | Pushdown results | Same set | Same order | Max score delta | Recall |
-|---|---:|---:|---|---|---:|---:|
-| vector-1 | 240 | 240 | yes | yes | 0.0 | 1.0 |
-| vector-2 | 168 | 168 | yes | yes | 0.0 | 1.0 |
-| vector-3 | 479 | 479 | yes | yes | 0.0 | 1.0 |
-| vector-4 | 592 | 592 | yes | yes | 0.0 | 1.0 |
+| Query | Source field | Exact results | Pushdown set and order | Pushdown max score delta | Centred SQL set and order | NumPy set and order | NumPy max score delta | NumPy recall |
+|---|---|---:|---|---:|---|---|---:|---:|
+| vector-1 | outcomes | 240 | same | 0.0 | same | same | 1.42e-7 | 1.0 |
+| vector-2 | content | 168 | same | 0.0 | same | same | 1.87e-7 | 1.0 |
+| vector-3 | content | 479 | same | 0.0 | same | same | 1.37e-7 | 1.0 |
+| vector-4 | content | 592 | same | 0.0 | same | same | 2.98e-7 | 1.0 |
 
-Recorded wall medians show the pushdown was slower than the reference on every query. It is equivalent on these cases, but it is not a measured speed benefit.
+The pushdown preserved the exact set, order and scores on all four vectors, with a maximum score delta of 0.0. The centred SQL read matched the exact set and order on all four. The bounded NumPy read matched set and order on all four, with score differences below 3.1e-7. No threshold crossing and no set difference occurred in any of the three.
 
-| Query | Exact product read (s) | Representative pushdown (s) | Centred SQL read (s) |
+| Query | Exact reference read (s) | Representative pushdown (s) | Centred SQL read (s) |
 |---|---:|---:|---:|
 | vector-1 | 0.5699 | 0.8105 | 0.4898 |
 | vector-2 | 0.5756 | 0.6939 | 0.4928 |
 | vector-3 | 0.6202 | 0.6953 | 0.4927 |
 | vector-4 | 0.5863 | 0.7159 | 0.5023 |
 
+The pushdown was slower than the reference on every query, from 0.6939 s to 0.8105 s against 0.5699 s to 0.6202 s, so it is equivalent on these cases and not a measured speed benefit. The centred SQL medians were 0.4898 s, 0.4928 s, 0.4927 s and 0.5023 s, about 0.08 s to 0.13 s faster per query than the reference. Across the three reads the medians span 0.4898 s to 0.8105 s. The recorded medians come from three passes after one warmup.
+
 The chart shows the single-query wall time for the three reads.
 
-![Single-query wall time for the exact, pushdown and centred reads on four fixed vectors, showing the pushdown slower than the exact read and the centred read faster.](/docs/charts/semantic-retrieval-read-latency.svg)
+![Single-query wall time for the exact reference, the representative pushdown and the centred SQL read on four fixed vectors, showing the pushdown slower and the centred read faster on every query.](/docs/charts/semantic-retrieval-read-latency.svg)
 
-The exact fixture copied the corpus in 12.7 s and completed setup in 18.0 s. The centred fixture completed setup in 18.65 s. The recorded medians come from three passes after one warmup.
+The NumPy pass median was 17.78 s of fixture read and 3.93 s of arithmetic over 58,962 chunks in 116 batches. One pass scored all four queries, so the figures are not a single-query latency. At this corpus size the shared read is far slower than the centred SQL read.
 
-## Centred SQL and bounded exact NumPy
+## The approximate index
 
-The centred SQL read matched the exact oracle on set and order for all four vectors. The bounded NumPy read scored every compatible chunk in batches of 512 and kept the maximum score for each chunk identity. It matched the set and order on all four vectors, with score differences below 3.1e-7.
-
-| Query | Centred SQL set and order | NumPy set and order | NumPy max score delta | NumPy recall |
-|---|---|---|---:|---:|
-| vector-1 | exact | same | 1.42e-7 | 1.0 |
-| vector-2 | exact | same | 1.87e-7 | 1.0 |
-| vector-3 | exact | same | 1.37e-7 | 1.0 |
-| vector-4 | exact | same | 2.98e-7 | 1.0 |
-
-No threshold crossing and no set difference occurred. The centred SQL medians were 0.4898 s, 0.4928 s, 0.4927 s and 0.5023 s, about 0.08 s to 0.13 s faster per query than the exact reference.
-
-The NumPy pass median was 17.78 s of fixture read and 3.93 s of arithmetic over 58,962 chunks in 116 batches. The read is shared across all four queries in one pass. It is not one product request, so the figures are not a single-query latency. At this corpus size, the shared read is far slower than the centred SQL read.
-
-## Approximate HNSW
-
-HNSW is a graph index for approximate nearest-neighbour search. One index was built on the centred vector column with `vector_cosine_ops`, `m` 16 and `ef_construction` 64. The build took 95.8 s and the index occupied 369.65 MB. The fixture setup took 19.68 s, and the build ran under a 120 s statement timeout. The query plan used the index on all 16 configuration-and-query checks.
+One index was built on the centred vector column with `vector_cosine_ops`, `m` 16 and `ef_construction` 64. The build took 95.8 s, and the index occupied 369.65 MB. The query plan used the index on all 16 checks.
 
 The candidate bound is the SQL `LIMIT` on chunk rows. `ef_search` is the size of the dynamic candidate list the HNSW search explores. Neither value is a course result cutoff. Candidate course counts are before the 0.3 score threshold. Set equality and recall compare the final course results after that threshold with the exact results, the same 240, 168, 479 and 592 courses from the reference.
 
@@ -113,70 +101,98 @@ The candidate bound is the SQL `LIMIT` on chunk rows. `ef_search` is the size of
 | 512 | 512 | vector-3 | 512 | 277 | 479 | 0.5783 | no |
 | 512 | 512 | vector-4 | 512 | 305 | 592 | 0.5152 | no |
 
-Recall is the share of the exact oracle's course results that the approximate read returned. No approximation added a course that the oracle did not contain, and every retained candidate had the exact score. The losses are candidate omissions and their order effects.
+No approximation added a course that the reference did not contain, and every retained candidate had the exact score. The losses are candidate omissions and their order effects.
 
-The two bounds interact. At candidate 128, `ef_search` 128 and 512 produced the same candidate count and the same recall on every vector. The `LIMIT` stopped the scan at 128 chunks, so the larger `ef_search` did not add candidates. At candidate 512 and `ef_search` 128, the scan returned 130 to 171 chunks, so `ef_search` bounded the scan below the candidate cap. Recall at that setting was 0.3167, 0.4226, 0.2902 and 0.1807.
+The two bounds interact. At candidate 128, `ef_search` 128 and 512 produced the same candidate count and the same recall on every vector, because the `LIMIT` stopped the scan at 128 chunks and the larger `ef_search` added no candidates. At candidate 512 and `ef_search` 128 the scan returned 130 to 171 chunks, so `ef_search` bounded the scan below the candidate cap. Recall there was 0.3167, 0.4226, 0.2902 and 0.1807.
 
-Only the largest setting, candidate 512 with `ef_search` 512, reached recall 1.0000 and the exact set, and only for vector-1. The other three queries at the same setting returned recall 0.9940, 0.5783 and 0.5152, and none had the same set. At every setting except 512/512, recall was between 0.1791 and 0.4226, and the approximate read omitted 58 to 82 percent of the exact results.
+Only the largest setting, candidate 512 with `ef_search` 512, reached recall 1.0000 and the exact set, and only for vector-1. The other three queries at that setting returned recall 0.9940, 0.5783 and 0.5152, and none had the same set. At every setting except 512/512, recall was between 0.1791 and 0.4226, and the approximate read omitted 58 to 82 percent of the exact results.
 
-No approximate configuration was exact. The matrix contains no candidate bound or `ef_search` value that returned the exact set for all four queries, including the setting where one query reached recall 1.0000. No candidate bound, `ef_search` value or recall result is a product setting.
+No approximate configuration was exact. The matrix holds no candidate bound or `ef_search` value that returned the exact set for all four queries, including the setting where one query reached recall 1.0000. The index was the failed alternative of the line.
 
 The chart groups recall by configuration and query.
 
-![Recall against the exact oracle for four fixed vectors at four HNSW candidate and ef_search settings, showing recall 1.0 only for vector-1 at the largest setting.](/docs/charts/semantic-retrieval-hnsw-recall.svg)
+![Recall against the exact reference for four fixed vectors at four HNSW candidate and ef_search settings, showing recall 1.0 only for vector-1 at the largest setting.](/docs/charts/semantic-retrieval-hnsw-recall.svg)
 
-The comparison reports set parity and recall. It does not report a separate order count or a query latency for HNSW.
+The comparison reports set equality and recall, not a separate order count.
+
+## The served search request
+
+A run on 28 October 2026 measured the served search endpoint, not the fixed-vector reads above. The measured call posted this body to the search route:
+
+```json
+{"query": "machine learning", "display_language": "en"}
+```
+
+The run used one selected dataset and one serving generation, and every request was read-only. Each label ran two warm-up calls and five measured calls, and the table reports the median of the five.
+
+The semantic method performed a full represented-summary read on every query before the change. The represented summaries are the rows of every represented course that the semantic method pairs with its vector hits. After the change, the semantic method takes those rows from the same lookup projection the lexical methods already read, so that read no longer runs inside each semantic query.
+
+| Measurement | Before (ms) | After the change (ms) | Final run (ms) | Body digest |
+|---|---:|---:|---:|---|
+| `search` median | 1,783.9 | 898.6 | 858.6 | identical |
+
+The body digest after the change matched the baseline. The final run ran under a new serving generation, and its body differs from the baseline only in the serving dataset identity that every dataset response carries.
+
+The request median fell from 1,783.9 ms to 898.6 ms, and the final run measured 858.6 ms. The fall is consistent with removing the per-query represented-summary read. The endpoint median covers the whole request and response, and the measurement does not decompose its stages, so the fall is not attributed to one stage alone. The change was kept.
+
+The served request and the vector reads above have different boundaries. The served request carries one query embedding call, one semantic read and the response body, and its median covers all of them. The vector-read timings start after the query vector exists and cover one database read. The two sets of values are not comparable and do not add.
+
+The diagram shows the two measurement boundaries.
+
+![The served request spanning the HTTP request, one query embedding call, the semantic read and the response body, with medians of 1,783.9 ms before the change, 898.6 ms after the change and 858.6 ms in the final run, above the fixed-vector read that starts from a stored vector and spans one database read only.](/docs/diagrams/semantic-retrieval-measurement-boundaries.svg)
+
+The packed relation's own serving cost is measured in [Packed exact semantic search](/docs/experiments/search-and-translation/packed-exact-semantic-search.md).
 
 ## Memory and storage
 
-The memory table covers the three retrieval fixtures. It reports the fixture setup time, the on-disk chunk relation, the cgroup peak, the peak resident set of the fixture backend and the process-wide peak resident set. The byte values are converted to MB.
+The memory table covers the three retrieval fixtures. It reports the on-disk chunk relation, the peak resident set of the fixture backend and the process-wide peak resident set, in MB. The fixture ran under a container memory cap of 805.31 MB with no swap, and each leg's cgroup peak read 805.31 MB.
 
-| Leg | Fixture setup (s) | Chunk relation (MB) | cgroup peak (MB) | Backend peak RSS (MB) | Process peak RSS (MB) |
-|---|---:|---:|---:|---:|---:|
-| exact | 18.0 | 341.27 | 805.31 | 105.90 | 217.86 |
-| centred NumPy | 18.65 | 341.27 | 805.31 | 92.45 | 240.42 |
-| HNSW | 19.68 | 341.27 | 805.31 | 88.85 | 206.85 |
-
-The cgroup limit was 805.31 MB. The exact and HNSW cgroup peaks were 4,096 bytes above the limit, and the container stayed alive. The peak is reported as read.
+| Leg | Chunk relation (MB) | Backend peak RSS (MB) | Process peak RSS (MB) |
+|---|---:|---:|---:|
+| exact | 341.27 | 105.90 | 217.86 |
+| centred NumPy | 341.27 | 92.45 | 240.42 |
+| HNSW | 341.27 | 88.85 | 206.85 |
 
 The 341.27 MB chunk relation is storage on disk, not SQL query working memory. The cgroup figure includes the fixture's page cache and index files. The backend figure covers one fixture backend per leg, not every backend or worker process. The process peak is process-wide and includes the fixture copy stream, the NumPy arrays in the centred leg and the case payloads.
 
 The HNSW index occupies 369.65 MB on top of the 341.27 MB relation. The exact, centred NumPy and HNSW fixtures reported `temp_bytes` 0 at setup, so no temporary spill was recorded.
 
-## Corrections and failed attempts
+## What the results establish
 
-Five evidence clients and five client correction attempts ran, rather than the allowed eight measurement clients and two corrections. Four corrections were on the semantic path and one on the lexical path. A supervisor failure before any client started was a separate attempt. The total of 10 clients met the combined cap, but the correction category exceeded its allowance.
+Observed: the pushdown preserved the exact set, order and scores on all four vectors and was slower than the reference on every one. The centred SQL read and the bounded NumPy read matched the exact set and order on all four, and the NumPy scores stayed within 3.1e-7 of the exact scores. No approximate setting returned the exact set for more than one vector.
 
-The four semantic corrections were:
+Interpreted: the centred column stores the hub-subtracted vector, so the read no longer subtracts it per row, and the result is unchanged. It was the only read that was both exact and cheaper on this sample. The NumPy leg pays a full corpus read on every pass, which costs more than the arithmetic it saves at this corpus size. The approximate index loses results because its candidate list is fixed while the number of chunks that reach a qualifying course varies by query.
 
-- The first pushdown call used the raw stored vector as the query instead of the hub-centred vector. Its comparison was invalid. The corrected pushdown matched the oracle.
-- The first NumPy cursor read selected from the chunk table without its course and version joins.
-- The first NumPy pass passed pgvector `Vector` objects into the array instead of plain lists.
-- The first NumPy scoring used `1 - cosine` in place of the cosine similarity.
+No read from this comparison was selected as a product change. The product read kept subtracting the hub per row until the packed relation, measured later, became the product's semantic read, described in [Packed exact semantic search](/docs/experiments/search-and-translation/packed-exact-semantic-search.md). No candidate bound, `ef_search` value or recall result is a product setting, and no approximate configuration was exact enough to replace the exact read.
 
-The corrected NumPy run matched the exact set and order with the score differences in the table above.
+## Limitations
 
-The first fixture supervisor run failed before a client started. Its `awk` program used `index` as a variable name, which collided with a reserved name. Cleanup also met a sticky socket directory, and a separate cleanup removed two socket files. No measurement ran in that attempt.
+- The exact reference ran on a fixture copy of the compatible chunk rows from one catalogue snapshot, and four fixed stored vectors are its queries. The comparison establishes exactness and cost, not semantic quality or the relevance of any result set.
+- One NumPy pass scored all four queries, so its 17.78 s and 3.93 s are not a single-request latency.
+- The vector-read medians start after the query vector exists and cover one database read, so they exclude the embedding request and do not add to the served median.
+- The approximate leg reports recall and candidate counts, not query latency, so its recall is not weighed against its cost.
+- The memory figures are fixture measures. The backend figure covers one backend per leg, and the cgroup peak includes page cache and index files.
+- Database and CPU cache warmth was not controlled, so small differences between the reads are not separated from run-to-run variation.
+- The served run used one query text, one serving generation and no concurrent load, and its median does not decompose the request.
 
-## Embedding provider background
+## Baselines
 
-A feasibility measurement recorded before this comparison tested the CPU-only embedding service on its own. The service runs BGE-M3 (`BAAI/bge-m3`) with 1,024-component vectors on a two-thread aarch64 llama.cpp runtime. The measurement recorded a peak resident set of 1,117.51 MB, idle CPU of 0.0167 percent and an embedding-only warm p95 of 53.5 ms.
+A follow-up compares against these inputs, settings and medians.
 
-| Item | Value |
+| Quantity | Value |
 |---|---|
-| Model | `BAAI/bge-m3`, 1,024 components |
-| Runtime | CPU-only llama.cpp, 2 threads, aarch64 |
-| Peak resident set | 1,117.51 MB |
-| Idle CPU | 0.0167% |
-| Warm p95, embedding only | 53.5 ms |
-
-That boundary is one embedding request. It is not a search latency. The measurement compared the 53.5 ms with a 0.5 s full-search budget, but it did not measure the full search path.
-
-The retrieval experiment made no embedding request. Its exact, pushdown and centred times start after the query vector exists, because the test provider returned the fixed vector. The 53.5 ms embedding time and the 0.49 s to 0.62 s exact and centred read times therefore have different boundaries. They are not added here, and their sum is not an end-to-end search latency.
+| Corpus | 11,086 represented courses, 4,543 active, 58,962 compatible chunks |
+| Query set | Four stored chunk vectors, English, chunk index 0 |
+| Score threshold | 0.3 |
+| Exact reference read median | 0.5699 s to 0.6202 s per query |
+| Centred SQL read median | 0.4898 s to 0.5023 s per query |
+| Bounded NumPy pass | 17.78 s of fixture read and 3.93 s of arithmetic over 116 batches |
+| HNSW index | `m` 16, `ef_construction` 64, build 95.8 s, 369.65 MB |
+| Served `search` median | 1,783.9 ms before the change, 898.6 ms after, 858.6 ms in the final run |
 
 ## Setup details
 
-The work ran on a 4-core aarch64 server with 23.6 GB of RAM. The embedding service is CPU-only, and the retrieval experiment used stored vectors, so no model inference ran during the retrieval measurements.
+The work ran on a 4-core aarch64 server with 24.1 GB of RAM. The embedding service is CPU-only, and the retrieval experiment used stored vectors, so no model inference ran during the retrieval measurements.
 
 | Item | Value |
 |---|---|
@@ -185,35 +201,19 @@ The work ran on a 4-core aarch64 server with 23.6 GB of RAM. The embedding servi
 | PostgreSQL | 18.6, aarch64 |
 | pgvector | 0.8.6 |
 | Fixture memory cap | 805.31 MB, no swap |
-| Client address-space cap | 1.074 GB |
 | Query sample limit | 60 s |
-| Fixture setup limit | 120 s |
-| Warmup and recorded passes | one warmup, three recorded passes |
+| Warmup and recorded passes | One warmup, three recorded passes |
 | Query vector | BGE-M3, 1,024 components, unit length |
 | Parallel query workers | 0 |
 
-Each fixture ran in a disposable PostgreSQL container with no network and no published port. The catalogue snapshot was read with `transaction_read_only=on` and a 30 s statement timeout. The fixture copy and the index were written only inside the disposable database. The stored schema and data were not changed.
-
-Database and CPU cache warmth was not controlled. The medians come from three recorded passes after one warmup. Each leg ran one client process, and no concurrent load was measured.
-
-## What the results do not establish
-
-- The four stored vectors are fixed chunk-query proxies. They establish no semantic, retrieval or recommendation quality.
-- The exact reference ran on a copy of the compatible chunk rows, not on the catalogue database.
-- The pushdown comparison covers four vectors and one catalogue snapshot.
-- The NumPy read is shared across four queries per pass. It is not a single-request latency and not a memory bound for PostgreSQL.
-- The backend memory figures cover one fixture backend per leg. They are not the memory of all backends or worker processes.
-- The cgroup figures include page cache and index files. They are not an isolated query working-memory figure.
-- The HNSW results are approximate. No candidate bound, `ef_search` value or recall result is a product setting or an exact result.
-- The HNSW comparison reports recall and candidate counts, not a query latency.
-- The search timings exclude the query embedding request.
-- The experiment used one catalogue snapshot, four fixed vectors, one threshold and no concurrent load.
-- [Lexical matching equivalence and collation](/docs/experiments/search-and-translation/lexical-matching-and-collation.md) covers the lexical SQL forms and their collation behavior.
-- The provider feasibility measured embedding only. It did not measure the full search path.
-- No product change was made, and no approximate configuration is a product setting.
+Each fixture ran in a disposable PostgreSQL container with no network and no published port. The catalogue snapshot was read with `transaction_read_only=on` and a 30 s statement timeout. The fixture copy and the index were written only inside the disposable database, and the stored schema and data were not changed. Each leg ran one client process, and no concurrent load was measured.
 
 ## Open questions
 
-- Whether a full search path that combines the 53.5 ms embedding request with the exact read meets the 0.5 s budget used in the provider feasibility. The two parts were measured separately and never joined. Untested.
-- Whether the centred SQL advantage holds on a larger corpus or under concurrent load. The experiment used one corpus and no concurrency. Untested.
-- Whether an index on the centred expression, rather than a separate centred column, can preserve exactness at a lower read cost. The experiment did not test an expression index. Untested.
+Each question below is untested.
+
+- Whether an index on the centred expression, rather than a separate centred column, preserves exactness at a lower read cost.
+- Whether the centred read's advantage holds on a larger corpus or under concurrent load.
+- Whether a candidate bound chosen per query from the expected result count can hold recall above a stated floor at a read cost below the exact scan.
+- Whether the exactness of the pushdown and the centred read on these four vectors holds for other stored vectors and other thresholds.
+- Whether the served-search fall holds for other queries, other languages or concurrent load.

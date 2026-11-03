@@ -12,17 +12,19 @@ While the open tab scrolls down, the bar leaves the window and the content takes
 
 ## More, profiles and language
 
-**More** opens a sheet above the bar. Its head row shows **More** at the left and **Close** at the right, then the profile control, then a row with the language control and **Docs**, and it ends with the notice that the project is independent and the link to its source code. The sheet scrolls inside itself when its content is taller than the space above the bar.
+**More** opens a sheet above the bar. Its head row shows **More** at the left and **Close** at the right, then the profile control, then a row with the language control at the left and the **Feedback** and **Docs** buttons as one right-aligned pair, and it ends with the notice that the project is independent and the link to its source code. **Feedback** and **Docs** share their filled style and height. **Feedback** opens the page described in [Sending feedback](/docs/guides/feedback.md). The sheet scrolls inside itself when its content is taller than the space above the bar.
 
-Selecting the profile name opens **Profiles** in the same sheet. The language and **Docs** row and the notice hide, and the panel grows upward with the profile list, the **New profile** form, the import area, **Copy Sisu import script** and **Export**. [Profiles and language](/docs/guides/profiles-and-language.md) covers these controls. **Close** or a tap outside the sheet returns to the app and puts the focus back on **More**.
+Selecting the profile name opens **Profiles** in the same sheet. The language, **Feedback** and **Docs** row and the notice hide, and the panel grows upward with the profile list, the **New profile** form, the import area, **Copy Sisu import script** and **Export**. [Profiles and language](/docs/guides/profiles-and-language.md) covers these controls. **Close** or a tap outside the sheet returns to the app and puts the focus back on **More**.
 
-![The More sheet on a phone, with More at the left of its head row and Close at the right, above the My plan profile row, a row holding FI, EN and Docs, and the independent-project notice above the source code link](/docs/screenshots/phone-more.png)
+![The More sheet on a phone, with More at the left of its head row and Close at the right, above the My plan profile row, a row holding FI, EN, Feedback and Docs, and the independent-project notice above the source code link](/docs/screenshots/phone-more.png)
 
-**Docs** opens the documentation wiki inside the app. On a phone the wiki header keeps the brand, **Docs** and **Back to the app**. A search field and a menu button sit above the breadcrumbs. The menu slides in from the right with the page list, another search field and **GitHub**, and **Back to the app** returns to the tab you left.
+**Docs** opens the documentation wiki inside the app. On a phone the wiki header keeps the brand, **Docs** and **Return to app**. A search field and a menu button sit above the breadcrumbs. The menu slides in from the right with the page list, another search field and **GitHub**, and **Return to app** returns to the tab you left.
 
 ## Moving between tabs
 
-Swipe left or right in the tab content to move to the next or previous tab. A swipe that starts on a course card, a Discover result row or a course tile in the structure follows its direction. A swipe that starts on another control, on the graph, or on an open drawer or menu leaves the open tab alone, and a vertical swipe scrolls the pane. The tabs form a ring, so the last tab leads back to the first, and a move takes the shorter way round.
+Swipe left or right in the tab content to move to the next or previous tab. A swipe that starts on a course card, a Discover result row or a course tile in the structure follows its direction when the gesture finishes before the card lifts. A structure card becomes a drag only after a stationary hold, so a quick tap opens its sheet, a vertical swipe scrolls, and a horizontal swipe moves the tabs. Once the card has lifted, the tab and the bottom bar stay where they are until you release it or cancel the drag, and the movement belongs to the drag, so the page and the pane stay still.
+
+Holding the lifted card at the top or bottom of the pane scrolls the pane, and the scroll continues over the header above or the bar below while you hold it there. A swipe that starts on another control, on the graph, or on an open drawer or menu leaves the open tab alone, and a vertical swipe scrolls the pane. The tabs form a ring, so the last tab leads back to the first, and a move takes the shorter way round.
 
 An arrow key also moves between tabs, but it is ignored while the focus sits in a text field and while a menu or a dialog is open.
 
@@ -44,7 +46,7 @@ The course picker opens above the bottom bar with a small margin on each side, s
 
 ## Prerequisites
 
-With a course open, the drawing fills the space between the top of the tab and the bottom bar. A header at the top shows the course code and opens **Graph options**, and a rail at the right holds **Recenter**, **Zoom in** and **Zoom out**. Course names wrap to their full text and a box grows to fit them. Drag and pinch inside the drawing to move and zoom it without moving the page or changing the tab.
+With a course open, the drawing fills the space between the top of the tab and the bottom bar. A settings pill floats at the top right of the drawing, shows the course code and opens **Graph options**, and a rail below it holds **Recenter**, **Zoom in** and **Zoom out**. Course names wrap to their full text and a box grows to fit them. Drag and pinch inside the drawing to move and zoom it without moving the page or changing the tab.
 
 **Graph options** opens a sheet. Its first button shows the course code, the name on one line and a swap icon, and the button reopens the course picker. The controls follow: **Completed** and **Selected** for the route basis, **Recommended**, **Inferred** on a site that serves inference, **Active only**, and the **?** help. A change here applies to the drawing and to the route.
 
@@ -60,21 +62,21 @@ On a site that serves no inference features the sheet shows no **Inferred** cont
 
 **Next courses** and **Recommended** sit as buttons in a header at the top of the tab that stays in place while the list scrolls, with a settings icon at the right. The icon opens **Discover options** with the basis, **Active only** and the **?** help. While **Next courses** is the open list the sheet also carries the **All** and **Partially covered** prerequisite mode, and **Recommended** leaves that mode out. A site that serves no embedding features shows **Next courses** alone.
 
-Below the header the basis line counts your courses and names up to four of them, and the chip that counts the rest opens the full list with its credits. Each result row stacks the course card and its meters in one column inside the row's border. The **inferred** mark sits beside the course code. The whole row opens the course sheet. [Discovering courses](/docs/guides/discover.md) explains the lists, the coverage meters and the ranking.
+Below the header the basis line counts your courses and shows the codes of up to four of them, and the chip that counts the rest opens the full list with its credits. Each result row stacks the course card and its meters in one column inside the row's border. The **inferred** mark sits beside the course code. The whole row opens the course sheet. [Discovering courses](/docs/guides/discover.md) explains the lists, the coverage meters and the ranking.
 
 ![The Discover options sheet on a phone, with All and Partially covered, the Completed and Selected basis, Active only and the help button above the tab bar, over the Next courses list](/docs/screenshots/phone-discover-options.png)
 
 ## Structure of studies
 
-Only a row at the top level of the list carries the **⋯** menu, which sits on the title row at the right, level with the expand control, and a module nested inside a row carries no **⋯** menu. A course card grows when its name wraps, and its **Complete** control stays at the foot. The card opens the course sheet, and **Complete** marks the course completed directly, without the **Mark completed?** dialog.
+Only a row at the top level of the list carries the **⋯** menu, which sits on the title row at the right, level with the expand control, and a module nested inside a row carries no **⋯** menu. A course card grows when its name wraps, and its **Complete** control stays at the foot. A quick tap on the card opens the course sheet, and **Complete** marks the course completed directly, without the **Mark completed?** dialog. Press and hold a card to show its pickup highlight, then move it to drag it to another holder or to reorder it, as [Editing a structure of studies](/docs/guides/editing-structure-of-studies.md#dragging-courses-and-card-order) describes. The dashed outline follows the lifted card's overlap, so it marks the same place the card covers.
 
-Selecting a module row opens its drawer as a sheet above the bottom bar. The sheet has **Close** at its head and one scroll for the rule, the content, the search and **Reset this module**. Search results open inside the sheet. A module with several eligible versions replaces the results with a version list that scrolls in its own area, and you place the module only when you choose a version. Escape closes the search first while it is open. With the search closed and no dialog or picker open, Escape closes the drawer and returns the focus to the row that opened it.
+Selecting a module row opens its drawer as a sheet above the bottom bar. The sheet has **Close** at its head and one scroll for the rule, the search, the content and **Reset this module**. Search results open inside the sheet. A module with several eligible versions opens the dialog **Choose module version**, whose version list scrolls inside it, and you place the module only when you choose a version. Escape closes the search first while it is open. With the search closed and no dialog or picker open, Escape closes the drawer and returns the focus to the row that opened it.
 
 The drawer of a module inside a programme shows the module name and code in its head row with **Close** at the right, above the rule and credit totals, the search field, the rule sections and **Reset this module**.
 
 ![The drawer sheet of a module inside a programme on a phone, with the module name and code beside Close, the credit rule and totals above the search field, an all required section and a choose 1 section with their course rows and Complete controls, and Reset this module at the foot](/docs/screenshots/phone-structure.png)
 
-**Add programme** opens the picker over the tab. A match with one eligible version is added when you choose it. A match with several replaces the results with **Choose module version**, **Cancel** and a **Select** action on each version. [Planning a structure of studies](/docs/guides/structure-of-studies.md) explains the tree, the rules and the confirmations.
+**Add programme** opens the picker over the tab. A match with one eligible version is added when you choose it. A match with several opens the dialog **Choose module version** over the picker, with **Cancel** and a **+ add** action on each version. [Planning a structure of studies](/docs/guides/structure-of-studies.md) explains the tree, the rules and the confirmations.
 
 ## Closing a sheet or a dialog
 
@@ -86,6 +88,8 @@ The **More** sheet and the option sheets have **Close** at the head. Escape and 
 - [Comparing two courses](/docs/guides/compare.md) for the two slots, the five meters, and the verdict.
 - [Exploring prerequisites](/docs/guides/prerequisites.md) for the prerequisite graph, its toggles, and the minimum route.
 - [Discovering courses](/docs/guides/discover.md) for next courses, recommended courses, and the basis.
-- [Planning a structure of studies](/docs/guides/structure-of-studies.md) for the official structure, its modules, and your own placements.
+- [Planning a structure of studies](/docs/guides/structure-of-studies.md) for the official structure and its modules.
+- [Editing a structure of studies](/docs/guides/editing-structure-of-studies.md) for the drawer, dragging, moving, removing and resetting.
 - [Profiles and language](/docs/guides/profiles-and-language.md) for named profiles and the interface language.
-- [Sisu import script](/docs/guides/sisu-import.md) for capturing a plan in Sisu and importing it as a profile.
+- [Sending feedback](/docs/guides/feedback.md) for the feedback page, its images and its publication choice.
+- [Importing a Sisu plan](/docs/guides/sisu-import.md) for capturing a plan in Sisu or importing a supported plan PDF as a profile.

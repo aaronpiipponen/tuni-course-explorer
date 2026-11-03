@@ -1,4 +1,5 @@
 /** Canonical basis chips and optionally expanded official course list. */
+import { useLayoutEffect, useRef } from "react";
 import { PickerOverlay } from "../../shared/PickerOverlay";
 import { ErrorNotice } from "../../shared/ErrorNotice";
 import { CourseListRow } from "../../shared/course/CourseListRow";
@@ -20,6 +21,23 @@ export function DiscoverBasis({
 }) {
   const { courses, loading, error } = useCourseSummaries(courseIds);
   const { language, t } = useWording();
+  const list = useRef<HTMLDivElement>(null);
+  // The scrollbar sits inside the right padding, so the rows keep the same gap on both sides.
+  useLayoutEffect(() => {
+    const owner = list.current;
+    if (!owner) return;
+    const update = () => {
+      owner.dataset.scrollable =
+        owner.scrollHeight > owner.clientHeight + 1 ? "true" : "false";
+    };
+    update();
+    const observer =
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(update);
+    observer?.observe(owner);
+    const first = owner.firstElementChild;
+    if (first instanceof Element) observer?.observe(first);
+    return () => observer?.disconnect();
+  }, [courses.length, loading, expanded]);
   const basisLabel = t(
     basis === "completed" ? "Completed (basis)" : "Selected (basis)",
   );
@@ -87,7 +105,7 @@ export function DiscoverBasis({
             { total: totalCredits, count: courseIds.length },
           )}
         </p>
-        <div className="discover-basis-list">
+        <div className="discover-basis-list thin-scrollbar" ref={list}>
           {courses.map((course) => (
             <CourseListRow
               course={course}

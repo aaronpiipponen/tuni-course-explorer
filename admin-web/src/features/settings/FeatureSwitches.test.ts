@@ -12,6 +12,8 @@ import { FeatureSwitches } from "./FeatureSwitches";
 ).IS_REACT_ACT_ENVIRONMENT = true;
 
 const session = { csrfToken: "synthetic-csrf", pollSeconds: 3600 };
+const FAILURE_GUIDANCE =
+  "choose a listed configuration file and key, provide a valid JSON value, and check file permissions";
 
 const report: ConfigurationFileReport = {
   schema_version: 1,
@@ -48,6 +50,7 @@ function refusedCommand(): StubResponse {
       exit_code: 1,
       report: null,
       failure_line: "ValueError",
+      guidance_line: FAILURE_GUIDANCE,
     }),
   };
 }
@@ -108,7 +111,7 @@ describe("refused feature-switch write", () => {
     const failure = container.querySelector<HTMLElement>(
       '.failure[role="alert"]',
     );
-    expect(failure?.textContent?.trim()).toBeTruthy();
+    expect(failure?.textContent?.trim()).toBe(FAILURE_GUIDANCE);
     const settled = container.querySelector<HTMLButtonElement>(selector);
     expect(settled?.getAttribute("aria-checked")).toBe("false");
     expect(settled?.disabled).toBe(false);

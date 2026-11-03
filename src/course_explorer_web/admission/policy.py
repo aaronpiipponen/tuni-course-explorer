@@ -23,7 +23,7 @@ class Regime(StrEnum):
     SATURATED = "saturated"
 
 
-def regime(load_position: float, settings: AdmissionSettings) -> Regime:
+def regime(load_position: float) -> Regime:
     """Return the regime for one normalized load position."""
     if load_position <= 0.0:
         return Regime.HEADROOM
@@ -72,7 +72,7 @@ def heavy_budget(load_position: float, settings: AdmissionSettings) -> float:
 
 def heavy_queue_limit(load_position: float, settings: AdmissionSettings) -> int:
     """Return the waiting heavy tickets the current regime admits."""
-    current = regime(load_position, settings)
+    current = regime(load_position)
     if current is Regime.SATURATED:
         return settings.admission_heavy_queue_saturated_limit
     if current is Regime.MIDDLE:

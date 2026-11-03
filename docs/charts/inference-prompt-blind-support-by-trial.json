@@ -1,0 +1,21 @@
+{
+  "type": "bar",
+  "title": "Blind judged support by category for three prompt runs",
+  "description": "The share of emitted findings that the blind judge marked supported, by category, for frozen v7 on 49 targets, v8b on 49 targets and the exact v8 bytes on 14 format-subset targets. The overall shares are 0.60, 0.63 and 0.71.",
+  "valueAxis": "Supported share of emitted findings",
+  "categories": ["Required", "Recommended", "Equivalence", "All findings"],
+  "series": [
+    {
+      "name": "Frozen v7",
+      "values": [0.52, 0.62, 0.72, 0.6]
+    },
+    {
+      "name": "v8b",
+      "values": [0.44, 0.75, 0.85, 0.63]
+    },
+    {
+      "name": "Exact v8 bytes",
+      "values": [0.62, 0.67, 0.83, 0.71]
+    }
+  ]
+}

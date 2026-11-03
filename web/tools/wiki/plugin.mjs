@@ -1,11 +1,16 @@
-/** Vite virtual-module plugin that builds the configured wiki and emits only selected local images. */
+/**
+ * Vite virtual-module plugin that builds the configured wiki and emits only selected local images.
+ */
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { buildWiki } from "./build.mjs";
+import { buildWiki, readWikiMeta } from "./build.mjs";
 
 const virtualId = "virtual:wiki";
 const resolvedVirtualId = `\0${virtualId}`;
+const metaVirtualId = "virtual:wiki-meta";
+const resolvedMetaVirtualId = `\0${metaVirtualId}`;
 
+/** Return a Vite plugin that serves the configured wiki through virtual modules. */
 export function wikiPlugin({
   repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../.."),
 } = {}) {
@@ -14,9 +19,16 @@ export function wikiPlugin({
     name: "configured-wiki",
     enforce: "pre",
     async resolveId(id) {
-      return id === virtualId ? resolvedVirtualId : null;
+      if (id === virtualId) return resolvedVirtualId;
+      if (id === metaVirtualId) return resolvedMetaVirtualId;
+      return null;
     },
     async load(id) {
+      if (id === resolvedMetaVirtualId) {
+        const { repositoryUrl } = await readWikiMeta({ repoRoot });
+        sourceFiles.add(resolve(repoRoot, "config/wiki.json"));
+        return `export default ${JSON.stringify({ repositoryUrl })};`;
+      }
       if (id !== resolvedVirtualId) return null;
       const { registry, assets } = await buildWiki({ repoRoot });
       const imports = [];
@@ -51,11 +63,15 @@ export function wikiPlugin({
     },
     async handleHotUpdate({ file, server }) {
       if (!sourceFiles.has(resolve(file))) return;
-      const module = server.moduleGraph.getModuleById(resolvedVirtualId);
-      if (module) {
-        server.moduleGraph.invalidateModule(module);
-        return [module];
+      const modules = [];
+      for (const id of [resolvedVirtualId, resolvedMetaVirtualId]) {
+        const module = server.moduleGraph.getModuleById(id);
+        if (module) {
+          server.moduleGraph.invalidateModule(module);
+          modules.push(module);
+        }
       }
+      return modules;
     },
     generateBundle() {
       for (const path of sourceFiles) this.addWatchFile(path);

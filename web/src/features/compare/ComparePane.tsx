@@ -12,6 +12,7 @@ import { ComparePicker } from "./ComparePicker";
 import { ComparisonResults } from "./ComparisonResults";
 import { useComparison } from "./useComparison";
 import { usePhoneTabsOnClose } from "../../shared/usePhoneTabsOnClose";
+import { HelpLink, HelpTip, type HelpSection } from "../../shared/HelpTip";
 
 /** Render the comparison slots, picker and backend comparison result. */
 export function ComparePane() {
@@ -87,6 +88,81 @@ export function ComparePane() {
       document.removeEventListener("keydown", keydown, true);
     };
   }, [target]);
+  const help: readonly HelpSection[] = [
+    {
+      heading: t("courses (heading)"),
+      items: [
+        {
+          term: (
+            <HelpLink href="/docs#guide-compare/the-two-slots">
+              {t("Compare")}
+            </HelpLink>
+          ),
+          text: t(
+            "Choose a course for A and B by name or code. You can also use Add to comparison in a course menu. Replace changes one slot and Remove empties it. The picker has its own Active only setting.",
+          ),
+        },
+      ],
+    },
+    {
+      heading: t("percentages"),
+      items: [
+        {
+          term: (
+            <HelpLink href="/docs#comparison/the-five-meters">
+              {t("Overall relatedness")}
+            </HelpLink>
+          ),
+          text: t(
+            "Compares the courses as a whole using their names, content and learning outcomes.",
+          ),
+        },
+        {
+          term: t("Content similarity"),
+          text: t("Compares content text with content text."),
+        },
+        {
+          term: t("Learning-outcome similarity"),
+          text: t("Compares learning outcomes with learning outcomes."),
+        },
+        {
+          term: (
+            <HelpLink href="/docs#comparison/overlap-calibration-and-the-verdict">
+              {t("Overlap")}
+            </HelpLink>
+          ),
+          text: t(
+            "Estimates how much of one course's content and learning outcomes has a match in the other. The two directions can differ. A high A-to-B value does not imply the same B-to-A value.",
+          ),
+        },
+      ],
+    },
+    {
+      heading: t("analysis"),
+      items: [
+        {
+          term: (
+            <HelpLink href="/docs#guide-compare/the-verdict">
+              {t("Verdict")}
+            </HelpLink>
+          ),
+          text: t(
+            "The stronger overlap decides the overlap labels first. Otherwise overall relatedness decides the label. These are estimates from teaching text, not official equivalence or a credit-transfer decision.",
+          ),
+        },
+        {
+          term: (
+            <HelpLink href="/docs#comparison/not-available">
+              {t("not available")}
+            </HelpLink>
+          ),
+          text: t(
+            "The meter lacks the text or shared language needed for the comparison. A measured 0% is a result, not missing data. Includes derived text means a translation contributed on either side.",
+          ),
+        },
+      ],
+    },
+  ];
   return (
     <main
       className="pane-content compare-pane"
@@ -97,6 +173,13 @@ export function ComparePane() {
         className="compare-main"
         data-picker-open={target !== null || undefined}
       >
+        <div className="compare-help-row">
+          <HelpTip
+            title={t("Compare")}
+            explain="Explain comparison"
+            sections={help}
+          />
+        </div>
         <div className="compare-slots" inert={target !== null}>
           {([0, 1] as const).map((slot) => {
             const id = slots[slot];

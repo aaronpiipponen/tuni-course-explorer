@@ -17,7 +17,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from course_explorer.config import (
-    EmbeddingSettings,
+    EmbeddingRuntimeSettings,
     InferenceContextSettings,
     InferenceRerankInputSettings,
     InferenceRerankSettings,
@@ -143,7 +143,7 @@ class OperationalCatalogue(_OperationalModel):
 def prepare_operational_catalogue(
     curriculum: CurriculumRead,
     teaching_text: TeachingTextService,
-    embedding_settings: EmbeddingSettings,
+    embedding_settings: EmbeddingRuntimeSettings,
 ) -> OperationalCatalogue:
     """Read the current catalogue and effective text once and derive both bound identities.
 

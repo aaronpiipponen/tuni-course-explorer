@@ -6,9 +6,9 @@ token of every state-changing method, and the refresh of the admitted session's 
 admitted request carries that refreshed session in ``scope["state"]["admin_session"]``.
 
 The built console shell and its built assets are the one address that needs no session: a GET or
-HEAD of ``/`` or of a path beneath ``/assets/`` is admitted after the lock and site checks and before
-any cookie is read, so it creates no session, executes no command and records nothing. Every other
-address, a POST of a static path included, uses the ordinary session and CSRF flow.
+HEAD of ``/`` or of a path beneath ``/assets/`` is admitted after the lock and site checks and
+before any cookie is read, so it creates no session, executes no command and records nothing.
+Every other address, a POST of a static path included, uses the ordinary session and CSRF flow.
 
 The middleware holds no route table of its own: a refusal answers before any handler runs, and an
 admitted unknown address reaches the router's ordinary 404 or 405.
@@ -28,6 +28,7 @@ from starlette.responses import Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from course_explorer.config import AdminWebSettings
+from course_explorer.http_headers import header_values
 from course_explorer_admin.commands import format_operator_error
 from course_explorer_admin_web.security import (
     SESSION_COOKIE_NAME,
@@ -35,8 +36,8 @@ from course_explorer_admin_web.security import (
     AnonymousSessionRateLimited,
 )
 
-# The session address, which reuses or creates the session of its cookie, and the login address, which
-# needs one live session of any kind because it carries that session's CSRF token.
+# The session address, which reuses or creates the session of its cookie, and the login address,
+# which needs one live session of any kind because it carries that session's CSRF token.
 SESSION_PATH = "/auth/session"
 LOGIN_PATH = "/auth/login"
 
@@ -59,12 +60,12 @@ _WEBSOCKET_POLICY_VIOLATION = 1008
 class AdminAdmissionMiddleware:
     """Admit one administration request before any handler, or answer a fixed refusal.
 
-    The lock refusal is a bare empty 403. A site-boundary refusal is 403, and a missing authenticated
-    session is 401. A fresh anonymous session beyond the server-wide budget is an empty 429 with
-    ``Cache-Control: no-store`` and an integer ``Retry-After`` in seconds. No refusal names a reason,
-    a file or a header. An operational failure answers one content-free JSON 500 naming the exception
-    class, and a failure after the response started raises a content-free ``RuntimeError`` instead of
-    exposing a payload.
+    The lock refusal is a bare empty 403. A site-boundary refusal is 403, and a missing
+    authenticated session is 401. A fresh anonymous session beyond the server-wide budget is an
+    empty 429 with ``Cache-Control: no-store`` and an integer ``Retry-After`` in seconds. No refusal
+    names a reason, a file or a header. An operational failure answers one content-free JSON 500
+    naming the exception class, and a failure after the response started raises a content-free
+    ``RuntimeError`` instead of exposing a payload.
     """
 
     def __init__(
@@ -121,10 +122,10 @@ class AdminAdmissionMiddleware:
         if await run_in_threadpool(self._security.is_locked):
             return Response(status_code=403)
         headers = scope.get("headers", ())
-        hosts = _header_values(headers, b"host")
+        hosts = header_values(headers, b"host")
         if len(hosts) != 1 or hosts[0].decode("latin-1").strip() != self._netloc:
             return Response(status_code=403)
-        origins = _header_values(headers, b"origin")
+        origins = header_values(headers, b"origin")
         if len(origins) > 1:
             return Response(status_code=403)
         supplied_origin = origins[0].decode("latin-1") if origins else None
@@ -167,11 +168,6 @@ class AdminAdmissionMiddleware:
         return None
 
 
-def _header_values(headers: Iterable[tuple[bytes, bytes]], name: bytes) -> list[bytes]:
-    """Return every value of one request header, preserving duplicates and their order."""
-    return [value for key, value in headers if key.lower() == name]
-
-
 def _static_shell_request(method: str, path: str) -> bool:
     """Report whether one request is a read-only console shell or built-asset request."""
     if method not in STATIC_METHODS:
@@ -181,7 +177,7 @@ def _static_shell_request(method: str, path: str) -> bool:
 
 def _session_cookie(headers: Iterable[tuple[bytes, bytes]]) -> str | None:
     """Return this site's session cookie of the request, or ``None`` when it carries none."""
-    raw = _header_values(headers, b"cookie")
+    raw = header_values(headers, b"cookie")
     if not raw:
         return None
     cookies = cookie_parser(raw[0].decode("latin-1"))
@@ -194,7 +190,7 @@ def _csrf_matches(headers: Iterable[tuple[bytes, bytes]], expected: str) -> bool
     The supplied header bytes compare directly with the ASCII token, so a non-ASCII value is a
     mismatch rather than a decoding failure.
     """
-    supplied = _header_values(headers, _CSRF_HEADER)
+    supplied = header_values(headers, _CSRF_HEADER)
     if len(supplied) != 1:
         return False
     return secrets.compare_digest(supplied[0], expected.encode("ascii"))

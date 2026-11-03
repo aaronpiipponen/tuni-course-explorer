@@ -64,7 +64,9 @@ export function ComparisonMeter({
           ? "–"
           : value === null
             ? t("not available")
-            : `${reducedMotion ? Math.round(target) : shown} %`}
+            : t("{value}%", {
+                value: reducedMotion ? Math.round(target) : shown,
+              })}
       </b>
     </div>
   );

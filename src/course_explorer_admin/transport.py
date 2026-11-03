@@ -33,12 +33,11 @@ _CMD_METACHARACTERS = frozenset('&|<>^()"')
 _SESSION_ID = TypeAdapter(DatasetId)
 
 # The closed set of environment keys a caller may override on a worker helper invocation: the stage
-# state roots, the derived database name, the selected-dataset switch, the one GPU detection flag,
-# and the one validated checkpoint-reboot interval.
+# state roots, the derived database name, the one GPU detection flag, and the one validated
+# checkpoint-reboot interval.
 _WORKER_ENVIRONMENT_ALLOWLIST = frozenset(
     {
         "POSTGRES_DB",
-        "SELECTED_DATASET_ENABLED",
         "ADMIN_STATE_ROOT",
         "TRANSLATION_CONTROLLER_STATE_ROOT",
         "INFERENCE_CONTROLLER_STATE_ROOT",

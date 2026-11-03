@@ -1,23 +1,26 @@
 """POST adapter for complete next-course and similarity recommendation reports."""
 
 from fastapi import APIRouter, HTTPException, Response
-from pydantic import BaseModel, ConfigDict
 
-from course_explorer.config import load_web_settings
 from course_explorer.recommendations import commands
 from course_explorer.search.lookup import DisplayLanguage
-from course_explorer_web.dataset import resolve_serving_dataset
 from course_explorer_web.reports import dataset_report_response
+from course_explorer_web.request_limits import BoundedRequest
 from course_explorer_web.serving import ACTIVE_ONLY_DEFAULT
-from course_explorer_web.serving_cache import serving_caches
+from course_explorer_web.serving_cache import (
+    preloaded_lookup_projection,
+    preloaded_serving_settings,
+    serving_caches,
+)
 
 router = APIRouter()
 
 
-class RecommendationsRequest(BaseModel):
+class RecommendationsRequest(BoundedRequest):
     """Recommendation command inputs, with JSON arrays represented as tuples."""
 
-    model_config = ConfigDict(extra="forbid")
+    _course_list_fields = ("selected_courses", "completed_courses")
+
     selected_courses: tuple[str, ...] = ()
     completed_courses: tuple[str, ...] = ()
     basis: str = "completed"
@@ -30,17 +33,27 @@ class RecommendationsRequest(BaseModel):
 @router.post("/api/recommendations")
 def recommendations(request: RecommendationsRequest) -> Response:
     """Refuse a site without embedding features. Return the command's serialized report."""
-    settings = load_web_settings()
-    if not settings.embeddings_enabled:
+    bundle = preloaded_serving_settings()
+    if not bundle.web.embeddings_enabled:
         raise HTTPException(status_code=403, detail="Feature disabled")
-    serving = resolve_serving_dataset()
-    cache = serving_caches(serving, settings)
+    settings = bundle.web
+    serving = bundle.dataset
+    cache = serving_caches(serving)
+    embeddings = cache.artifacts.embedding_reads()
     values = request.model_dump()
     values["include_inferred"] = request.include_inferred and settings.inference_enabled
     report = commands.run_recommendations_command(
         **values,
         database_settings=serving.settings,
-        source_cache=cache.prerequisite_sources,
-        chunk_cache=cache.descriptive_chunks,
+        search_settings=bundle.search,
+        embedding_settings=bundle.embedding,
+        hub=embeddings.hubs[0],
+        outcomes_hub=embeddings.hubs[1],
+        embedding_configuration_hash=bundle.embedding_configuration_hash,
+        shared_store=embeddings.shared_store,
+        next_course_cache=cache.next_course_reports,
+        centroid_cache=cache.course_centroids,
+        projection=preloaded_lookup_projection(),
+        session_factory=cache.database.factory(),
     )
     return dataset_report_response(report, serving)

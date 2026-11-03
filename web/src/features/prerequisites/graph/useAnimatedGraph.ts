@@ -2,8 +2,8 @@
  * One transient animation owner for a changing graph layout. Nodes glide to their target
  * positions. An edge only fades out and back in at its final routed geometry when its drawn path
  * actually changes. An edge whose path is identical holds its place, so a drawing-neutral refresh
- * moves nothing and cold-mounts no edge. Edge polylines are drawn only at their final geometry, so a
- * layout change shows no slanted partial route. Under the reduced-motion preference each target
+ * moves nothing and cold-mounts no edge. Edge polylines are drawn only at their final geometry, so
+ * a layout change shows no slanted partial route. Under the reduced-motion preference each target
  * frame is published as it is, so no glide or fade runs.
  */
 import { useEffect, useRef, useState } from "react";
@@ -40,6 +40,9 @@ type EdgeGeometry = {
   exiting: boolean;
 };
 const duration = 600;
+// The outgoing drawing clears before the incoming one becomes visible, so two roots never
+// overlap on screen for a long crossfade.
+const EXIT_SHARE = 0.3;
 const ease = (value: number) => 1 - Math.pow(1 - value, 3);
 const nodeFrame = (target: LaidOutGraph): Geometry[] =>
   target.model.nodes.map((node) => ({
@@ -66,7 +69,7 @@ const pointsEqual = (
 ) =>
   a.length === b.length &&
   a.every((point, index) => point.x === b[index].x && point.y === b[index].y);
-/** True when the target already equals the frame on screen, so nothing should move or fade. */
+/** True when the target already equals the frame on screen, so nothing moves or fades. */
 const sameGeometry = (
   previous: AnimatedGraphFrame,
   nextNodes: Geometry[],
@@ -123,11 +126,10 @@ export function useAnimatedGraph(
     if (
       reducedMotion ||
       !previous ||
-      previous.rootId !== target.model.rootId ||
       sameGeometry(previous, nextNodes, nextEdges)
     ) {
-      // Publish the exact frame with no transition: the first graph, a changed root, identical
-      // geometry, or the reduced-motion preference.
+      // Publish the exact frame with no transition: the first graph, identical geometry, or the
+      // reduced-motion preference.
       if (raf.current !== null) cancelAnimationFrame(raf.current);
       raf.current = null;
       const initial = {
@@ -152,9 +154,9 @@ export function useAnimatedGraph(
     const tick = (now: number) => {
       const raw = Math.min(1, (now - start) / duration),
         t = ease(raw);
-      // A changing edge is invisible at raw 0.5, so its routed geometry swaps at that midpoint.
-      const fadeOut = Math.min(1, raw / 0.5);
-      const fadeIn = Math.max(0, (raw - 0.5) / 0.5);
+      // A changing edge is invisible at the exit boundary, so its routed geometry swaps there.
+      const fadeOut = Math.min(1, raw / EXIT_SHARE);
+      const fadeIn = Math.max(0, (raw - EXIT_SHARE) / (1 - EXIT_SHARE));
       const nodes = [
         ...new Set([...oldNodes.keys(), ...newNodes.keys()]),
       ].flatMap((id) => {
@@ -172,7 +174,7 @@ export function useAnimatedGraph(
               w: a.w + (b.w - a.w) * t,
               h: a.h + (b.h - a.h) * t,
             },
-            opacity: before && after ? 1 : before ? 1 - t : t,
+            opacity: before && after ? 1 : before ? 1 - fadeOut : fadeIn,
             exiting: Boolean(before && !after),
           },
         ];
@@ -193,7 +195,7 @@ export function useAnimatedGraph(
               exiting: false,
             },
           ];
-        const showFinal = !before || (Boolean(after) && raw >= 0.5);
+        const showFinal = !before || (Boolean(after) && raw >= EXIT_SHARE);
         const opacity = before
           ? before.opacity * (1 - fadeOut) +
             (after ? after.opacity * fadeIn : 0)

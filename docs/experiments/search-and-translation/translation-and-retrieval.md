@@ -2,17 +2,17 @@
 
 The TranslateGemma 12B evaluation asked whether machine translations keep their official counterparts retrievable by embedding similarity.
 
-**Evidence status:** Corrected. **Run date:** 13 September 2026.
+**Evidence status:** Observational. **Run date:** 13 September 2026.
 
-This is a translation-utility experiment, not a translation-quality rating. It measures whether a translated [teaching text](/docs/reference/glossary.md#capture-and-data-preparation) field points at the official text in the other language strongly enough for an embedding to retrieve it. It does not measure fluency, adequacy, terminology or reader preference. The retrieval values come from a corrected scoring runtime, and they stand.
+The evaluation measures retrieval utility. It measures whether a translated [teaching text](/docs/reference/glossary.md#capture-and-data-preparation) field points at the official text in the other language strongly enough for an embedding to retrieve it. Fluency, adequacy, terminology and reader preference are outside the measurement.
 
-The [translation stage](/docs/backend/text-and-vectors/translation.md) fills a missing name, content or learning-outcomes field from the same field in the other language. The [embedding service](/docs/backend/text-and-vectors/embeddings.md) then embeds the [effective text](/docs/backend/text-and-vectors/teaching-text.md#official-text-translation-and-effective-text), which is the official text when it exists and a current translation otherwise. If a translation moves too far in embedding space, [semantic search](/docs/backend/search-and-discovery/search.md) can miss the course even when a reader would accept the translation.
+The [translation stage](/docs/backend/text-and-vectors/translation.md) fills a missing name, content or learning-outcomes field from the same field in the other language. The [embedding service](/docs/backend/text-and-vectors/embeddings.md) embeds the [effective text](/docs/backend/text-and-vectors/teaching-text.md#official-text-translation-and-effective-text), which is the official text when it exists and otherwise a translation that is not stale. A translation that moves too far in embedding space can make [semantic search](/docs/backend/search-and-discovery/search.md) miss the course even when a reader would accept it.
 
 ## The question
 
 The evaluation asks whether a generated translation is close enough to its official counterpart that the counterpart ranks first among the official texts of the same field and target language. The generated text is the query. The official text in the other language is the only correct answer. The other nine official texts in the cell are distractors.
 
-That construction is a retrieval proxy. A retrieval proxy is a stand-in task that scores a translation by whether retrieval finds the right official text, rather than by human judgement. Here the proxy is within-cell retrieval: 10 official targets compete, and the paired target is the correct one.
+That construction is a retrieval proxy. A retrieval proxy is a stand-in task that scores a translation by whether retrieval finds the right official text, rather than by human judgement. Here the proxy is within-cell retrieval, with 10 official targets in competition and the paired target as the correct one.
 
 An embedding is a vector of numbers that represents the meaning of a text. Cosine similarity measures the angle between two vectors and ranges from -1 to 1. BGE-M3 returns 1,024-component vectors, and the product's semantic search measures cosine similarity. Comparison and recommendations subtract the hub of the field, the outcomes hub for learning outcomes, while semantic search subtracts the embedding hub, a mean of catalogue unit vectors. The proxy uses raw cosine and subtracts neither hub.
 
@@ -20,14 +20,14 @@ The proxy cannot read the translation. A fluent translation can use different vo
 
 ## The evaluation setup
 
-The run took place on 13 September 2026. It used one translation model and one retrieval scorer, with no second translation candidate.
+The evaluation used one translation model and one retrieval scorer, with no second translation candidate.
 
 ### The six cells
 
 The evaluation crossed three fields with two target languages. A cell is one field and one target language. Each cell held 10 cases. For a Finnish target the source was English, and for an English target the source was Finnish. The source and target had to be official text in the same field of the same representative version.
 
 | Field | Target language | Source language | Cases |
-|---|---|---|---:|
+|---|---|---:|---:|
 | Name | Finnish | English | 10 |
 | Name | English | Finnish | 10 |
 | Content | Finnish | English | 10 |
@@ -41,7 +41,7 @@ The catalogue snapshot held 11,086 courses and 58,962 teaching-text chunks. Of t
 
 Within each cell, candidates were ordered by an evaluation ID. The ID is a one-way hash of the split seed, the course unit id, the field and the target language, so it is stable and carries no readable identity. The first candidate for a target text hash was kept, and further exact duplicates of the same target text were dropped, so no cell held the same official target twice. The first 10 remaining candidates became the cases. The split is deterministic, not a random sample.
 
-The result was 60 cases, 10 per cell. At the run, the translation selection held 9,916 pending representative cells with a same-field source, covering 5,171,027 source characters. That is the full workload the duration projection scales to.
+The result was 60 cases, 10 per cell. At the run, the translation selection held 9,916 pending representative cells with a same-field source, covering 5,171,027 source characters.
 
 ### Leakage isolation
 
@@ -57,13 +57,11 @@ The translation input held no target text, target hash, course or group identity
 
 Scoring validated the candidate model, the input hash, the label hash, the case order, the source hashes, the field and the target language before it made an embedding request. It also computed the output hash to bind the scored result. A mismatch stopped the run.
 
-No evaluation artifact wrote a database row or overwrote official text. The generated text had to be non-blank and free of NUL. The run did not sanitize, normalize or repair it.
-
-The first pass generated all 60 cases. The second pass, with the model runtime stopped, reused all 60. The output hashes were equal, so the second pass reproduced the first output byte for byte.
+No evaluation artifact wrote a database row or overwrote official text. The generated text had to be non-blank and free of NUL, and the run did not sanitize, normalize or repair it.
 
 ### Translation model and decoding
 
-The model was TranslateGemma 12B instruction-tuned. The artifact used Q5_K_M, a 5-bit quantization. It ran on an AMD Radeon RX 9070 XT (16 GB model) through ROCm. VRAM is the GPU's own memory, and ROCm is its compute stack.
+The model was TranslateGemma 12B, instruction-tuned. The artifact used Q5_K_M, a 5-bit quantization. It ran through ROCm on an AMD Radeon RX 9070 XT (16 GB model). VRAM is the GPU's own memory, and ROCm is its compute stack.
 
 | Setting | Value |
 |---|---|
@@ -84,7 +82,7 @@ The runtime was started and passed its health check before the first case. Each 
 
 ### Embedding and scoring
 
-The scorer used BGE-M3 on the CPU. The scoring ran on a 4-core aarch64 server with 23.6 GB of RAM.
+The scorer used BGE-M3 on the CPU. The scoring ran on a 4-core aarch64 server with 24.1 GB of RAM.
 
 | Setting | Value |
 |---|---|
@@ -123,17 +121,16 @@ The product's embedding stage makes 1,200-character chunks with a 120-character 
 
 ### Retrieval
 
-The cell results are in the table below. Top-1 rate is the share of cases whose paired official target had the highest cosine in its cell. A tie counts as top-1 because only a strictly higher cosine ranks above. Mean reciprocal rank is the mean of one divided by the rank of the paired target over the 10 cases. Mean paired cosine is the mean cosine between a generated text and its own official target.
+Top-1 rate is the share of cases whose paired official target had the highest cosine in its cell. A tie counts as top-1 because only a strictly higher cosine ranks above. Mean reciprocal rank is the mean of one divided by the rank of the paired target over the 10 cases. Mean paired cosine is the mean cosine between a generated text and its own official target.
 
 | Field | Target | Source | Cases | Top-1 | Top-1 rate | Mean reciprocal rank | Mean paired cosine |
-|---|---|---|---:|---:|---:|---:|---:|
+|---|---|---|---|---:|---:|---:|---:|
 | Name | Finnish | English | 10 | 9 | 0.900 | 0.925 | 0.6940 |
 | Name | English | Finnish | 10 | 10 | 1.000 | 1.000 | 0.8627 |
 | Content | Finnish | English | 10 | 10 | 1.000 | 1.000 | 0.8840 |
 | Content | English | Finnish | 10 | 10 | 1.000 | 1.000 | 0.9114 |
 | Learning outcomes | Finnish | English | 10 | 10 | 1.000 | 1.000 | 0.9154 |
 | Learning outcomes | English | Finnish | 10 | 10 | 1.000 | 1.000 | 0.8971 |
-| All cells | Finnish and English | Both | 60 | 59 | 0.9833 | 0.9875 | Not recorded |
 
 Five cells returned top-1 on all 10 cases. The Finnish name cell returned nine of 10 and a mean reciprocal rank of 0.925. Nine first places and a fourth place produce that value, because the fourth place contributes 0.25 to the sum.
 
@@ -145,13 +142,11 @@ The chart plots the top-1 rate and the mean reciprocal rank for the six cells.
 
 ![Top-1 rate and mean reciprocal rank for the six field and target-language cells, each with 10 cases. Five cells reach 1.0 on both measures, and the Finnish name cell is lower at 0.9 top-1 and 0.925 mean reciprocal rank.](/docs/charts/translation-retrieval-cells.svg)
 
-The acceptance floors were an overall top-1 rate of at least 0.90, a top-1 rate of at least 0.80 in every cell, and a projected duration below 604,800 seconds. The result cleared all three. The lowest cell rate was 0.900, above the 0.800 floor. The verdict was accepted with no rejection reasons.
+The acceptance floors were an overall top-1 rate of at least 0.90, a top-1 rate of at least 0.80 in every cell, and a projected duration below 604,800 seconds. The result cleared all three. The lowest cell rate was 0.900, above the 0.800 floor.
 
 ### Throughput and projection
 
-Measured generation time was 156.008147444 seconds across the 60 cases, from 29,633 source characters. The time is the sum of the per-case provider call times. The second pass reported the same total because it summed the retained per-case times, so that total is one timing sample, not two.
-
-At the run, 9,916 representative cells were pending, with 5,171,027 source characters.
+Measured generation time was 156.008147444 seconds across the 60 cases, from 29,633 source characters. The time is the sum of the per-case provider call times, so it is one timing sample.
 
 | Quantity | Value |
 |---|---:|
@@ -174,41 +169,31 @@ projected = max(25,782.9465 s, 27,223.7824 s) = 27,223.8 s
 The projection rests on these assumptions.
 
 - The measured time is the sum of per-case provider calls. It excludes model load, the health check, transfer, import, embedding and the surrounding controller work.
-- The sample's per-case retry incidence holds for the full run.
 - One request ran at a time, so the projection scales linearly.
-- The sample's per-item and per-character rates hold for the full pending set.
+- The sample's per-item and per-character rates and its retry incidence hold for the full pending set.
 - The full pending set has the same mix of fields and source lengths as the sample.
 - The larger of the item and character projections is used, so the estimate is conservative on those two axes.
 
-The projection selected the character-based value because it was larger. The ceiling was 604,800 seconds, or seven days. The projection is 27,223.8 seconds, below the ceiling.
+The selected value is the character-based projection because it was larger. It is 27,223.8 seconds, below the 604,800-second ceiling, or seven days.
 
-Interpretation: the projection says the full pending workload fits the ceiling if the sample rate holds. It is not a measured full-run duration. The record of the later full pass gives no duration, so the projection was not checked against a measured full run.
+Interpretation: the projection says the full pending workload fits the ceiling if the sample rate holds. It is not a measured full-run duration.
 
-## The embedding runtime correction
+## Batch sizes and the embedding runtime
 
-The retrieval values in this report come from the corrected embedding runtime. The correction changed the launch capacity and the request timeout, not the scoring rule.
+The scored run made every embedding request to the CPU-only BGE-M3 service on a llama.cpp runtime. The runtime used two threads on aarch64. The selected launch used the configured `EMBEDDING_CONTEXT_SIZE` value of 2,048 tokens as the context and as both the logical and physical batch sizes.
 
-An earlier feasibility measurement of the service recorded 1,117.51 MB peak resident memory, 0.0167% idle CPU and 0.0535 seconds warm p95. The corrected scoring runtime recorded 2,044.0 MB peak resident memory, 0.017% idle CPU and 0.074 seconds warm p95. A 120-text probe took 89.4 seconds. The corrected figures are the accepted run's runtime evidence. The earlier figures are the feasibility baseline.
+| Measure | Value |
+|---|---:|
+| Peak resident memory | 2,044.0 MB |
+| Idle CPU | 0.017% |
+| Warm p95 | 0.074 seconds |
+| 120-text probe | 89.4 seconds |
 
-| Measure | Earlier feasibility | Corrected scoring runtime |
-|---|---:|---:|
-| Peak resident memory | 1,117.51 MB | 2,044.0 MB |
-| Idle CPU | 0.0167% | 0.017% |
-| Warm query p95 | 0.0535 seconds | 0.074 seconds |
-| 120-text probe | Not recorded | 89.4 seconds |
-| Frozen service budget | Within budget | Within budget |
+Peak resident memory is the highest resident memory of the embedding process. Idle CPU is the CPU use while the service was idle. Warm p95 is the 95th percentile of request latency after warmup, and it covers one embedding request rather than a search. The 120-text probe is the time to embed 120 texts.
 
-Peak resident memory is the highest resident memory of the embedding process. Idle CPU is the CPU use while the service was idle. Warm p95 is the 95th percentile of request latency after warmup.
+A launch that leaves the logical and physical batch sizes unset embeds no text longer than 512 tokens whole. Some generated and official texts exceed 512 tokens, so the batch capacity decides whether they can be embedded in full. Setting the context and both batch sizes to 2,048 embeds each text whole, and the scored run embedded every generated and official target text whole.
 
-A launch that left the batch sizes unset could not embed a text longer than 512 tokens whole. The corrected launch passed the configured 2,048-token value to the context and both batch sizes, and it embedded the complete generated and official texts.
-
-Scoring observed contention on the embedding service. The request timeout is a validated finite value in the range greater than 0 and at most 600 seconds. The accepted run used 600 seconds. The timeout, context and batch size are outside the configuration hash that identifies vector semantics, so the correction did not change that hash.
-
-The earlier feasibility measurement and the corrected runtime measurement are separate measurements. The corrected measurement used the configured 2,048-token batch capacity and a 120-text probe. The earlier feasibility measurement is not a like-for-like control for the corrected run. The difference is not evidence that the model became slower or used more memory for the same work.
-
-Unsuccessful setup: the uncorrected launch did not pass the configured 2,048-token value to the batch sizes, so it is not the source of any value in this report. The accepted retrieval values and the corrected runtime figures come from the corrected launch.
-
-Result that stands: 59 of 60 top-1, a mean reciprocal rank of 0.9875, and an accepted verdict. The earlier feasibility figures do not replace the corrected runtime figures.
+Scoring observed contention on the embedding service. `EMBEDDING_REQUEST_TIMEOUT_SECONDS` validates as a finite value greater than 0 and at most 600 seconds, and the scoring run used 600 seconds. The timeout, the context and the batch sizes are outside the configuration hash that identifies vector semantics.
 
 ## What the result supports
 
@@ -220,33 +205,31 @@ The proxy is easier than the product's full search. It chooses among 10 official
 
 The absolute cosine values are not a quality scale. The paired values are high because the vectors share a common direction. The ranking, not the absolute value, is the result.
 
-## Why 27B and fine-tuning were not pursued
+## Baselines and the candidate ladder
 
-The candidate ladder held TranslateGemma 12B at Q5_K_M first and TranslateGemma 27B at Q4_K_M, a 4-bit quantization, only if 12B was rejected. Conditional fine-tuning was reserved for the case where both candidates failed. Fine-tuning means further training of the model on translation data. The 12B run cleared the overall floor, every cell floor and the duration ceiling. The verdict was accepted with no rejection reasons. The 27B artifact was not acquired or run, and no fine-tuning was started.
+The baseline is TranslateGemma 12B in Q5_K_M at temperature 0, one request at a time, with the 16,384-token context and the 8,192-token output cap. It produced 59 of 60 top-1, a mean reciprocal rank of 0.9875, and 156.008147444 seconds for 60 cases. The 60-case sample projects to 27,223.8 seconds for the full pending workload.
 
-Consequence: this report has no 27B measurement and no fine-tuned measurement. It cannot say whether 27B would have scored higher, whether it would have fixed the Finnish name cell, or whether fine-tuning would have changed the result. Those questions are untested.
+Embedding used BGE-M3 Q8_0 with 1,024 components, CLS pooling, unit normalization and two threads. The context and batch capacity were both 2,048 tokens. The selected launch used 2,044.0 MB peak resident memory, 0.017% idle CPU, 0.074 seconds warm p95 and 89.4 seconds for 120 texts.
 
-## Outcome and later use
+| Step | Candidate | Outcome |
+|---|---|---|
+| 1 | TranslateGemma 12B, Q5_K_M | Run |
+| 2 | TranslateGemma 27B, Q4_K_M, a 4-bit quantization | Not acquired or run |
+| 3 | Conditional fine-tuning | Not started |
 
-The accepted model was used for the full translation pass over every missing representative field. That pass filled every translatable gap. The remaining per-language absence is source absence, not a failed translation. After the import, all 58,962 chunks across 11,086 representative versions were embedded, and an unchanged rerun generated nothing. No vectors were produced or transferred from the translation run. The record gives no end-to-end duration, so the 27,223.8-second projection remains a projection.
-
-Within the evaluation, no database row was written and no official text was overwritten. The 60-case evaluation output was not imported into the dataset.
+The 27B candidate was the next step only if 12B failed a floor, and conditional fine-tuning followed only if both candidates failed. The 12B run missed no floor, so neither step was reached. Fine-tuning means further training of the model on translation data. The line therefore has no 27B measurement and no fine-tuned measurement.
 
 ## Limitations
 
-- The proxy is not human judgement. It measures retrieval, not fluency, adequacy, terminology or reader preference.
-- One model was measured. The 27B candidate and a fine-tune were not run, so the result is not a model comparison.
-- Each cell holds 10 cases. One case moves a cell rate by 0.10, and the cell values are coarse.
-- The candidate set is 10 official targets from one field and language. The product's full search spans 11,086 courses and 58,962 chunks.
-- The proxy embeds whole fields and uses raw cosine. The product's full search ranks 1,200-character chunks and subtracts the embedding hub.
-- The scorer used the generated text exactly as returned. It did not strip alternatives, notes or trailing whitespace.
-- The translation runtime's memory and VRAM use were not measured. The run recorded full layer offload, not memory.
-- The full-run duration was not recorded, so the projection was not checked against a measured full run.
-- The earlier feasibility measurement and the corrected runtime measurement are separate measurements, with a corrected launch and a different probe size.
 - The split is deterministic and balanced by cell. It is not a random sample of the catalogue's field and length mix.
+- The scorer used the generated text exactly as returned. It did not strip alternatives, notes or trailing whitespace.
 
-## Untested questions
+## Open questions
 
-- Whether TranslateGemma 27B at Q4_K_M raises the Finnish name cell or the overall mean reciprocal rank above the 12B result.
-- Whether these translations preserve retrieval in the product's chunked, hub-centred semantic search over the full catalogue.
-- Whether a human rating of fluency, terminology and adequacy agrees with the retrieval proxy.
+- Whether TranslateGemma 27B at Q4_K_M raises the Finnish name cell or the overall mean reciprocal rank above the 12B result. Untested.
+- Whether a conditional fine-tune changes the result. Untested.
+- Whether these translations preserve retrieval in the product's chunked, hub-centred semantic search over the full catalogue. Untested.
+- Whether a human rating of fluency, terminology and adequacy agrees with the retrieval proxy. Untested.
+- Whether the full pass duration, which was not recorded, matched the 27,223.8-second projection. Untested.
+
+After the evaluation, the 12B model ran the full translation pass over every missing representative field. The pass filled every translatable gap, and the remaining per-language absence is source absence, not a failed translation. After the import, all 58,962 chunks across 11,086 representative versions were embedded, and a rerun over the same data generated nothing. The translation run produced and transferred no vectors. The full pass recorded no end-to-end duration, so 27,223.8 seconds is a projection, not a measured duration. The evaluation itself wrote no database row and overwrote no official text, and its 60-case output was not imported.

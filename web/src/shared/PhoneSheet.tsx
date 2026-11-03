@@ -3,6 +3,11 @@ import { useEffect, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { useWording } from "./useWording";
+import {
+  PHONE_RISE_EASE,
+  PHONE_RISE_SECONDS,
+  usePhoneSurfaceClosing,
+} from "./phoneMotion";
 import { usePhoneTabsOnClose } from "./usePhoneTabsOnClose";
 import { useReducedMotion } from "./useReducedMotion";
 import { isUnhandledEscape } from "./escape";
@@ -30,6 +35,7 @@ export function PhoneSheet({
   const { t } = useWording();
   const reducedMotion = useReducedMotion();
   usePhoneTabsOnClose(open);
+  usePhoneSurfaceClosing(open);
   useEffect(() => {
     if (!open) return;
     const keydown = (event: KeyboardEvent) => {
@@ -49,7 +55,10 @@ export function PhoneSheet({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: reducedMotion ? 0 : 0.16 }}
+            transition={{
+              duration: reducedMotion ? 0 : PHONE_RISE_SECONDS,
+              ease: PHONE_RISE_EASE,
+            }}
           />
           <motion.section
             className="phone-sheet"
@@ -59,8 +68,8 @@ export function PhoneSheet({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 24 }}
             transition={{
-              duration: reducedMotion ? 0 : 0.22,
-              ease: [0.22, 0.8, 0.2, 1],
+              duration: reducedMotion ? 0 : PHONE_RISE_SECONDS,
+              ease: PHONE_RISE_EASE,
             }}
           >
             <header className="phone-sheet-head">

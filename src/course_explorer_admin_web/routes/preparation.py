@@ -19,7 +19,7 @@ from course_explorer_admin_web.routes.read_mode import automatic_read
 from course_explorer_admin_web.runner import (
     CommandResult,
     CoverageCommand,
-    HubsCommand,
+    ServingArtifactsCommand,
     StageCommand,
     SummaryCommand,
 )
@@ -42,8 +42,8 @@ class StageActionRequest(BaseModel):
     action: StageAction
 
 
-class HubsRequest(BaseModel):
-    """The empty body of one hub write request, so a body with any field is refused."""
+class ServingArtifactsRequest(BaseModel):
+    """The empty body of one serving-artifact build request, so a body with any field is refused."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -82,8 +82,10 @@ def report(
     return commands.run(CoverageCommand(kind="coverage", report=report), automatic=automatic)
 
 
-@router.post("/api/preparation/hubs")
-def hubs(request: Request, response: Response, body: HubsRequest) -> CommandResult:
-    """Write both embedding hub files through the fixed hub command once."""
+@router.post("/api/preparation/serving-artifacts")
+def serving_artifacts(
+    request: Request, response: Response, body: ServingArtifactsRequest
+) -> CommandResult:
+    """Build the served dataset's serving artifacts through the fixed command once."""
     response.headers.update(NO_STORE_HEADERS)
-    return request.app.state.commands.run(HubsCommand(kind="hubs"))
+    return request.app.state.commands.run(ServingArtifactsCommand(kind="serving-artifacts"))

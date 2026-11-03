@@ -1,4 +1,10 @@
-"""Compose the plain read-only feature application that one worker process serves."""
+"""Compose the feature application that one worker process serves.
+
+The catalogue and discovery reads stay read-only, and the two feedback paths read the configured
+definition or hand one submission to the feedback service. The application registers compression and
+translates caller errors to 422 without opening a settings file, database or attachment store at
+construction.
+"""
 
 from pathlib import Path
 
@@ -8,12 +14,17 @@ from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 from starlette.middleware.gzip import GZipMiddleware
 
+from course_explorer_web.feedback_intake import (
+    FEEDBACK_DEFINITION_PATH,
+    FEEDBACK_SUBMISSION_PATH,
+)
 from course_explorer_web.frontend import register_frontend
 from course_explorer_web.routes import (
     catalogue,
     comparison,
     course_summaries,
     features,
+    feedback,
     next_courses,
     prerequisites,
     recommendations,
@@ -39,6 +50,7 @@ def create_app(*, frontend_directory: Path | None = None) -> FastAPI:
         study_structure.router,
         course_summaries.router,
         features.router,
+        feedback.router,
     ):
         application.include_router(route)
 
@@ -49,8 +61,13 @@ def create_app(*, frontend_directory: Path | None = None) -> FastAPI:
         return JSONResponse(status_code=422, content={"detail": str(exc)})
 
     @application.exception_handler(RequestValidationError)
-    async def invalid_request(_request: Request, _exc: RequestValidationError) -> JSONResponse:
-        return JSONResponse(status_code=422, content={"detail": "Invalid request"})
+    async def invalid_request(request: Request, _exc: RequestValidationError) -> JSONResponse:
+        headers = (
+            {"Cache-Control": "no-store"}
+            if request.url.path in {FEEDBACK_DEFINITION_PATH, FEEDBACK_SUBMISSION_PATH}
+            else None
+        )
+        return JSONResponse(status_code=422, content={"detail": "Invalid request"}, headers=headers)
 
     register_frontend(
         application,

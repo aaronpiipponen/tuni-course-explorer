@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-import math
 import uuid
-from datetime import UTC, datetime
 from uuid import UUID
 
 import pytest
 from sqlalchemy import Engine, func, select
 
-from course_explorer.constants import COURSE_EMBEDDING_DIMENSION
 from course_explorer.db.models import (
     Course,
     CourseEmbeddingChunk,
@@ -38,39 +35,18 @@ from course_explorer.enums import (
 from course_explorer.inference.context import InferenceCourseEmbeddingIdentity
 from course_explorer.inference.context_repository import InferenceCandidateRepository
 from course_explorer.inference.failures import TargetSelectionError
-from tests.inference._fixture_support import embedding_settings
+from tests.search._repository_support import (
+    CURRENT_YEAR,
+    GENERATED_AT,
+    OTHER_CONFIGURATION_HASH,
+    _add_course,
+    cosine_vector,
+)
+from tests.support import embedding_settings
 
 pytestmark = [
     pytest.mark.integration,
 ]
-
-GENERATED_AT = datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
-OTHER_CONFIGURATION_HASH = "f" * 64
-CURRENT_YEAR = 2026
-WINDOW_YEARS = 3
-
-
-def cosine_vector(cosine: float) -> tuple[float, ...]:
-    """Return one 1024-dimensional unit vector with the requested exact cosine to the query."""
-    sine = math.sqrt(1.0 - cosine * cosine)
-    return (cosine, sine) + (0.0,) * (COURSE_EMBEDDING_DIMENSION - 2)
-
-
-QUERY_VECTOR = (1.0,) + (0.0,) * (COURSE_EMBEDDING_DIMENSION - 1)
-
-
-def _add_course(session, group_id: str, *, is_active: bool) -> UUID:
-    course_id = uuid.uuid4()
-    session.add(
-        Course(
-            id=course_id,
-            group_id=group_id,
-            is_active=is_active,
-            activity_as_of_academic_year_start=CURRENT_YEAR,
-            activity_window_years=WINDOW_YEARS,
-        )
-    )
-    return course_id
 
 
 def _add_version(

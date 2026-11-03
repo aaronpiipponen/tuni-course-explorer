@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 388" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Fuzzy-name stage core-seconds before and after native token coverage</title>
+  <desc id="d">The fuzzy-name stage cost in core-seconds for the four fixed search queries before and after the token coverage moved to the native lookup library, measured on one code revision against a disposable database.</desc>
+  <rect width="960" height="388" rx="12" fill="#232434"/>
+  <rect x="61" y="33" width="14" height="14" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="96" y="45" font-size="14" fill="#a3a4b8">Before</text>
+  <rect x="183.4" y="33" width="14" height="14" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="218.4" y="45" font-size="14" fill="#a3a4b8">After</text>
+  <line x1="257.2" y1="72" x2="257.2" y2="312" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="257.2" y="334" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="374.9" y1="72" x2="374.9" y2="312" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="374.9" y="334" text-anchor="middle" font-size="14" fill="#a3a4b8">0.02</text>
+  <line x1="492.6" y1="72" x2="492.6" y2="312" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="492.6" y="334" text-anchor="middle" font-size="14" fill="#a3a4b8">0.04</text>
+  <line x1="610.2" y1="72" x2="610.2" y2="312" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="610.2" y="334" text-anchor="middle" font-size="14" fill="#a3a4b8">0.06</text>
+  <line x1="727.9" y1="72" x2="727.9" y2="312" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="727.9" y="334" text-anchor="middle" font-size="14" fill="#a3a4b8">0.08</text>
+  <line x1="845.6" y1="72" x2="845.6" y2="312" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="845.6" y="334" text-anchor="middle" font-size="14" fill="#a3a4b8">0.1</text>
+  <text x="245.2" y="107" text-anchor="end" font-size="14" fill="#ececf2">XYKSJV20-M001</text>
+  <rect x="257.2" y="80" width="448.9" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="714.1" y="95" font-size="14" fill="#a3a4b8">0.0763</text>
+  <rect x="257.2" y="104" width="155.3" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="420.5" y="119" font-size="14" fill="#a3a4b8">0.0264</text>
+  <text x="245.2" y="167" text-anchor="end" font-size="14" fill="#ececf2">XYKSJV20-M001 MARIH.319</text>
+  <rect x="257.2" y="140" width="473.1" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="738.3" y="155" font-size="14" fill="#a3a4b8">0.0804</text>
+  <rect x="257.2" y="164" width="246.5" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="511.7" y="179" font-size="14" fill="#a3a4b8">0.0419</text>
+  <text x="245.2" y="227" text-anchor="end" font-size="14" fill="#ececf2">Fullwidth literal</text>
+  <rect x="257.2" y="200" width="451.9" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="717.1" y="215" font-size="14" fill="#a3a4b8">0.0768</text>
+  <rect x="257.2" y="224" width="185.3" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="450.5" y="239" font-size="14" fill="#a3a4b8">0.0315</text>
+  <text x="245.2" y="287" text-anchor="end" font-size="14" fill="#ececf2">tietokanta suunnittlu</text>
+  <rect x="257.2" y="260" width="473.1" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="738.3" y="275" font-size="14" fill="#a3a4b8">0.0804</text>
+  <rect x="257.2" y="284" width="206.5" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="471.7" y="299" font-size="14" fill="#a3a4b8">0.0351</text>
+  <text x="551.4" y="364" text-anchor="middle" font-size="14" fill="#a3a4b8">Core-seconds per query</text>
+</svg>

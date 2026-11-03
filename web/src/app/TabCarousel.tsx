@@ -22,6 +22,7 @@ import { DiscoverPane } from "../features/discover/DiscoverPane";
 import { StructurePane } from "../features/structure/StructurePane";
 import { useAction } from "../shared/useAction";
 import { ErrorNotice } from "../shared/ErrorNotice";
+import { NoticeStack } from "../shared/NoticeStack";
 import { useWording } from "../shared/useWording";
 import { useWebFeatures } from "./useWebFeatures";
 import { AnimatedTabPane } from "./AnimatedTabPane";
@@ -89,6 +90,10 @@ export function TabCarousel() {
   };
   const startSwipe = (event: PointerEvent<HTMLDivElement>) => {
     committed.current = false;
+    if (document.body.classList.contains("course-dragging")) {
+      releaseSwipe(event.currentTarget);
+      return;
+    }
     if (event.pointerType !== "touch") return;
     if (!phone) {
       releaseSwipe(event.currentTarget);
@@ -115,6 +120,10 @@ export function TabCarousel() {
     };
   };
   const moveSwipe = (event: PointerEvent<HTMLDivElement>) => {
+    if (document.body.classList.contains("course-dragging")) {
+      releaseSwipe(event.currentTarget);
+      return;
+    }
     const current = swipe.current;
     if (!current || current.pointerId !== event.pointerId) return;
     if (!phone) {
@@ -133,6 +142,10 @@ export function TabCarousel() {
     event.currentTarget.setPointerCapture(event.pointerId);
   };
   const endSwipe = (event: PointerEvent<HTMLDivElement>) => {
+    if (document.body.classList.contains("course-dragging")) {
+      releaseSwipe(event.currentTarget);
+      return;
+    }
     const current = swipe.current;
     if (!current || current.pointerId !== event.pointerId) return;
     const dx = event.clientX - current.startX;
@@ -166,6 +179,7 @@ export function TabCarousel() {
   };
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
+      if (document.body.classList.contains("course-dragging")) return;
       if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
       const target = event.target;
       if (
@@ -231,6 +245,15 @@ export function TabCarousel() {
         </button>
         {error && <ErrorNotice error={error} language={language} />}
       </section>
+      {/* The notices are anchored to the window, so they live beside the carousel instead of
+          inside a pane whose slide would re-anchor them; the stack rides the same slide. */}
+      <AnimatePresence initial={false} custom={presentation.direction}>
+        <NoticeStack
+          key={presentation.tab}
+          tab={presentation.tab}
+          direction={presentation.direction}
+        />
+      </AnimatePresence>
     </SearchSessionProvider>
   );
 }

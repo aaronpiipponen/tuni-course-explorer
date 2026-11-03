@@ -1,14 +1,17 @@
 """Serve the built app over one disposable example-data database for the browser journeys.
 
-The runner owns one fresh ``_test`` database, its Alembic head, the committed example import, one
-loopback uvicorn process and one Node test invocation, and removes each in reverse order. It selects
-the listed browser test basenames and rejects any other name.
+The runner owns one fresh ``_test`` database, its Alembic head, one scratch repository whose
+packages and frontend the serving process reads, one scratch copy of the committed example fixture,
+one scratch artifact family, one loopback web supervisor process and one Node test invocation, and
+removes each in reverse order. It selects the listed browser test basenames and rejects any other
+name. No tracked configuration, fixture or derived file is written.
 """
 
 from __future__ import annotations
 
 import json
 import os
+import shutil
 import signal
 import socket
 import subprocess
@@ -24,6 +27,7 @@ from pathlib import Path
 from alembic import command
 from alembic.config import Config
 
+from course_explorer import administration
 from course_explorer.config import (
     ENVIRONMENT_ONLY_SETTINGS_SOURCE,
     SETTINGS_SOURCE_MARKER,
@@ -74,6 +78,28 @@ def _selected_tests(arguments: Sequence[str]) -> tuple[str, ...]:
     return tuple(arguments)
 
 
+def _scratch_repository(artifact_root: Path) -> Path:
+    """Build one scratch repository whose packages and frontend the serving process reads."""
+    repository = artifact_root / "repository"
+    (repository / "src").mkdir(parents=True)
+    for package in ("course_explorer", "course_explorer_web"):
+        shutil.copytree(
+            _REPOSITORY_ROOT / "src" / package,
+            repository / "src" / package,
+        )
+    (repository / "native").symlink_to(_REPOSITORY_ROOT / "native", target_is_directory=True)
+    (repository / "web").mkdir()
+    (repository / "web" / "dist").symlink_to(
+        _REPOSITORY_ROOT / "web" / "dist", target_is_directory=True
+    )
+    # The schema check reads the repository's own migration tree through the repository root.
+    (repository / "alembic.ini").symlink_to(_REPOSITORY_ROOT / "alembic.ini")
+    (repository / "migrations").symlink_to(
+        _REPOSITORY_ROOT / "migrations", target_is_directory=True
+    )
+    return repository
+
+
 def _executable_environment() -> dict[str, str]:
     """Return the ordinary executable-discovery environment without product settings."""
     preserved = (
@@ -106,7 +132,6 @@ def _closed_environment(connection: DatabaseSettings, database_name: str) -> dic
             "POSTGRES_USER": connection.postgres_user,
             "POSTGRES_PASSWORD": connection.postgres_password.get_secret_value(),
             "POSTGRES_DB": database_name,
-            "SELECTED_DATASET_ENABLED": "0",
             SETTINGS_SOURCE_MARKER: ENVIRONMENT_ONLY_SETTINGS_SOURCE,
             "COURSE_EXPLORER_WEB_GENERATION": uuid.uuid4().hex,
         }
@@ -242,6 +267,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     connection = load_raw_database_settings()
     database_name = f"course_explorer_browser_{uuid.uuid4().hex}_test"
     environment = _closed_environment(connection, database_name)
+    artifact_root = Path(tempfile.mkdtemp(prefix="course-explorer-browser-")).resolve()
+    repository = _scratch_repository(artifact_root)
+    environment.update(
+        {
+            "ADMIN_STATE_ROOT": "data/admin",
+            "WEB_WORKERS": "2",
+            "PYTHONPATH": str(repository / "src"),
+        }
+    )
+    administration.repository_root = lambda: repository
     os.environ.update(environment)
     serving = connection.model_copy(update={"postgres_db": database_name})
     created = False
@@ -252,44 +287,48 @@ def main(argv: Sequence[str] | None = None) -> int:
         signum: signal.signal(signum, _handle_stop) for signum in (signal.SIGTERM, signal.SIGINT)
     }
     try:
-        with tempfile.TemporaryDirectory(prefix="course-explorer-browser-") as scratch:
-            scratch_root = Path(scratch)
+        try:
+            _create_database(connection, database_name)
+            created = True
+            _migrate(serving)
+            fixture_dir = artifact_root / "fixtures"
+            shutil.copytree(_REPOSITORY_ROOT / "data" / "mock", fixture_dir)
+            # The fixture capture discovers its retained manifest through current-working-directory
+            # relative paths, so the prepared raw root is entered from its own parent directory.
+            previous_directory = Path.cwd()
+            os.chdir(artifact_root)
             try:
-                _create_database(connection, database_name)
-                created = True
-                _migrate(serving)
                 run_mock_data_command(
                     "load",
-                    fixture_dir=_REPOSITORY_ROOT / "data" / "mock",
-                    raw_root=scratch_root / "raw",
-                    hubs_dir=scratch_root / "hubs",
+                    fixture_dir=fixture_dir,
+                    raw_root=artifact_root / "raw",
                 )
-                port = _available_port()
-                base_url = f"http://127.0.0.1:{port}"
-                server = subprocess.Popen(
-                    [
-                        sys.executable,
-                        "-m",
-                        "uvicorn",
-                        "course_explorer_web.app:app",
-                        "--host",
-                        "127.0.0.1",
-                        "--port",
-                        str(port),
-                        "--log-level",
-                        "warning",
-                    ],
-                    cwd=_REPOSITORY_ROOT,
-                    env=_executable_environment() | environment,
+                run_mock_data_command(
+                    "write-artifacts",
+                    fixture_dir=fixture_dir,
+                    raw_root=artifact_root / "raw",
                 )
-                _await_ready(server, base_url)
-                exit_code = _run_tests(selected, base_url, _executable_environment())
-            except _StopSignal as stop:
-                stop_code = 128 + stop.signum
             finally:
-                _terminate(server, _SHUTDOWN_TIMEOUT_SECONDS)
-                if created:
-                    _drop_database(connection, database_name)
+                os.chdir(previous_directory)
+            port = _available_port()
+            environment["WEB_PORT"] = str(port)
+            os.environ["WEB_PORT"] = str(port)
+            base_url = f"http://127.0.0.1:{port}"
+            server = subprocess.Popen(
+                [sys.executable, "-m", "course_explorer_web"],
+                cwd=repository,
+                env=_executable_environment() | environment,
+            )
+            _await_ready(server, base_url)
+            exit_code = _run_tests(selected, base_url, _executable_environment())
+        except _StopSignal as stop:
+            stop_code = 128 + stop.signum
+        finally:
+            _terminate(server, _SHUTDOWN_TIMEOUT_SECONDS)
+            if artifact_root.exists():
+                shutil.rmtree(artifact_root)
+            if created:
+                _drop_database(connection, database_name)
     finally:
         for signum, handler in previous_handlers.items():
             signal.signal(signum, handler)

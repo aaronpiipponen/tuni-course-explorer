@@ -89,9 +89,11 @@ function RunRows({ status }: { status: LifecycleStatus }) {
 export function InferenceRun({
   session,
   onRefusal,
+  workingPresent,
 }: {
   session: SessionAccess;
   onRefusal: (status: number) => void;
+  workingPresent: boolean | null;
 }) {
   const [actionFailure, setActionFailure] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -138,6 +140,7 @@ export function InferenceRun({
             stageLabel={title}
             pending={pending}
             failure={actionFailure}
+            workingPresent={workingPresent}
             onAction={(action) => void onAction(action)}
           />
         </>

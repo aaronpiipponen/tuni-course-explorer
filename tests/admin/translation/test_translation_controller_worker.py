@@ -65,6 +65,7 @@ def test_pause_unloads_runner_and_runtime_at_checkpoint(
         on_checkpoint,
         before_request,
         request_scope,
+        database_settings=None,
     ):
         write_control(directory, "pause")
         assert before_pending_item() is False
@@ -142,6 +143,7 @@ def test_gpu_interval_yields_after_retained_translation_checkpoint(
         on_checkpoint,
         before_request,
         request_scope,
+        database_settings=None,
     ):
         assert before_pending_item() is True
         assert before_request() is True
@@ -326,6 +328,7 @@ def test_worker_control_race_preserves_inflight_success_and_real_failure(
         on_checkpoint,
         before_request,
         request_scope,
+        database_settings=None,
     ):
         # The real provider alone enters request_scope and consults admission. No second path.
         assert request_scope is mechanics.model_request_scope

@@ -1,0 +1,26 @@
+{
+  "type": "bar",
+  "title": "Web memory at the stop level",
+  "description": "Current and peak web cgroup memory at the stop level, or at the last valid level where the next level failed, for four stacks under the light-only and mixed profiles. The pre-admission peaks and the post-port mixed level reach the 4.295 GB cap.",
+  "valueAxis": "Memory (GB)",
+  "categories": [
+    "Post-port, light only, 750",
+    "Post-port, mixed, 750",
+    "Pre-port, light only, 200",
+    "Pre-port, mixed, 100",
+    "Original admission, light only, 100",
+    "Original admission, mixed, 60",
+    "Pre-admission, light only, 100",
+    "Pre-admission, mixed, 100"
+  ],
+  "series": [
+    {
+      "name": "Web current",
+      "values": [2.8, 4.29, 4.17, 3.94, 4.02, 3.7, 3.16, 3.97]
+    },
+    {
+      "name": "Web peak",
+      "values": [2.8, 4.29, 4.21, 3.96, 4.06, 3.87, 4.29, 4.29]
+    }
+  ]
+}

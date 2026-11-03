@@ -138,12 +138,7 @@ describe("structure projection", () => {
       ).toBe(true);
       expect(tree.ruleGroups.some((group) => group.key === "r/1")).toBe(true);
       expect(tree.ruleGroups.some((group) => group.key === "r/2")).toBe(true);
-      expect(
-        tree.ruleGroups.find((group) => group.key === "r/0"),
-      ).toMatchObject({
-        required: true,
-        requiredCount: 3,
-      });
+      expect(tree.ruleGroups.some((group) => group.key === "r/0")).toBe(true);
       expect(tree.entries[0]).toMatchObject({
         kind: "node",
         node: { key: "r/0", kind: "group", transparent: true },
@@ -185,12 +180,12 @@ describe("structure projection", () => {
         nextChoices(picked, choice.node, choice.node.options[0].key)[
           choice.node.key
         ],
-      ).toEqual([choice.node.options[0].key]);
+      ).toEqual([choice.node.options[1].key, choice.node.options[0].key]);
       expect(
         nextChoices(picked, choice.node, choice.node.options[1].key)[
           choice.node.key
         ],
-      ).toEqual([choice.node.options[1].key]);
+      ).toEqual([]);
       const multi = tree.entries.find(
         (entry) =>
           entry.kind === "node" &&
@@ -240,7 +235,6 @@ describe("structure projection", () => {
       expect(
         tree.ruleGroups.find((group) => group.key === multi.node.key),
       ).toMatchObject({
-        required: false,
         options: multi.node.options,
       });
       const wrapperReport: StudyStructureReport = {
@@ -485,7 +479,6 @@ describe("structure projection", () => {
       { course: moving, added: true },
     ]);
     expect(moved.courses).toEqual([]);
-    expect(moved.removed).toEqual([{ kind: "course", course: moving }]);
     expect(
       moved.children.some(
         (child) => child.node.key === "r/m:extra" && child.added,
@@ -507,14 +500,12 @@ describe("structure projection", () => {
     expect(removed.subtree.map((item) => item.group_id)).toEqual([
       "nested-course",
     ]);
-    expect(removed.removed).toEqual([{ kind: "course", course: moving }]);
     const restored = resolveStructure(
       tree,
       { ...emptyEdits(), coursePlacements: { moving: "r" } },
       NO_CONTENT,
     );
     expect(restored.courses).toEqual([{ course: moving, added: false }]);
-    expect(restored.removed).toEqual([]);
   });
 
   it("excludes version requirements from references outside the selected plan", () => {

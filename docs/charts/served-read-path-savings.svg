@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Saving per removed served cost</title>
+  <desc id="d">Median milliseconds saved by each removed per-request cost on the served path of 28 October 2026, ordered from largest to smallest. The retained catalogue body saved 372.8 ms, and the two receipt labels saved 0.4 ms each.</desc>
+  <rect width="960" height="540" rx="12" fill="#232434"/>
+  <line x1="358" y1="32" x2="358" y2="464" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="358" y="486" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="482" y1="32" x2="482" y2="464" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="482" y="486" text-anchor="middle" font-size="14" fill="#a3a4b8">100</text>
+  <line x1="606" y1="32" x2="606" y2="464" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="606" y="486" text-anchor="middle" font-size="14" fill="#a3a4b8">200</text>
+  <line x1="730" y1="32" x2="730" y2="464" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="730" y="486" text-anchor="middle" font-size="14" fill="#a3a4b8">300</text>
+  <line x1="854" y1="32" x2="854" y2="464" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="854" y="486" text-anchor="middle" font-size="14" fill="#a3a4b8">400</text>
+  <text x="346" y="55" text-anchor="end" font-size="14" fill="#ececf2">Catalogue body</text>
+  <rect x="358" y="40" width="462.3" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="828.3" y="55" font-size="14" fill="#a3a4b8">372.8</text>
+  <text x="346" y="91" text-anchor="end" font-size="14" fill="#ececf2">Centroid column read, first read</text>
+  <rect x="358" y="76" width="99" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="465" y="91" font-size="14" fill="#a3a4b8">79.8</text>
+  <text x="346" y="127" text-anchor="end" font-size="14" fill="#ececf2">Hub subtraction, 40-course basis</text>
+  <rect x="358" y="112" width="66.1" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="432.1" y="127" font-size="14" fill="#a3a4b8">53.3</text>
+  <text x="346" y="163" text-anchor="end" font-size="14" fill="#ececf2">Hub subtraction, 20-course basis</text>
+  <rect x="358" y="148" width="36" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="402" y="163" font-size="14" fill="#a3a4b8">29</text>
+  <text x="346" y="199" text-anchor="end" font-size="14" fill="#ececf2">One engine, course summaries</text>
+  <rect x="358" y="184" width="31.6" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="397.6" y="199" font-size="14" fill="#a3a4b8">25.5</text>
+  <text x="346" y="235" text-anchor="end" font-size="14" fill="#ececf2">One engine, prerequisites</text>
+  <rect x="358" y="220" width="23.9" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="389.9" y="235" font-size="14" fill="#a3a4b8">19.3</text>
+  <text x="346" y="271" text-anchor="end" font-size="14" fill="#ececf2">One engine, next courses</text>
+  <rect x="358" y="256" width="23.6" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="389.6" y="271" font-size="14" fill="#a3a4b8">19</text>
+  <text x="346" y="307" text-anchor="end" font-size="14" fill="#ececf2">Repeated request, partially covered</text>
+  <rect x="358" y="292" width="14" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="380" y="307" font-size="14" fill="#a3a4b8">11.3</text>
+  <text x="346" y="343" text-anchor="end" font-size="14" fill="#ececf2">Repeated request, all mode</text>
+  <rect x="358" y="328" width="13.8" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="379.8" y="343" font-size="14" fill="#a3a4b8">11.1</text>
+  <text x="346" y="379" text-anchor="end" font-size="14" fill="#ececf2">Hub subtraction, comparison</text>
+  <rect x="358" y="364" width="5.3" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="371.3" y="379" font-size="14" fill="#a3a4b8">4.3</text>
+  <text x="346" y="415" text-anchor="end" font-size="14" fill="#ececf2">Resolved receipt, feature read</text>
+  <rect x="358" y="400" width="0.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="366.5" y="415" font-size="14" fill="#a3a4b8">0.4</text>
+  <text x="346" y="451" text-anchor="end" font-size="14" fill="#ececf2">Resolved receipt, next courses</text>
+  <rect x="358" y="436" width="0.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="366.5" y="451" font-size="14" fill="#a3a4b8">0.4</text>
+  <text x="606" y="516" text-anchor="middle" font-size="14" fill="#a3a4b8">Median saving per request (ms)</text>
+</svg>

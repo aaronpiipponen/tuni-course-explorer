@@ -1,25 +1,29 @@
 /**
  * One preparation report panel: the catalogue summary, the teaching-text coverage or the embedding
- * coverage, and the one hub write the embedding coverage owns.
+ * coverage, and the one serving-artifact build the embedding coverage owns.
  *
- * Each report is its owning fixed command's own report, read automatically. A hub write posts one
- * empty hub request, reports its returned file facts and states that a running web server reads the
- * hubs at start, which is why the hubs take effect after a web restart.
+ * Each report is its owning fixed command's own report read for the role the backend resolved:
+ * Working first, Selected when Working is absent, and no report in a bootstrap state. The panel
+ * names that role before the report. A build posts one empty request, reports its returned artifact
+ * and count facts and states that the web supervisor reads the artifacts at start, so a build takes
+ * effect after a full supervisor restart.
  */
 import { useCallback, useState } from "react";
 import { failureText, handleAdmissionFailure } from "../../api/http";
 import {
   readPreparationReport,
-  writeHubs,
+  buildServingArtifacts,
   type PreparationReportKind,
   type PreparationReport as PreparationReportData,
 } from "../../api/preparation";
 import type {
   CatalogueSummary,
   CourseEmbeddingCoverageReport,
+  DatasetReport,
   TeachingTextCoverageReport,
 } from "../../api/types";
 import { AutoMarker } from "../../shared/AutoMarker";
+import { DatasetRoleStatus } from "../../shared/DatasetRoleStatus";
 import { count } from "../../shared/format";
 import { DataTable, FailureNotice, Panel, Row, Rows } from "../../shared/Panel";
 import type { SessionAccess } from "../../shared/StagePanel";
@@ -140,23 +144,32 @@ function EmbeddingCoverage({
   const [result, setResult] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
 
-  const onWriteHubs = async (): Promise<void> => {
+  const onBuild = async (): Promise<void> => {
     setPending(true);
     setResult(null);
     setFailure(null);
     try {
-      const hubs = await writeHubs(session.csrfToken);
-      setResult(
-        `${wording.preparation.hubsWritten
-          .replace(
-            "{catalogue}",
-            `${hubs.catalogue_path} (${hubs.chunk_count})`,
-          )
-          .replace(
-            "{outcomes}",
-            `${hubs.outcomes_path} (${hubs.outcomes_chunk_count})`,
-          )} ${wording.preparation.hubsRestart}`,
-      );
+      const artifacts = await buildServingArtifacts(session.csrfToken);
+      const built = artifacts.embeddings_enabled
+        ? wording.preparation.servingArtifactsBuilt
+            .replace("{pair}", artifacts.hub_pair_path)
+            .replace(
+              "{catalogue}",
+              `${artifacts.catalogue_path} (${artifacts.chunk_count})`,
+            )
+            .replace(
+              "{outcomes}",
+              `${artifacts.outcomes_path} (${artifacts.outcomes_chunk_count})`,
+            )
+            .replace("{groups}", `${artifacts.search_group_count}`)
+            .replace("{blocks}", `${artifacts.search_block_count}`)
+            .replace("{centroids}", `${artifacts.centroid_count}`)
+            .replace("{neighbors}", `${artifacts.neighbor_count}`)
+            .replace("{roots}", `${artifacts.study_fragment_projectable}`)
+        : wording.preparation.servingArtifactsBuiltWithoutEmbeddings
+            .replace("{catalogue}", artifacts.catalogue_artifact_path)
+            .replace("{roots}", `${artifacts.study_fragment_projectable}`);
+      setResult(`${built} ${wording.preparation.servingArtifactsRestart}`);
     } catch (error) {
       if (handleAdmissionFailure(error, onRefusal)) {
         return;
@@ -198,9 +211,9 @@ function EmbeddingCoverage({
           className="btn p"
           type="button"
           disabled={pending}
-          onClick={() => void onWriteHubs()}
+          onClick={() => void onBuild()}
         >
-          {detail.writeHubs}
+          {detail.buildServingArtifacts}
         </button>
       </div>
       {result === null ? null : <p className="note">{result}</p>}
@@ -224,7 +237,7 @@ export function PreparationReport({
       readPreparationReport(kind, signal, automatic),
     [kind],
   );
-  const panel = usePanelRead(read, {
+  const panel = usePanelRead<DatasetReport<PreparationReportData>>(read, {
     pollSeconds: session.pollSeconds,
     enabled: true,
     onRefusal,
@@ -236,7 +249,7 @@ export function PreparationReport({
       : kind === "teaching-text"
         ? wording.preparation.teachingTextCoverage
         : wording.preparation.embeddingCoverage;
-  const report: PreparationReportData | null = panel.report;
+  const scope = panel.report;
   return (
     <Panel
       title={title}
@@ -250,9 +263,10 @@ export function PreparationReport({
       }
     >
       <FailureNotice text={panel.failure} />
+      {scope === null ? null : <DatasetRoleStatus role={scope.role} />}
       <ReportBody
         kind={kind}
-        report={report}
+        report={scope?.report ?? null}
         session={session}
         onRefusal={onRefusal}
       />

@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 640" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Native prerequisite pipeline</title>
+  <desc id="d">The native prerequisite library loads facts through libpq, compiles one piece graph per
+  target, hashes the calculation identities, projects the drawing and freezes a C record view. Python
+  materializes the frozen DTOs, computes the drawing allowance and returns one graph report.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="640" rx="12" fill="#232434"/>
+
+  <text x="48" y="112" font-size="16" fill="#a3a4b8">Native library</text>
+  <rect x="40" y="120" width="560" height="480" rx="8" fill="none"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+
+  <rect x="72" y="152" width="496" height="64" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="320" y="178" text-anchor="middle" font-size="16" fill="#ececf2">Native fact loader</text>
+  <text x="320" y="200" text-anchor="middle" font-size="14" fill="#a3a4b8">libpq, one bundle per handle</text>
+
+  <rect x="72" y="240" width="496" height="64" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="320" y="266" text-anchor="middle" font-size="16" fill="#ececf2">Native compiler</text>
+  <text x="320" y="288" text-anchor="middle" font-size="14" fill="#a3a4b8">one piece DAG per target</text>
+
+  <rect x="72" y="328" width="496" height="64" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="320" y="354" text-anchor="middle" font-size="16" fill="#ececf2">Native identity</text>
+  <text x="320" y="376" text-anchor="middle" font-size="14" fill="#a3a4b8">piece, use, fact and diagnostic IDs</text>
+
+  <rect x="72" y="416" width="496" height="64" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="320" y="442" text-anchor="middle" font-size="16" fill="#ececf2">Native projector</text>
+  <text x="320" y="464" text-anchor="middle" font-size="14" fill="#a3a4b8">display pieces, bindings and contexts</text>
+
+  <rect x="72" y="504" width="496" height="64" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="320" y="530" text-anchor="middle" font-size="16" fill="#ececf2">Native record view</text>
+  <text x="320" y="552" text-anchor="middle" font-size="14" fill="#a3a4b8">frozen C records for Python</text>
+
+  <line x1="320" y1="216" x2="320" y2="240" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="320" y1="304" x2="320" y2="328" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="320" y1="392" x2="320" y2="416" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="320" y1="480" x2="320" y2="504" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+
+  <text x="640" y="336" font-size="16" fill="#a3a4b8">Python</text>
+  <rect x="632" y="344" width="288" height="256" rx="8" fill="none"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+
+  <rect x="664" y="376" width="224" height="64" rx="8" fill="#2e3045"
+        stroke="#a98ae0" stroke-width="1.5"/>
+  <text x="776" y="402" text-anchor="middle" font-size="16" fill="#ececf2">Python materializer</text>
+  <text x="776" y="424" text-anchor="middle" font-size="14" fill="#a3a4b8">DTOs and the allowance</text>
+
+  <rect x="664" y="504" width="224" height="64" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="776" y="530" text-anchor="middle" font-size="16" fill="#ececf2">Response</text>
+  <text x="776" y="552" text-anchor="middle" font-size="14" fill="#a3a4b8">one graph report</text>
+
+  <polyline points="568,536 616,536 616,408 664,408" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="776" y1="440" x2="776" y2="504" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <text x="788" y="476" font-size="14" fill="#a3a4b8">report</text>
+</svg>

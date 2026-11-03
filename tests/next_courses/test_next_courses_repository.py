@@ -7,11 +7,16 @@ from contextlib import nullcontext
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy import Engine
 
+from course_explorer.constants import COURSE_EMBEDDING_DIMENSION
+from course_explorer.embeddings.centroids import CourseCentroid
+from course_explorer.embeddings.read import TeachingEmbeddingChunk
+from course_explorer.embeddings.shared_store import SharedServingStore
+from course_explorer.enums import TeachingTextField, TeachingTextLanguage, TeachingTextOrigin
 from course_explorer.ingestion.normalization import normalize_curriculum
 from course_explorer.ingestion.normalization_repository import NormalizationRepository
 from course_explorer.ingestion.repository import CaptureRepository
@@ -262,13 +267,17 @@ def discovery_catalogue(
         )
     )
 
-    monkeypatch.setattr(command_module, "load_search_settings", search_settings)
-    monkeypatch.setattr(command_module, "_database_context", lambda _settings: nullcontext(factory))
-    monkeypatch.setattr(recommendations_commands, "load_search_settings", search_settings)
-    monkeypatch.setattr(recommendations_commands, "load_embedding_settings", embedding_settings)
-    monkeypatch.setattr(recommendations_commands, "load_database_settings", lambda: object())
     monkeypatch.setattr(
-        recommendations_commands, "database_context", lambda _settings: nullcontext(factory)
+        command_module, "_database_context", lambda _settings, **_kwargs: nullcontext(factory)
+    )
+    monkeypatch.setattr(recommendations_commands, "load_search_settings", search_settings)
+    monkeypatch.setattr(
+        recommendations_commands, "load_embedding_runtime_settings", embedding_settings
+    )
+    monkeypatch.setattr(
+        recommendations_commands,
+        "database_context",
+        lambda _settings, **_kwargs: nullcontext(factory),
     )
 
     return factory
@@ -371,12 +380,45 @@ def test_real_next_course_command_rejects_partial_substitution(discovery_catalog
     ids=("completed-subset", "all", "at-least-one", "all-courses", "selected-basis"),
 )
 def test_recommendations_exclude_same_input_real_next_courses(
-    discovery_catalogue: object, inputs: dict[str, object]
+    discovery_catalogue: object, inputs: dict[str, object], tmp_path: Path
 ) -> None:
     """Recommendations are similarity-only and never repeat a directly produced next course."""
     call_kwargs = {"display_language": "en", **inputs}
     next_report = command_module.run_next_courses_command(**call_kwargs)
-    recommendation_report = recommendations_commands.run_recommendations_command(**call_kwargs)
+    shared_store = SharedServingStore.build(
+        tmp_path / "serving",
+        dataset_key="discovery-catalogue",
+        academic_year_start=2026,
+        centroids=(
+            CourseCentroid(
+                group_id="dummy",
+                sisu_course_unit_id="dummy",
+                representative_source_hash="dummy",
+                chunk_count=1,
+                centroid=tuple([0.0] * COURSE_EMBEDDING_DIMENSION),
+            ),
+        ),
+        chunks=(
+            TeachingEmbeddingChunk(
+                chunk_id=uuid4(),
+                group_id="dummy",
+                field=TeachingTextField.CONTENT,
+                language=TeachingTextLanguage.EN,
+                chunk_index=0,
+                text_origin=TeachingTextOrigin.OFFICIAL,
+                character_count=1,
+                embedding=[0.0] * COURSE_EMBEDDING_DIMENSION,
+                sisu_course_unit_id="dummy",
+                representative_source_hash="dummy",
+            ),
+        ),
+    )
+    recommendation_report = recommendations_commands.run_recommendations_command(
+        **call_kwargs,
+        hub=(0.0,) * COURSE_EMBEDDING_DIMENSION,
+        outcomes_hub=(0.0,) * COURSE_EMBEDDING_DIMENSION,
+        shared_store=shared_store,
+    )
     assert (
         RecommendationsReport.model_validate_json(recommendation_report.model_dump_json())
         == recommendation_report

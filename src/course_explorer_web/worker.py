@@ -1,10 +1,9 @@
-"""Serve the plain read-only worker application on the descriptors the supervisor passes it."""
+"""Serve the worker application on the loopback socket and readiness pipe the supervisor passes it."""
 
 from __future__ import annotations
 
 import os
 import socket
-import sys
 
 import uvicorn
 
@@ -27,16 +26,10 @@ class _ReadyServer(uvicorn.Server):
         os.close(self._readiness_fd)
 
 
-def main() -> None:
+def main(*, listener_fd: int, readiness_fd: int) -> None:
     """Serve the worker application on one inherited loopback socket."""
-    listener_fd = int(sys.argv[1])
-    readiness_fd = int(sys.argv[2])
     server = _ReadyServer(
         uvicorn.Config("course_explorer_web.app:app", fd=listener_fd, access_log=False),
         readiness_fd,
     )
     server.run()
-
-
-if __name__ == "__main__":
-    main()

@@ -1,0 +1,22 @@
+{
+  "type": "bar",
+  "title": "Fuzzy-name stage core-seconds before and after native token coverage",
+  "description": "The fuzzy-name stage cost in core-seconds for the four fixed search queries before and after the token coverage moved to the native lookup library, measured on one code revision against a disposable database.",
+  "valueAxis": "Core-seconds per query",
+  "categories": [
+    "XYKSJV20-M001",
+    "XYKSJV20-M001 MARIH.319",
+    "Fullwidth literal",
+    "tietokanta suunnittlu"
+  ],
+  "series": [
+    {
+      "name": "Before",
+      "values": [0.0763, 0.0804, 0.0768, 0.0804]
+    },
+    {
+      "name": "After",
+      "values": [0.0264, 0.0419, 0.0315, 0.0351]
+    }
+  ]
+}

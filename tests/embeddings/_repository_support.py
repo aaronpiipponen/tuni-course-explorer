@@ -7,12 +7,11 @@ recording fake provider, so each SQL proof exercises the actual persistence path
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import Engine, select
 
-from course_explorer.config import EmbeddingSettings
+from course_explorer.config import EmbeddingRuntimeSettings
 from course_explorer.constants import COURSE_EMBEDDING_DIMENSION
 from course_explorer.curriculum_repository import CurriculumRepository
 from course_explorer.db.models import (
@@ -40,9 +39,7 @@ from course_explorer.teaching_text.service import (
     DerivedTranslationInput,
     TeachingTextService,
 )
-from tests.support import settings_factory
-
-GENERATED_AT = datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
+from tests.support import GENERATED_AT, embedding_settings
 
 
 class FakeProvider:
@@ -62,21 +59,6 @@ class FakeProvider:
         )
 
 
-def embedding_settings() -> EmbeddingSettings:
-    """Build the full required embedding configuration with a generation batch."""
-    return settings_factory(
-        EmbeddingSettings,
-        EMBEDDING_CONTEXT_SIZE=1024,
-        EMBEDDING_REQUEST_TIMEOUT_SECONDS=30,
-        EMBEDDING_GENERATION_BATCH_SIZE=16,
-        EMBEDDING_ARTIFACT_URL="https://example.test/model.gguf",
-        EMBEDDING_ARTIFACT_PATH="models/model.gguf",
-        EMBEDDING_ARTIFACT_SHA256="a" * 64,
-        EMBEDDING_SERVER_IMAGE="ghcr.io/ggml-org/llama.cpp:server@sha256:" + "b" * 64,
-        EMBEDDING_RUNTIME_REVISION="c" * 40,
-    )
-
-
 def compose(
     database: tuple[Engine, object],
 ) -> tuple[
@@ -84,7 +66,7 @@ def compose(
     CourseEmbeddingRepository,
     FakeProvider,
     TeachingTextService,
-    EmbeddingSettings,
+    EmbeddingRuntimeSettings,
 ]:
     """Build the real generation service over real curricula and a recording fake provider."""
     _, factory = database

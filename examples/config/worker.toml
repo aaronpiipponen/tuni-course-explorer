@@ -1,9 +1,14 @@
-# Portable administrative-worker connection contract, validated by course_explorer.config
+# Administrative-worker connection contract, validated by course_explorer.config
 # WorkerSetupSettings and the worker connection/dataset/lifecycle settings families.
 #
+# Three of the four TRANSLATION_CONTROLLER_* values name the worker machine and the worker checkout.
+# The example values are placeholders, and a deployment states its own values in config/worker.toml.
+TRANSLATION_CONTROLLER_SSH_TARGET = "replace-with-ssh-target"
+TRANSLATION_CONTROLLER_WSL_DISTRIBUTION = "replace-with-wsl-distribution"
+TRANSLATION_CONTROLLER_WORKER_PROJECT_ROOT = "/home/replace-with-user/tuni-course-explorer"
+TRANSLATION_CONTROLLER_SSH_CONNECT_TIMEOUT_SECONDS = 10
 # WORKER_SETUP_PROJECT_URL is the expected Git origin that setup and preflight checks compare
 # against. The example value is a placeholder.
-TRANSLATION_CONTROLLER_SSH_CONNECT_TIMEOUT_SECONDS = 10
 WORKER_SETUP_PROJECT_URL = "replace-with-project-url"
 WORKER_SETUP_TIMEOUT_SECONDS = 14400
 # Server/worker database-name prefixes and the one timeout every dataset dump/restore/rotation

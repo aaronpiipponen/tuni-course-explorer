@@ -1,0 +1,11 @@
+{
+  "type": "bar",
+  "title": "Worker glibc heap in use and free by concurrency",
+  "description": "The in-use and free parts of one worker's glibc heap at sequential, four concurrent and eight concurrent requests, and at eight concurrent requests with the arena cap, in MB.",
+  "valueAxis": "Heap (MB)",
+  "categories": ["Sequential", "Four concurrent", "Eight concurrent", "Eight concurrent, arena cap 2"],
+  "series": [
+    { "name": "In use", "values": [58, 60, 62, 61] },
+    { "name": "Free", "values": [40, 133, 363, 148] }
+  ]
+}

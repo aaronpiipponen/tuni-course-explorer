@@ -8,9 +8,12 @@ from __future__ import annotations
 
 import getpass
 import importlib.util
+import io
 import json
+import sys
 import warnings
 from pathlib import Path
+from uuid import UUID
 
 import pytest
 
@@ -24,6 +27,10 @@ _CLI_SPEC = importlib.util.spec_from_file_location(
 assert _CLI_SPEC is not None and _CLI_SPEC.loader is not None
 _CLI_MODULE = importlib.util.module_from_spec(_CLI_SPEC)
 _CLI_SPEC.loader.exec_module(_CLI_MODULE)
+
+
+_FEEDBACK_ID = "3f1c2a64-5b7d-4e29-8c10-6a9d2b4e7f01"
+_ATTACHMENT_ID = "8e2d4b17-9c63-4a52-b0f8-1d7c3e5a9b24"
 
 
 class _Sentinel:
@@ -47,7 +54,13 @@ class _Sentinel:
         "password-mismatch",
         "password-hidden-input-failure",
         "password-safe-failure",
+        "feedback-list-delegate",
+        "feedback-attachment-delegate",
+        "feedback-delete-delegate",
+        "feedback-safe-failure",
         "dispose-nothing",
+        "self-host-example",
+        "self-host-real-database",
     ],
 )
 def test_operator_commands_report_status_refuse_bad_input_and_map_nothing(
@@ -105,11 +118,11 @@ def test_operator_commands_report_status_refuse_bad_input_and_map_nothing(
     if case == "report-safe-failure":
         # One synthetic unsafe exception produces only its class token, never the payload.
 
-        def unsafe(kind):
+        def unsafe(kind, *, role):
             raise RuntimeError("secret-payload-value")
 
         monkeypatch.setattr(_CLI_MODULE, "run_administrative_coverage", unsafe)
-        assert _CLI_MODULE.main(["coverage", "embedding"]) == 1
+        assert _CLI_MODULE.main(["coverage", "embedding", "--role", "working"]) == 1
         captured = capsys.readouterr()
         assert json.loads(captured.err.splitlines()[0]) == {"error": "RuntimeError"}
         assert "secret-payload-value" not in captured.err
@@ -139,7 +152,8 @@ def test_operator_commands_report_status_refuse_bad_input_and_map_nothing(
             ),
         )
         if case == "password-hidden-input-failure":
-            # An entry the terminal cannot hide is an error rather than an echoed fallback.
+            # An entry the terminal cannot hide is an error rather than an echoed fallback, and
+            # the one shared hidden reader owns that refusal for both password callers.
             def warning_reader(prompt: str) -> str:
                 warnings.warn("input will be echoed", getpass.GetPassWarning)
                 return "synthetic-entry"
@@ -148,6 +162,14 @@ def test_operator_commands_report_status_refuse_bad_input_and_map_nothing(
                 commands.run_administrative_password(
                     username="synthetic-operator", read_password=warning_reader
                 )
+            with pytest.raises(getpass.GetPassWarning):
+                commands._read_hidden_secret("Prompt: ", read_password=warning_reader)
+            assert (
+                commands._read_hidden_secret(
+                    "Prompt: ", read_password=lambda prompt: "shared-entry"
+                )
+                == "shared-entry"
+            )
             assert delegated == []
             return
         answers = ["first-entry", "first-entry"]
@@ -187,6 +209,150 @@ def test_operator_commands_report_status_refuse_bad_input_and_map_nothing(
         captured = capsys.readouterr()
         assert json.loads(captured.err.splitlines()[0]) == {"error": "RuntimeError"}
         assert "password-payload-value" not in captured.err
+        return
+
+    if case in {
+        "feedback-list-delegate",
+        "feedback-attachment-delegate",
+        "feedback-delete-delegate",
+    }:
+        # Each feedback command parses its transport input and delegates once to its own owner.
+        report = _Sentinel(case)
+        if case == "feedback-list-delegate":
+            list_calls: list[dict] = []
+            monkeypatch.setattr(
+                _CLI_MODULE,
+                "run_administrative_feedback_list",
+                lambda **kwargs: list_calls.append(kwargs) or report,
+            )
+            assert (
+                _CLI_MODULE.main(
+                    ["feedback", "list", "--query=needle", "--filters", '{"role": "student"}']
+                )
+                == 0
+            )
+            assert list_calls == [{"query": "needle", "filters": {"role": "student"}}]
+        elif case == "feedback-attachment-delegate":
+            attachment_calls: list[tuple[UUID, UUID]] = []
+            monkeypatch.setattr(
+                _CLI_MODULE,
+                "run_administrative_feedback_attachment",
+                lambda feedback_id, attachment_id: (
+                    attachment_calls.append((feedback_id, attachment_id)) or report
+                ),
+            )
+            assert _CLI_MODULE.main(["feedback", "attachment", _FEEDBACK_ID, _ATTACHMENT_ID]) == 0
+            assert attachment_calls == [(UUID(_FEEDBACK_ID), UUID(_ATTACHMENT_ID))]
+        else:
+            delete_calls: list[UUID] = []
+            monkeypatch.setattr(
+                _CLI_MODULE,
+                "run_administrative_feedback_delete",
+                lambda feedback_id: delete_calls.append(feedback_id) or report,
+            )
+            assert _CLI_MODULE.main(["feedback", "delete", _FEEDBACK_ID]) == 0
+            assert delete_calls == [UUID(_FEEDBACK_ID)]
+        captured = capsys.readouterr()
+        assert json.loads(captured.out)["label"] == case
+        return
+
+    if case == "feedback-safe-failure":
+        # A failed feedback command prints only its class token and the feedback guidance.
+        def failing_feedback(feedback_id):
+            raise RuntimeError("feedback-payload-value")
+
+        monkeypatch.setattr(_CLI_MODULE, "run_administrative_feedback_delete", failing_feedback)
+        assert _CLI_MODULE.main(["feedback", "delete", _FEEDBACK_ID]) == 1
+        captured = capsys.readouterr()
+        assert json.loads(captured.err.splitlines()[0]) == {"error": "RuntimeError"}
+        assert "feedback-payload-value" not in captured.err
+        assert "feedback definition" in captured.err
+        # A malformed filter transport is a safe error too, and its text is not echoed.
+        assert _CLI_MODULE.main(["feedback", "list", "--filters", "not-json"]) == 1
+        captured = capsys.readouterr()
+        assert json.loads(captured.err.splitlines()[0]) == {"error": "FeedbackValidationError"}
+        assert "not-json" not in captured.err
+        return
+
+    if case in {"self-host-example", "self-host-real-database"}:
+        # Each self-host verb reads one JSON input object from non-interactive stdin, delegates
+        # once, keeps both secrets out of the report and writes fixed progress to the error stream.
+        called: list[object] = []
+        report = _Sentinel(case)
+
+        def example_delegate(options, *, write):
+            called.append(options)
+            write("progress-step")
+            return report
+
+        def real_delegate(options, *, write):
+            called.append(options)
+            write("progress-step")
+            return report
+
+        if case == "self-host-example":
+
+            class _Tty:
+                def isatty(self) -> bool:
+                    return True
+
+                def read(self) -> str:
+                    raise AssertionError("a terminal must not be read")
+
+            monkeypatch.setattr(sys, "stdin", _Tty())
+            assert _CLI_MODULE.main(["self-host", "example"]) == 1
+            captured = capsys.readouterr()
+            assert "operator menu" in captured.err
+            assert called == []
+
+            monkeypatch.setattr(_CLI_MODULE, "run_administrative_example_setup", example_delegate)
+            payload = {
+                "username": "synthetic-operator",
+                "password": "synthetic-password",
+                "publication_token": "synthetic-token",
+                "mode": "foreground",
+                "confirm_download": True,
+            }
+            monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
+            assert _CLI_MODULE.main(["self-host", "example"]) == 0
+            assert len(called) == 1
+            options = called[0]
+            assert isinstance(options, commands.ExampleSetupInput)
+            assert options.password.get_secret_value() == "synthetic-password"
+            assert options.publication_token is not None
+            assert "password" not in options.model_dump()
+            assert "publication_token" not in options.model_dump()
+            assert "synthetic-password" not in repr(options)
+            captured = capsys.readouterr()
+            assert json.loads(captured.out)["label"] == case
+            assert "progress-step" in captured.err
+            assert "synthetic-password" not in captured.err
+            assert "synthetic-token" not in captured.err
+            return
+
+        monkeypatch.setattr(_CLI_MODULE, "run_administrative_real_database_setup", real_delegate)
+        payload = {"database_name": "course_explorer_real", "mode": "user"}
+        monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
+        assert _CLI_MODULE.main(["self-host", "real-database"]) == 0
+        assert len(called) == 1
+        assert isinstance(called[0], commands.RealDatabaseSetupInput)
+        assert called[0].database_name == "course_explorer_real"
+        assert called[0].mode == "user"
+        captured = capsys.readouterr()
+        assert json.loads(captured.out)["label"] == case
+        assert "progress-step" in captured.err
+
+        # A safe owner failure prints only the class token and the workflow guidance.
+        def failing_real(options, *, write):
+            raise RuntimeError("self-host-payload-value")
+
+        monkeypatch.setattr(_CLI_MODULE, "run_administrative_real_database_setup", failing_real)
+        monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
+        assert _CLI_MODULE.main(["self-host", "real-database"]) == 1
+        captured = capsys.readouterr()
+        assert json.loads(captured.err.splitlines()[0]) == {"error": "RuntimeError"}
+        assert "self-host-payload-value" not in captured.err
+        assert "example workflow first" in captured.err
         return
 
     # The explicit `dispose inference ... nothing` machine command maps to no disposition.

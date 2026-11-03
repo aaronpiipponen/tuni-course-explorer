@@ -1,31 +1,34 @@
-"""Public proofs for the per-process retained caches of one serving dataset identity."""
+"""Public proof for one serving dataset identity's engine, artifacts and supervisor-shared
+caches."""
 
 from __future__ import annotations
 
-from course_explorer.config import DatabaseSettings, WebSettings
+import gzip
+
+from course_explorer.config import DatabaseSettings
 from course_explorer_web.dataset import ServingDataset
 from course_explorer_web.serving_cache import serving_caches
 from tests.support import settings_factory
 
 
-def test_serving_caches_are_reused_for_one_identity_and_rebuilt_for_another() -> None:
-    """One identity keeps its three cache instances, and a different identity replaces them."""
-    settings = settings_factory(WebSettings)
+def test_serving_caches_are_reused_for_the_supervisor_identity() -> None:
+    """One supervisor fixes one dataset identity, so repeated reads retain the one built set.
+
+    The next-course report region is the supervisor's preloaded cache, and the artifacts, catalogue
+    body and gzip form are the supervisor's preloaded values. The gzip form holds the compressed
+    catalogue body.
+    """
     database_settings = settings_factory(DatabaseSettings)
     serving = ServingDataset(settings=database_settings, identity="a" * 64)
 
-    first = serving_caches(serving, settings)
-    second = serving_caches(serving, settings)
+    first = serving_caches(serving)
+    second = serving_caches(serving)
 
     assert first is second
-    assert first.lookup_projection is second.lookup_projection
-    assert first.prerequisite_sources is second.prerequisite_sources
-    assert first.descriptive_chunks is second.descriptive_chunks
-
-    other = serving_caches(ServingDataset(settings=database_settings, identity="b" * 64), settings)
-
-    assert other is not first
-    assert other.dataset_identity == "b" * 64
-    assert other.lookup_projection is not first.lookup_projection
-    assert other.prerequisite_sources is not first.prerequisite_sources
-    assert other.descriptive_chunks is not first.descriptive_chunks
+    assert first.database is second.database
+    assert first.artifacts is second.artifacts
+    assert first.catalogue_body.endswith(b"}")
+    assert b'"dataset_identity"' in first.catalogue_body
+    assert gzip.decompress(first.catalogue_gzip) == first.catalogue_body
+    assert first.next_course_reports is second.next_course_reports
+    assert first.course_centroids is second.course_centroids

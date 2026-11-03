@@ -15,7 +15,7 @@ from typing import Any
 from sqlalchemy import select
 
 from course_explorer.config import (
-    EmbeddingSettings,
+    EmbeddingRuntimeSettings,
     InferenceContextSettings,
     InferenceRerankInputSettings,
     InferenceRerankSettings,
@@ -39,16 +39,15 @@ from course_explorer.inference.prompts import load_prompt_pack
 from course_explorer.inference.scheduling_repository import InferenceSchedulingRepository
 from course_explorer.teaching_text.repository import DerivedTranslationRepository
 from course_explorer.teaching_text.service import TeachingTextService
-from tests.inference._fixture_support import embedding_settings
 from tests.inference._http_support import InferenceHttpBoundary, install_inference_http
 from tests.inference._scheduling_support import seed_courses
-from tests.support import settings_factory
+from tests.support import embedding_settings, settings_factory
 
 CANDIDATES = tuple(f"job-c{index:02d}" for index in range(50))
 _TEST_POOL_K = 50
 
 
-def seed_embeddings(factory: object, settings: EmbeddingSettings) -> None:
+def seed_embeddings(factory: object, settings: EmbeddingRuntimeSettings) -> None:
     """Seed completed chunk rows matching the current desired embedding work exactly.
 
     Every chunk carries a nonzero unit vector so the real pgvector cosine ranking, fusion and
@@ -137,7 +136,7 @@ def _install_settings(monkeypatch: Any) -> InferenceSettings:
         INFERENCE_SELECTION_FINAL_K=_TEST_POOL_K,
     )
     pack = load_prompt_pack("v9")
-    monkeypatch.setattr(job_module, "load_embedding_settings", lambda: embedding)
+    monkeypatch.setattr(job_module, "load_embedding_runtime_settings", lambda: embedding)
     monkeypatch.setattr(job_module, "load_inference_settings", lambda: inference)
     monkeypatch.setattr(
         job_module,

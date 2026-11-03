@@ -15,11 +15,14 @@ export function Panel({
   marker,
   children,
   span = 6,
+  followBody = false,
 }: {
   title: string;
   marker?: ReactNode;
   children: ReactNode;
   span?: 4 | 6 | 12;
+  /** Follow the content's own animation instead of easing the measured body a second time. */
+  followBody?: boolean;
 }) {
   return (
     <section className={`panel w${span}`}>
@@ -28,7 +31,7 @@ export function Panel({
         <span className="sp" />
         {marker}
       </div>
-      <AnimatedPanelBody>{children}</AnimatedPanelBody>
+      <AnimatedPanelBody follow={followBody}>{children}</AnimatedPanelBody>
     </section>
   );
 }

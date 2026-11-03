@@ -21,41 +21,41 @@
   <text x="700.6" y="526" text-anchor="middle" font-size="14" fill="#a3a4b8">15,000</text>
   <line x1="845.6" y1="72" x2="845.6" y2="504" stroke="#4a4c6b" stroke-width="1"/>
   <text x="845.6" y="526" text-anchor="middle" font-size="14" fill="#a3a4b8">20,000</text>
-  <text x="253.6" y="131" text-anchor="end" font-size="14" fill="#ececf2">MATH.MA.880, active only</text>
-  <rect x="265.6" y="80" width="84.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
-  <text x="358.1" y="95" font-size="14" fill="#a3a4b8">2,915</text>
-  <rect x="265.6" y="104" width="14.6" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
-  <text x="288.2" y="119" font-size="14" fill="#a3a4b8">502</text>
-  <rect x="265.6" y="128" width="6.9" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
-  <text x="280.5" y="143" font-size="14" fill="#a3a4b8">239</text>
-  <rect x="265.6" y="152" width="2.3" height="20" rx="2" fill="#a7e36b" stroke="none" stroke-width="1.5"/>
-  <text x="275.9" y="167" font-size="14" fill="#a3a4b8">81</text>
-  <text x="253.6" y="239" text-anchor="end" font-size="14" fill="#ececf2">MATH.MA.880, all courses</text>
-  <rect x="265.6" y="188" width="127.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
-  <text x="401.1" y="203" font-size="14" fill="#a3a4b8">4,395</text>
-  <rect x="265.6" y="212" width="164.3" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
-  <text x="437.9" y="227" font-size="14" fill="#a3a4b8">5,664</text>
-  <rect x="265.6" y="236" width="57.9" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
-  <text x="331.5" y="251" font-size="14" fill="#a3a4b8">1,996</text>
-  <rect x="265.6" y="260" width="9.8" height="20" rx="2" fill="#a7e36b" stroke="none" stroke-width="1.5"/>
-  <text x="283.4" y="275" font-size="14" fill="#a3a4b8">339</text>
-  <text x="253.6" y="347" text-anchor="end" font-size="14" fill="#ececf2">MATH.MA.725, active only</text>
-  <rect x="265.6" y="296" width="179.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
-  <text x="453.1" y="311" font-size="14" fill="#a3a4b8">6,188</text>
-  <rect x="265.6" y="320" width="148" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
-  <text x="421.6" y="335" font-size="14" fill="#a3a4b8">5,103</text>
-  <rect x="265.6" y="344" width="22.4" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
-  <text x="296" y="359" font-size="14" fill="#a3a4b8">771</text>
-  <rect x="265.6" y="368" width="15" height="20" rx="2" fill="#a7e36b" stroke="none" stroke-width="1.5"/>
-  <text x="288.6" y="383" font-size="14" fill="#a3a4b8">518</text>
-  <text x="253.6" y="455" text-anchor="end" font-size="14" fill="#ececf2">MATH.MA.725, all courses</text>
-  <rect x="265.6" y="404" width="220.7" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
-  <text x="494.3" y="419" font-size="14" fill="#a3a4b8">7,609</text>
-  <rect x="265.6" y="428" width="451.8" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
-  <text x="725.4" y="443" font-size="14" fill="#a3a4b8">15,578</text>
-  <rect x="265.6" y="452" width="99" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
-  <text x="372.6" y="467" font-size="14" fill="#a3a4b8">3,414</text>
-  <rect x="265.6" y="476" width="25.4" height="20" rx="2" fill="#a7e36b" stroke="none" stroke-width="1.5"/>
-  <text x="299" y="491" font-size="14" fill="#a3a4b8">875</text>
+  <text x="253.6" y="131" text-anchor="end" font-size="14" fill="#ececf2">MATH.MA.725, all courses</text>
+  <rect x="265.6" y="80" width="220.7" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="494.3" y="95" font-size="14" fill="#a3a4b8">7,609</text>
+  <rect x="265.6" y="104" width="451.8" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="725.4" y="119" font-size="14" fill="#a3a4b8">15,578</text>
+  <rect x="265.6" y="128" width="99" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="372.6" y="143" font-size="14" fill="#a3a4b8">3,414</text>
+  <rect x="265.6" y="152" width="25.4" height="20" rx="2" fill="#a7e36b" stroke="none" stroke-width="1.5"/>
+  <text x="299" y="167" font-size="14" fill="#a3a4b8">875</text>
+  <text x="253.6" y="239" text-anchor="end" font-size="14" fill="#ececf2">MATH.MA.725, active only</text>
+  <rect x="265.6" y="188" width="179.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="453.1" y="203" font-size="14" fill="#a3a4b8">6,188</text>
+  <rect x="265.6" y="212" width="148" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="421.6" y="227" font-size="14" fill="#a3a4b8">5,103</text>
+  <rect x="265.6" y="236" width="22.4" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="296" y="251" font-size="14" fill="#a3a4b8">771</text>
+  <rect x="265.6" y="260" width="15" height="20" rx="2" fill="#a7e36b" stroke="none" stroke-width="1.5"/>
+  <text x="288.6" y="275" font-size="14" fill="#a3a4b8">518</text>
+  <text x="253.6" y="347" text-anchor="end" font-size="14" fill="#ececf2">MATH.MA.880, all courses</text>
+  <rect x="265.6" y="296" width="127.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="401.1" y="311" font-size="14" fill="#a3a4b8">4,395</text>
+  <rect x="265.6" y="320" width="164.3" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="437.9" y="335" font-size="14" fill="#a3a4b8">5,664</text>
+  <rect x="265.6" y="344" width="57.9" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="331.5" y="359" font-size="14" fill="#a3a4b8">1,996</text>
+  <rect x="265.6" y="368" width="9.8" height="20" rx="2" fill="#a7e36b" stroke="none" stroke-width="1.5"/>
+  <text x="283.4" y="383" font-size="14" fill="#a3a4b8">339</text>
+  <text x="253.6" y="455" text-anchor="end" font-size="14" fill="#ececf2">MATH.MA.880, active only</text>
+  <rect x="265.6" y="404" width="84.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="358.1" y="419" font-size="14" fill="#a3a4b8">2,915</text>
+  <rect x="265.6" y="428" width="14.6" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="288.2" y="443" font-size="14" fill="#a3a4b8">502</text>
+  <rect x="265.6" y="452" width="6.9" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="280.5" y="467" font-size="14" fill="#a3a4b8">239</text>
+  <rect x="265.6" y="476" width="2.3" height="20" rx="2" fill="#a7e36b" stroke="none" stroke-width="1.5"/>
+  <text x="275.9" y="491" font-size="14" fill="#a3a4b8">81</text>
   <text x="555.6" y="556" text-anchor="middle" font-size="14" fill="#a3a4b8">Time (ms)</text>
 </svg>

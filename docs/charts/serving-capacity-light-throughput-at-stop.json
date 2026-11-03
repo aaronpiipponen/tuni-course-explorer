@@ -1,0 +1,22 @@
+{
+  "type": "bar",
+  "title": "Light successful throughput at the stop level",
+  "description": "Light successful requests per second at the stop level, or at the last valid level where the next level failed, for four stacks under the light-only and mixed profiles. The post-port light-only bar is the highest at 40.041, and the post-port mixed bar is its collapsed 750-user level at 2.919.",
+  "valueAxis": "Light successful requests per second",
+  "categories": [
+    "Post-port, light only, 750",
+    "Post-port, mixed, 750",
+    "Pre-port, light only, 200",
+    "Pre-port, mixed, 100",
+    "Original admission, light only, 100",
+    "Original admission, mixed, 60",
+    "Pre-admission, light only, 100",
+    "Pre-admission, mixed, 100"
+  ],
+  "series": [
+    {
+      "name": "Light successful requests per second",
+      "values": [40.041, 2.919, 12.967, 6.785, 5.485, 3.744, 5.404, 4.541]
+    }
+  ]
+}

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from course_explorer.config import EmbeddingSettings
+from course_explorer.config import EmbeddingRuntimeSettings
 from course_explorer.curriculum import CatalogueCourse
 from course_explorer.teaching_text.service import (
     DerivedTranslation,
@@ -40,7 +40,7 @@ __all__ = [
 ]
 
 
-def settings(**overrides: Any) -> EmbeddingSettings:
+def settings(**overrides: Any) -> EmbeddingRuntimeSettings:
     """Build one required embedding configuration with a test batch size."""
     values: dict[str, object] = {
         "EMBEDDING_CONTEXT_SIZE": 1024,
@@ -52,7 +52,7 @@ def settings(**overrides: Any) -> EmbeddingSettings:
         "EMBEDDING_ARTIFACT_PATH": "models/model.gguf",
         **overrides,
     }
-    return settings_factory(EmbeddingSettings, **values)
+    return settings_factory(EmbeddingRuntimeSettings, **values)
 
 
 def teaching_text(

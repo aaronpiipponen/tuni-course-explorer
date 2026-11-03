@@ -29,6 +29,7 @@ from course_explorer_admin.lifecycle import (
     StageOptions,
     StageProgress,
 )
+from tests.support.repository import bind_repository_root
 
 IDENTITY_ALIAS = "LIFECYCLE_TEST_IDENTITY"
 UNITS_ALIAS = "LIFECYCLE_TEST_UNITS"
@@ -174,7 +175,9 @@ class LocalLifecycleRunner:
             return subprocess.CompletedProcess(
                 list(command), 0, stdout=(self.revision + "\n").encode(), stderr=b""
             )
-        if command[: len(mechanics.compose_prefix())] == mechanics.compose_prefix():
+        if command[: len(mechanics.compose_prefix(interpreter=True))] == mechanics.compose_prefix(
+            interpreter=True
+        ):
             return self._compose(command)
         return self._real.run(
             command,
@@ -255,10 +258,13 @@ class LocalLifecycleRunner:
             child.wait()
 
 
-def configure_environment(monkeypatch, *, startup_attempts: int = 100) -> None:
+def configure_environment(
+    monkeypatch, *, repository_root: Path, startup_attempts: int = 100
+) -> None:
     """Set the one shared local-lifecycle policy to deterministic test bounds."""
-    monkeypatch.setenv("INGESTION_CONTROLLER_STATE_ROOT", "data/tests/lifecycle/ingestion")
-    monkeypatch.setenv("EMBEDDING_CONTROLLER_STATE_ROOT", "data/tests/lifecycle/embedding")
+    bind_repository_root(monkeypatch, repository_root)
+    monkeypatch.setenv("INGESTION_CONTROLLER_STATE_ROOT", "data/tests/ingestion")
+    monkeypatch.setenv("EMBEDDING_CONTROLLER_STATE_ROOT", "data/tests/embedding")
     monkeypatch.setenv("ADMIN_STARTUP_ATTEMPTS", str(startup_attempts))
     monkeypatch.setenv("ADMIN_POLL_INTERVAL_SECONDS", "0.02")
     monkeypatch.setenv("ADMIN_STOP_TIMEOUT_SECONDS", "10")

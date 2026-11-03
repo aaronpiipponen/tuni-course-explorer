@@ -1,0 +1,22 @@
+{
+  "type": "bar",
+  "title": "Search web median before and after the native fuzzy stage",
+  "description": "Whole-request search web medians in seconds for the four fixed queries, with the query-embedding cache cleared, before and after the fuzzy-name token coverage moved to the native lookup library.",
+  "valueAxis": "Web median (s)",
+  "categories": [
+    "XYKSJV20-M001",
+    "XYKSJV20-M001 MARIH.319",
+    "Fullwidth literal",
+    "tietokanta suunnittlu"
+  ],
+  "series": [
+    {
+      "name": "Before",
+      "values": [0.1027, 0.1068, 0.1257, 0.1137]
+    },
+    {
+      "name": "After",
+      "values": [0.0542, 0.0709, 0.0812, 0.0688]
+    }
+  ]
+}

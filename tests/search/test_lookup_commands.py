@@ -9,11 +9,10 @@ import pytest
 from course_explorer.config import DatabaseSettings
 from course_explorer.curriculum import (
     CatalogueCurriculumPeriod,
-    CatalogueModuleLookup,
-    CatalogueModuleVersionIdentity,
 )
 from course_explorer.enums import ModuleType
 from course_explorer.search import lookup_commands as command_module
+from tests.search._lookup_support import module_lookup, module_version
 from tests.support import (
     FakeCurriculum,
     course,
@@ -21,31 +20,6 @@ from tests.support import (
     settings_factory,
     version,
 )
-
-
-def _module_version(
-    sisu_module_id: str,
-    *,
-    module_type: ModuleType = ModuleType.STUDY_MODULE,
-    code: str | None = None,
-    name_fi: str | None = None,
-    name_en: str | None = None,
-    curriculum_periods: tuple[CatalogueCurriculumPeriod, ...] = (),
-) -> CatalogueModuleVersionIdentity:
-    """Build one projected module-version identity fixture."""
-    return CatalogueModuleVersionIdentity(
-        sisu_module_id=sisu_module_id,
-        module_type=module_type,
-        code=code,
-        name_fi=name_fi,
-        name_en=name_en,
-        curriculum_periods=curriculum_periods,
-    )
-
-
-def _module(group_id: str, *versions: CatalogueModuleVersionIdentity) -> CatalogueModuleLookup:
-    """Build one canonical module lookup fixture from its projected versions."""
-    return CatalogueModuleLookup(group_id=group_id, versions=versions)
 
 
 def test_catalogue_command_maps_minimal_projection_and_empty_summaries_shortcut(
@@ -67,9 +41,9 @@ def test_catalogue_command_maps_minimal_projection_and_empty_summaries_shortcut(
         (active, inactive),
         summaries_by_activity={None: represented_rows((active, inactive))},
         module_lookup=(
-            _module(
+            module_lookup(
                 "module-group-a",
-                _module_version(
+                module_version(
                     "module-a-v1",
                     module_type=ModuleType.DEGREE_PROGRAMME,
                     code="DP.A",
@@ -85,7 +59,7 @@ def test_catalogue_command_maps_minimal_projection_and_empty_summaries_shortcut(
     settings = settings_factory(DatabaseSettings)
 
     @contextmanager
-    def _context(_settings: DatabaseSettings):
+    def _context(_settings: DatabaseSettings, **_kwargs):
         yield object()
 
     monkeypatch.setattr(command_module, "CurriculumRepository", lambda _factory: curriculum)

@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 608" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Fit and acceptance of one admission curve</title>
+  <desc id="d">One class passes from the measured workload matrix to its basis means, an integer knee
+  search and eight coefficient subsets. The acceptance check either applies the curve and its cutoff
+  at the 1.0 core-second crossing, or reports the smallest-residual curve with acceptance failed.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="608" rx="12" fill="#232434"/>
+
+  <rect x="330" y="32" width="300" height="40" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="58" text-anchor="middle" font-size="16" fill="#ececf2">Measured workload matrix</text>
+
+  <rect x="290" y="104" width="380" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="130" text-anchor="middle" font-size="16" fill="#ececf2">Basis means</text>
+  <text x="480" y="152" text-anchor="middle" font-size="14" fill="#a3a4b8">10 misses per point, equal weight</text>
+
+  <rect x="290" y="200" width="380" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="226" text-anchor="middle" font-size="16" fill="#ececf2">Integer knee search</text>
+  <text x="480" y="248" text-anchor="middle" font-size="14" fill="#a3a4b8">every integer knee, origin at basis 3</text>
+
+  <rect x="290" y="296" width="380" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="322" text-anchor="middle" font-size="16" fill="#ececf2">Eight coefficient subsets</text>
+  <text x="480" y="344" text-anchor="middle" font-size="14" fill="#a3a4b8">least squares, smallest residual</text>
+
+  <rect x="270" y="392" width="420" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="418" text-anchor="middle" font-size="16" fill="#ececf2">Acceptance check</text>
+  <text x="480" y="440" text-anchor="middle" font-size="14" fill="#a3a4b8">inside the ranges, between bracketing means</text>
+
+  <rect x="48" y="504" width="360" height="64" rx="8"
+        fill="#2e3045" stroke="#a98ae0" stroke-width="1.5"/>
+  <text x="228" y="530" text-anchor="middle" font-size="16" fill="#ececf2">Curve and cutoff applied</text>
+  <text x="228" y="552" text-anchor="middle" font-size="14" fill="#a3a4b8">cutoff at the 1.0 core-second crossing</text>
+
+  <rect x="552" y="504" width="360" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="732" y="530" text-anchor="middle" font-size="16" fill="#ececf2">Smallest-residual curve</text>
+  <text x="732" y="552" text-anchor="middle" font-size="14" fill="#a3a4b8">acceptance failed, curve kept</text>
+
+  <line x1="480" y1="72" x2="480" y2="104" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="480" y1="168" x2="480" y2="200" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="480" y1="264" x2="480" y2="296" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="480" y1="360" x2="480" y2="392" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+
+  <polyline points="400,456 400,480 228,480 228,504" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <polyline points="560,456 560,480 732,480 732,504" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <text x="412" y="474" font-size="14" fill="#a3a4b8">yes</text>
+  <text x="572" y="474" font-size="14" fill="#a3a4b8">no</text>
+</svg>

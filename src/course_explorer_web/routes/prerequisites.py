@@ -2,13 +2,15 @@
 
 from fastapi import APIRouter, Response
 
-from course_explorer.config import load_search_settings, load_web_settings
 from course_explorer.prerequisite import commands
-from course_explorer_web.dataset import resolve_serving_dataset
 from course_explorer_web.reports import dataset_report_response
 from course_explorer_web.routes.prerequisite_inputs import PrerequisiteGraphRequest
 from course_explorer_web.serving import MEASURE_GRAPH_HEADER
-from course_explorer_web.serving_cache import serving_caches
+from course_explorer_web.serving_cache import (
+    preloaded_lookup_projection,
+    preloaded_serving_settings,
+    serving_caches,
+)
 
 router = APIRouter()
 
@@ -16,21 +18,23 @@ router = APIRouter()
 @router.post("/api/prerequisites")
 def prerequisites(request: PrerequisiteGraphRequest) -> Response:
     """Forward the structural graph inputs under this site's drawing and inference policy."""
-    settings = load_web_settings()
-    serving = resolve_serving_dataset()
-    cache = serving_caches(serving, settings)
+    bundle = preloaded_serving_settings()
+    settings = bundle.web
+    serving = bundle.dataset
+    cache = serving_caches(serving)
     values = request.model_dump()
     values["include_inferred"] = request.include_inferred and settings.inference_enabled
     report = commands.run_prerequisite_command(
         **values,
         max_drawing_elements=settings.prerequisite_graph_max_elements,
         database_settings=serving.settings,
-        source_cache=cache.prerequisite_sources,
+        projection=preloaded_lookup_projection(),
+        session_factory=cache.database.factory(),
     )
     response = dataset_report_response(
         report,
         serving,
-        max_compact_nodes=load_search_settings().prerequisite_path_max_compact_nodes,
+        max_compact_nodes=bundle.search.prerequisite_path_max_compact_nodes,
     )
     if request.target_code in _root_identifiers(report):
         response.headers[MEASURE_GRAPH_HEADER] = "1"

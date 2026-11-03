@@ -10,6 +10,17 @@ from sqlalchemy import Engine, select
 
 from course_explorer.db.models import Course
 from course_explorer.db.session import session_scope
+from tests.prerequisite import _fixture_library
+
+
+@pytest.fixture(scope="session", autouse=True)
+def fixture_native_library() -> None:
+    """Fail with the fixture build guidance when the test-only native projector is absent."""
+    target = _fixture_library.library_path()
+    if not target.is_file():
+        pytest.fail(
+            f"fixture native library is missing at {target}; {_fixture_library.BUILD_GUIDANCE}"
+        )
 
 
 @dataclass(frozen=True)

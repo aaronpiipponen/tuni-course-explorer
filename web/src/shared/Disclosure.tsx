@@ -6,10 +6,13 @@ import { useReducedMotion } from "./useReducedMotion";
 export function Disclosure({
   open,
   className,
+  clipClassName,
   children,
 }: {
   open: boolean;
   className?: string;
+  /** Extra class on the clipped content, for example a shared scrollbar. */
+  clipClassName?: string;
   children: ReactNode;
 }) {
   const reducedMotion = useReducedMotion();
@@ -40,7 +43,9 @@ export function Disclosure({
           setAnimating(false);
       }}
     >
-      <div className="panelclip">{children}</div>
+      <div className={`panelclip${clipClassName ? ` ${clipClassName}` : ""}`}>
+        {children}
+      </div>
     </div>
   );
 }

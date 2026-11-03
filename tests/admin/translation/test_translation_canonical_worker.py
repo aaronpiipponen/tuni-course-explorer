@@ -16,12 +16,10 @@ from pathlib import Path
 
 import pytest
 
-from course_explorer import administration
 from course_explorer.administration import administrative_json, atomic_write_private_text
 from course_explorer.config import load_administrative_dataset_settings, load_translation_settings
 from course_explorer.datasets import DatabaseSnapshot, DatasetReceipt
 from course_explorer.teaching_text.service import TranslationImportReport
-from course_explorer_admin import datasets as datasets_module
 from course_explorer_admin import remote, worker_session
 from course_explorer_admin.remote import WorkerDatasetSession, worker_dataset_session_directory
 from course_explorer_admin.translation import controller_worker as worker_module
@@ -83,15 +81,11 @@ def configure_canonical(monkeypatch: pytest.MonkeyPatch, root: Path) -> None:
     _worker_support.configure(monkeypatch, root)
     for key, value in ADMIN_DATASET_KEYS.items():
         monkeypatch.setenv(key, value)
-    monkeypatch.setattr(administration, "repository_root", lambda: root)
-    monkeypatch.setattr(remote, "repository_root", lambda: root)
-    monkeypatch.setattr(datasets_module, "repository_root", lambda: root)
     # The canonical worker run is invoked with the raw session database pinned and the selected
     # dataset explicitly disabled. The test sets exactly that environment.
     monkeypatch.setenv(
         "POSTGRES_DB", load_administrative_dataset_settings().database_name(SESSION_ID, worker=True)
     )
-    monkeypatch.setenv("SELECTED_DATASET_ENABLED", "0")
 
 
 def canonical_session() -> WorkerDatasetSession:

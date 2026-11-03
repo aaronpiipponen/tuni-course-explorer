@@ -1,0 +1,17 @@
+{
+  "type": "bar",
+  "title": "Candidate 4 findings beside the reference by category",
+  "description": "Findings emitted by candidate 4 and findings held by the corrected reference, by category, over the 49 valid tuning targets. Required findings are over-produced at 35 against 24, recommended findings are under-produced at 14 against 35, and equivalence groups are close at 17 against 21.",
+  "valueAxis": "Findings",
+  "categories": ["Required", "Recommended", "Equivalence"],
+  "series": [
+    {
+      "name": "Reference",
+      "values": [24, 35, 21]
+    },
+    {
+      "name": "Emitted",
+      "values": [35, 14, 17]
+    }
+  ]
+}

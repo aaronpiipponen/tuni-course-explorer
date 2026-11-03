@@ -1,0 +1,12 @@
+{
+  "type": "bar",
+  "title": "Memory envelope at three web caps",
+  "description": "Current memory of the web, database and embedding components at the 2.307, 1.992 and 1.573 GB web caps under the final 80-request mixed protocol.",
+  "valueAxis": "Current memory (GB)",
+  "categories": ["2.307 GB web cap", "1.992 GB web cap", "1.573 GB web cap"],
+  "series": [
+    { "name": "Web", "values": [0.908, 0.89, 0.907] },
+    { "name": "Database", "values": [0.669, 0.486, 0.486] },
+    { "name": "Embedding", "values": [0.553, 0.553, 0.553] }
+  ]
+}

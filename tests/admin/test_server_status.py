@@ -1,18 +1,17 @@
 """Contracts for the one server-only status report behind the operator's Dashboard read.
 
-The proof binds one temporary checkout that carries the committed example configuration, the
-checkout's migration tree, a temporary selected-dataset receipt and both hub files. One small
-process-boundary double answers the fixed systemd, git, Compose and directory-total reads, while
-the host facts and the database read are real: the database read runs against the disposable
-``course_explorer_test`` database. Every parameter runs the single public report once and asserts
-only that invocation's outcome.
+The proof binds one temporary checkout whose configuration, environment file and migration tree
+are links to this checkout, plus a temporary selected-dataset receipt in a case that enrolls one
+and an embedding artifact directory with both hub files. One small process-boundary double answers
+the fixed systemd, git, Compose and directory-total reads, while the host facts are real and the
+database read runs against the disposable ``course_explorer_test`` database. Every parameter runs
+the single public report once and asserts only that invocation's outcome.
 """
 
 from __future__ import annotations
 
 import json
 import os
-import shutil
 import subprocess
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -24,15 +23,23 @@ from sqlalchemy import Engine, text
 
 from course_explorer import administration
 from course_explorer.administration import administrative_json, atomic_write_private_text
-from course_explorer.datasets import SelectedDatasetPointer
+from course_explorer.config import load_database_settings, load_embedding_runtime_settings
+from course_explorer.constants import COURSE_EMBEDDING_DIMENSION
+from course_explorer.datasets import DatasetPointer
+from course_explorer.embeddings.generation import embedding_configuration_sha256
+from course_explorer.serving_artifacts import (
+    embedding_directory,
+    serving_artifact_root,
+    serving_key,
+)
+from course_explorer.serving_build import write_hub_pair
 from course_explorer_admin import datasets as datasets_admin
 from course_explorer_admin import mechanics, server
 from tests.datasets._support import INITIAL_ID, REVISION, sample_receipt
-from tests.support import write_example_config_tree
+from tests.support.repository import scratch_repository
 
 pytestmark = [pytest.mark.integration]
 
-_REPOSITORY = Path(__file__).parents[2]
 _DISPOSABLE_DATABASE = "course_explorer_test"
 _UNUSED_DATABASE = "course_explorer_status_unused"
 _STATE_ROOT = "data/admin-site-test"
@@ -55,56 +62,69 @@ _SITE_PROPERTIES = (
 
 
 def _bind_proof_root(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, *, selection_enabled: bool
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    *,
+    selection_enabled: bool,
+    embeddings_enabled: bool,
 ) -> Path:
     """Build one temporary checkout and bind every owner root and setting the report reads.
 
-    The settings composition stays on the real checkout, because the disposable database credential
-    comes from it. The checkout the report reads, the selected-dataset state root and the two hub
-    references resolve to the temporary tree instead.
+    The configuration, migrations and environment file are links to this checkout, so the database
+    settings compose from the checkout's own values and the other settings take the example values
+    the integration fixture places in the process environment. The report's state root and
+    artifact build resolve to the temporary tree.
     """
-    root = write_example_config_tree(tmp_path / "checkout")
+    root = scratch_repository(tmp_path / "checkout")
     (root / "data").mkdir()
     (root / "models").mkdir()
-    (root / "alembic.ini").write_bytes((_REPOSITORY / "alembic.ini").read_bytes())
-    shutil.copytree(
-        _REPOSITORY / "migrations",
-        root / "migrations",
-        ignore=shutil.ignore_patterns("__pycache__"),
-    )
     state = root / _STATE_ROOT
-    receipt_directory = state / "datasets" / INITIAL_ID
-    receipt_directory.mkdir(mode=0o700, parents=True)
-    atomic_write_private_text(
-        receipt_directory / "receipt.json",
-        administrative_json(sample_receipt(database_name=_DISPOSABLE_DATABASE)),
-    )
-    atomic_write_private_text(
-        state / "selected-dataset.json",
-        administrative_json(SelectedDatasetPointer(schema_version=1, dataset_id=INITIAL_ID)),
-    )
+    if selection_enabled:
+        receipt_directory = state / "datasets" / INITIAL_ID
+        receipt_directory.mkdir(mode=0o700, parents=True)
+        atomic_write_private_text(
+            receipt_directory / "receipt.json",
+            administrative_json(sample_receipt(database_name=_DISPOSABLE_DATABASE)),
+        )
+        atomic_write_private_text(
+            state / "selected-dataset.json",
+            administrative_json(DatasetPointer(schema_version=1, dataset_id=INITIAL_ID)),
+        )
     # One hub file is older than any web start and one is newer, so the comparison is decided by the
     # file times rather than by how long this host has been up.
-    derived = root / "config" / "derived"
     ancient = datetime(2001, 1, 1, tzinfo=UTC).timestamp()
     tomorrow = (datetime.now(UTC) + timedelta(days=1)).timestamp()
-    os.utime(derived / "embedding-hub.json", (ancient, ancient))
-    os.utime(derived / "embedding-outcomes-hub.json", (tomorrow, tomorrow))
+
+    def _write_embedding_directory() -> Path:
+        family = serving_artifact_root(root / _STATE_ROOT, serving_key(load_database_settings()))
+        directory = embedding_directory(
+            family, embedding_configuration_sha256(load_embedding_runtime_settings())
+        )
+        directory.mkdir(parents=True)
+        write_hub_pair(
+            directory,
+            (0.0,) * COURSE_EMBEDDING_DIMENSION,
+            (0.0,) * COURSE_EMBEDDING_DIMENSION,
+        )
+        return directory
 
     monkeypatch.setenv("ADMIN_SITE_WEB_SERVICE_UNIT", _UNIT)
     monkeypatch.setenv("ADMIN_SITE_ADMIN_SERVICE_UNIT", "synthetic-site-admin.service")
     monkeypatch.setenv("ADMIN_STATE_ROOT", _STATE_ROOT)
+    monkeypatch.setenv("WEB_EMBEDDINGS_ENABLED", "1" if embeddings_enabled else "0")
     monkeypatch.setenv(
         "POSTGRES_DB", _DISPOSABLE_DATABASE if not selection_enabled else _UNUSED_DATABASE
     )
-    monkeypatch.setenv("SELECTED_DATASET_ENABLED", "1" if selection_enabled else "0")
     monkeypatch.setenv("WEB_HOST", _WEB_HOST)
     monkeypatch.setenv("WEB_PORT", str(_WEB_PORT))
     monkeypatch.setenv("WEB_WORKERS", str(_WEB_WORKERS))
-    monkeypatch.setattr(server, "repository_root", lambda: root)
-    monkeypatch.setattr(datasets_admin, "repository_root", lambda: root)
-    # Only the selected-dataset resolution inside ``load_database_settings`` reads this owner.
+    # The settings composition and the selected-dataset resolution both read this one owner.
     monkeypatch.setattr(administration, "repository_root", lambda: root)
+    if not embeddings_enabled:
+        return root
+    directory = _write_embedding_directory()
+    os.utime(directory / "embedding-hub.json", (ancient, ancient))
+    os.utime(directory / "embedding-outcomes-hub.json", (tomorrow, tomorrow))
     return root
 
 
@@ -130,7 +150,7 @@ class _ServerProcessBoundary:
     ) -> subprocess.CompletedProcess[bytes]:
         command = tuple(argv)
         self.calls.append(command)
-        prefix = mechanics.compose_prefix(non_interactive=True)
+        prefix = mechanics.compose_prefix(non_interactive=True, interpreter=True)
         if command[0] == "systemctl":
             output = self._unit_properties()
         elif command[:2] == ("git", "branch"):
@@ -210,13 +230,14 @@ def _tree_state(root: Path) -> dict[str, tuple[int, int, bytes]]:
 
 
 @pytest.mark.parametrize(
-    ("case", "selection_enabled", "running"),
+    ("case", "selection_enabled", "running", "embeddings_enabled"),
     [
-        ("selected-and-running", True, True),
-        ("selected-and-stopped", True, False),
-        ("configured-and-running", False, True),
-        ("configured-and-stopped", False, False),
-        ("configured-redirected-data-and-stopped", False, False),
+        ("selected-and-running", True, True, True),
+        ("selected-and-stopped", True, False, True),
+        ("configured-and-running", False, True, True),
+        ("configured-and-stopped", False, False, True),
+        ("redirected-data-reads-unavailable-and-stopped", True, False, True),
+        ("selected-and-embeddings-off", True, True, False),
     ],
 )
 def test_server_status_reports_server_owned_facts(
@@ -226,12 +247,19 @@ def test_server_status_reports_server_owned_facts(
     case: str,
     selection_enabled: bool,
     running: bool,
+    embeddings_enabled: bool,
 ) -> None:
     """One report states the measured, configured, receipt and checkout facts it owns."""
-    root = _bind_proof_root(monkeypatch, tmp_path, selection_enabled=selection_enabled)
-    if case == "configured-redirected-data-and-stopped":
-        # The data directory is a redirect at the checkout root, so neither it nor its backups
-        # descendant is a directory total of this checkout.
+    root = _bind_proof_root(
+        monkeypatch,
+        tmp_path,
+        selection_enabled=selection_enabled,
+        embeddings_enabled=embeddings_enabled,
+    )
+    if case == "redirected-data-reads-unavailable-and-stopped":
+        # The data directory is a redirect at the checkout root and the dataset state lives under
+        # it, so both read-only reports state that the dataset state is unavailable instead of
+        # reading through the link.
         outside_data = tmp_path / "outside-data"
         (root / "data").rename(outside_data)
         (root / "data").symlink_to(outside_data)
@@ -245,6 +273,20 @@ def test_server_status_reports_server_owned_facts(
 
     monkeypatch.setattr(server, "create_database_engine", spy_engine_factory)
     before = _tree_state(root)
+
+    if case == "redirected-data-reads-unavailable-and-stopped":
+        report = server.read_server_status(runner=boundary)
+        assert report.serving.selection_enabled is None
+        assert report.serving.dataset_id is None
+        assert report.serving.kind is None
+        assert report.serving.predecessor_id is None
+        assert report.serving.pointer is None
+        assert report.serving.receipt_schema_revision is None
+        listing = datasets_admin.list_retained_datasets(runner=boundary)
+        assert listing.mode == "unavailable"
+        assert listing.datasets == ()
+        assert _tree_state(root) == before
+        return
 
     report = server.read_server_status(runner=boundary)
 
@@ -273,32 +315,29 @@ def test_server_status_reports_server_owned_facts(
     assert 0 <= host.cpu_usage_percent <= 100
     assert 0 < host.memory_used_bytes < host.memory_total_bytes
     assert host.disk_free_bytes < host.disk_total_bytes
-    if case == "configured-redirected-data-and-stopped":
-        assert (host.data_bytes, host.models_bytes) == (None, 2048)
-        assert host.backups_bytes is None
-        assert boundary.directory_paths == ["models"]
-    else:
-        assert (host.data_bytes, host.models_bytes) == (1024, 2048)
-        assert host.backups_bytes is None
-        assert boundary.directory_paths == ["data", "models"]
+    assert (host.data_bytes, host.models_bytes) == (1024, 2048)
+    assert host.backups_bytes is None
+    assert boundary.directory_paths == ["data", "models"]
 
     assert report.embedding.container.state == "running"
     assert report.embedding.container.health == "healthy"
     assert report.embedding.host == "127.0.0.1"
     assert report.embedding.model and report.embedding.artifact
 
-    catalogue, outcomes = report.hubs
-    assert [hub.alias for hub in report.hubs] == [
-        "EMBEDDING_HUB_VECTOR",
-        "EMBEDDING_OUTCOMES_HUB_VECTOR",
-    ]
-    assert catalogue.path == "config/derived/embedding-hub.json"
-    assert outcomes.path == "config/derived/embedding-outcomes-hub.json"
-    assert catalogue.modified_at == datetime.fromtimestamp(
-        (root / catalogue.path).stat().st_mtime, tz=UTC
-    )
-    assert catalogue.newer_than_web_start is False
-    assert outcomes.newer_than_web_start is True
+    assert report.serving.embeddings_enabled is embeddings_enabled
+    if embeddings_enabled:
+        catalogue, outcomes = report.hubs
+        assert [hub.name for hub in report.hubs] == ["catalogue", "outcomes"]
+        assert catalogue.path.endswith("/embedding-hub.json")
+        assert outcomes.path.endswith("/embedding-outcomes-hub.json")
+        assert catalogue.path.startswith(f"{_STATE_ROOT}/serving/")
+        assert catalogue.modified_at == datetime.fromtimestamp(
+            (root / catalogue.path).stat().st_mtime, tz=UTC
+        )
+        assert catalogue.newer_than_web_start is False
+        assert outcomes.newer_than_web_start is True
+    else:
+        assert report.hubs == ()
 
     expected_head = ScriptDirectory.from_config(
         AlembicConfig(str(root / "alembic.ini"))
@@ -308,7 +347,9 @@ def test_server_status_reports_server_owned_facts(
     assert report.database.shared_memory_bytes == _SHARED_MEMORY_BYTES
 
     if not selection_enabled:
-        assert report.serving == server.ServingStatus(selection_enabled=False)
+        assert report.serving == server.ServingStatus(
+            selection_enabled=False, embeddings_enabled=embeddings_enabled
+        )
         assert report.database.name == _DISPOSABLE_DATABASE
     else:
         assert report.serving.selection_enabled is True
@@ -353,7 +394,7 @@ def test_server_status_reports_server_owned_facts(
     compose = next(
         command
         for command in boundary.calls
-        if command[: len(mechanics.compose_prefix(non_interactive=True))]
-        == mechanics.compose_prefix(non_interactive=True)
+        if command[: len(mechanics.compose_prefix(non_interactive=True, interpreter=True))]
+        == mechanics.compose_prefix(non_interactive=True, interpreter=True)
     )
     assert compose[-4:] == ("ps", "--all", "--format", "{{json .}}")

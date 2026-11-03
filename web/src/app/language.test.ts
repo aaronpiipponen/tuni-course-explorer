@@ -83,7 +83,10 @@ describe("shell language", () => {
                 dataset_identity: "synthetic-dataset",
               },
             },
-            createElement(TopBar, { openDocs: () => {} }),
+            createElement(TopBar, {
+              openDocs: () => {},
+              openFeedback: () => {},
+            }),
             createElement(AppFooter, {
               repositoryUrl: "https://github.com/owner/repo",
             }),
@@ -93,10 +96,12 @@ describe("shell language", () => {
     );
     const footer = container.querySelector(".app-footer-notice");
     const tab = container.querySelector(".nav-tab");
+    const feedback = container.querySelector('a[href="/feedback"]');
     const control =
       container.querySelector<HTMLButtonElement>(".language-switch");
     expect(footer?.textContent).toBe(uiText("en", FOOTER));
     expect(tab?.textContent).toBe(uiText("en", "Search"));
+    expect(feedback?.textContent).toBe(uiText("en", "Feedback"));
     expect(control?.getAttribute("aria-label")).toBe(
       uiText("en", "App language: {language}", { language: "EN" }),
     );
@@ -108,6 +113,7 @@ describe("shell language", () => {
     expect(store.getSnapshot().profiles.default.state.language).toBe("fi");
     expect(footer?.textContent).toBe(uiText("fi", FOOTER));
     expect(tab?.textContent).toBe(uiText("fi", "Search"));
+    expect(feedback?.textContent).toBe(uiText("fi", "Feedback"));
     expect(control?.getAttribute("aria-label")).toBe(
       uiText("fi", "App language: {language}", { language: "FI" }),
     );

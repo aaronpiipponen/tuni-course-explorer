@@ -1,10 +1,10 @@
 # Ingestion
 
-Ingestion captures the public curriculum source unchanged and converts one completed capture into the official catalogue of the selected dataset.
+Ingestion captures the public curriculum source unchanged and converts one completed capture into the official catalogue of the Working dataset.
 
 ## What ingestion does
 
-Ingestion runs as one stage with two steps. The [Capture](/docs/reference/glossary.md#capture-and-data-preparation) reads the anonymous public curriculum source and keeps exactly what it received. [Normalization](/docs/reference/glossary.md#capture-and-data-preparation) then validates the completed capture and converts it into official courses, modules, their versions, and their rules. The result is the official catalogue of the selected dataset: canonical courses and modules, exact versions, curriculum periods, official teaching text, prerequisite options, substitution options, and module rule trees.
+Ingestion runs as one stage with two steps. The [Capture](/docs/reference/glossary.md#capture-and-data-preparation) reads the anonymous public curriculum source and keeps exactly what it received. [Normalization](/docs/reference/glossary.md#capture-and-data-preparation) then validates the completed capture and converts it into official courses, modules, their versions, and their rules. The result is the official catalogue of the Working dataset: canonical courses and modules, exact versions, curriculum periods, official teaching text, prerequisite options, substitution options, and module rule trees.
 
 The capture reads the public JSON interface anonymously. The configured source base must be the canonical public HTTPS base with no credentials in it, a read outside the source's public query paths is refused, and a redirect is not followed. An error response is retried inside the configured attempt budget, and only a 429 or 5xx status is retried. A successful response whose body is not the JSON the source contract describes ends the run instead of being retried, because the same request returns the same body again. A search result set that cannot be enumerated completely is refused rather than accepted in part, so the capture never records a partial catalogue.
 
@@ -18,7 +18,7 @@ Verification decides whether the stored evidence matches the manifest. It re-rea
 
 A stopped or failed capture continues from its own evidence. The continuation re-verifies the retained responses, then fetches the source objects it does not already hold and nothing else, so a retried capture never downloads an object it has. A capture that finished its downloads continues into normalization without reading the source again. The [Curriculum capture and replay](/docs/experiments/runtime-storage-and-serving/curriculum-capture-and-replay.md) report records the scale of a full-catalogue capture and two source-free replays that reproduced the same normalized course versions and table counts.
 
-![The public curriculum source is read by a capture that writes the stored responses with the manifest. The capture and the verification step are marked as resume points with a dashed outline, because a stopped run continues from a committed checkpoint. Verification checks every stored response, and normalization then converts the whole capture into the official catalogue of the selected dataset in one transaction.](/docs/diagrams/ingestion-pipeline.svg)
+![The public curriculum source is read by a capture that writes the stored responses with the manifest. The capture and the verification step are marked as resume points with a dashed outline, because a stopped run continues from a committed checkpoint. Verification checks every stored response, and normalization then converts the whole capture into the official catalogue of the Working dataset in one transaction.](/docs/diagrams/ingestion-pipeline.svg)
 
 ## Pause, stop, and the normalization transaction
 
@@ -31,7 +31,7 @@ Normalization is one transaction. It reads the completed capture, validates it, 
 
 When a stopped stage returns to idle, its cleanup removes the capture runs it does not retain under the raw data root and keeps the run the stage continues from.
 
-The stage runs through the administration command. A start needs the selected dataset enrolled with its database at the single migration head, and `config/curriculum.toml` naming the public source base and the university root.
+The stage runs through the administration command. A start needs a Working dataset whose database is at the single migration head, and `config/curriculum.toml` naming the public source base and the university root.
 
 ```bash
 uv run python scripts/admin.py ingestion start
@@ -54,9 +54,9 @@ Downstream work is invalidated by changed content. A Translation records the has
 
 ## The catalogue summary
 
-A Catalogue summary reports the counts of one dataset: curriculum periods, canonical courses, active courses, course versions, canonical modules, and module versions. The counts are read from the normalized tables of the selected dataset, so they describe what the last successful normalization published.
+A Catalogue summary reports the counts of one dataset: curriculum periods, canonical courses, active courses, course versions, canonical modules, and module versions. The counts are read from the normalized tables of the reported role, so they describe what the last successful normalization published.
 
-The operator menu reports the catalogue summary of the selected dataset, and a dataset verification records the same counts with the teaching-text, embedding, and inference coverage of that dataset. [Operator menu](/docs/operations/operator-menu.md) describes the report, and [Data model](/docs/backend/catalogue/data-model.md) describes the tables behind it.
+The operator menu reports the catalogue summary of the named role, and a dataset verification records the same counts with the teaching-text, embedding, and inference coverage of that dataset. [Operator menu](/docs/operations/operator-menu.md) describes the report, and [Data model](/docs/backend/catalogue/data-model.md) describes the tables behind it.
 
 ## Configuration keys
 

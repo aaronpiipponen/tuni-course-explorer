@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 328" role="img"
      aria-labelledby="t d" font-family="system-ui, sans-serif">
-  <title id="t">Descriptive read saving against the product read</title>
-  <desc id="d">Wall-median and CPU-median saving for the descriptive-only projected read against the product chunk read on the three fixed recommendation pools.</desc>
+  <title id="t">Descriptive read saving against the full chunk read</title>
+  <desc id="d">Wall-median and CPU-median saving for the descriptive-only projected read against the full chunk read on the three fixed recommendation pools.</desc>
   <rect width="960" height="328" rx="12" fill="#232434"/>
   <rect x="61" y="33" width="14" height="14" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
   <text x="96" y="45" font-size="14" fill="#a3a4b8">Wall median</text>

@@ -13,6 +13,7 @@ from pathlib import Path
 
 import pytest
 
+from course_explorer import administration
 from course_explorer_admin import cli
 from course_explorer_admin_web import command_log as command_log_module
 from course_explorer_admin_web.command_log import CommandLog, CommandLogEntry
@@ -50,7 +51,7 @@ def test_command_log_command_reads_the_sole_owner(
     """The command prints the newest configured entries oldest first and rewrites no file."""
     root = tmp_path / "checkout"
     root.mkdir()
-    monkeypatch.setattr(command_log_module, "repository_root", lambda: root)
+    monkeypatch.setattr(administration, "repository_root", lambda: root)
     monkeypatch.setattr(
         command_log_module,
         "load_admin_web_settings",

@@ -1,9 +1,9 @@
-"""Exact-cosine read repository for current completed compatible course chunk vectors.
+"""Exact-cosine read over the packed course embedding search relation.
 
-This is the sole search reader for `course_embedding_chunks`. It computes exact best-chunk cosine
-scores with pgvector, filters to completed rows carrying the exact embedding configuration hash,
-groups by canonical course and exact representative identity, and returns every qualifying version
-for those groups.
+This is the sole search reader for the packing extension. It calls the installed scan function once
+with the hub-centred query and the build's group count, joins the returned group numbers to their
+canonical representative identities and the course activity state, applies the threshold, and
+returns every qualifying version ordered by canonical group and version.
 """
 
 from __future__ import annotations
@@ -11,25 +11,20 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import bindparam, func, select
+from sqlalchemy import bindparam, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from course_explorer.constants import COURSE_EMBEDDING_DIMENSION
-from course_explorer.db.models import (
-    Course,
-    CourseEmbeddingChunk,
-    CourseVersion,
-)
 from course_explorer.embeddings.hub import subtract_hub
-from course_explorer.enums import CourseEmbeddingStatus
 from course_explorer.search.service import SemanticCourseScore
 
 
 class SemanticSearchRepository:
-    """Read current completed compatible best-chunk cosine scores through one exact SQL query."""
+    """Read exact packed best-chunk cosine scores through the installed scan function."""
 
-    def __init__(self, factory: sessionmaker[Session]) -> None:
+    def __init__(self, factory: sessionmaker[Session], *, group_count: int) -> None:
         self._factory = factory
+        self._group_count = group_count
 
     def search(
         self,
@@ -37,46 +32,46 @@ class SemanticSearchRepository:
         *,
         hub: Sequence[float],
         min_score: float,
-        embedding_configuration_hash: str,
         include_inactive: bool,
     ) -> tuple[SemanticCourseScore, ...]:
-        """Return every exact-version best-chunk score at or above the threshold, unfiltered by rank."""
-        hub_parameter = bindparam(
-            "hub_vector", value=list(hub), type_=Vector(COURSE_EMBEDDING_DIMENSION)
-        )
+        """Return every exact-version best-chunk score at or above the threshold, unfiltered by rank.
+
+        A build with zero retained groups returns no score before the hub subtraction, the SQL
+        binding and the packed scan. A negative group count is unsupported.
+        """
+        if self._group_count == 0:
+            return ()
         query_parameter = bindparam(
             "centred_query",
             value=list(subtract_hub(query_embedding, hub)),
             type_=Vector(COURSE_EMBEDDING_DIMENSION),
         )
-        centred_embedding = CourseEmbeddingChunk.embedding - hub_parameter
-        score_expression = 1 - centred_embedding.cosine_distance(query_parameter)
-        statement = (
-            select(
-                Course.group_id,
-                CourseVersion.sisu_course_unit_id,
-                CourseEmbeddingChunk.representative_source_hash,
-                func.max(score_expression).label("score"),
-            )
-            .join(CourseVersion, CourseVersion.id == CourseEmbeddingChunk.course_version_id)
-            .join(Course, Course.id == CourseVersion.course_id)
-            .where(
-                CourseEmbeddingChunk.status == CourseEmbeddingStatus.COMPLETED,
-                CourseEmbeddingChunk.embedding.is_not(None),
-                CourseEmbeddingChunk.embedding_configuration_hash == embedding_configuration_hash,
-            )
-            .group_by(
-                Course.group_id,
-                CourseVersion.sisu_course_unit_id,
-                CourseEmbeddingChunk.representative_source_hash,
-            )
-            .having(func.max(score_expression) >= min_score)
-            .order_by(Course.group_id, CourseVersion.sisu_course_unit_id)
-        )
-        if not include_inactive:
-            statement = statement.where(Course.is_active.is_(True))
+        active_filter = "" if include_inactive else "AND c.is_active"
+        statement = text(
+            f"""
+            SELECT g.group_id, g.sisu_course_unit_id, g.representative_source_hash, s.score
+            FROM course_embedding_search_scan(
+                'course_embedding_search_blocks'::regclass,
+                :centred_query,
+                inner_product(CAST(:centred_query AS vector), CAST(:centred_query AS vector)),
+                :group_count
+            ) AS s
+            JOIN course_embedding_search_groups AS g ON g.group_no = s.group_no
+            JOIN courses AS c ON c.group_id = g.group_id
+            WHERE s.score >= :min_score {active_filter}
+            ORDER BY g.group_id, g.sisu_course_unit_id
+            """
+        ).bindparams(query_parameter)
         with self._factory() as session:
-            rows = tuple(session.execute(statement))
+            rows = tuple(
+                session.execute(
+                    statement,
+                    {
+                        "min_score": min_score,
+                        "group_count": self._group_count,
+                    },
+                )
+            )
         return tuple(
             SemanticCourseScore(
                 group_id=group_id,

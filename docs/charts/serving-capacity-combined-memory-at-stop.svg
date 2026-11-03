@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 628" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Summed component memory at the stop level</title>
+  <desc id="d">Current and summed component peak memory of the web, database and embedding components at the stop level, or at the last valid level where the next level failed, for four stacks under the light-only and mixed profiles. The peak series adds each component's own peak, which need not occur at the same moment, so it is an upper bound. The pre-admission summed peaks are the highest at 8.25 GB.</desc>
+  <rect width="960" height="628" rx="12" fill="#232434"/>
+  <rect x="61" y="33" width="14" height="14" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="96" y="45" font-size="14" fill="#a3a4b8">Summed component current</text>
+  <rect x="334.6" y="33" width="14" height="14" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="369.6" y="45" font-size="14" fill="#a3a4b8">Summed component peak (upper bound)</text>
+  <line x1="358" y1="72" x2="358" y2="552" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="358" y="574" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="458.9" y1="72" x2="458.9" y2="552" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="458.9" y="574" text-anchor="middle" font-size="14" fill="#a3a4b8">2</text>
+  <line x1="559.8" y1="72" x2="559.8" y2="552" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="559.8" y="574" text-anchor="middle" font-size="14" fill="#a3a4b8">4</text>
+  <line x1="660.6" y1="72" x2="660.6" y2="552" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="660.6" y="574" text-anchor="middle" font-size="14" fill="#a3a4b8">6</text>
+  <line x1="761.5" y1="72" x2="761.5" y2="552" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="761.5" y="574" text-anchor="middle" font-size="14" fill="#a3a4b8">8</text>
+  <line x1="862.4" y1="72" x2="862.4" y2="552" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="862.4" y="574" text-anchor="middle" font-size="14" fill="#a3a4b8">10</text>
+  <text x="346" y="107" text-anchor="end" font-size="14" fill="#ececf2">Post-port, light only, 750</text>
+  <rect x="358" y="80" width="277.4" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="643.4" y="95" font-size="14" fill="#a3a4b8">5.5</text>
+  <rect x="358" y="104" width="300.1" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="666.1" y="119" font-size="14" fill="#a3a4b8">5.95</text>
+  <text x="346" y="167" text-anchor="end" font-size="14" fill="#ececf2">Post-port, mixed, 750</text>
+  <rect x="358" y="140" width="345.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="711.5" y="155" font-size="14" fill="#a3a4b8">6.85</text>
+  <rect x="358" y="164" width="375.3" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="741.3" y="179" font-size="14" fill="#a3a4b8">7.44</text>
+  <text x="346" y="227" text-anchor="end" font-size="14" fill="#ececf2">Pre-port, light only, 200</text>
+  <rect x="358" y="200" width="389.9" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="755.9" y="215" font-size="14" fill="#a3a4b8">7.73</text>
+  <rect x="358" y="224" width="411.6" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="777.6" y="239" font-size="14" fill="#a3a4b8">8.16</text>
+  <text x="346" y="287" text-anchor="end" font-size="14" fill="#ececf2">Pre-port, mixed, 100</text>
+  <rect x="358" y="260" width="379.3" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="745.3" y="275" font-size="14" fill="#a3a4b8">7.52</text>
+  <rect x="358" y="284" width="399" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="765" y="299" font-size="14" fill="#a3a4b8">7.91</text>
+  <text x="346" y="347" text-anchor="end" font-size="14" fill="#ececf2">Original admission, light only, 100</text>
+  <rect x="358" y="320" width="334.4" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="700.4" y="335" font-size="14" fill="#a3a4b8">6.63</text>
+  <rect x="358" y="344" width="404" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="770" y="359" font-size="14" fill="#a3a4b8">8.01</text>
+  <text x="346" y="407" text-anchor="end" font-size="14" fill="#ececf2">Original admission, mixed, 60</text>
+  <rect x="358" y="380" width="317.8" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="683.8" y="395" font-size="14" fill="#a3a4b8">6.3</text>
+  <rect x="358" y="404" width="394.4" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="760.4" y="419" font-size="14" fill="#a3a4b8">7.82</text>
+  <text x="346" y="467" text-anchor="end" font-size="14" fill="#ececf2">Pre-admission, light only, 100</text>
+  <rect x="358" y="440" width="320.8" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="686.8" y="455" font-size="14" fill="#a3a4b8">6.36</text>
+  <rect x="358" y="464" width="416.1" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="782.1" y="479" font-size="14" fill="#a3a4b8">8.25</text>
+  <text x="346" y="527" text-anchor="end" font-size="14" fill="#ececf2">Pre-admission, mixed, 100</text>
+  <rect x="358" y="500" width="331.4" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="697.4" y="515" font-size="14" fill="#a3a4b8">6.57</text>
+  <rect x="358" y="524" width="416.1" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="782.1" y="539" font-size="14" fill="#a3a4b8">8.25</text>
+  <text x="610.2" y="604" text-anchor="middle" font-size="14" fill="#a3a4b8">Memory (GB)</text>
+</svg>

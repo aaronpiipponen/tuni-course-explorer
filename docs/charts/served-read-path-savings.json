@@ -1,0 +1,26 @@
+{
+  "type": "bar",
+  "title": "Saving per removed served cost",
+  "description": "Median milliseconds saved by each removed per-request cost on the served path of 28 October 2026, ordered from largest to smallest. The retained catalogue body saved 372.8 ms, and the two receipt labels saved 0.4 ms each.",
+  "valueAxis": "Median saving per request (ms)",
+  "categories": [
+    "Catalogue body",
+    "Centroid column read, first read",
+    "Hub subtraction, 40-course basis",
+    "Hub subtraction, 20-course basis",
+    "One engine, course summaries",
+    "One engine, prerequisites",
+    "One engine, next courses",
+    "Repeated request, partially covered",
+    "Repeated request, all mode",
+    "Hub subtraction, comparison",
+    "Resolved receipt, feature read",
+    "Resolved receipt, next courses"
+  ],
+  "series": [
+    {
+      "name": "Median saving (ms)",
+      "values": [372.8, 79.8, 53.3, 29.0, 25.5, 19.3, 19.0, 11.3, 11.1, 4.3, 0.4, 0.4]
+    }
+  ]
+}

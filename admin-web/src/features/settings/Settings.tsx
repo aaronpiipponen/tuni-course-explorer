@@ -1,20 +1,20 @@
 /**
- * The Settings tab: the configuration editor, the feature switches and the maintenance panels.
+ * The Settings tab: the configuration editor, the dataset roles panel and the maintenance panels.
  *
  * The tab owns the coordination between the two panels that write `config/web.toml`: a saved switch
  * notifies the editor so the key's saved value follows the acknowledgement, and an editor save of
  * that file reloads the switches. Every other panel owns its own read and its own explicit action,
  * and the tab forwards the shell's callback that ends the console's protected session after a
- * successful administration rebuild.
+ * successful administration rebuild. The dataset panel renders the shell's shared inventory read.
  */
 import { useState } from "react";
-import type { ServerStatusReport } from "../../api/types";
+import type { DatasetListReport, ServerStatusReport } from "../../api/types";
 import type { SessionAccess } from "../../shared/StagePanel";
 import type { PanelRead } from "../../shared/usePanelRead";
 import { wording } from "../../shared/wording";
+import { Datasets } from "../datasets/Datasets";
 import { Backups } from "./Backups";
 import { Configuration } from "./Configuration";
-import { Dataset } from "./Dataset";
 import { FeatureSwitches } from "./FeatureSwitches";
 import { Rebuild } from "./Rebuild";
 import { WorkerProvisioning } from "./WorkerProvisioning";
@@ -25,11 +25,13 @@ export function Settings({
   onRefusal,
   onAdminRebuild,
   dashboard,
+  datasets,
 }: {
   session: SessionAccess;
   onRefusal: (status: number) => void;
   onAdminRebuild: () => void;
   dashboard: PanelRead<ServerStatusReport>;
+  datasets: PanelRead<DatasetListReport>;
 }) {
   const [notice, setNotice] = useState<string | null>(null);
   const [revision, setRevision] = useState(0);
@@ -49,10 +51,11 @@ export function Settings({
         />
       </div>
       <div className="grid">
-        <Dataset
+        <Datasets
           session={session}
           onRefusal={onRefusal}
           dashboard={dashboard}
+          listing={datasets}
         />
         <Backups session={session} onRefusal={onRefusal} />
         <Rebuild

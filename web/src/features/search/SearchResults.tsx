@@ -17,10 +17,12 @@ function SearchResultsView({
   report,
   loading,
   scrollElement,
+  activeOnly,
 }: {
   report: UnifiedSearchReport | null;
   loading: boolean;
   scrollElement: HTMLElement | null;
+  activeOnly: boolean;
 }) {
   const { language, t } = useWording();
   const { embeddings_enabled } = useWebFeatures();
@@ -78,7 +80,11 @@ function SearchResultsView({
       </div>
       {report.results.length === 0 ? (
         <div className="empty2 search-empty" key={animation.current}>
-          {t("No courses match this search.")}
+          {t(
+            activeOnly
+              ? "No active courses matched. Consider turning Active only off."
+              : "No courses match this search.",
+          )}
         </div>
       ) : (
         groups.map((group, index) => (

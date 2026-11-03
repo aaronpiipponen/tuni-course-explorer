@@ -1,0 +1,26 @@
+{
+  "type": "bar",
+  "title": "Summed component memory at the stop level",
+  "description": "Current and summed component peak memory of the web, database and embedding components at the stop level, or at the last valid level where the next level failed, for four stacks under the light-only and mixed profiles. The peak series adds each component's own peak, which need not occur at the same moment, so it is an upper bound. The pre-admission summed peaks are the highest at 8.25 GB.",
+  "valueAxis": "Memory (GB)",
+  "categories": [
+    "Post-port, light only, 750",
+    "Post-port, mixed, 750",
+    "Pre-port, light only, 200",
+    "Pre-port, mixed, 100",
+    "Original admission, light only, 100",
+    "Original admission, mixed, 60",
+    "Pre-admission, light only, 100",
+    "Pre-admission, mixed, 100"
+  ],
+  "series": [
+    {
+      "name": "Summed component current",
+      "values": [5.5, 6.85, 7.73, 7.52, 6.63, 6.3, 6.36, 6.57]
+    },
+    {
+      "name": "Summed component peak (upper bound)",
+      "values": [5.95, 7.44, 8.16, 7.91, 8.01, 7.82, 8.25, 8.25]
+    }
+  ]
+}

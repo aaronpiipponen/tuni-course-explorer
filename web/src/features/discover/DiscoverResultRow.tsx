@@ -1,11 +1,13 @@
 /** Shared course card paired with report-owned next-course or similarity meters. */
 import { useId } from "react";
+import { useContext } from "react";
 import { motion } from "framer-motion";
 import type {
   NextCourseResult,
   NextCoursesReport,
   SimilarityRecommendation,
 } from "../../api/types";
+import { PaneSlideContext } from "../../app/paneSlide";
 import { CourseCard } from "../../shared/course/CourseCard";
 import { useReducedMotion } from "../../shared/useReducedMotion";
 import { useWording } from "../../shared/useWording";
@@ -25,6 +27,9 @@ export function DiscoverResultRow(
       },
 ) {
   const reducedMotion = useReducedMotion();
+  const paneSliding = useContext(PaneSlideContext);
+  // The row rides its pane while the pane travels. Its own arrival belongs to a resting pane.
+  const still = reducedMotion || paneSliding;
   const { t } = useWording();
   const { result } = props;
   const metersId = useId();
@@ -73,10 +78,10 @@ export function DiscoverResultRow(
         <motion.button
           {...triggerProps}
           className={`discover-result-row${props.kind === "next" ? " next-course" : ""}${noCoverage ? " no-coverage" : ""}`}
-          layout={!reducedMotion}
-          initial={reducedMotion ? false : { opacity: 0, y: 8 }}
+          layout={!still}
+          initial={still ? false : { opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={reducedMotion ? { duration: 0 } : { duration: 0.25 }}
+          transition={still ? { duration: 0 } : { duration: 0.25 }}
           data-course-id={result.course.group_id}
           aria-describedby={meters ? metersId : undefined}
         >

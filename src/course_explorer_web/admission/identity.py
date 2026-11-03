@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 import secrets
 
-from starlette.types import Scope
+from starlette.types import Message, Scope, Send
 
 # The name of the anonymous identity cookie. Its value is 32 lowercase hexadecimal characters.
 COOKIE_NAME = "tce_anon"
@@ -35,3 +35,17 @@ def set_cookie_value(cookie_id: str, max_age_seconds: int) -> bytes:
         f"{COOKIE_NAME}={cookie_id}; Max-Age={max_age_seconds}; Path=/; HttpOnly; Secure; "
         "SameSite=Lax"
     ).encode("latin-1")
+
+
+def cookie_send(send: Send, cookie: bytes) -> Send:
+    """Return a send channel that adds one ``set-cookie`` header to every response start."""
+
+    async def send_with_cookie(message: Message) -> None:
+        if message["type"] == "http.response.start":
+            message = {
+                **message,
+                "headers": [*message.get("headers", []), (b"set-cookie", cookie)],
+            }
+        await send(message)
+
+    return send_with_cookie

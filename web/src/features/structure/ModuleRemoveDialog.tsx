@@ -21,29 +21,49 @@ import type { UiTextKey } from "../../shared/wording";
 /** The variant one open confirmation shows, kept while the panel animates closed. */
 type Target = {
   name: string;
+  hasEdits: boolean;
   hasCompletedCourses: boolean;
   operation: "remove" | "reset";
   holderKind: "programme" | "module";
 };
 
 /** One description per operation, holder noun and completion presence. */
-const DESCRIPTIONS: Record<
-  "remove" | "reset",
-  Record<
+const DESCRIPTIONS: {
+  remove: Record<
     "programme" | "module",
-    { withoutCompletions: UiTextKey; withCompletions: UiTextKey }
-  >
-> = {
+    {
+      withoutCompletions: UiTextKey;
+      withCompletions: UiTextKey;
+      edits: UiTextKey;
+      editsWithCompletions: UiTextKey;
+    }
+  >;
+  reset: Record<
+    "programme" | "module",
+    {
+      withoutCompletions: UiTextKey;
+      withCompletions: UiTextKey;
+    }
+  >;
+} = {
   remove: {
     programme: {
       withoutCompletions: "This removes this programme from the structure.",
       withCompletions:
-        "This removes this programme from the structure. Keep completed courses under Unplaced studies, or remove them with their completions.",
+        "This programme holds completed courses. Keep them under Unplaced studies, or remove them with their completions.",
+      edits:
+        "This programme has changes to its official content. Removing it discards them.",
+      editsWithCompletions:
+        "This programme has changes to its official content. Removing it discards them. Keep completed courses under Unplaced studies, or remove them with their completions.",
     },
     module: {
       withoutCompletions: "This removes this module from the structure.",
       withCompletions:
-        "This removes this module from the structure. Keep completed courses under Unplaced studies, or remove them with their completions.",
+        "This module holds completed courses. Keep them under Unplaced studies, or remove them with their completions.",
+      edits:
+        "This module has changes to its official content. Removing it discards them.",
+      editsWithCompletions:
+        "This module has changes to its official content. Removing it discards them. Keep completed courses under Unplaced studies, or remove them with their completions.",
     },
   },
   reset: {
@@ -64,6 +84,7 @@ const DESCRIPTIONS: Record<
 export function ModuleRemoveDialog({
   open,
   name,
+  hasEdits,
   hasCompletedCourses,
   operation,
   holderKind,
@@ -76,6 +97,8 @@ export function ModuleRemoveDialog({
 }: {
   open: boolean;
   name: string;
+  /** Whether the target's current contents differ from its official content. */
+  hasEdits: boolean;
   /** Whether the removal or reset target holds completed courses. */
   hasCompletedCourses: boolean;
   /** `reset` shares this compact panel with the removal confirmation. */
@@ -96,11 +119,12 @@ export function ModuleRemoveDialog({
   // The close animation keeps showing the content the confirmation opened with.
   const [retained, setRetained] = useState<Target | null>(null);
   const current: Target | null = open
-    ? { name, hasCompletedCourses, operation, holderKind }
+    ? { name, hasEdits, hasCompletedCourses, operation, holderKind }
     : null;
   if (
     current &&
     (retained?.name !== current.name ||
+      retained.hasEdits !== current.hasEdits ||
       retained.hasCompletedCourses !== current.hasCompletedCourses ||
       retained.operation !== current.operation ||
       retained.holderKind !== current.holderKind)
@@ -109,9 +133,13 @@ export function ModuleRemoveDialog({
   const shown = current ?? retained;
   const reset = shown?.operation === "reset";
   const description: UiTextKey | null = shown
-    ? DESCRIPTIONS[shown.operation][shown.holderKind][
-        shown.hasCompletedCourses ? "withCompletions" : "withoutCompletions"
-      ]
+    ? shown.operation === "remove" && shown.hasEdits
+      ? DESCRIPTIONS.remove[shown.holderKind][
+          shown.hasCompletedCourses ? "editsWithCompletions" : "edits"
+        ]
+      : DESCRIPTIONS[shown.operation][shown.holderKind][
+          shown.hasCompletedCourses ? "withCompletions" : "withoutCompletions"
+        ]
     : null;
   return (
     <Dialog.Root

@@ -1,4 +1,4 @@
-"""Write the solver structures the TypeScript route tests read."""
+"""Write the solver structures and their opted-in drawn displays the TypeScript route tests read."""
 
 from __future__ import annotations
 
@@ -28,12 +28,11 @@ from course_explorer.prerequisite.domain import (
     UnresolvedPrerequisiteReason,
     UnresolvedRequirement,
 )
-from course_explorer.prerequisite.graph import (
-    InferredCoverageRecord,
-    PrerequisiteGraphCompiler,
-)
 from course_explorer.prerequisite.projection import PrerequisiteGraphCompilation
-from course_explorer.prerequisite.structure import PrerequisiteSolverStructure
+from course_explorer.prerequisite.structure import (
+    InferredCoverageRecord,
+    PrerequisiteSolverStructure,
+)
 from tests.prerequisite._graph_support import (
     FakeCurriculumRead,
     RecordingEquivalenceGroupRead,
@@ -71,12 +70,43 @@ MODULE_SHORTFALL_PATH = FIXTURE_DIR / "route-module-shortfall.json"
 _OPAQUE_YEAR = (CatalogueCurriculumPeriod(id="period-2026", academic_year_start=2026),)
 
 
+_CREDIT_KEYS = frozenset(
+    {
+        "credits_min",
+        "credits_max",
+        "manual_credits_min",
+        "target_credits_min",
+        "target_credits_max",
+    }
+)
+
+
+def _canonical_fixture(value):
+    """Render credit bounds without a trailing decimal scale, as the fixture format stores them."""
+    if isinstance(value, dict):
+        return {
+            key: (
+                _canonical_credit(item)
+                if key in _CREDIT_KEYS and isinstance(item, str)
+                else _canonical_fixture(item)
+            )
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [_canonical_fixture(item) for item in value]
+    return value
+
+
+def _canonical_credit(value: str) -> str:
+    return format(Decimal(value).normalize(), "f")
+
+
 def entry(
     compilation: PrerequisiteGraphCompilation, *, include_display: bool = False
 ) -> dict[str, object]:
     """Return one fixture entry for a compilation's solver structure and its opted-in display."""
     return {
-        "solver": compilation.solver.model_dump(mode="json"),
+        "solver": _canonical_fixture(compilation.solver.model_dump(mode="json")),
         "display": _display(compilation) if include_display else None,
     }
 
@@ -89,23 +119,57 @@ def variant(
 ) -> dict[str, object]:
     """Return one fixture entry for a copied structure, with its source compilation's display."""
     return {
-        "solver": structure.model_dump(mode="json"),
+        "solver": _canonical_fixture(structure.model_dump(mode="json")),
         "display": _display(compilation) if include_display else None,
     }
 
 
 def _display(compilation: PrerequisiteGraphCompilation) -> dict[str, object] | None:
     """Return the compilation's drawn display as JSON data, when it has one."""
-    return None if compilation.display is None else compilation.display.model_dump(mode="json")
+    if compilation.display is None:
+        return None
+    return _canonical_fixture(compilation.display.model_dump(mode="json"))
+
+
+def _native_compiler_factory():
+    """Open one engine and session factory against the configured disposable test database."""
+    from course_explorer.config import load_database_settings
+    from course_explorer.db.session import create_database_engine, create_session_factory
+
+    settings = load_database_settings()
+    if not settings.postgres_db.endswith("_test"):
+        raise ValueError("route fixture export requires a _test database")
+    engine = create_database_engine(settings)
+    return engine, create_session_factory(engine)
+
+
+def _compile_native(curriculum, target, **kwargs):
+    """Seed one fixture catalogue and compile it through the native loader and compiler."""
+    from tests.prerequisite._native_support import close_native_compiler, native_compiler_for
+
+    engine, factory = _native_compiler_factory()
+    try:
+        compiler = native_compiler_for(
+            factory,
+            curriculum,
+            RecordingInferredSetRead(),
+            RecordingEquivalenceGroupRead(),
+        )
+        try:
+            return compiler.compile(target, **kwargs)
+        finally:
+            close_native_compiler(compiler)
+    finally:
+        engine.dispose()
 
 
 def _compile_opaque_root(root, modules, courses=(), completed_node_keys=()):
-    """Compile one real graph fixture used by the opaque-source-work path contracts."""
-    return PrerequisiteGraphCompiler(
+    """Compile one real native graph fixture used by the opaque-source-work path contracts."""
+    return _compile_native(
         FakeCurriculumRead((root, *courses), modules),
-        RecordingInferredSetRead(),
-        RecordingEquivalenceGroupRead(),
-    ).compile(root.group_id, completed_node_keys=completed_node_keys)
+        root.group_id,
+        completed_node_keys=completed_node_keys,
+    )
 
 
 def _opaque_module(group_id: str, rule, *, credits: str | None = None):
@@ -1065,16 +1129,12 @@ def build_duplicate_recommended_occurrence_route_matches_a_fixture_without_the_d
         ),
     )
     courses = (duplicated_root, without_duplicate_root, head, catalogue_course("head-prereq"))
-    duplicated_compilation = PrerequisiteGraphCompiler(
-        FakeCurriculumRead(courses),
-        RecordingInferredSetRead(),
-        RecordingEquivalenceGroupRead(),
-    ).compile("duplicated-root", include_recommended=True)
-    without_duplicate_compilation = PrerequisiteGraphCompiler(
-        FakeCurriculumRead(courses),
-        RecordingInferredSetRead(),
-        RecordingEquivalenceGroupRead(),
-    ).compile("plain-root", include_recommended=True)
+    duplicated_compilation = _compile_native(
+        FakeCurriculumRead(courses), "duplicated-root", include_recommended=True
+    )
+    without_duplicate_compilation = _compile_native(
+        FakeCurriculumRead(courses), "plain-root", include_recommended=True
+    )
     prefix = "duplicate_recommended_occurrence_route_matches_a_fixture_without_the_duplicate"
     return {
         f"{prefix}.duplicated_compilation": entry(duplicated_compilation),
@@ -1661,11 +1721,12 @@ def build_zero_minimum_module_bound_preserves_child_activity_shortfall(
             ),
         ),
     )
-    compilation = PrerequisiteGraphCompiler(
+    compilation = _compile_native(
         FakeCurriculumRead((root, catalogue_course("inactive", is_active=False)), (module,)),
-        RecordingInferredSetRead(),
-        RecordingEquivalenceGroupRead(),
-    ).compile("root", active_only=True, retained_group_ids=("inactive",))
+        "root",
+        active_only=True,
+        retained_group_ids=("inactive",),
+    )
     prefix = "zero_minimum_module_bound_preserves_child_activity_shortfall"
     return {f"{prefix}.compilation[{node_type.value}]": entry(compilation)}
 
@@ -1898,14 +1959,13 @@ def build_route_nodes_follow_selected_members() -> dict[str, object]:
             ),
         ),
     )
-    compilation = PrerequisiteGraphCompiler(
+    compilation = _compile_native(
         FakeCurriculumRead(
             (root, member_p, catalogue_course("Q"), catalogue_course("R")),
             (module_m1, module_m2),
         ),
-        RecordingInferredSetRead(),
-        RecordingEquivalenceGroupRead(),
-    ).compile("root")
+        "root",
+    )
     return {
         "route_nodes_follow_selected_members.compilation": entry(compilation, include_display=True)
     }
@@ -1956,7 +2016,7 @@ def build_coherent_route_occurrences() -> dict[str, object]:
             ),
         ),
     )
-    equal_compilation = PrerequisiteGraphCompiler(
+    equal_compilation = _compile_native(
         FakeCurriculumRead(
             (equal_root, equal_p, catalogue_course("Q")),
             (
@@ -1970,9 +2030,8 @@ def build_coherent_route_occurrences() -> dict[str, object]:
                 ),
             ),
         ),
-        RecordingInferredSetRead(),
-        RecordingEquivalenceGroupRead(),
-    ).compile("root")
+        "root",
+    )
 
     pick = module_rule(
         ModuleRuleType.COMPOSITE_RULE,
@@ -2026,7 +2085,7 @@ def build_coherent_route_occurrences() -> dict[str, object]:
             ),
         ),
     )
-    local_compilation = PrerequisiteGraphCompiler(
+    local_compilation = _compile_native(
         FakeCurriculumRead(
             (local_root, local_p, local_q, catalogue_course("X"), catalogue_course("Y")),
             (
@@ -2063,9 +2122,8 @@ def build_coherent_route_occurrences() -> dict[str, object]:
                 ),
             ),
         ),
-        RecordingInferredSetRead(),
-        RecordingEquivalenceGroupRead(),
-    ).compile("root")
+        "root",
+    )
 
     return {
         "coherent_route_occurrences.equal": entry(equal_compilation, include_display=True),

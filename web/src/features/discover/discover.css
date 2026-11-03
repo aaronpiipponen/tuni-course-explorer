@@ -35,7 +35,7 @@
   left: 12px;
   height: 3px;
   border-radius: 3px 3px 0 0;
-  background: linear-gradient(90deg, #4e008e, #b07be8);
+  background: linear-gradient(90deg, var(--color-accent-strong), #b07be8);
   box-shadow: 0 0 18px rgb(176 123 232 / 70%);
   content: "";
 }
@@ -89,7 +89,7 @@ button.discover-chip {
   cursor: pointer;
 }
 .discover-chip.more:hover {
-  background: rgb(78 0 142 / 35%);
+  background: rgb(90 30 156 / 35%);
   color: #fff;
 }
 .discover-basis.empty {
@@ -121,8 +121,20 @@ button.discover-chip {
   gap: 6px;
   overflow-y: auto;
   margin-top: 8px;
-  padding-bottom: 8px;
+  padding: 8px;
+  border: 1px solid var(--color-line);
+  border-radius: 12px;
   overscroll-behavior: contain;
+}
+/* The scrollbar's visible thumb sits five pixels inside its track, so the right padding
+   gives up that inset to match the left gap. */
+.discover-basis-list[data-scrollable="true"] {
+  padding-right: 3px;
+}
+/* The list border and padding sit between the frame and the row cards. */
+.discover-basis .root-picker-top .compare-eyebrow,
+.discover-basis .discover-total {
+  padding-left: 9px;
 }
 .discover-basis-list .course-list-row {
   flex: none;
@@ -212,7 +224,7 @@ button.discover-chip {
   outline: 2px solid #b07be8;
   outline-offset: -2px;
 }
-/* A next-course row keeps the two-meter row geometry with one, both or no meter shown. */
+/* A next-course row keeps the geometry of two coverage meters with one, both or no meter shown. */
 .discover-result-row.next-course {
   min-height: 60px;
 }
@@ -277,8 +289,8 @@ button.discover-chip {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #4e008e, #b07be8);
-  box-shadow: 0 0 14px rgb(78 0 142 / 50%);
+  background: linear-gradient(90deg, var(--color-accent-strong), #b07be8);
+  box-shadow: 0 0 14px rgb(90 30 156 / 50%);
 }
 .discover-meter b {
   color: #fff;

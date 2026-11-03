@@ -13,16 +13,7 @@ from course_explorer.db.models import (
     InferenceProposal,
 )
 from course_explorer.db.session import session_scope
-from course_explorer.inference.context import (
-    RequestCourseDescriptor,
-    RequestCourseDescriptors,
-)
-from course_explorer.inference.domain import (
-    InferenceRoutingMetadata,
-    InferenceTargetResultV2,
-)
 from course_explorer.inference.evidence import (
-    InferenceCompletionFacts,
     InferenceCompletionPayload,
     InferenceModelAttemptRecord,
     InferencePipelineRunSpec,
@@ -44,7 +35,12 @@ from course_explorer.prerequisite.domain import (
     InferredPrerequisiteCategory,
     PrerequisiteOrigin,
 )
-from tests.inference._fixture_support import final_store_counts
+from tests.inference._fixture_support import (
+    _descriptors,
+    _empty_result,
+    _facts,
+    final_store_counts,
+)
 from tests.prerequisite.conftest import PrerequisiteCatalogueSeed
 
 pytestmark = [
@@ -76,30 +72,6 @@ def work_request(
         activity_as_of_academic_year_start=seed.activity_as_of_academic_year_start,
         activity_window_years=seed.activity_window_years,
     )
-
-
-def _empty_result() -> InferenceTargetResultV2:
-    return InferenceTargetResultV2(
-        required=(),
-        recommended=(),
-        equivalence=(),
-        routing=InferenceRoutingMetadata(confidence=0.5, flags=(), suppressed=()),
-    )
-
-
-def _descriptors(target_group_id: str) -> RequestCourseDescriptors:
-    return RequestCourseDescriptors(
-        target=RequestCourseDescriptor(
-            group_id=target_group_id,
-            course_code="TARGET.1",
-            representative_source_sha256="a" * 64,
-        ),
-        candidates=(),
-    )
-
-
-def _facts() -> InferenceCompletionFacts:
-    return InferenceCompletionFacts(target_teaching_text_sha256="b" * 64, candidate_count=0)
 
 
 def proposal(

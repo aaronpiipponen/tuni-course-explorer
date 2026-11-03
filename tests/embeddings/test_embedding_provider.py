@@ -6,7 +6,7 @@ from typing import Any
 import httpx
 import pytest
 
-from course_explorer.config import EmbeddingSettings
+from course_explorer.config import EmbeddingRuntimeSettings
 from course_explorer.constants import COURSE_EMBEDDING_DIMENSION
 from course_explorer.embeddings.provider import (
     EmbeddingContractError,
@@ -14,10 +14,11 @@ from course_explorer.embeddings.provider import (
     EmbeddingRequestError,
 )
 from course_explorer.http_retry import RequestNotStarted
+from tests.embeddings._http_support import embedding_response, vector
 from tests.support import settings_factory
 
 
-def settings(**overrides: Any) -> EmbeddingSettings:
+def settings(**overrides: Any) -> EmbeddingRuntimeSettings:
     values: dict[str, object] = {
         "EMBEDDING_CONTEXT_SIZE": 1024,
         "EMBEDDING_REQUEST_TIMEOUT_SECONDS": 30,
@@ -25,17 +26,7 @@ def settings(**overrides: Any) -> EmbeddingSettings:
         "EMBEDDING_ARTIFACT_PATH": "models/model.gguf",
         **overrides,
     }
-    return settings_factory(EmbeddingSettings, **values)
-
-
-def vector(*components: float) -> list[float]:
-    """Build one full-length vector keeping its distinctive leading components."""
-    return [*components, *([0.0] * (COURSE_EMBEDDING_DIMENSION - len(components)))]
-
-
-def embedding_response(entries: list[dict[str, Any]], **extra: Any) -> httpx.Response:
-    body = {"data": entries, **extra}
-    return httpx.Response(200, content=json.dumps(body).encode())
+    return settings_factory(EmbeddingRuntimeSettings, **values)
 
 
 def nonfinite_response() -> httpx.Response:

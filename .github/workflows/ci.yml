@@ -2,13 +2,20 @@
 # from this server.
 #
 # The verify job runs on a GitHub-hosted runner. It installs the locked Python and Node
-# dependencies, runs the lint and format checks and the network-free Python suite, copies the
-# committed configuration examples into their runtime paths inside the checkout,
-# and runs the browser app and administration console checks, the PostgreSQL integration selection
-# and the browser journeys against the built app and a disposable example dataset.
+# dependencies, builds the three native serving libraries and the test-only fixture library, and
+# runs the lint, format and diff checks and the network-free Python suite. It then copies the
+# committed example configuration into the runtime paths inside the checkout, runs both frontend
+# gates, builds the extension database image and starts its `db` service, runs the PostgreSQL
+# integration selection and the browser journeys against the built app and disposable example
+# data, and removes the database service.
+#
 # The deploy job runs on the repository's self-hosted runner after verify succeeds. It admits
-# the serving checkout in its own run block, then builds and restarts the two serving
-# units from the admitted commit. It checks out nothing and pulls nothing.
+# the serving checkout in its own run block, then runs `deploy/deploy.sh` on the admitted
+# commit. That script builds the extension database image, recreates the `db` service, builds
+# the native serving libraries, migrates the selected dataset or the configured raw database,
+# builds its artifacts, builds both frontends, restarts the two serving units, checks their
+# loopback listeners and HTTP answers, and prunes the superseded artifact builds. The job
+# checks out nothing and pulls nothing.
 name: CI
 
 on:
@@ -23,6 +30,10 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-24.04
+    # The venv must come from the distribution interpreter, which carries
+    # os.memfd_create; the pinned .python-version names the uv-managed build.
+    env:
+      UV_PYTHON: /usr/bin/python3.14
     concurrency:
       group: ci-${{ github.ref }}
       cancel-in-progress: true
@@ -44,9 +55,22 @@ jobs:
           version: '0.11.3'
           enable-cache: false
       - name: Install Python
-        run: uv python install 3.14.3
+        # The standalone build that uv downloads targets an old glibc and lacks
+        # os.memfd_create, which the shared caches need, so the run installs the
+        # distribution build and proves the capability before anything uses it.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y software-properties-common
+          sudo add-apt-repository -y ppa:deadsnakes/ppa
+          sudo apt-get update
+          sudo apt-get install -y python3.14 python3.14-dev libpq5 libstdc++6
+          python3.14 -c 'import os, sys; assert sys.version_info[:2] == (3, 14); fd = os.memfd_create("ci-preflight", os.MFD_CLOEXEC); os.close(fd)'
       - name: Install Python dependencies
-        run: uv sync --locked
+        run: uv sync --locked --no-managed-python --python /usr/bin/python3.14
+      - name: Build native serving libraries
+        # The native test contract fails loudly when a serving library is absent, so every hosted
+        # run builds the three serving libraries and the test-only fixture library first.
+        run: ./.venv/bin/python scripts/build_native.py --fixtures --non-interactive
       - name: Install web dependencies
         run: npm --prefix web ci --no-audit --no-fund
       - name: Install administration console dependencies
@@ -63,10 +87,10 @@ jobs:
         # The checks read runtime configuration and a Compose file copied from the committed
         # example tree into the runner's working copy.
         run: |
-          mkdir -p config/derived
+          mkdir -p config
           cp examples/config/*.toml config/
           cp examples/config/wiki.json config/wiki.json
-          cp examples/config/derived/*.json config/derived/
+          cp examples/config/feedback-form.json config/feedback-form.json
           cp examples/docker-compose.yml docker-compose.yml
       - name: npm --prefix web run typecheck
         run: npm --prefix web run typecheck
@@ -84,12 +108,14 @@ jobs:
         run: npm --prefix admin-web run format:check
       - name: npm --prefix admin-web run build
         run: npm --prefix admin-web run build
-      - name: uv run python -m course_explorer_admin.compose --non-interactive -- up -d --wait db
+      - name: Build the extension database image
         env: &database_environment
           POSTGRES_PASSWORD: synthetic-ci-password
           POSTGRES_DB: course_explorer_test
-          SELECTED_DATASET_ENABLED: '0'
           COMPOSE_PROJECT_NAME: course-explorer-ci
+        run: uv run python -m course_explorer_admin.compose --non-interactive -- build db
+      - name: uv run python -m course_explorer_admin.compose --non-interactive -- up -d --wait db
+        env: *database_environment
         run: uv run python -m course_explorer_admin.compose --non-interactive -- up -d --wait db
       - name: uv run pytest -m "integration and not slow and not live" tests
         env: *database_environment

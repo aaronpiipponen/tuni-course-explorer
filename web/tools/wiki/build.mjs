@@ -35,8 +35,7 @@ function sourcePathFromConfig(value, label) {
   return sourcePath;
 }
 
-export async function buildWiki({ repoRoot }) {
-  const root = await realpath(repoRoot);
+async function readWikiConfig(root) {
   const configPath = resolve(root, "config/wiki.json");
   let config;
   try {
@@ -48,6 +47,10 @@ export async function buildWiki({ repoRoot }) {
   }
   if (!config || typeof config !== "object" || Array.isArray(config))
     fail("config root must be an object");
+  return config;
+}
+
+function wikiMeta(config) {
   if (
     typeof config.repositoryUrl !== "string" ||
     typeof config.repositoryRef !== "string"
@@ -69,8 +72,32 @@ export async function buildWiki({ repoRoot }) {
     !/^\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/?$/u.test(repo.pathname)
   )
     fail("repositoryUrl must be credential-free HTTPS GitHub owner/repository");
-  const repositoryUrl = repo.href.replace(/\/$/u, "").replace(/\.git$/u, "");
-  const repositoryRef = checkedText(config.repositoryRef, "repositoryRef");
+  return {
+    repositoryUrl: repo.href.replace(/\/$/u, "").replace(/\.git$/u, ""),
+    repositoryRef: checkedText(config.repositoryRef, "repositoryRef"),
+  };
+}
+
+/**
+ * Read the wiki repository address and ref from one checkout's validated config/wiki.json.
+ *
+ * The root is resolved through its real path. A missing file, invalid JSON, or a value that fails
+ * validation throws an error.
+ */
+export async function readWikiMeta({ repoRoot }) {
+  const root = await realpath(repoRoot);
+  return wikiMeta(await readWikiConfig(root));
+}
+
+/**
+ * Build the wiki registry and its selected local image assets from the wiki configuration.
+ *
+ * An invalid configuration or a missing source throws an error.
+ */
+export async function buildWiki({ repoRoot }) {
+  const root = await realpath(repoRoot);
+  const config = await readWikiConfig(root);
+  const { repositoryUrl, repositoryRef } = wikiMeta(config);
   const ids = new Set();
   const paths = new Set();
   const pages = [];

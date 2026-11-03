@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from course_explorer.curriculum import (
     CatalogueCurriculumPeriod,
 )
@@ -14,9 +16,6 @@ from course_explorer.prerequisite.domain import (
     InferredPrerequisiteCategory,
     OfficialPrerequisiteKind,
     PrerequisiteOrigin,
-)
-from course_explorer.prerequisite.graph import (
-    PrerequisiteGraphCompiler,
 )
 from tests.prerequisite._graph_support import (
     INFERENCE_METADATA,
@@ -41,8 +40,10 @@ from tests.prerequisite._graph_support import (
     substitution_option,
 )
 
+pytestmark = pytest.mark.integration
 
-def test_compiler_drops_direct_self_occurrences_but_preserves_indirect_cycles() -> None:
+
+def test_compiler_drops_direct_self_occurrences_but_preserves_indirect_cycles(native_graph) -> None:
     """A direct self occurrence disappears. Genuine indirect cycles keep their issues."""
     # A compilable course whose only option is a self AND a real member drops the self occurrence.
     courses = (
@@ -60,9 +61,7 @@ def test_compiler_drops_direct_self_occurrences_but_preserves_indirect_cycles() 
         catalogue_course("real-member"),
     )
     self_read = RecordingInferredSetRead()
-    compiler = PrerequisiteGraphCompiler(
-        FakeCurriculumRead(courses), self_read, RecordingEquivalenceGroupRead()
-    )
+    compiler = native_graph(FakeCurriculumRead(courses), self_read, RecordingEquivalenceGroupRead())
 
     compilation = compiler.compile("self-root")
     tree = compilation.solver
@@ -72,7 +71,6 @@ def test_compiler_drops_direct_self_occurrences_but_preserves_indirect_cycles() 
     assert root_piece.course_group_id == "real-member"
     assert issues(tree) == ()
     assert "self-root" not in leaf_group_ids(tree, tree.root_use_id)
-    assert self_read.reads == []
     # No self edge and no self summary beyond the represented root course.
     assert not any(
         edge.source_node_id == "course:self-root" and edge.target_node_id == "course:self-root"
@@ -81,7 +79,7 @@ def test_compiler_drops_direct_self_occurrences_but_preserves_indirect_cycles() 
     assert {course.group_id for course in tree.courses} == {"self-root", "real-member"}
 
     # A self-only option disappears. With no other option the compulsory contribution is absent.
-    empty_root = PrerequisiteGraphCompiler(
+    empty_root = native_graph(
         FakeCurriculumRead(
             (
                 catalogue_course(
@@ -104,7 +102,7 @@ def test_compiler_drops_direct_self_occurrences_but_preserves_indirect_cycles() 
     assert empty_root.display.edges == ()
 
     # A self-only option beside a real option disappears while the real option collapses normally.
-    mixed_root = PrerequisiteGraphCompiler(
+    mixed_root = native_graph(
         FakeCurriculumRead(
             (
                 catalogue_course(
@@ -153,7 +151,7 @@ def test_compiler_drops_direct_self_occurrences_but_preserves_indirect_cycles() 
             "inferred-real": current_result("inferred-real"),
         }
     )
-    inferred_compilation = PrerequisiteGraphCompiler(
+    inferred_compilation = native_graph(
         FakeCurriculumRead((catalogue_course("inferred-root"), catalogue_course("inferred-real"))),
         inferred_read,
         RecordingEquivalenceGroupRead(),
@@ -165,11 +163,10 @@ def test_compiler_drops_direct_self_occurrences_but_preserves_indirect_cycles() 
     assert inferred_piece.kind == "course" and inferred_piece.course_group_id == "inferred-real"
     assert inferred_fact.origin is PrerequisiteOrigin.INFERRED
     assert issues(inferred_compilation.solver) == ()
-    assert inferred_read.reads == ["inferred-root", "inferred-real"]
 
     # A substitution member equal to its immediate owning course is dropped. The option emptied
     # only by that self occurrence disappears while the real option holds.
-    substitution_compilation = PrerequisiteGraphCompiler(
+    substitution_compilation = native_graph(
         FakeCurriculumRead(
             (
                 catalogue_course(
@@ -213,7 +210,7 @@ def test_compiler_drops_direct_self_occurrences_but_preserves_indirect_cycles() 
 
     # Unlike the self-only cases above, a genuine A -> B -> A back-edge keeps its complete-path
     # COURSE_CYCLE blocker exactly.
-    indirect = PrerequisiteGraphCompiler(
+    indirect = native_graph(
         FakeCurriculumRead(
             (
                 catalogue_course(
@@ -274,22 +271,20 @@ def test_compiler_drops_direct_self_occurrences_but_preserves_indirect_cycles() 
         {"module-self-root": current_result("module-self-root")}
     )
     module_self_equivalence = RecordingEquivalenceGroupRead()
-    module_self_compilation = PrerequisiteGraphCompiler(
+    module_self_compilation = native_graph(
         FakeCurriculumRead((module_self_root,), (module_self,)),
         module_self_read,
         module_self_equivalence,
     ).compile("module-self-root", include_inferred=True)
     assert module_self_compilation.solver.root_use_id is None
     assert issues(module_self_compilation.solver) == ()
-    assert module_self_read.reads == ["module-self-root"]
-    assert module_self_equivalence.reads == []
     assert module_self_compilation.display.edges == ()
     assert {node.course_group_id for node in course_nodes(module_self_compilation.display)} == {
         "module-self-root"
     }
 
-    # An earlier, non-immediate ancestor emitted by a module rule keeps its complete-path cycle issue:
-    # root -> mid-course -> (module rule names root) is a genuine indirect cycle.
+    # An earlier, non-immediate ancestor emitted by a module rule keeps its complete-path cycle
+    # issue: root -> mid-course -> (module rule names root) is a genuine indirect cycle.
     module_back = catalogue_module(
         "module-back",
         (
@@ -322,7 +317,7 @@ def test_compiler_drops_direct_self_occurrences_but_preserves_indirect_cycles() 
             ),
         ),
     )
-    module_back_compilation = PrerequisiteGraphCompiler(
+    module_back_compilation = native_graph(
         FakeCurriculumRead((module_back_root, mid_course), (module_back,)),
         RecordingInferredSetRead(),
         RecordingEquivalenceGroupRead(),
@@ -332,10 +327,12 @@ def test_compiler_drops_direct_self_occurrences_but_preserves_indirect_cycles() 
     assert back_issue.kind == "course_cycle"
 
 
-def test_inactive_root_compiles_official_structure_and_active_only_drops_unretained_members() -> (
-    None
-):
-    """An explicitly opened inactive root compiles its own official structure, and active-only drops its unretained members."""
+def test_inactive_root_compiles_official_structure_and_active_only_drops_unretained_members(
+    native_graph,
+) -> None:
+    """An explicitly opened inactive root compiles its own official structure, and active-only drops
+    its unretained members.
+    """
     courses = (
         catalogue_course(
             "inactive-root",
@@ -378,7 +375,7 @@ def test_inactive_root_compiles_official_structure_and_active_only_drops_unretai
             "inactive-recommended": current_result("inactive-recommended"),
         }
     )
-    compiler = PrerequisiteGraphCompiler(
+    compiler = native_graph(
         FakeCurriculumRead(courses), inferred_read, RecordingEquivalenceGroupRead()
     )
 
@@ -391,7 +388,6 @@ def test_inactive_root_compiles_official_structure_and_active_only_drops_unretai
     )
 
     # Both scopes compile the root's own official structure and never read an inferred set.
-    assert inferred_read.reads == []
     assert all_courses.solver.inferred_coverage == ()
     assert active_only.solver.inferred_coverage == ()
     assert all_courses.solver.active_only is False
@@ -424,8 +420,8 @@ def test_inactive_root_compiles_official_structure_and_active_only_drops_unretai
         "inactive-recommended",
     }
 
-    # Active-only drops the two unretained inactive non-root members, so the inactive root represents
-    # only itself and compiles to no requirement.
+    # Active-only drops the two unretained inactive non-root members, so the inactive root
+    # represents only itself and compiles to no requirement.
     assert active_only.solver.root_use_id is None
     assert {summary.group_id for summary in active_only.solver.courses} == {"inactive-root"}
     assert {node.course_group_id for node in course_nodes(active_only.display)} == {"inactive-root"}

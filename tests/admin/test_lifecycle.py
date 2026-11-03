@@ -3,7 +3,8 @@
 These proofs drive the real core, the real detached worker subprocess and the real
 state/lock layout over temporary durable units: one continuous operator work window, one
 interruption/incompatibility boundary, the distinct owned-temporary-service security boundary,
-and ingestion idle raw-retention ownership and confinement.
+ingestion identity and manifest reuse across a continuation, idle raw-retention pruning and its
+safe-ownership refusal, and the Working prerequisite before a stage launch.
 The synthetic stage and process double live in ``tests/admin/_lifecycle_support.py``.
 """
 
@@ -18,11 +19,14 @@ from types import SimpleNamespace
 
 import pytest
 
+from course_explorer import administration
+from course_explorer.administration import administrative_json, atomic_write_private_text
 from course_explorer.config import (
     CaptureSettings,
     KoriSettings,
     NormalizationSettings,
 )
+from course_explorer.datasets import DatasetPointer
 from course_explorer.ingestion.capture import capture_curriculum
 from course_explorer.ingestion.manifest import RawCaptureStore
 from course_explorer_admin import local_stages
@@ -32,7 +36,9 @@ from course_explorer_admin.lifecycle import (
     read_lifecycle_state,
     require_retained_ingestion_manifest,
     run_lifecycle_command,
+    stage_state_root,
 )
+from course_explorer_admin.worker import make_stage
 from tests.admin._lifecycle_support import (
     DELAY_ALIAS,
     FAIL_DATABASE_ALIAS,
@@ -48,6 +54,7 @@ from tests.admin._lifecycle_support import (
     wait_for_stable_state,
     wait_for_units,
 )
+from tests.datasets._support import INITIAL_ID, sample_receipt
 from tests.ingestion._capture_support import (
     FixtureSource,
     RecordingCapturePersistence,
@@ -85,7 +92,7 @@ def test_local_lifecycle_actions_checkpoint_pause_stop_and_resume_pending(
     stage_name: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Five actions return. Pause/stop checkpoint. Resume/start continue only pending units."""
-    configure_environment(monkeypatch)
+    configure_environment(monkeypatch, repository_root=tmp_path / "repository")
     monkeypatch.setenv(UNITS_ALIAS, "8")
     monkeypatch.setenv(DELAY_ALIAS, "0.4")
     monkeypatch.setenv(IDENTITY_ALIAS, "identity-a")
@@ -170,7 +177,7 @@ def test_local_lifecycle_interruption_preserves_checkpoint_and_refuses_incompati
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Killing the owned child keeps checkpoints. An incompatible start refuses and stop works."""
-    configure_environment(monkeypatch)
+    configure_environment(monkeypatch, repository_root=tmp_path / "repository")
     monkeypatch.setenv(UNITS_ALIAS, "8")
     monkeypatch.setenv(DELAY_ALIAS, "0.15")
     monkeypatch.setenv(IDENTITY_ALIAS, "identity-a")
@@ -228,7 +235,7 @@ def test_local_lifecycle_releases_only_owned_temporary_services(
     pre_existing: bool, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Refused initial pause, terminal pause and completion release only owned services."""
-    configure_environment(monkeypatch)
+    configure_environment(monkeypatch, repository_root=tmp_path / "repository")
     monkeypatch.setenv(UNITS_ALIAS, "6")
     monkeypatch.setenv(DELAY_ALIAS, "0.1")
     monkeypatch.setenv(IDENTITY_ALIAS, "identity-a")
@@ -414,7 +421,7 @@ def _configure_ingestion_raw_root(
     monkeypatch: pytest.MonkeyPatch, root: Path, raw_data_root: Path
 ) -> LocalLifecycleRunner:
     """Bind one temporary ingestion state root, raw root and local process boundary."""
-    configure_environment(monkeypatch)
+    configure_environment(monkeypatch, repository_root=root.parent / "repository")
     monkeypatch.setattr(local_stages, "stage_state_root", lambda stage: root)
     capture_settings = settings_factory(CaptureSettings).model_copy(
         update={"raw_data_root": raw_data_root}
@@ -445,7 +452,7 @@ def test_ingestion_identity_ignores_operational_tuning(
     same_identity: bool,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The identity covers the stage, the configuration, the selected database and the options.
+    """The identity covers the stage, the configuration, the Working database and the options.
 
     The configuration is the kori settings without their operational tuning values, plus the
     normalization settings.
@@ -468,7 +475,9 @@ def test_ingestion_identity_ignores_operational_tuning(
         monkeypatch.setattr(local_stages, "load_kori_settings", lambda: kori)
         monkeypatch.setattr(local_stages, "load_normalization_settings", lambda: normalization)
         monkeypatch.setattr(local_stages, "load_capture_settings", lambda: capture)
-        monkeypatch.setattr(local_stages, "load_database_settings", lambda: database)
+        monkeypatch.setattr(
+            local_stages, "load_database_settings", lambda *, role="selected": database
+        )
         return stage.identity_sha256(options)
 
     baseline = identity(base_kori, base_normalization, base_capture)
@@ -649,3 +658,49 @@ def test_ingestion_stop_refuses_unsafe_raw_ownership(
         assert (tmp_path / "raw" / "linked-run").is_symlink()
         assert ordinary.run_root.is_dir()
         assert (ordinary.run_root / "tiny.txt").read_text(encoding="utf-8") == "ordinary\n"
+
+
+@pytest.mark.parametrize(("stage_name", "enrolled"), [("embedding", False), ("inference", True)])
+def test_stage_start_requires_working_before_launch(
+    stage_name: str, enrolled: bool, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Every stage refuses an absent Working dataset before a service or worker launch."""
+    configure_environment(monkeypatch, repository_root=tmp_path / "repository")
+    capture_settings = settings_factory(CaptureSettings).model_copy(
+        update={"raw_data_root": tmp_path / "raw"}
+    )
+    monkeypatch.setattr(local_stages, "load_capture_settings", lambda: capture_settings)
+    admin_state = "data/tests/admin"
+    monkeypatch.setenv("ADMIN_STATE_ROOT", admin_state)
+    for name, key in {
+        "ingestion": "INGESTION_CONTROLLER_STATE_ROOT",
+        "embedding": "EMBEDDING_CONTROLLER_STATE_ROOT",
+        "translation": "TRANSLATION_CONTROLLER_STATE_ROOT",
+        "inference": "INFERENCE_CONTROLLER_STATE_ROOT",
+    }.items():
+        monkeypatch.setenv(key, f"{admin_state}/{name}")
+    if enrolled:
+        state = administration.repository_root() / admin_state
+        directory = state / "datasets" / INITIAL_ID
+        directory.mkdir(mode=0o700, parents=True)
+        atomic_write_private_text(
+            directory / "receipt.json",
+            administrative_json(
+                sample_receipt(dataset_id=INITIAL_ID, database_name="course_explorer_test")
+            ),
+        )
+        atomic_write_private_text(
+            state / "selected-dataset.json",
+            administrative_json(DatasetPointer(schema_version=1, dataset_id=INITIAL_ID)),
+        )
+
+    stage = make_stage(stage_name)
+    root = stage_state_root(stage_name)
+    runner = LocalLifecycleRunner(root=root, running=set())
+    try:
+        with pytest.raises(FileNotFoundError, match="copy a dataset to Working"):
+            run_lifecycle_command("start", stage=stage, root=root, runner=runner, sleep=time.sleep)
+        assert runner.launches == []
+        assert runner.started == []
+    finally:
+        runner.close()

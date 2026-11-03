@@ -1,0 +1,22 @@
+{
+  "type": "bar",
+  "title": "Isolated exact semantic scan cost by representation",
+  "description": "Core-seconds for eight exact semantic scan variants on four fixed query vectors, warm and cold, showing the packed file and packed relation below the row-based reads.",
+  "valueAxis": "Core-seconds (summed over all cores)",
+  "categories": [
+    "Product exact SQL",
+    "Raw row SQL",
+    "Stored-centred row SQL",
+    "Native row scan, TOAST storage",
+    "Packed relation, warm",
+    "Packed relation, cold",
+    "Packed file, warm",
+    "Packed file, cold"
+  ],
+  "series": [
+    {
+      "name": "Core-seconds",
+      "values": [0.6971, 0.5121, 0.4284, 0.3019, 0.0918, 0.2630, 0.0625, 0.1952]
+    }
+  ]
+}

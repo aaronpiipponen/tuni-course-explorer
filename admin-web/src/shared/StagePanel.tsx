@@ -2,9 +2,11 @@
  * One preparation stage panel: its automatic status read, its measured progress and its four
  * lifecycle actions.
  *
- * The panel invokes only its own stage's fixed action, so no action chains several stages. A stop
- * asks for confirmation naming that stage. A successful action presents the status it returned, and
- * a failed action stays visible in the panel.
+ * The panel invokes only its own stage's fixed action, so no action chains several stages. The four
+ * actions need a Working dataset. An inventory read that reports none disables them and shows the
+ * working-absent reason. The panel reads the status either way. A stop asks for confirmation naming
+ * that stage. A successful action presents the status it returned, and the panel shows a failed
+ * action.
  */
 import { useCallback, useState } from "react";
 import {
@@ -31,16 +33,18 @@ export interface SessionAccess {
   pollSeconds: number;
 }
 
-/** The shared lifecycle action row of one stage panel. */
+/** Render the shared lifecycle action row of one stage panel. */
 export function StageActions({
   stageLabel,
   pending,
   failure,
+  workingPresent,
   onAction,
 }: {
   stageLabel: string;
   pending: boolean;
   failure: string | null;
+  workingPresent: boolean | null;
   onAction: (action: LifecycleAction) => void;
 }) {
   const [confirming, setConfirming] = useState(false);
@@ -53,7 +57,7 @@ export function StageActions({
             key={action}
             className={`btn${action === "start" ? " p" : ""}${action === "stop" ? " danger" : ""}`}
             type="button"
-            disabled={pending}
+            disabled={pending || workingPresent === false}
             onClick={() =>
               action === "stop" ? setConfirming(true) : onAction(action)
             }
@@ -83,10 +87,12 @@ export function StagePanel({
   stage,
   session,
   onRefusal,
+  workingPresent,
 }: {
   stage: PreparationStage;
   session: SessionAccess;
   onRefusal: (status: number) => void;
+  workingPresent: boolean | null;
 }) {
   const [actionFailure, setActionFailure] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -175,6 +181,7 @@ export function StagePanel({
             stageLabel={stageLabel}
             pending={pending}
             failure={actionFailure}
+            workingPresent={workingPresent}
             onAction={(action) => void onAction(action)}
           />
         </>

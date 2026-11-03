@@ -13,6 +13,8 @@
 /docker-compose.yml
 /docker-compose.*.yml
 /compose.override.yml
+# The machine configuration for the serving load tooling.
+/tools/load/machine.toml
 
 # Deployment files. The deploy script and the runner unit template are tracked. Every other
 # deployment file is local and ignored.
@@ -46,6 +48,9 @@ venv/
 .cache/
 .coverage
 htmlcov/
+
+# Native build output.
+/native/*.so
 
 # Frontend dependencies and build output.
 node_modules/

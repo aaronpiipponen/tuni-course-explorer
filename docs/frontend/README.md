@@ -4,15 +4,19 @@ The frontend is the browser app over the tabs a site serves, the state it holds 
 
 ## The app and its tabs
 
-The app is one shell with a header, a tab area and a bottom row. On desktop the header is a top bar that carries a button for each tab the site serves, the profile control, the language control and **Docs**, and the footer holds the independent-project notice and the source link.
+The app is one shell with a header, a tab area and a bottom row. On desktop the header is a top bar that carries a button for each tab the site serves, **Feedback**, **Docs**, the profile control and the language control, and the footer holds the independent-project notice and the source link.
 
-On a phone the header is an empty safe-area strip and one bottom bar carries the served tabs plus **More**, whose sheet holds the profile control, the language control and **Docs**. The app runs in Finnish and English.
+On a phone the header is an empty safe-area strip and one bottom bar carries the served tabs plus **More**, whose sheet holds the profile control, the language control, **Feedback** and **Docs**. The app runs in Finnish and English.
 
-The site's two feature switches decide which tabs and controls it serves, and the app reads them once before the shell mounts, together with the serving dataset identity that bounds the app-level read cache above the tab panes.
+The site's two feature switches decide which tabs and controls it serves, and the app reads them once before the shell mounts, together with the serving dataset identity that bounds the read cache above the tab panes.
 
 Each tab joins two sources: the reports it reads from the server, which describe the official catalogue, and the state the open profile holds in the browser, which is its language, its course selection and completion, its exclusions, and the choices and places of the structure tab. A list of course cards is a report, while the mark that says a course is completed is browser state. The narrowing boxes filter one cached minimal official catalogue locally, so a keystroke sends no request.
 
-[Browser app](/docs/frontend/browser-app.md) describes the shell, its navigation and scrolling, the shared course state, the language and the labeled analysis, and the search, comparison and discovery reads.
+[Browser app](/docs/frontend/browser-app.md) describes the shell, its navigation and scrolling, the shared course state, the language and the labeled analysis, and the reads that keep each tab current. [Tab layouts](/docs/frontend/tab-layouts.md) describes how the Search, Compare and Discover tabs arrange their controls and results. [Shared interface components](/docs/frontend/shared-interface.md) describes the help drawer, the notices, the tab and phone motion, the scrollbar and the course menu.
+
+## The feedback page
+
+**Feedback** opens a standalone page at `/feedback` beside the app and documentation pages. It is not a course tab and adds no tab identity: returning from it restores the app and the tab that was open, and the page uses the current profile language without changing it. [Feedback page](/docs/frontend/feedback-page.md) describes the form, the image limits, the publication default, the acknowledgment states and the failures, and [Feedback page code](/docs/frontend/feedback-page-code.md) describes the modules behind it.
 
 ## Browser state and the shared course actions
 
@@ -22,9 +26,9 @@ The selection and the completion are shared rather than owned by a tab. A course
 
 ## The structure editor and the structure model
 
-The **Structure of studies** tab reads the official structure reports of its ordered programmes, placed modules and exact version selections in one batch, keeps them in memory and in a derived IndexedDB store keyed by the serving dataset identity, the root and the selection identity, and lays the profile's own choices and places over that content. A canonical module with several eligible versions is chosen explicitly, and a group that still needs one shows its own candidate picker. Selecting a course there adds it to the shared selection, and each course shows on one card.
+The **Structure of studies** tab lays the profile's own choices, places and card order over the official structure reports of its ordered programmes. A canonical module with several eligible versions is chosen explicitly, and a group that needs one shows its own candidate picker. Selecting a course there adds it to the shared selection, and each course shows on one card.
 
-[Structure editor](/docs/frontend/structure-editor.md) states the behaviour a reader can rely on, including the confirmations and the resets. [Structure model](/docs/frontend/structure-model.md) describes the projection and the resolution behind it, [Structure edits](/docs/frontend/structure-edits.md) the placement edits and the selection migration, [Structure pane](/docs/frontend/structure-pane.md) the pane and its reads, and [Sisu capture](/docs/frontend/sisu-capture.md) the import of a captured plan. [Structure of studies in the catalogue](/docs/backend/catalogue/study-structure.md) describes the official report itself.
+[Structure editor](/docs/frontend/structure-editor.md) states the behaviour a reader can rely on, including the confirmations and the resets. [Course placement and dragging](/docs/frontend/course-placement.md) states the drag, the card order and the moves. [Structure model](/docs/frontend/structure-model.md) describes the projection and the resolution behind it, [Structure edits](/docs/frontend/structure-edits.md) the placement edits and the selection migration, [Structure pane](/docs/frontend/structure-pane.md) the pane and its reads, and [Sisu import](/docs/frontend/sisu-capture.md) the import of a captured plan or a supported plan PDF. [Structure of studies in the catalogue](/docs/backend/catalogue/study-structure.md) describes the official report itself.
 
 ## The prerequisite graph
 
@@ -34,11 +38,11 @@ The **Prerequisites** tab opens one course as the graph root and draws its prere
 
 ## The administration console
 
-The administration console is a separate React application with its own manifest and its own build, served by the administration backend. It opens on a sign-in screen and serves the five tabs **Dashboard**, **Data preparation**, **Inference**, **Logs** and **Settings**. The [Administration console](/docs/operations/admin-console/README.md) how-to describes the tabs and their actions.
+The administration console is a separate React application with its own manifest and its own build, served by the administration backend. It opens on a sign-in screen and serves the six tabs **Dashboard**, **Data preparation**, **Inference**, **Logs**, **Settings** and **Feedback**. The [Administration console](/docs/operations/admin-console/README.md) how-to describes the tabs and their actions.
 
-Each read and each action of a tab runs one fixed `scripts/admin.py` command, so a tab performs several reads: **Data preparation** reads three stage statuses and three reports, and **Logs** reads its shared inventory, command log, session and runtime logs and usage window. Enabled automatic panels follow the configured poll interval, while target lookup and target decisions, maintenance and the other actions are explicit commands.
+Each read and each action of a tab runs one fixed `scripts/admin.py` command, so a tab performs several reads. Enabled automatic panels follow the configured poll interval, while target lookup and target decisions, maintenance, image reads and the other actions are explicit commands. [Administration console panels](/docs/frontend/admin-console-panels.md#panel-routes) lists the route behind each panel and whether it reads automatically or on an explicit action.
 
-A worker log read and the worker preflight run on an explicit request alone. The retained-server inference summary is one read shared by its four report panels. The summary and the two dataset listings read only while the site's dashboard reports the selected dataset enabled, and otherwise they show the pending read, the disabled reason or the dashboard failure. A command that ran and failed shows its own safe failure line.
+A worker log read and the worker preflight run on an explicit request alone. The retained-server inference summary is one read shared by its four report panels, and the preparation reports and that summary read Working first, fall back to Selected and name the role. The summary reads only while the site's dashboard reports a Selected pointer, and otherwise it shows the pending read, the disabled reason or the dashboard failure. The Settings dataset inventory reads on its own loop, so a bootstrap deployment and a stopped database service answer their own typed state. A command that ran and failed shows its owning guidance line.
 
 The administration rebuild runs two fixed commands: the console build and the backend restart. Its confirmation states that it signs every operator out, and the next sign-in reads a fresh session.
 

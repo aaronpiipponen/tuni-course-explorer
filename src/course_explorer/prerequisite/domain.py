@@ -1,7 +1,7 @@
 """Product-neutral prerequisite expression and inferred-set contracts.
 
-This module owns the one closed vocabulary official-compilation, inferred publication,
-satisfaction, discovery coverage, and graph projection share: strict frozen Pydantic nodes with
+This module owns the one closed vocabulary official-compilation, inferred publication and
+discovery coverage share: strict frozen Pydantic nodes with
 official/inferred/composed provenance, explicit composed AND/OR roles, an explicit
 per-occurrence inferred required/recommended category, and the current inferred-set
 publication/read DTOs. It keeps official university facts separate from
@@ -555,38 +555,6 @@ def expression_course_leaf_group_ids(expression: PrerequisiteExpression | None) 
     return leaves
 
 
-class PrerequisiteNodeProblem(_PrerequisiteModel):
-    """One located prerequisite node failure with an explainable reason.
-
-    `node_id` is the drawn box a reader sees, `support_id` the scoped calculation support that
-    failed and `fact_id` its provenance fact when one applies. `state` is the local outcome
-    (`no_solution`, `unresolved`, or `shortfall`). `reason` and `detail` stay short and factual.
-    A synthetic root failure has null support/fact and the root course node ID.
-    """
-
-    node_id: str
-    support_id: str | None = None
-    fact_id: str | None = None
-    state: Literal["no_solution", "unresolved", "shortfall"]
-    reason: str
-    referenced_group_id: str | None = None
-    detail: str | None = None
-
-    @field_validator("node_id", "reason")
-    @classmethod
-    def reject_blank_problem_text(cls, value: str) -> str:
-        """Require nonblank located identity and reason text."""
-        return _nonblank(value, "node problem text")
-
-    @field_validator("support_id", "fact_id", "referenced_group_id", "detail")
-    @classmethod
-    def reject_blank_optional_text(cls, value: str | None) -> str | None:
-        """Reject a provided-but-blank optional diagnostic field."""
-        if value is not None:
-            _nonblank(value, "node problem optional text")
-        return value
-
-
 class InferredSetCoverage(_PrerequisiteModel):
     """Ordered source-count coverage of one inferred publication attempt."""
 
@@ -810,11 +778,15 @@ class EquivalenceActivityReconciliation(_PrerequisiteModel):
 class EquivalenceGroupRead(Protocol):
     """Read-only boundary the graph compiler depends on instead of ORM models."""
 
-    def read_for_member(self, member_group_id: str) -> tuple[CurrentEquivalenceGroup, ...]: ...
+    def read_for_member(self, member_group_id: str) -> tuple[CurrentEquivalenceGroup, ...]:
+        """Return every validated current group containing one canonical course member."""
+        ...
 
     def read_for_members(
         self, member_group_ids: Collection[str]
-    ) -> dict[str, tuple[CurrentEquivalenceGroup, ...]]: ...
+    ) -> dict[str, tuple[CurrentEquivalenceGroup, ...]]:
+        """Return each requested canonical member's exact validated current groups."""
+        ...
 
 
 class EquivalenceGroupPublisher(Protocol):
@@ -822,16 +794,22 @@ class EquivalenceGroupPublisher(Protocol):
 
     def publish(
         self, publication: EquivalenceGroupPublication
-    ) -> EquivalenceGroupPublicationResult: ...
+    ) -> EquivalenceGroupPublicationResult:
+        """Validate and atomically create or replace one caller-identified equivalence group."""
+        ...
 
 
 class InferredSetRead(Protocol):
     """Read-only boundary the graph compiler depends on instead of ORM models."""
 
-    def read(self, target_group_id: str) -> InferredSetReadResult: ...
+    def read(self, target_group_id: str) -> InferredSetReadResult:
+        """Return availability, stale context, or the current validated inferred set."""
+        ...
 
 
 class InferredSetPublisher(Protocol):
     """Publication boundary the inference publication service depends on."""
 
-    def publish(self, publication: InferredSetPublication) -> InferredSetPublicationResult: ...
+    def publish(self, publication: InferredSetPublication) -> InferredSetPublicationResult:
+        """Validate and atomically create or replace one target's current inferred set."""
+        ...

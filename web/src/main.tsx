@@ -12,6 +12,7 @@ import {
   type BrowserStore,
 } from "./state/store";
 import { App } from "./app/App";
+import { DISCOVERY_CACHE_STORAGE_KEY } from "./app/discoveryCache";
 import { WebFeatures } from "./app/WebFeatures";
 import { StorageRecovery } from "./features/profiles/StorageRecovery";
 import { downloadBrowserFile } from "./features/profiles/files";
@@ -19,6 +20,7 @@ import { downloadBrowserFile } from "./features/profiles/files";
 // The App dependency graph evaluates phone-sheet.css, graph.css and prerequisites.css before this
 // list, which repeats the two prerequisite files and ends with mobile-scale.css.
 import "./styles/theme.css";
+import "./shared/scrollbar.css";
 import "./app/shell.css";
 import "./shared/course/course.css";
 import "./shared/course/course-lookup.css";
@@ -69,6 +71,7 @@ function showRecovery(error: Error): void {
         downloadBrowserFile(exportSavedBrowserData(window.localStorage))
       }
       onReset={() => {
+        window.localStorage.removeItem(DISCOVERY_CACHE_STORAGE_KEY);
         activeStore = resetBrowserStore(window.localStorage);
         renderStore(activeStore);
       }}

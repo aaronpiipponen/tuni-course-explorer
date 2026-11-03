@@ -44,17 +44,19 @@ def test_administrative_json_and_model_round_trip(tmp_path: Path) -> None:
 
 def test_atomic_write_is_mode_0600_and_rejects_missing_parent(tmp_path: Path) -> None:
     """Publication is atomic, mode 0600, and refuses an absent parent."""
-    target = tmp_path / "state.json"
+    directory = tmp_path / "directory"
+    directory.mkdir()
+    target = directory / "state.json"
     atomic_write_private_text(target, "payload\n")
     assert target.read_text(encoding="utf-8") == "payload\n"
     assert oct(target.stat().st_mode & 0o777) == "0o600"
 
     atomic_write_private_text(target, "replacement\n")
     assert target.read_text(encoding="utf-8") == "replacement\n"
-    assert list(tmp_path.iterdir()) == [target]
+    assert list(directory.iterdir()) == [target]
 
     with pytest.raises(ValueError):
-        atomic_write_private_text(tmp_path / "missing" / "state.json", "payload\n")
+        atomic_write_private_text(directory / "missing" / "state.json", "payload\n")
 
 
 def test_session_directory_rejects_invalid_or_escaping_identity(tmp_path: Path) -> None:

@@ -39,6 +39,7 @@ describe("browser profiles", () => {
         moduleVersions: { "root-a": "root-a-v1", "root-b": "root-b-v1" },
         choices: { "p:root-a/2": ["choice-a"] },
         coursePlacements: { "canonical-a": "p:root-a" },
+        courseOrder: ["canonical-a"],
       },
       search: { ...state.search, query: "profile A" },
     }));
@@ -53,6 +54,7 @@ describe("browser profiles", () => {
         ...state.structure,
         programmeGroupIds: ["root-b"],
         moduleVersions: { "root-b": "root-b-v2" },
+        courseOrder: ["canonical-b"],
       },
       discover: { ...state.discover, mode: "at_least_one" },
     }));
@@ -71,6 +73,8 @@ describe("browser profiles", () => {
     });
     expect(first.compare.slots).toEqual(["canonical-a", null]);
     expect(first.search.query).toBe("profile A");
+    expect(first.structure.courseOrder).toEqual(["canonical-a"]);
+    expect(second.structure.courseOrder).toEqual(["canonical-b"]);
     expect(first.completedCourseIds).toEqual(first.selectedCourseIds);
     store.switchProfile(secondId);
     expect(store.getSnapshot().profiles[secondId].state).toEqual(second);
@@ -208,6 +212,7 @@ describe("browser profiles", () => {
         moduleVersions: { "root-a": "root-a-v2", "root-b": "root-b-v1" },
         choices: { "p:root-b/2": ["choice-a"] },
         coursePlacements: { "canonical-a": "p:root-b" },
+        courseOrder: ["canonical-a"],
       },
     }));
     store.saveAsProfile("Exported");
@@ -230,6 +235,9 @@ describe("browser profiles", () => {
     expect(
       store.getSnapshot().profiles[importedId].state.structure.moduleVersions,
     ).toEqual({ "root-a": "root-a-v2", "root-b": "root-b-v1" });
+    expect(
+      store.getSnapshot().profiles[importedId].state.structure.courseOrder,
+    ).toEqual(["canonical-a"]);
     store.updateCurrent((state) => ({
       ...state,
       selectedCourseIds: ["canonical-c"],
@@ -266,6 +274,7 @@ describe("browser profiles", () => {
         coursePlacements: { "canonical-a": "p:root-a" },
         modulePlacements: { "module-a": null },
         placedCourseIds: ["canonical-a"],
+        courseOrder: ["canonical-b", "canonical-a"],
       },
     }));
     store.saveAsProfile("Second");
@@ -282,6 +291,9 @@ describe("browser profiles", () => {
     expect(store.getSnapshot().currentProfileId).toBe("default");
     store.restoreState(parsed.state);
     expect(store.getSnapshot()).toEqual(before);
+    expect(
+      store.getSnapshot().profiles[secondId].state.structure.courseOrder,
+    ).toEqual(["canonical-b", "canonical-a"]);
     expect(store.getSnapshot().currentProfileId).toBe(secondId);
     expect(createBrowserStore(localStorage).getSnapshot()).toEqual(before);
   });
@@ -310,6 +322,7 @@ describe("browser profiles", () => {
           choices: { "p:root-a/2": ["choice-a"] },
           coursePlacements: { "canonical-a": "p:root-a" },
           placedCourseIds: ["canonical-a"],
+          courseOrder: [],
         },
         search: { ...state.search, query: "kept" },
       }));

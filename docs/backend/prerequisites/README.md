@@ -4,7 +4,11 @@ Prerequisite handling compiles one solver structure per graph root, answers the 
 
 ## One solver structure
 
-One preparation resolves the target, the selected courses, the completed courses, and the exclusions into canonical identities and compiles the authoritative solver structure for the target. The structure holds each identical calculation piece once, with ordered child slots, and every source position as one compact use carrying its provenance fact. The compiler folds the official prerequisite options, the inlined rules of the selected module versions, and, when the request asks for them, the published inferred prerequisites and equivalence groups into that structure. Inferred output is stored apart from the official catalogue and draws in the same graph with its own provenance. [Prerequisite compiler](/docs/backend/prerequisites/prerequisite-compiler.md) describes the compiler, the pieces it interns, and its unresolved parts.
+One preparation resolves the target, the selected courses, the completed courses, and the exclusions into canonical identities and compiles the authoritative solver structure for the target. The structure holds each identical calculation piece once, with ordered child slots, and every source position as one compact use carrying its provenance fact.
+
+The compiler folds the official prerequisite options, the inlined rules of the selected module versions, and, when the request asks for them, the published inferred prerequisites and equivalence groups into that structure. Inferred output is stored apart from the official catalogue and draws in the same graph with its own provenance.
+
+[Prerequisite compiler](/docs/backend/prerequisites/prerequisite-compiler.md) describes the compiler, the pieces it interns, and its unresolved parts. [Prerequisite display projection](/docs/backend/prerequisites/display-projection.md) describes the drawing the native projector derives from that structure, and [Satisfaction evaluation](/docs/backend/prerequisites/satisfaction-evaluation.md) describes the fold that decides whether the basis meets it.
 
 ## The graph
 

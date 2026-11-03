@@ -1,4 +1,4 @@
-"""Security boundary proofs for the fixed read-only web API package."""
+"""Security boundary proofs for the fixed catalogue web API and its worker isolation."""
 
 from __future__ import annotations
 
@@ -19,8 +19,8 @@ def _walk(routes: Any) -> Iterator[Any]:
             yield from _walk(nested)
 
 
-def test_web_surface_is_read_only() -> None:
-    """Only feature POST and fixed shell GET surfaces exist, without forbidden imports."""
+def test_web_surface_preserves_catalogue_and_worker_isolation() -> None:
+    """Only fixed feature POST and shell GET surfaces exist, without forbidden imports."""
     assert {
         (route.path, frozenset(route.methods or ()))
         for route in _walk(app.routes)
@@ -37,8 +37,14 @@ def test_web_surface_is_read_only() -> None:
             "/api/study-structure",
             "/api/course-summaries",
             "/api/features",
+            "/api/feedback",
         )
-    } | {("/", frozenset({"GET"})), ("/docs", frozenset({"GET"}))}
+    } | {
+        ("/", frozenset({"GET"})),
+        ("/docs", frozenset({"GET"})),
+        ("/feedback", frozenset({"GET"})),
+        ("/api/feedback/definition", frozenset({"GET"})),
+    }
     assert any(getattr(route, "path", None) == "/assets" for route in _walk(app.routes))
     subprocess.run(
         [

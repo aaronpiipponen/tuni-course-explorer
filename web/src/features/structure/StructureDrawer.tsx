@@ -1,6 +1,13 @@
 /** Persistent animated drawer for choices, search, contents, removal and reset. */
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { PaneSlideContext } from "../../app/paneSlide";
 import type {
   CatalogueModule,
   CourseSummary,
@@ -21,7 +28,7 @@ import {
   type StructureNode,
   type StructureRuleItem,
 } from "./model";
-import { displayContents } from "./display";
+import { displayContents, orderCourses } from "./display";
 import { DrawerSearch } from "./DrawerSearch";
 import { DrawerOptionRow } from "./DrawerOptionRow";
 import { CompletedCourseDeselectDialog } from "./CompletedCourseDeselectDialog";
@@ -31,7 +38,8 @@ import {
   CourseMoveConfirmDialog,
   useCourseMoveConfirm,
 } from "./CourseMoveConfirmDialog";
-import type { PulledCourse } from "./edits";
+import type { PulledCourse, PulledModule } from "./edits";
+import { scopeHoldsCompletion } from "./edits";
 import { useReducedMotion } from "../../shared/useReducedMotion";
 import { useWording } from "../../shared/useWording";
 import { useMediaQuery } from "../../shared/useMediaQuery";
@@ -64,8 +72,11 @@ type Editor = {
   ): string | null;
   /** Whether one node's current contents differ from the contents its own place draws for it. */
   hasNodeEdits(node: StructureNode): boolean;
-  /** The courses one reset returns to its scope from the nodes that render them now. */
-  resetPulls(node: StructureNode): readonly PulledCourse[];
+  /** The courses one reset returns to its scope from the nodes that render them. */
+  resetPulls(node: StructureNode): {
+    moves: readonly PulledCourse[];
+    moduleMoves: readonly PulledModule[];
+  };
   resetNode(
     node: StructureNode,
     removeCompletedCourses?: boolean,
@@ -91,24 +102,32 @@ export function StructureDrawer({
   // The displayed closing target is state, so the closed drawer rerenders when it clears.
   const [lastTarget, setLastTarget] = useState<DrawerTarget | null>(null);
   const reducedMotion = useReducedMotion();
-  // The pending move formatters run from a stored callback. Read the editor current at
+  const paneSliding = useContext(PaneSlideContext);
+  const still = reducedMotion || paneSliding;
+  // The pending move formatters run from a stored callback. Read the current editor at
   // evaluation time so a language switch or reprojection is not answered from the click-time one.
   const editorRef = useRef(editor);
   editorRef.current = editor;
   const [searchOpen, setSearchOpen] = useState(false);
   const [pendingCompletedCourse, setPendingCompletedCourse] = useState<{
     course: CourseSummary;
-    /** Whether the course already sits under Unplaced studies, where keeping it loose changes nothing. */
+    /** Whether the course sits under Unplaced studies, where keeping it loose changes nothing. */
     unplaced: boolean;
   } | null>(null);
   const completedDeselectOpener = useRef<HTMLElement | null>(null);
-  const [pendingModuleRemove, setPendingModuleRemove] =
-    useState<ModuleSummary | null>(null);
+  const [pendingModuleRemove, setPendingModuleRemove] = useState<{
+    module: ModuleSummary;
+    /** Whether the module holds changes to its official content. */
+    hasEdits: boolean;
+  } | null>(null);
   const moduleRemoveOpener = useRef<HTMLElement | null>(null);
   const [pendingModuleReset, setPendingModuleReset] = useState<{
     node: StructureNode;
-    /** The courses that reset returns to the scope from the nodes that render them now. */
-    moves: readonly PulledCourse[];
+    /** The courses and modules that reset returns to the scope from other nodes. */
+    pulls: {
+      moves: readonly PulledCourse[];
+      moduleMoves: readonly PulledModule[];
+    };
   } | null>(null);
   const moduleResetOpener = useRef<HTMLElement | null>(null);
   // The pull question of a reset, whose answer is the mode the reset writes.
@@ -140,9 +159,13 @@ export function StructureDrawer({
   const { language, t } = useWording();
   const phoneSheet = useMediaQuery(PHONE_SHELL_QUERY);
   const sheetRef = useRef<HTMLElement>(null);
-  const completed = new Set(
-    useProfileSelector((state) => state.completedCourseIds).value,
-  );
+  const completedCourseIds = useProfileSelector(
+    (state) => state.completedCourseIds,
+  ).value;
+  const completed = new Set(completedCourseIds);
+  const courseOrder = useProfileSelector(
+    (state) => state.structure.courseOrder,
+  ).value;
   const resolved =
     displayed && "resolved" in displayed ? displayed.resolved : null;
   const programmeId =
@@ -153,8 +176,8 @@ export function StructureDrawer({
     ease: [0.22, 0.8, 0.2, 1] as const,
   };
   useEffect(() => {
-    if (!node || !["programme", "module", "unplaced"].includes(node.kind))
-      setSearchOpen(false);
+    // A different drawer starts with its own search closed.
+    setSearchOpen(false);
   }, [node?.key]);
   useEffect(() => {
     if (!target) return;
@@ -192,10 +215,14 @@ export function StructureDrawer({
         ? moduleName(node.module, language)
         : "";
   const displayedContents = resolved ? displayContents(resolved) : null;
-  const courses =
-    displayedContents?.courses
-      .filter((item) => item.added || node?.kind === "unplaced")
-      .map(({ course }) => course) ?? [];
+  const courses = displayedContents
+    ? orderCourses(
+        displayedContents.courses.filter(
+          (item) => item.added || node?.kind === "unplaced",
+        ),
+        courseOrder,
+      ).map(({ course }) => course)
+    : [];
   const summaryCourses = resolved?.subtree ?? [];
   const children =
     displayedContents?.children.filter((child) => child.added) ?? [];
@@ -246,7 +273,7 @@ export function StructureDrawer({
         : null;
     setPendingMove({ name, place, run: move });
   };
-  /** The identities of the courses one module renders now, for its removal outcome. */
+  /** The identities of the courses one module renders, for its removal outcome. */
   const moduleCourseIds = (module: ModuleSummary) =>
     (index.moduleAt.get(module.group_id)?.subtree ?? []).map(
       (course) => course.group_id,
@@ -263,10 +290,8 @@ export function StructureDrawer({
   const removeModule = (module: ModuleSummary) => {
     // Both callers resolve the module from the displayed structure, so its node is present.
     const held = index.moduleAt.get(module.group_id)!;
-    if (
-      !editor.hasNodeEdits(held.node) &&
-      completedInside(module).length === 0
-    ) {
+    const hasEdits = editor.hasNodeEdits(held.node);
+    if (!hasEdits && completedInside(module).length === 0) {
       editor.deselectRuleModule(module);
       return;
     }
@@ -274,20 +299,15 @@ export function StructureDrawer({
       document.activeElement instanceof HTMLElement
         ? document.activeElement
         : null;
-    setPendingModuleRemove(module);
+    setPendingModuleRemove({ module, hasEdits });
   };
-  /** Whether the scope of one node holds a completed course in the displayed projection. */
-  const scopeHasCompletion = (target: StructureNode): boolean =>
-    (index.byKey.get(target.key)?.subtree ?? []).some((course) =>
-      completed.has(course.group_id),
-    );
   /**
    * Reset the node whose drawer footer was activated.
    *
    * A top-level programme resets through the row menu's reset question and Unplaced studies
-   * resets the places it holds. Every other programme or module asks through the shared reset
-   * question, whatever its current contents or completions are, and a scope that holds no
-   * completion asks through the pull question of the courses the reset returns to it.
+   * resets the places it holds. Another programme or module asks through the shared reset question
+   * when its scope holds a completion or its pull list is empty. A scope with no completion and a
+   * non-empty pull list asks through the pull question of the courses the reset returns to it.
    */
   const requestReset = (target: StructureNode) => {
     if (programmeId !== null) {
@@ -298,27 +318,33 @@ export function StructureDrawer({
       editor.resetNode(target);
       return;
     }
-    const moves = editorRef.current.resetPulls(target);
+    const pulls = editorRef.current.resetPulls(target);
     moduleResetOpener.current =
       document.activeElement instanceof HTMLElement
         ? document.activeElement
         : null;
-    if (scopeHasCompletion(target) || moves.length === 0) {
-      setPendingModuleReset({ node: target, moves });
+    if (
+      scopeHoldsCompletion(index, target.key, completedCourseIds) ||
+      (pulls.moves.length === 0 && pulls.moduleMoves.length === 0)
+    ) {
+      setPendingModuleReset({ node: target, pulls });
       return;
     }
-    askResetPull(target, false, moves);
+    askResetPull(target, false, pulls);
   };
   /** Ask about the courses one reset returns, then reset with the answered mode. */
   const askResetPull = (
     target: StructureNode,
     removeCompletedCourses: boolean,
-    moves: readonly PulledCourse[],
+    pulls: {
+      moves: readonly PulledCourse[];
+      moduleMoves: readonly PulledModule[];
+    },
   ) => {
     // The drawer target is a displayed programme or module, so it carries its own module identity.
     const holder = target.module!;
     void resetPull
-      .confirm({ holder, moves })
+      .confirm({ holder, moves: pulls.moves, moduleMoves: pulls.moduleMoves })
       .then((answer) =>
         answer === false
           ? undefined
@@ -334,11 +360,14 @@ export function StructureDrawer({
     const pending = pendingModuleReset;
     setPendingModuleReset(null);
     if (!pending) return;
-    if (pending.moves.length === 0) {
+    if (
+      pending.pulls.moves.length === 0 &&
+      pending.pulls.moduleMoves.length === 0
+    ) {
       editorRef.current.resetNode(pending.node, removeCompletedCourses);
       return;
     }
-    askResetPull(pending.node, removeCompletedCourses, pending.moves);
+    askResetPull(pending.node, removeCompletedCourses, pending.pulls);
   };
   const deselectCourse = (course: CourseSummary, unplaced = false) => {
     if (completed.has(course.group_id)) {
@@ -368,7 +397,7 @@ export function StructureDrawer({
               <div className="rule-group-heading">
                 <span>{group.rule}</span>
                 <CreditSummary
-                  courses={selectedRowCourses(selectedRows, resolved)}
+                  courses={selectedRowCourses(selectedRows, index)}
                   completed={completed}
                 />
               </div>
@@ -380,14 +409,11 @@ export function StructureDrawer({
                         {entry.text}
                       </div>
                     );
-                  const rowOption = {
-                    key: `${option.key}:${entry.kind === "course" ? entry.key : entry.node.key}`,
-                    entries: [entry],
-                  };
+                  const rowKey = `${option.key}:${entry.kind === "course" ? entry.key : entry.node.key}`;
                   return (
                     <DrawerOptionRow
-                      key={rowOption.key}
-                      option={rowOption}
+                      key={rowKey}
+                      entry={entry}
                       selected={isSelected(entry)}
                       language={language}
                       completion={
@@ -465,7 +491,7 @@ export function StructureDrawer({
           <motion.div
             className="drawer-section-motion"
             key="courses"
-            layout={reducedMotion ? false : "position"}
+            layout={still ? false : "position"}
             initial={false}
             animate={{
               opacity: courses.length ? 1 : 0,
@@ -483,7 +509,7 @@ export function StructureDrawer({
                     <motion.div
                       className="drawer-course-motion"
                       key={course.group_id}
-                      layout={reducedMotion ? false : "position"}
+                      layout={still ? false : "position"}
                       initial={
                         reducedMotion ? false : { opacity: 0, height: 0 }
                       }
@@ -492,11 +518,10 @@ export function StructureDrawer({
                       transition={transition}
                     >
                       <DrawerOptionRow
-                        option={{
+                        entry={{
+                          kind: "course",
                           key: course.group_id,
-                          entries: [
-                            { kind: "course", key: course.group_id, course },
-                          ],
+                          course,
                         }}
                         selected
                         language={language}
@@ -522,7 +547,7 @@ export function StructureDrawer({
           <motion.div
             className="drawer-section-motion"
             key="modules"
-            layout={reducedMotion ? false : "position"}
+            layout={still ? false : "position"}
             initial={false}
             animate={{
               opacity: children.length ? 1 : 0,
@@ -543,7 +568,7 @@ export function StructureDrawer({
                     <motion.div
                       className="drawer-course-motion"
                       key={child.node.key}
-                      layout={reducedMotion ? false : "position"}
+                      layout={still ? false : "position"}
                       initial={
                         reducedMotion ? false : { opacity: 0, height: 0 }
                       }
@@ -552,10 +577,7 @@ export function StructureDrawer({
                       transition={transition}
                     >
                       <DrawerOptionRow
-                        option={{
-                          key: child.node.key,
-                          entries: [{ kind: "node", node: child.node }],
-                        }}
+                        entry={{ kind: "node", node: child.node }}
                         selected
                         language={language}
                         onChoose={() =>
@@ -592,87 +614,109 @@ export function StructureDrawer({
             setLastTarget(null);
         }}
       >
-        <header className="dh">
-          <div>
-            <span className="dt">{title}</span>
-            <span className="dc">
-              {node
-                ? `${node.module?.code ?? ""}${node.module?.code ? " · " : ""}${nodeKindLabel(node, language)}`
-                : ""}
-            </span>
-          </div>
-          <button
-            className="pill-btn"
-            type="button"
-            aria-label={t("Close drawer")}
-            onClick={onClose}
-          >
-            {t("Close")}
-          </button>
-        </header>
-        <div className="db">
-          <div className="dsum">
-            <span>
-              <b>{node?.rule}</b>
-            </span>
-            <CreditSummary courses={summaryCourses} completed={completed} />
-          </div>
-          {node && ["programme", "module", "unplaced"].includes(node.kind) && (
-            <DrawerSearch
-              node={node}
-              open={searchOpen}
-              onOpenChange={setSearchOpen}
-              onAddCourse={(course, to) =>
-                confirmMove(
-                  () => course.code,
-                  (displayLanguage) =>
-                    editorRef.current.courseHome(
-                      course.group_id,
-                      to.key,
-                      displayLanguage,
-                    ),
-                  () => editor.addCourse(course, to),
-                )
-              }
-              onAddModule={(module, to) => void editor.addModule(module, to)}
-              pendingId={editor.pendingModuleId}
-            />
-          )}
-          <div className={`dlist${searchOpen ? " dim" : ""}`}>
-            {contentSections}
-            {notes.map((note, index) => (
-              <div className="dnote" key={`${note}-${index}`}>
-                {note}
-              </div>
-            ))}
-            {noContents && (
-              <div className="dnote">
-                {node?.kind === "choice" && !resolved?.chosen.length
-                  ? t("No option selected yet.")
-                  : t(
-                      node && nodeWordingKind(node) === "programme"
-                        ? "This programme is empty."
-                        : "This module is empty.",
-                    )}
-              </div>
-            )}
-            {node && (
-              <div className="dfoot">
+        <AnimatePresence mode="wait">
+          {displayed && (
+            <motion.div
+              key={displayed.resolved.node.key}
+              className="sdrawer-content"
+              initial={{ opacity: 0, y: reducedMotion ? 0 : 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{
+                duration: reducedMotion ? 0 : 0.26,
+                ease: transition.ease,
+              }}
+            >
+              <header className="dh">
+                <div>
+                  <span className="dt">{title}</span>
+                  <span className="dc">
+                    {node
+                      ? `${node.module?.code ?? ""}${node.module?.code ? " · " : ""}${nodeKindLabel(node, language)}`
+                      : ""}
+                  </span>
+                </div>
                 <button
                   className="pill-btn"
                   type="button"
-                  onClick={() => requestReset(node)}
+                  aria-label={t("Close drawer")}
+                  onClick={onClose}
                 >
-                  {t(
-                    nodeWordingKind(node) === "programme"
-                      ? "Reset programme"
-                      : "Reset this module",
-                  )}
+                  {t("Close")}
                 </button>
+              </header>
+              <div className="db thin-scrollbar">
+                <div className="dsum">
+                  <span>
+                    <b>{node?.rule}</b>
+                  </span>
+                  <CreditSummary
+                    courses={summaryCourses}
+                    completed={completed}
+                  />
+                </div>
+                {node &&
+                  ["programme", "module", "unplaced"].includes(node.kind) && (
+                    <DrawerSearch
+                      node={node}
+                      open={searchOpen}
+                      onOpenChange={setSearchOpen}
+                      onAddCourse={(course, to) =>
+                        confirmMove(
+                          () => course.code,
+                          (displayLanguage) =>
+                            editorRef.current.courseHome(
+                              course.group_id,
+                              to.key,
+                              displayLanguage,
+                            ),
+                          () => editor.addCourse(course, to),
+                        )
+                      }
+                      onAddModule={(module, to) =>
+                        void editor.addModule(module, to)
+                      }
+                      pendingId={editor.pendingModuleId}
+                    />
+                  )}
+                <div className={`dlist${searchOpen ? " dim" : ""}`}>
+                  {contentSections}
+                  {notes.map((note, index) => (
+                    <div className="dnote" key={`${note}-${index}`}>
+                      {note}
+                    </div>
+                  ))}
+                  {noContents && (
+                    <div className="dnote">
+                      {node?.kind === "choice" && !resolved?.chosen.length
+                        ? t("No option selected yet.")
+                        : t(
+                            node && nodeWordingKind(node) === "programme"
+                              ? "This programme is empty."
+                              : "This module is empty.",
+                          )}
+                    </div>
+                  )}
+                  {node && (
+                    <div className="dfoot">
+                      <button
+                        className="pill-btn"
+                        type="button"
+                        onClick={() => requestReset(node)}
+                      >
+                        {t(
+                          nodeWordingKind(node) === "programme"
+                            ? "Reset programme"
+                            : "Reset this module",
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
-          </div>
-        </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </aside>
       <ConfirmDialog
         open={pendingMove !== null}
@@ -687,38 +731,46 @@ export function StructureDrawer({
           pendingMove?.run();
           setPendingMove(null);
         }}
-        returnFocus={() => moveOpener.current?.focus()}
+        returnFocus={() => moveOpener.current?.focus({ preventScroll: true })}
       />
       <ModuleRemoveDialog
         open={pendingModuleRemove !== null}
         operation="remove"
         holderKind={
           pendingModuleRemove
-            ? nodeWordingKind({ kind: "module", module: pendingModuleRemove })
+            ? nodeWordingKind({
+                kind: "module",
+                module: pendingModuleRemove.module,
+              })
             : "module"
         }
         name={
-          pendingModuleRemove ? moduleName(pendingModuleRemove, language) : ""
+          pendingModuleRemove
+            ? moduleName(pendingModuleRemove.module, language)
+            : ""
         }
+        hasEdits={pendingModuleRemove?.hasEdits ?? false}
         hasCompletedCourses={
           pendingModuleRemove !== null &&
-          completedInside(pendingModuleRemove).length > 0
+          completedInside(pendingModuleRemove.module).length > 0
         }
         onCancel={() => setPendingModuleRemove(null)}
         onKeep={() => {
           if (pendingModuleRemove)
-            editor.deselectRuleModule(pendingModuleRemove);
+            editor.deselectRuleModule(pendingModuleRemove.module);
           setPendingModuleRemove(null);
         }}
         onRemove={() => {
           if (pendingModuleRemove)
             editor.deselectRuleModule(
-              pendingModuleRemove,
-              completedInside(pendingModuleRemove),
+              pendingModuleRemove.module,
+              completedInside(pendingModuleRemove.module),
             );
           setPendingModuleRemove(null);
         }}
-        returnFocus={() => moduleRemoveOpener.current?.focus()}
+        returnFocus={() =>
+          moduleRemoveOpener.current?.focus({ preventScroll: true })
+        }
       />
       <ModuleRemoveDialog
         open={pendingModuleReset !== null}
@@ -728,6 +780,7 @@ export function StructureDrawer({
             ? nodeWordingKind(pendingModuleReset.node)
             : "module"
         }
+        hasEdits={false}
         name={
           pendingModuleReset?.node.module
             ? moduleName(pendingModuleReset.node.module, language)
@@ -735,17 +788,25 @@ export function StructureDrawer({
         }
         hasCompletedCourses={
           pendingModuleReset !== null &&
-          scopeHasCompletion(pendingModuleReset.node)
+          scopeHoldsCompletion(
+            index,
+            pendingModuleReset.node.key,
+            completedCourseIds,
+          )
         }
         onCancel={() => setPendingModuleReset(null)}
         onKeep={() => answerReset(false)}
         onRemove={() => answerReset(true)}
-        returnFocus={() => moduleResetOpener.current?.focus()}
+        returnFocus={() =>
+          moduleResetOpener.current?.focus({ preventScroll: true })
+        }
       />
       <CourseMoveConfirmDialog
         request={resetPull.request}
         onAnswer={resetPull.answer}
-        returnFocus={() => moduleResetOpener.current?.focus()}
+        returnFocus={() =>
+          moduleResetOpener.current?.focus({ preventScroll: true })
+        }
       />
       <CompletedCourseDeselectDialog
         open={pendingCompletedCourse !== null}
@@ -762,7 +823,9 @@ export function StructureDrawer({
             editor.deselectRuleCourse(pendingCompletedCourse.course, true);
           setPendingCompletedCourse(null);
         }}
-        returnFocus={() => completedDeselectOpener.current?.focus()}
+        returnFocus={() =>
+          completedDeselectOpener.current?.focus({ preventScroll: true })
+        }
       />
     </>
   );
@@ -773,28 +836,15 @@ function selectedRowCourses(
     option: import("./model").StructureOption;
     entry: import("./model").StructureEntry;
   }[],
-  resolved: ResolvedNode | null,
+  index: ReturnType<typeof indexResolved>,
 ): CourseSummary[] {
   const courses = new Map<string, CourseSummary>();
-  const findNode = (
-    node: ResolvedNode,
-    key: string,
-  ): ResolvedNode | undefined => {
-    if (node.node.key === key) return node;
-    for (const child of node.children) {
-      const found = findNode(child, key);
-      if (found) return found;
-    }
-    return undefined;
-  };
   for (const { entry } of selectedRows) {
     if (entry.kind === "course")
       courses.set(entry.course.group_id, entry.course);
-    else if (entry.kind === "node" && resolved) {
-      findNode(resolved, entry.node.key)?.subtree.forEach((course) =>
-        courses.set(course.group_id, course),
-      );
-    }
+    else if (entry.kind === "node")
+      for (const course of index.byKey.get(entry.node.key)?.subtree ?? [])
+        courses.set(course.group_id, course);
   }
   return [...courses.values()];
 }

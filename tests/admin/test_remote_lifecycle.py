@@ -1,6 +1,6 @@
 """Real-subprocess, real-PostgreSQL contracts for the remote translation/inference lifecycle.
 
-These four proofs drive the real shared lifecycle core, a real detached server child, real worker
+These three proofs drive the real shared lifecycle core, a real detached server child, real worker
 helper subprocesses and the real dataset return/rotation owners over real disposable PostgreSQL. Only
 the external machine boundary (SSH/WSL, Compose service control, the keepalive, the native Windows
 boot, the model endpoint and the clock/boot observations) is substituted. Every SQL/persistence owner,
@@ -17,24 +17,27 @@ import uuid
 from pathlib import Path
 
 import pytest
-from sqlalchemy import Engine
+from sqlalchemy import Engine, select
 
 from course_explorer import administration
-from course_explorer.config import load_embedding_settings, load_raw_database_settings
-from course_explorer.datasets import read_dataset_verification
-from course_explorer_admin import (
-    lifecycle,
-    local_stages,
-    mechanics,
-    remote,
-    remote_stages,
+from course_explorer.config import (
+    load_database_settings,
+    load_embedding_runtime_settings,
+    load_raw_database_settings,
 )
-from course_explorer_admin.datasets import initialize_selected_dataset
+from course_explorer.datasets import read_dataset_verification, resolve_dataset_role
+from course_explorer.db.models import CourseVersion, DerivedCourseText
+from course_explorer.db.session import create_database_engine, create_session_factory, session_scope
+from course_explorer.enums import TeachingTextField, TeachingTextLanguage
+from course_explorer.serving_build import build_serving_artifacts
+from course_explorer_admin import mechanics, remote_stages
+from course_explorer_admin.datasets import copy_to_working, initialize_selected_dataset
 from course_explorer_admin.inference.controller import InferenceControllerWorkerState
 from course_explorer_admin.lifecycle import read_lifecycle_state
 from course_explorer_admin.snapshots import dump_database, restore_database
 from course_explorer_admin.translation.controller import TranslationControllerWorkerState
 from course_explorer_admin.transport import WorkerCommandError, WorkerConnectionLost
+from course_explorer_web.dataset import resolve_serving_dataset
 from tests.admin._remote_support import (
     LocalWorkerTransport,
     add_fault,
@@ -44,6 +47,10 @@ from tests.admin._remote_support import (
     seed_fake,
     set_monotonic_seconds,
     set_status_delay,
+)
+from tests.admin.test_dataset_database import (
+    selected_artifact_state,
+    selected_row_content,
 )
 from tests.config._support import (
     ADMIN_DATASET_KEYS,
@@ -77,7 +84,7 @@ WORKLOAD = [
 
 def _compose_exec(*argv: str, stdin_path: Path | None = None):
     return mechanics.SubprocessRunner().run(
-        (*mechanics.compose_prefix(), "exec", "-T", "db", *argv),
+        (*mechanics.compose_prefix(interpreter=True), "exec", "-T", "db", *argv),
         cwd=_REPO,
         stdin_path=stdin_path,
         timeout=600,
@@ -96,10 +103,9 @@ def sql_source(
     """Seed the fixture, dump it, and restore one owning ``course_s7d_<hex>_test`` copy."""
     _engine, factory = database
     with monkeypatch.context() as context:
-        context.setenv("SELECTED_DATASET_ENABLED", "0")
         context.setenv("POSTGRES_DB", SOURCE_DATABASE)
         seed_courses(factory, WORKLOAD)
-        seed_embeddings(factory, load_embedding_settings())
+        seed_embeddings(factory, load_embedding_runtime_settings())
         source = load_raw_database_settings().model_copy(update={"postgres_db": SOURCE_DATABASE})
         scratch = tmp_path / "source.dump"
         digest = dump_database(
@@ -146,7 +152,7 @@ def configure(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, *, initial_databa
     monkeypatch.setenv("TRANSLATION_CONTROLLER_STATE_ROOT", "state/translation")
     monkeypatch.setenv("INFERENCE_CONTROLLER_STATE_ROOT", "state/inference")
     monkeypatch.setenv("TRANSLATION_CONTROLLER_WORKER_PROJECT_ROOT", str(_REPO))
-    monkeypatch.setenv("S7D_WORKER_DATA_ROOT", str(tmp_path / "worker-data"))
+    monkeypatch.setenv("TEST_WORKER_DATA_ROOT", str(tmp_path / "worker-data"))
     monkeypatch.setenv("ADMIN_DATASET_DATABASE_PREFIX", "course_s7d_test")
     monkeypatch.setenv("ADMIN_WORKER_DATABASE_PREFIX", "course_s7d_worker_test")
     monkeypatch.setenv("ADMIN_DATABASE_OPERATION_TIMEOUT_SECONDS", "600")
@@ -158,16 +164,14 @@ def configure(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, *, initial_databa
     monkeypatch.setenv("ADMIN_STOP_TIMEOUT_SECONDS", "20")
     monkeypatch.setenv("ADMIN_STARTUP_ATTEMPTS", "400")
     monkeypatch.setenv("POSTGRES_DB", initial_database)
-    monkeypatch.setenv("SELECTED_DATASET_ENABLED", "0")
-    for module in (administration, lifecycle, local_stages, remote):
-        monkeypatch.setattr(module, "repository_root", lambda: tmp_path)
-    from course_explorer_admin import datasets as datasets_module
+    from tests.support.repository import scratch_repository
 
-    monkeypatch.setattr(datasets_module, "repository_root", lambda: tmp_path)
+    root = scratch_repository(tmp_path)
+    monkeypatch.setattr(administration, "repository_root", lambda: root)
     enrollment = RemoteLifecycleRunner(root=tmp_path, running={"db"})
-    initialize_selected_dataset(runner=enrollment)
+    receipt = initialize_selected_dataset(runner=enrollment)
+    copy_to_working(receipt.dataset_id, runner=enrollment)
     enrollment.close()
-    monkeypatch.setenv("SELECTED_DATASET_ENABLED", "1")
 
 
 class RemoteLifecycleRunner:
@@ -228,7 +232,7 @@ class RemoteLifecycleRunner:
         rewritten = (
             sys.executable,
             "-m",
-            os.environ.get("S7D_BOOTSTRAP_MODULE", "tests.admin._real_worker_support"),
+            os.environ.get("TEST_WORKER_BOOTSTRAP_MODULE", "tests.admin._real_worker_support"),
             str(self.root),
             "server",
             command[3],
@@ -625,17 +629,51 @@ def test_failed_return_is_recorded_and_rerun_stop_recovers(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, sql_source: str
 ) -> None:
     """An exhausted availability loss before server retention is recorded safely and a re-run stop
-    reuses the completed export, verifies once, cleans and clears the record. A genuine helper error
-    is loud. No worker deletion or receipt fabrication happens on the failed stop."""
+    reuses the completed export, verifies once, cleans and clears the record. The verified return
+    publishes only Working while Selected rows, artifacts and identity are identical. A genuine
+    helper error is loud. No worker deletion or receipt fabrication happens on the failed stop."""
+    monkeypatch.setenv("COURSE_EXPLORER_WEB_GENERATION", "serving-generation-2")
     root, fake, runner = _scenario(
         tmp_path, monkeypatch, "failed-return", initial_database=sql_source, stop_timeout="3"
     )
+    selected_engine: Engine | None = None
+    working_engine: Engine | None = None
     try:
+        selected_settings = load_database_settings(role="selected")
+        state_root = administration.repository_root() / selected_settings.admin_state_root
+        selected_pointer = (state_root / "selected-dataset.json").read_bytes()
+        selected = resolve_dataset_role(state_root, "selected")
+        source = resolve_dataset_role(state_root, "working")
+        assert source.kind == "copied"
+        source_engine = create_database_engine(load_database_settings(role="working"))
+        try:
+            with session_scope(create_session_factory(source_engine)) as source_rows:
+                assert source_rows.scalars(select(DerivedCourseText)).all() == []
+        finally:
+            source_engine.dispose()
+        selected_engine = create_database_engine(selected_settings)
+        selected_content = selected_row_content(selected_engine)
+        for table in ("courses", "course_versions", "course_texts", "course_embedding_chunks"):
+            assert selected_content[table]
+        selected_engine.dispose()
+        selected_engine = None
+        build_serving_artifacts(selected_settings, embedding=None)
+        artifact_state = selected_artifact_state(state_root, selected_settings.postgres_db)
+        serving_before = resolve_serving_dataset()
+
         remote_stages.run_translation_lifecycle_command(
             "start", runner=runner, session_id_factory=lambda: SESSION_ID, sleep=time.sleep
         )
         _wait_for(lambda: len(read_fake(fake)["detached"]) >= 1)
         release_model_response(fake)
+
+        def translation_completed() -> bool:
+            state_path = _worker_session_dir(root, SESSION_ID) / "state.json"
+            if not state_path.is_file():
+                return False
+            return _worker_state("translation", root, SESSION_ID).completed_count > 0
+
+        _wait_for(translation_completed)
         add_fault(fake, method="download", fault_type="availability", rc=3, remaining=-1)
         with pytest.raises(WorkerConnectionLost):
             remote_stages.run_translation_lifecycle_command("stop", runner=runner, sleep=time.sleep)
@@ -663,9 +701,53 @@ def test_failed_return_is_recorded_and_rerun_stop_recovers(
         assert stopped.lifecycle == "idle"
         assert _receipt_path(root, SESSION_ID).is_file()
         assert _worker_state("translation", root, SESSION_ID).lifecycle == "cleaned"
+
+        # The return advanced only Working, while Selected rows, artifacts, pointer and identity
+        # were identical.
+        selected_state_root = administration.repository_root() / selected_settings.admin_state_root
+        working = resolve_dataset_role(selected_state_root, "working")
+        assert working.dataset_id == SESSION_ID
+        assert working.kind == "returned"
+        assert working.predecessor_id == source.dataset_id
+        assert (
+            resolve_dataset_role(selected_state_root, "selected").dataset_id == selected.dataset_id
+        )
+        assert (selected_state_root / "selected-dataset.json").read_bytes() == selected_pointer
+        selected_engine = create_database_engine(selected_settings)
+        assert selected_row_content(selected_engine) == selected_content
+        selected_engine.dispose()
+        selected_engine = None
+        assert (
+            selected_artifact_state(selected_state_root, selected_settings.postgres_db)
+            == artifact_state
+        )
+        assert resolve_serving_dataset() == serving_before
+
+        # The returned Working database carries the shared synthetic translation output.
+        working_settings = load_database_settings(role="working")
+        assert working_settings.postgres_db == working.database_name
+        working_engine = create_database_engine(working_settings)
+        with session_scope(create_session_factory(working_engine)) as returned:
+            derived = returned.scalars(
+                select(DerivedCourseText)
+                .join(CourseVersion, CourseVersion.id == DerivedCourseText.course_version_id)
+                .where(
+                    DerivedCourseText.field == TeachingTextField.CONTENT,
+                    DerivedCourseText.language == TeachingTextLanguage.EN,
+                )
+            ).all()
+            assert derived
+            assert {row.text for row in derived} == {"Name"}
+        working_engine.dispose()
+        working_engine = None
+
         final = read_lifecycle_state(state_root)
         assert final is not None and final.stop_failure is None
     finally:
+        if working_engine is not None:
+            working_engine.dispose()
+        if selected_engine is not None:
+            selected_engine.dispose()
         runner.close()
         _cleanup_scenario(root, SESSION_ID)
 

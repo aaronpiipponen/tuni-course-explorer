@@ -75,7 +75,7 @@ def run_capture_command(
         resume_store = RawCaptureStore.open(capture_settings.raw_data_root, resume_manifest)
     normalization_settings = load_normalization_settings()
     kori_settings = load_kori_settings()
-    database_settings = load_database_settings()
+    database_settings = load_database_settings(role="working")
     source_context = TuniKoriSource(kori_settings, before_request=before_request)
     with source_context as source, _database_context(database_settings) as factory:
         capture_repository = CaptureRepository(factory)

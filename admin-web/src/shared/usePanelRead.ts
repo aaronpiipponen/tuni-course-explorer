@@ -1,15 +1,16 @@
 /**
  * One mounted panel's automatic read loop.
  *
- * A panel reads immediately when it is enabled and the page is visible, then schedules its next read
- * after the current one completes plus the configured interval, so two reads never overlap and no
- * read runs while the panel is unmounted. The page's own visibility governs the loop: a hidden page
- * cancels the scheduled read and aborts one in flight without showing a failure, and the return to
- * visibility reads once immediately and resumes the ordinary loop. A refused admission reports its
- * status to the application and stops the loop, while any other failure renders in the panel with
- * its own failure text and schedules the next ordinary read. The automatic reads carry the loop's
- * own attribution, and the returned reload performs one explicit read that carries none. A caller
- * that receives its own report from an action installs it through ``apply`` without issuing a read.
+ * A panel reads immediately when it is enabled and the page is visible, then schedules its next
+ * read after the current one completes plus the configured interval, so two reads never overlap
+ * and no read runs while the panel is unmounted. The page's own visibility governs the loop. A
+ * hidden page cancels the scheduled read and aborts one in flight without showing a failure, and
+ * the return to visibility reads once immediately and resumes the ordinary loop. A refused
+ * admission reports its status to the application and stops the loop, while any other failure
+ * renders in the panel with its own failure text and schedules the next ordinary read. The
+ * automatic reads carry the loop's own attribution, and the returned reload performs one explicit
+ * read that carries none. A caller that receives its own report from an action installs it through
+ * `apply` without issuing a read.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { failureText, handleAdmissionFailure } from "../api/http";
@@ -100,6 +101,7 @@ export function usePanelRead<T>(
     return () => {
       cancelled = true;
       controller.abort();
+      setLoading(false);
       if (timer !== undefined) {
         clearTimeout(timer);
       }

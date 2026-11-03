@@ -83,29 +83,55 @@ def _heavy_basis(*, active_only: bool, active: int, inactive: int) -> int:
     return active if active_only else inactive
 
 
+def _route_cost(
+    basis: int,
+    *,
+    active_only: bool,
+    origin_basis: int,
+    knee_basis: tuple[int, int],
+    origin_cost: tuple[float, float],
+    slope: tuple[float, float],
+    tail_cost: tuple[float, float],
+    tail_slope: tuple[float, float],
+) -> float:
+    """Return one route's cost from its active and inactive curve values."""
+    active = _Curve(
+        origin_basis, origin_cost[0], slope[0], knee_basis[0], tail_cost[0], tail_slope[0]
+    )
+    inactive = _Curve(
+        origin_basis, origin_cost[1], slope[1], knee_basis[1], tail_cost[1], tail_slope[1]
+    )
+    return _curve_cost(basis, active_only=active_only, active=active, inactive=inactive)
+
+
 def recommendation_cost(basis: int, settings: AdmissionSettings, *, active_only: bool) -> float:
     """Return the estimated total core-seconds of one recommendation read.
 
     The two scopes carry separate curves, because a read that includes inactive courses prices
     every active course as well.
     """
-    return _curve_cost(
+    return _route_cost(
         basis,
         active_only=active_only,
-        active=_Curve(
-            settings.admission_recommendation_origin_basis,
-            settings.admission_recommendation_active_origin_cost,
-            settings.admission_recommendation_active_slope,
-            settings.admission_recommendation_knee_basis,
-            settings.admission_recommendation_active_tail_cost,
-            settings.admission_recommendation_active_tail_slope,
+        origin_basis=settings.admission_recommendation_origin_basis,
+        knee_basis=(
+            settings.admission_recommendation_active_knee_basis,
+            settings.admission_recommendation_inactive_knee_basis,
         ),
-        inactive=_Curve(
-            settings.admission_recommendation_origin_basis,
+        origin_cost=(
+            settings.admission_recommendation_active_origin_cost,
             settings.admission_recommendation_inactive_origin_cost,
+        ),
+        slope=(
+            settings.admission_recommendation_active_slope,
             settings.admission_recommendation_inactive_slope,
-            settings.admission_recommendation_knee_basis,
+        ),
+        tail_cost=(
+            settings.admission_recommendation_active_tail_cost,
             settings.admission_recommendation_inactive_tail_cost,
+        ),
+        tail_slope=(
+            settings.admission_recommendation_active_tail_slope,
             settings.admission_recommendation_inactive_tail_slope,
         ),
     )
@@ -116,23 +142,28 @@ def next_courses_cost(basis: int, settings: AdmissionSettings, *, active_only: b
 
     The two scopes carry separate curves, with the same shape as the recommendation curves.
     """
-    return _curve_cost(
+    return _route_cost(
         basis,
         active_only=active_only,
-        active=_Curve(
-            settings.admission_next_courses_origin_basis,
-            settings.admission_next_courses_active_origin_cost,
-            settings.admission_next_courses_active_slope,
-            settings.admission_next_courses_knee_basis,
-            settings.admission_next_courses_active_tail_cost,
-            settings.admission_next_courses_active_tail_slope,
+        origin_basis=settings.admission_next_courses_origin_basis,
+        knee_basis=(
+            settings.admission_next_courses_active_knee_basis,
+            settings.admission_next_courses_inactive_knee_basis,
         ),
-        inactive=_Curve(
-            settings.admission_next_courses_origin_basis,
+        origin_cost=(
+            settings.admission_next_courses_active_origin_cost,
             settings.admission_next_courses_inactive_origin_cost,
+        ),
+        slope=(
+            settings.admission_next_courses_active_slope,
             settings.admission_next_courses_inactive_slope,
-            settings.admission_next_courses_knee_basis,
+        ),
+        tail_cost=(
+            settings.admission_next_courses_active_tail_cost,
             settings.admission_next_courses_inactive_tail_cost,
+        ),
+        tail_slope=(
+            settings.admission_next_courses_active_tail_slope,
             settings.admission_next_courses_inactive_tail_slope,
         ),
     )

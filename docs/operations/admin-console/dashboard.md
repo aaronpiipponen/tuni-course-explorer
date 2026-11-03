@@ -15,7 +15,7 @@ The panel describes the dataset the site serves.
 | Row | Meaning |
 |---|---|
 | **selected dataset** | The id of the dataset the site serves. |
-| **kind** | How the dataset entered the chain, **initial** or **returned**. |
+| **kind** | How the dataset entered the chain, **initial**, **returned** or **copied**. |
 | **predecessor** | The dataset that precedes the selected dataset in the chain. |
 | **pointer** | The file that names the selected dataset. |
 | **schema head** | The database revision recorded by the dataset receipt, which can differ from the live database's own revision. |
@@ -23,9 +23,11 @@ The panel describes the dataset the site serves.
 | **outcomes hub** | The file that holds the outcomes hub, and the time it was last written. |
 | **web server hubs** | The value **read at process start** states that the web server reads the hub files when its process starts. |
 
-A hub file with no file time shows its path and **unknown** in place of the time. When the site serves its configured database instead of a selected dataset, the dataset rows read **unknown**.
+The **embedding hub**, **outcomes hub** and **web server hubs** rows appear only on a site that serves the embedding features. On a site with them off, the panel shows its dataset rows and the note **Embedding features are off on this site.** instead of the three hub rows, and the read resolves no embedding directory. The hub rows report the file times of the configured embedding directory.
 
-The panel adds **Restart the web server to load the hub files written at {time}.** when a hub file was written after the web server started. The time is the writing time of a newer hub file. On a site that serves the embedding features, the running web server holds the hubs it read at its own start, so a restart is what loads the written files. Restart the web server when the hint appears.
+A hub file with no file time shows its path and **unknown** in place of the time. When the site has no Selected pointer and serves its configured database, the dataset rows read **unknown**. When the dataset state tree is a symlink or not a directory, the panel adds **The dataset state is unavailable: data/ or its dataset tree is a symlink or not a directory.** and every dataset row reads **unknown**.
+
+The panel adds **Restart the web server to load the hub files written at {time}.** when an embedding directory hub file was written after the web server started. A site with the embedding features off reports no hub file, so the hint never appears there. The time is the writing time of a newer hub file of the configured embedding directory. The hint names only those two build files: it does not prove that every artifact file belongs to the same build, that the build succeeded or that the study fragments or packed search relation are current. A completed build reaches serving after the full supervisor restart that [Operations](/docs/operations/README.md#derived-files-served-data-and-the-web-restart) states, and `serving-artifacts --prune` runs after that restart succeeds. On a site that serves the embedding features the supervisor maps the shared stores in the opened set and every worker inherits them, and the recommendation handler reads the stored neighbour rows.
 
 ## Website
 
@@ -75,7 +77,7 @@ The panel describes the database service and the database it serves.
 | **size** | The database size. |
 | **connections** | The number of connections to the database. |
 
-When the container is not running, **size**, **connections** and **migration** read **unknown**, because no live database read runs.
+When the container is not running, **size**, **connections** and **migration** read **unknown**, because no live database read runs. When the dataset state is unavailable, **database** names the configured database, because no Selected receipt resolves a served one.
 
 ## Embedding runtime
 

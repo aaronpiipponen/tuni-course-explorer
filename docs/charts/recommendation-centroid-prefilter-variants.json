@@ -1,0 +1,17 @@
+{
+  "type": "bar",
+  "title": "Recommendation cost of each candidate prefilter variant at 50 courses",
+  "description": "Recommendation stage and complete command time for the baseline, the database prefilter and the two cached variants on a 50-course basis.",
+  "valueAxis": "Time (s)",
+  "categories": ["Baseline", "Database prefilter", "Cached, after summaries", "Cached, before summaries"],
+  "series": [
+    {
+      "name": "Recommendation stage",
+      "values": [7.947, 4.786, 3.608, 3.408]
+    },
+    {
+      "name": "Complete command",
+      "values": [9.711, 6.354, 5.234, 4.98]
+    }
+  ]
+}

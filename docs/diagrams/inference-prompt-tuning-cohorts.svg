@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 616" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Prompt tuning cohorts and the blind support audit</title>
+  <desc id="d">The 200 CE-only packets split into 50 tuning targets and 150 held-out targets. The
+  15-target format subset and candidate 4 on the 50 come from the tuning targets, and the frozen v7
+  bytes were then measured on the same 50. The blind support audit judged the saved findings of
+  three runs, frozen v7, v8b and the exact v8 bytes, into 89 unique claims of which 53 were
+  supported and 19 partly supported.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="616" rx="12" fill="#232434"/>
+
+  <text x="48" y="44" font-size="16" fill="#a3a4b8">Cohorts and runs</text>
+
+  <rect x="352" y="64" width="256" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="90" text-anchor="middle" font-size="16" fill="#ececf2">200 CE-only packets</text>
+  <text x="480" y="112" text-anchor="middle" font-size="14" fill="#a3a4b8">50 candidates per target</text>
+
+  <rect x="48" y="168" width="256" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="176" y="194" text-anchor="middle" font-size="16" fill="#ececf2">50 tuning targets</text>
+  <text x="176" y="216" text-anchor="middle" font-size="14" fill="#a3a4b8">size quantiles of the 200</text>
+
+  <rect x="656" y="168" width="256" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="784" y="194" text-anchor="middle" font-size="16" fill="#ececf2">150 held-out targets</text>
+  <text x="784" y="216" text-anchor="middle" font-size="14" fill="#a3a4b8">complement, not tuned on</text>
+
+  <rect x="48" y="272" width="256" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="176" y="298" text-anchor="middle" font-size="16" fill="#ececf2">15-target format subset</text>
+  <text x="176" y="320" text-anchor="middle" font-size="14" fill="#a3a4b8">six trials, 14 valid each</text>
+
+  <rect x="352" y="272" width="256" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="298" text-anchor="middle" font-size="16" fill="#ececf2">Candidate 4 on the 50</text>
+  <text x="480" y="320" text-anchor="middle" font-size="14" fill="#a3a4b8">49 valid, one context skip</text>
+
+  <rect x="352" y="376" width="256" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="402" text-anchor="middle" font-size="16" fill="#ececf2">Frozen v7 bytes</text>
+  <text x="480" y="424" text-anchor="middle" font-size="14" fill="#a3a4b8">the 50, 49 valid</text>
+
+  <text x="48" y="484" font-size="16" fill="#a3a4b8">Blind support audit</text>
+
+  <rect x="48" y="504" width="256" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="176" y="530" text-anchor="middle" font-size="16" fill="#ececf2">Three saved runs</text>
+  <text x="176" y="552" text-anchor="middle" font-size="14" fill="#a3a4b8">frozen v7, v8b, exact v8</text>
+
+  <rect x="352" y="504" width="256" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="530" text-anchor="middle" font-size="16" fill="#ececf2">Blind judge</text>
+  <text x="480" y="552" text-anchor="middle" font-size="14" fill="#a3a4b8">one verdict per claim</text>
+
+  <rect x="656" y="504" width="256" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="784" y="530" text-anchor="middle" font-size="16" fill="#ececf2">89 unique claims</text>
+  <text x="784" y="552" text-anchor="middle" font-size="14" fill="#a3a4b8">53 supported, 19 partly</text>
+
+  <line x1="480" y1="128" x2="480" y2="148" stroke="#a3a4b8" stroke-width="1.5"/>
+  <line x1="176" y1="148" x2="784" y2="148" stroke="#a3a4b8" stroke-width="1.5"/>
+  <line x1="176" y1="148" x2="176" y2="168" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="784" y1="148" x2="784" y2="168" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <line x1="176" y1="232" x2="176" y2="252" stroke="#a3a4b8" stroke-width="1.5"/>
+  <line x1="176" y1="252" x2="480" y2="252" stroke="#a3a4b8" stroke-width="1.5"/>
+  <line x1="176" y1="252" x2="176" y2="272" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="480" y1="252" x2="480" y2="272" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <line x1="480" y1="336" x2="480" y2="376" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="496" y="360" font-size="14" fill="#a3a4b8">two contract changes</text>
+
+  <line x1="304" y1="536" x2="352" y2="536" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="608" y1="536" x2="656" y2="536" stroke="#a3a4b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+</svg>

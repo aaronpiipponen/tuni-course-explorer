@@ -22,6 +22,7 @@ from course_explorer_web.admission.classify import (
     next_courses_cost,
     recommendation_cost,
 )
+from course_explorer_web.admission.graph_cost import GraphCostCache
 from course_explorer_web.admission.state import AdmissionRefused, AdmissionState
 from course_explorer_web.router.app import create_router
 from course_explorer_web.serving import Route, route_of
@@ -48,7 +49,7 @@ def test_routes_take_their_admission_class_and_cost() -> None:
         Route.SEARCH, {"query": "analysis", "display_language": "en"}, settings
     )
     assert inactive_search.admission_class is AdmissionClass.HEAVY
-    assert inactive_search.cost == pytest.approx(2.5)
+    assert inactive_search.cost == pytest.approx(0.22689)
     assert classify(Route.SEARCH, search_body(), settings).admission_class is AdmissionClass.LIGHT
 
     assert basis_size({"completed_courses": ["a", "b", " ", "a"]}) == 2
@@ -68,46 +69,46 @@ def test_routes_take_their_admission_class_and_cost() -> None:
     assert active_only_from_body({"active_only": True}) is True
     assert active_only_from_body({"active_only": False}) is False
 
-    # A recommendation is heavy from five courses in either scope.
+    # A recommendation is heavy from 92 active courses and from 59 with inactive courses.
     assert (
-        classify(Route.RECOMMENDATIONS, recommendation_body(4), settings).admission_class
+        classify(Route.RECOMMENDATIONS, recommendation_body(91), settings).admission_class
         is AdmissionClass.LIGHT
     )
     assert (
-        classify(Route.RECOMMENDATIONS, recommendation_body(5), settings).admission_class
+        classify(Route.RECOMMENDATIONS, recommendation_body(92), settings).admission_class
         is AdmissionClass.HEAVY
     )
     assert (
         classify(
-            Route.RECOMMENDATIONS, recommendation_body(4, active_only=False), settings
+            Route.RECOMMENDATIONS, recommendation_body(58, active_only=False), settings
         ).admission_class
         is AdmissionClass.LIGHT
     )
     assert (
         classify(
-            Route.RECOMMENDATIONS, recommendation_body(5, active_only=False), settings
+            Route.RECOMMENDATIONS, recommendation_body(59, active_only=False), settings
         ).admission_class
         is AdmissionClass.HEAVY
     )
 
-    # A next-courses request is heavy from 63 active courses and from 26 with inactive courses.
+    # A next-courses request is heavy from 317 active courses and from 121 with inactive courses.
     assert (
-        classify(Route.NEXT_COURSES, recommendation_body(62), settings).admission_class
+        classify(Route.NEXT_COURSES, recommendation_body(316), settings).admission_class
         is AdmissionClass.LIGHT
     )
     assert (
-        classify(Route.NEXT_COURSES, recommendation_body(63), settings).admission_class
+        classify(Route.NEXT_COURSES, recommendation_body(317), settings).admission_class
         is AdmissionClass.HEAVY
     )
     assert (
         classify(
-            Route.NEXT_COURSES, recommendation_body(25, active_only=False), settings
+            Route.NEXT_COURSES, recommendation_body(120, active_only=False), settings
         ).admission_class
         is AdmissionClass.LIGHT
     )
     assert (
         classify(
-            Route.NEXT_COURSES, recommendation_body(26, active_only=False), settings
+            Route.NEXT_COURSES, recommendation_body(121, active_only=False), settings
         ).admission_class
         is AdmissionClass.HEAVY
     )
@@ -121,10 +122,10 @@ def test_routes_take_their_admission_class_and_cost() -> None:
     assert heavy_graph.admission_class is AdmissionClass.HEAVY
     assert heavy_graph.cost == pytest.approx(1.0)
 
-    assert recommendation_cost(200, settings, active_only=True) == pytest.approx(35.3195)
-    assert recommendation_cost(50, settings, active_only=False) == pytest.approx(19.14176)
-    assert next_courses_cost(63, settings, active_only=True) == pytest.approx(1.0080485)
-    assert next_courses_cost(26, settings, active_only=False) == pytest.approx(1.026186)
+    assert recommendation_cost(200, settings, active_only=True) == pytest.approx(1.81624)
+    assert recommendation_cost(59, settings, active_only=False) == pytest.approx(1.01363)
+    assert next_courses_cost(317, settings, active_only=True) == pytest.approx(1.00047)
+    assert next_courses_cost(121, settings, active_only=False) == pytest.approx(1.00752)
 
     assert policy.light_load_factor(0.5, settings) == pytest.approx(0.625)
     assert policy.heavy_budget(0.5, settings) == pytest.approx(80)
@@ -137,7 +138,9 @@ def test_routes_take_their_admission_class_and_cost() -> None:
 def test_score_scales_admission_and_holds_saturation_until_release(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The score combines host CPU and light admissions, interpolates and releases its latch later."""
+    """The score combines host CPU and light admissions, holds saturation at the release line and
+    drops the latch below it.
+    """
     settings = settings_factory(
         AdmissionSettings,
         WEB_WORKERS="4",
@@ -168,7 +171,7 @@ def test_score_scales_admission_and_holds_saturation_until_release(
     assert state.cpu_utilisation == pytest.approx(0.7)
     assert state.light_window == 30
     assert state.score == pytest.approx(0.825)
-    assert policy.regime(state.load_position, settings) is policy.Regime.MIDDLE
+    assert policy.regime(state.load_position) is policy.Regime.MIDDLE
     assert policy.heavy_slots(state.load_position, settings) == 2
     assert policy.light_load_factor(state.load_position, settings) == pytest.approx(0.625)
     assert policy.heavy_budget(state.load_position, settings) == pytest.approx(80)
@@ -183,7 +186,7 @@ def test_score_scales_admission_and_holds_saturation_until_release(
     assert state.saturated is True
     assert state.score == pytest.approx(1.05)
     assert state.light_window == 45
-    assert policy.regime(state.load_position, settings) is policy.Regime.SATURATED
+    assert policy.regime(state.load_position) is policy.Regime.SATURATED
     assert policy.heavy_slots(state.load_position, settings) == 1
     assert policy.light_load_factor(state.load_position, settings) == pytest.approx(0.25)
     assert policy.heavy_budget(state.load_position, settings) == pytest.approx(40)
@@ -203,13 +206,15 @@ def test_score_scales_admission_and_holds_saturation_until_release(
     assert state.sample(40.0, 104) == pytest.approx((0.75 - 0.60) / (1.05 - 0.60))
     assert state.saturated is False
     assert state.light_window == 0
-    assert policy.regime(state.load_position, settings) is policy.Regime.MIDDLE
+    assert policy.regime(state.load_position) is policy.Regime.MIDDLE
 
 
 def test_heavy_activity_counts_recent_starts_and_older_running_requests_once(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The heavy window counts a recent start once, keeps a completion until expiry and skips a waiter."""
+    """The heavy window counts a recent start once, keeps a completion until expiry and skips a
+    waiter.
+    """
     settings = settings_factory(
         AdmissionSettings, WEB_WORKERS="4", ADMISSION_LOAD_WINDOW_SECONDS="10"
     )
@@ -272,26 +277,27 @@ def test_heavy_activity_counts_recent_starts_and_older_running_requests_once(
 
 def test_graph_cost_cache_is_dataset_scoped() -> None:
     """A cached graph cost is per dataset identity and per request field, and it is overwritten."""
-    settings = settings_factory(AdmissionSettings)
-    state = AdmissionState(settings, cores=4)
+    costs = GraphCostCache()
 
-    assert state.graph_cost("dataset-a", "COURSE.A|1|1|0") is None
-    state.record_graph_cost("dataset-a", "COURSE.A|1|1|0", 1.25)
-    assert state.graph_cost("dataset-a", "COURSE.A|1|1|0") == pytest.approx(1.25)
-    state.record_graph_cost("dataset-a", "COURSE.A|1|1|0", 0.75)
-    assert state.graph_cost("dataset-a", "COURSE.A|1|1|0") == pytest.approx(0.75)
-    state.record_graph_cost("dataset-a", "COURSE.A|1|0|0", 2.5)
-    assert state.graph_cost("dataset-a", "COURSE.A|1|0|0") == pytest.approx(2.5)
-    assert state.graph_cost("dataset-a", "COURSE.A|1|1|0") == pytest.approx(0.75)
+    assert costs.get("dataset-a", "COURSE.A|1|1|0") is None
+    costs.record("dataset-a", "COURSE.A|1|1|0", 1.25)
+    assert costs.get("dataset-a", "COURSE.A|1|1|0") == pytest.approx(1.25)
+    costs.record("dataset-a", "COURSE.A|1|1|0", 0.75)
+    assert costs.get("dataset-a", "COURSE.A|1|1|0") == pytest.approx(0.75)
+    costs.record("dataset-a", "COURSE.A|1|0|0", 2.5)
+    assert costs.get("dataset-a", "COURSE.A|1|0|0") == pytest.approx(2.5)
+    assert costs.get("dataset-a", "COURSE.A|1|1|0") == pytest.approx(0.75)
 
-    state.record_graph_cost("dataset-b", "COURSE.B|1|1|0", 3.0)
-    assert state.graph_cost("dataset-a", "COURSE.A|1|1|0") is None
-    assert state.graph_cost("dataset-a", "COURSE.A|1|0|0") is None
-    assert state.graph_cost("dataset-b", "COURSE.B|1|1|0") == pytest.approx(3.0)
+    costs.record("dataset-b", "COURSE.B|1|1|0", 3.0)
+    assert costs.get("dataset-a", "COURSE.A|1|1|0") is None
+    assert costs.get("dataset-a", "COURSE.A|1|0|0") is None
+    assert costs.get("dataset-b", "COURSE.B|1|1|0") == pytest.approx(3.0)
 
 
 def test_router_limits_cookies_and_records_refusals() -> None:
-    """Each cookie is limited, free and refused reads add no activity, and admission off sends no cookie."""
+    """Each cookie is limited, free and refused reads add no activity, and admission off sends no
+    cookie.
+    """
     harness = WorkerHarness()
     settings = settings_factory(
         AdmissionSettings,
@@ -299,7 +305,7 @@ def test_router_limits_cookies_and_records_refusals() -> None:
         WEB_WORKERS="4",
         ADMISSION_LIGHT_BURST="1",
         ADMISSION_LIGHT_OPERATIONS_PER_MINUTE="1",
-        ADMISSION_HEAVY_BUDGET_CORE_SECONDS="15",
+        ADMISSION_HEAVY_BUDGET_CORE_SECONDS="3",
     )
 
     async def post(
@@ -362,15 +368,15 @@ def test_router_limits_cookies_and_records_refusals() -> None:
 
                 cookie_d = "d" * 32
                 assert (
-                    await post(client, "/api/recommendations", recommendation_body(50), cookie_d)
+                    await post(client, "/api/recommendations", recommendation_body(200), cookie_d)
                 ).status_code != 429
                 refused_heavy = await post(
-                    client, "/api/recommendations", recommendation_body(50), cookie_d
+                    client, "/api/recommendations", recommendation_body(200), cookie_d
                 )
                 assert refused_heavy.status_code == 429
                 assert refused_heavy.headers["retry-after"] == "5"
                 assert (
-                    await post(client, "/api/recommendations", recommendation_body(50), "e" * 32)
+                    await post(client, "/api/recommendations", recommendation_body(200), "e" * 32)
                 ).status_code != 429
 
                 for _ in range(3):

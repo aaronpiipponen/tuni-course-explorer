@@ -9,6 +9,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from course_explorer import administration
 from course_explorer_admin import mechanics, provisioning, provisioning_worker
 from tests.config._support import set_administrative_controller_environment
 
@@ -112,7 +113,7 @@ def _wire_setup(
     worker: Path,
     transport: LocalWorkerTransport,
 ) -> None:
-    monkeypatch.setattr(provisioning, "repository_root", lambda: server)
+    monkeypatch.setattr(administration, "repository_root", lambda: server)
     monkeypatch.setattr(
         provisioning,
         "load_worker_setup_settings",
@@ -241,11 +242,18 @@ def test_code_update_is_ff_only_and_preserves_user_work(
 class ScriptedWorkerRunner:
     """Worker process boundary scripted to one readiness read."""
 
-    def __init__(self, *, missing_package: str | None = None, docker_ready: bool = True) -> None:
+    def __init__(
+        self,
+        *,
+        missing_package: str | None = None,
+        docker_ready: bool = True,
+        db_image_prepared: bool = True,
+    ) -> None:
         self.calls: list[tuple[str, ...]] = []
         self.interactive_calls: list[tuple[str, ...]] = []
         self.missing_package = missing_package
         self.docker_ready = docker_ready
+        self.db_image_prepared = db_image_prepared
 
     def run(self, argv, *, cwd=None, env=None, stdin_path=None, stdout_path=None, timeout=None):
         command = tuple(argv)
@@ -263,9 +271,20 @@ class ScriptedWorkerRunner:
             if command[-1] == "version":
                 return subprocess.CompletedProcess(list(command), 0, stdout=b"")
             if "config" in command:
-                return subprocess.CompletedProcess(list(command), 0, stdout=b"postgres:16\n")
+                return subprocess.CompletedProcess(
+                    list(command), 0, stdout=b"pgvector/pgvector:0.8.6-pg18-trixie\n"
+                )
+            if command[-2:] == ("build", "db"):
+                self.db_image_prepared = True
+                return subprocess.CompletedProcess(list(command), 0, stdout=b"")
         if command[:4] == ("sudo", "-n", "docker", "image"):
-            return subprocess.CompletedProcess(list(command), 0, stdout=b"")
+            if not self.db_image_prepared:
+                return subprocess.CompletedProcess(list(command), 0, stdout=b"\n")
+            return subprocess.CompletedProcess(
+                list(command),
+                0,
+                stdout=f"{provisioning_worker._DB_EXTENSION_VERSION}\n".encode(),
+            )
         if command[:2] == ("git", "-C"):
             directory = Path(command[2])
             if command[3:] == ("rev-parse", "HEAD"):
@@ -400,6 +419,18 @@ def test_worker_check_is_read_only_and_reports_missing(
     assert present.missing == []
     assert present_runner.interactive_calls == []
 
+    # The stock base image shares the configured tag but carries no extension capability. A
+    # read-only check reports the missing image and never builds or pulls it.
+    stock_runner = ScriptedWorkerRunner(db_image_prepared=False)
+    stock = provisioning_worker.check_worker_resources(runner=stock_runner)
+    assert stock.ready is False
+    assert stock.missing == ["db-image"]
+    assert stock_runner.interactive_calls == []
+    assert not any(command[-2:] == ("build", "db") for command in stock_runner.calls)
+    assert not any(
+        command[:4] == ("sudo", "-n", "docker", "pull") for command in stock_runner.calls
+    )
+
     # A runtime file that exists but cannot be executed is not ready, and check never builds.
     inference_executable = present_root / f"runtime-{REVISION_B}" / "build" / "bin" / "llama-server"
     inference_executable.chmod(0o600)
@@ -430,14 +461,24 @@ def test_artifact_preparation_verifies_before_publish_and_preserves_mismatch(
     assert installed.read_bytes() == b"installed-mismatch"
 
     class DownloadRunner(ScriptedWorkerRunner):
-        def __init__(self, *, download_bytes: bytes = b"bad-download", **kwargs) -> None:
+        def __init__(
+            self,
+            *,
+            download_bytes: bytes = b"bad-download",
+            transfer_failure: bool = False,
+            **kwargs,
+        ) -> None:
             super().__init__(**kwargs)
             self.download_bytes = download_bytes
+            self.transfer_failure = transfer_failure
 
         def run(self, argv, **kwargs):
             command = tuple(argv)
             if command[0] == "curl":
                 self.calls.append(command)
+                Path(command[command.index("--output") + 1]).write_bytes(b"partial-transfer")
+                if self.transfer_failure:
+                    raise subprocess.CalledProcessError(22, list(command))
                 Path(command[command.index("--output") + 1]).write_bytes(self.download_bytes)
                 return subprocess.CompletedProcess(list(command), 0, stdout=b"")
             return super().run(argv, **kwargs)
@@ -461,18 +502,37 @@ def test_artifact_preparation_verifies_before_publish_and_preserves_mismatch(
     assert sorted(path.name for path in download_root.iterdir()) == ["generation.gguf.download"]
     assert any(command[0] == "curl" for command in download_runner.calls)
 
+    # A broken transfer leaves neither a destination nor its invocation temporary behind.
+    transfer_root = tmp_path / "transfer"
+    transfer_root.mkdir()
+    _wire_resources(
+        monkeypatch,
+        transfer_root,
+        translation=transfer_root / "translation.gguf",
+        generation=transfer_root / "generation.gguf",
+        rerank=transfer_root / "rerank.gguf",
+    )
+    transfer_runner = DownloadRunner(transfer_failure=True)
+    with pytest.raises(subprocess.CalledProcessError):
+        provisioning_worker.prepare_worker_resources(runner=transfer_runner)
+    assert list(transfer_root.iterdir()) == []
+
     # A valid download publishes to its configured target alone and leaves owner scratch untouched.
     success_root = tmp_path / "success"
     success_root.mkdir()
     success_scratch = success_root / "generation.gguf.download"
     success_scratch.write_bytes(b"owner-bytes")
     _wire_present_resources(monkeypatch, success_root, generation_present=False)
-    success_runner = DownloadRunner(download_bytes=b"tiny-artifact")
+    success_runner = DownloadRunner(download_bytes=b"tiny-artifact", db_image_prepared=False)
     prepared = provisioning_worker.prepare_worker_resources(runner=success_runner)
     assert prepared.ready is True
     assert prepared.missing == []
+    assert any(command[-2:] == ("build", "db") for command in success_runner.interactive_calls)
+    assert not any(
+        command[:4] == ("sudo", "-n", "docker", "pull") for command in success_runner.calls
+    )
     published = success_root / "generation.gguf"
     assert published.read_bytes() == b"tiny-artifact"
-    assert (published.stat().st_mode & 0o777) == 0o600
+    assert (published.stat().st_mode & 0o777) == 0o644
     assert success_scratch.read_bytes() == b"owner-bytes"
     assert not any(path.name.startswith(".generation.gguf-") for path in success_root.iterdir())

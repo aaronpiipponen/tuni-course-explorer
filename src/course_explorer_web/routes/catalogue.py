@@ -1,13 +1,10 @@
 """POST adapter for the minimal official catalogue every narrowing surface filters locally."""
 
-from fastapi import APIRouter, Response
+from fastapi import APIRouter, Request, Response
 from pydantic import BaseModel, ConfigDict
 
-from course_explorer.config import load_web_settings
-from course_explorer.search import lookup_commands
-from course_explorer_web.dataset import resolve_serving_dataset
-from course_explorer_web.reports import dataset_report_response
-from course_explorer_web.serving_cache import serving_caches
+from course_explorer_web.accept_encoding import accepts_encoding
+from course_explorer_web.serving_cache import preloaded_serving_settings, serving_caches
 
 router = APIRouter()
 
@@ -19,12 +16,24 @@ class CatalogueRequest(BaseModel):
 
 
 @router.post("/api/catalogue")
-def catalogue(request: CatalogueRequest) -> Response:
-    """Return the minimal official catalogue over this site's serving dataset."""
-    settings = load_web_settings()
-    serving = resolve_serving_dataset()
-    cache = serving_caches(serving, settings)
-    report = lookup_commands.run_catalogue_command(
-        database_settings=serving.settings, projection_cache=cache.lookup_projection
+def catalogue(request: Request, body: CatalogueRequest) -> Response:
+    """Return the minimal official catalogue from the current serving artifact build.
+
+    A gzip-capable client receives the compressed artifact body with its encoding header. An
+    identity client receives the plain body. The serving identity is appended to either body.
+    """
+    bundle = preloaded_serving_settings()
+    serving = bundle.dataset
+    cache = serving_caches(serving)
+    if accepts_encoding(request.headers.get("accept-encoding", ""), "gzip"):
+        return Response(
+            content=cache.catalogue_gzip,
+            media_type="application/json",
+            headers={"Content-Encoding": "gzip", "Vary": "Accept-Encoding"},
+        )
+    # The identity response needs no Vary here. GZipMiddleware adds it, and a second value would
+    # duplicate the header.
+    return Response(
+        content=cache.catalogue_body,
+        media_type="application/json",
     )
-    return dataset_report_response(report, serving)

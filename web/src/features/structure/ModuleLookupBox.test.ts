@@ -157,12 +157,14 @@ describe("module version hand-off", () => {
 
   function versionRow(code: string): HTMLButtonElement {
     const buttons = [
-      ...container.querySelectorAll<HTMLButtonElement>(".module-version-row"),
+      ...document.body.querySelectorAll<HTMLButtonElement>(
+        ".module-version-option",
+      ),
     ];
     const found = buttons.find((button) =>
-      button.querySelector(".code")?.textContent?.includes(code),
+      button.querySelector(".dialog-code")?.textContent?.includes(code),
     );
-    if (!found) throw new Error(`The version row ${code} is missing`);
+    if (!found) throw new Error(`The version option ${code} is missing`);
     return found;
   }
 
@@ -210,14 +212,16 @@ describe("module version hand-off", () => {
       ...single,
     });
 
-    // An ambiguous group opens the exact version picker and writes nothing.
+    // An ambiguous group opens the exact version prompt and writes nothing.
     onPick.mockClear();
     act(() => groupRow("module-multiple").click());
     await waitFor(() =>
-      expect(container.querySelector(".module-version-picker")).toBeTruthy(),
+      expect(document.body.querySelector('[role="dialog"]')).toBeTruthy(),
     );
     expect(onPick).not.toHaveBeenCalled();
-    expect(container.querySelectorAll(".module-version-row")).toHaveLength(2);
+    expect(
+      document.body.querySelectorAll(".module-version-option"),
+    ).toHaveLength(2);
     const chosen = versionRow("SYN-MULTI-B");
     act(() => chosen.click());
     await waitFor(() => expect(onPick).toHaveBeenCalledTimes(1));
@@ -226,21 +230,21 @@ describe("module version hand-off", () => {
       ...multipleB,
     });
 
-    // Repeating the ambiguous activation and cancelling hands over nothing and leaves the filter text in place.
+    // Repeating the ambiguous activation and cancelling leaves the filter text in place.
     onPick.mockClear();
     act(() => groupRow("module-multiple").click());
     await waitFor(() =>
-      expect(container.querySelectorAll(".module-version-row")).toHaveLength(2),
+      expect(
+        document.body.querySelectorAll(".module-version-option"),
+      ).toHaveLength(2),
     );
     const cancel = [
-      ...container.querySelectorAll<HTMLButtonElement>(
-        ".module-version-cancel button",
-      ),
+      ...document.body.querySelectorAll<HTMLButtonElement>(".dialog-cancel"),
     ].find((button) => button.textContent?.trim() === uiText("en", "Cancel"));
-    if (!cancel) throw new Error("The hand-off cancel control is missing");
+    if (!cancel) throw new Error("The prompt cancel control is missing");
     act(() => cancel.click());
     await waitFor(() =>
-      expect(container.querySelector(".module-version-picker")).toBeNull(),
+      expect(document.body.querySelector('[role="dialog"]')).toBeNull(),
     );
     expect(onPick).not.toHaveBeenCalled();
     expect(input.value).toBe("synthetic");

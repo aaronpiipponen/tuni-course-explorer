@@ -4,7 +4,8 @@ This module owns the read-only server status report: the measured systemd state 
 web unit, the Compose services of the configured database and embedding runtimes, the database's own
 size, connection count and migration head, the host's uptime, CPU usage, memory and disk facts, the
 selected-dataset metadata the serving database resolves through, and the two embedding hub file
-times. Every member states which kind of fact it is: measured, configured, a checkout identity, a
+times of the artifact family's configured embedding directory on a site that serves the embedding
+features. Every member states which kind of fact it is: measured, configured, a checkout identity, a
 serving receipt, or a file time.
 
 The report reads the local host and this checkout's own state. A running container whose database
@@ -27,20 +28,30 @@ from alembic.script import ScriptDirectory
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import text
 
-from course_explorer.administration import repository_root, utc_now
+from course_explorer import administration
+from course_explorer.administration import utc_now
 from course_explorer.config import (
     DatabaseSettings,
+    EmbeddingRuntimeSettings,
+    embedding_configuration_for_site,
     load_administrative_dataset_settings,
     load_administrative_site_settings,
     load_database_settings,
     load_embedding_runtime_settings,
+    load_raw_database_settings,
     load_web_settings,
 )
-from course_explorer.configuration import hub_reference_path
-from course_explorer.datasets import resolve_selected_dataset
+from course_explorer.datasets import dataset_pointer_path, dataset_state_refusal, read_dataset_role
 from course_explorer.db.session import create_database_engine
+from course_explorer.serving_artifacts import (
+    HUB_CATALOGUE_FILE,
+    HUB_OUTCOMES_FILE,
+    configured_embedding_directory,
+    serving_artifact_root,
+    serving_key,
+)
 from course_explorer_admin import mechanics
-from course_explorer_admin.datasets import admin_state_root
+from course_explorer_admin.datasets import admin_state_path, admin_state_root
 
 # The one requested systemd property set. Only these properties are read, so no environment,
 # credential or unit file text reaches the report.
@@ -57,8 +68,11 @@ _SITE_PROPERTIES = (
 # The one web entry point this checkout's web unit runs, relative to the checkout root.
 _WEB_ENTRY_POINT = "scripts/run_web.sh"
 
-# The two embedding hub references, in report order.
-_HUB_ALIASES = ("EMBEDDING_HUB_VECTOR", "EMBEDDING_OUTCOMES_HUB_VECTOR")
+# The two embedding hub files of a serving artifact build, in report order.
+_HUB_FILES: tuple[tuple[Literal["catalogue", "outcomes"], str], ...] = (
+    ("catalogue", HUB_CATALOGUE_FILE),
+    ("outcomes", HUB_OUTCOMES_FILE),
+)
 
 # The two selected Compose services of the server-only report.
 _DATABASE_SERVICE = "db"
@@ -142,8 +156,8 @@ class HostStatus(_ServerModel):
 class DatabaseStatus(_ServerModel):
     """The configured database service and the live facts of the database it serves.
 
-    ``name`` is the name the resolved settings carry, so it is the selected dataset's database name
-    when the selected-dataset switch resolves one. ``expected_schema_revision`` is this checkout's
+    ``name`` is the name the resolved settings carry, so it is the Selected dataset's database name
+    when a pointer resolves one. ``expected_schema_revision`` is this checkout's
     single migration head, ``schema_revision`` is the database's own current revision, and
     ``at_head`` compares the two. ``shared_memory_bytes`` is the container's configured
     shared-memory size, which the service supplies whenever the listing carries its container. The
@@ -181,16 +195,19 @@ class EmbeddingStatus(_ServerModel):
 
 
 class ServingStatus(_ServerModel):
-    """The selected-dataset metadata the serving database resolves through.
+    """The site's served feature states and the Selected dataset metadata its database resolves through.
 
-    With the selected-dataset switch disabled the process reads its configured database, so every
-    receipt member is ``None``. With the switch enabled the members are the selected receipt's own
-    values and ``pointer`` is the repository-relative pointer file that named it.
-    ``receipt_schema_revision`` is the database head the receipt's verification records, which is
-    neither the live database's own revision nor this checkout's expected head.
+    ``embeddings_enabled`` is the site's embedding feature switch. Without a Selected pointer the
+    process reads its configured database, so every receipt member is ``None``. With a pointer the
+    members are the Selected receipt's own values and ``pointer`` is the repository-relative pointer
+    file that named it. ``receipt_schema_revision`` is the database head the receipt's verification
+    records, which is neither the live database's own revision nor this checkout's expected head.
+    ``selection_enabled`` is ``None`` when the dataset state tree is redirected or not a directory,
+    so the selection is unknown.
     """
 
-    selection_enabled: bool
+    selection_enabled: bool | None
+    embeddings_enabled: bool
     dataset_id: str | None = None
     kind: str | None = None
     predecessor_id: str | None = None
@@ -199,22 +216,26 @@ class ServingStatus(_ServerModel):
 
 
 class HubStatus(_ServerModel):
-    """One embedding hub file: its alias, its repository-relative path and its file time.
+    """One embedding hub file of the configured embedding directory: its name, path and file time.
 
-    ``modified_at`` is ``None`` while the reference names no existing file, and a reference that
-    names something other than a regular file fails the report. ``newer_than_web_start`` is ``None``
+    ``modified_at`` is ``None`` while the directory does not hold the file, and a path that names
+    something other than a regular file fails the report. ``newer_than_web_start`` is ``None``
     while either that time or the measured web start is unknown. The comparison is a restart hint
     rather than proof of the process's in-memory values.
     """
 
-    alias: str
+    name: Literal["catalogue", "outcomes"]
     path: str
     modified_at: datetime | None
     newer_than_web_start: bool | None
 
 
 class ServerStatusReport(_ServerModel):
-    """One read-only server status report for the operator's Dashboard."""
+    """One read-only server status report for the operator's Dashboard.
+
+    ``hubs`` is empty on a site with the embedding features off, because its artifact build
+    writes no hub file.
+    """
 
     schema_version: Literal[1] = 1
     website: WebsiteStatus
@@ -287,7 +308,7 @@ def read_web_service(*, runner: mechanics.ProcessRunner) -> WebsiteStatus:
     systemd manager the read addresses. A status read and the rebuild precondition share this one
     check, so neither reports nor restarts another application's or the administration service.
     """
-    root = repository_root()
+    root = administration.repository_root()
     settings = load_administrative_site_settings()
     properties = read_owned_site_unit(
         runner,
@@ -342,7 +363,7 @@ def _compose_services(
 ) -> dict[str, dict[str, object]]:
     """Read the one Compose service listing, keyed by service name."""
     argv = (
-        *mechanics.compose_prefix(non_interactive=True),
+        *mechanics.compose_prefix(non_interactive=True, interpreter=True),
         "ps",
         "--all",
         "--format",
@@ -473,18 +494,39 @@ def _read_embedding(
     )
 
 
-def _read_serving(settings: DatabaseSettings) -> ServingStatus:
-    """Project the selected receipt when the switch resolves one, else the configured database."""
-    if not settings.selected_dataset_enabled:
-        return ServingStatus(selection_enabled=False)
-    root = admin_state_root(load_administrative_dataset_settings())
-    receipt = resolve_selected_dataset(root)
+def _served_database_settings(*, state_available: bool) -> DatabaseSettings:
+    """Read the Selected dataset's connection, or the configured database when its state is unknown.
+
+    A redirected or non-directory dataset state tree resolves no Selected receipt, so the report
+    names the configured database the connection settings carry.
+    """
+    if not state_available:
+        return load_raw_database_settings()
+    return load_database_settings(role="selected")
+
+
+def _read_serving(*, state_available: bool, embeddings_enabled: bool) -> ServingStatus:
+    """Project the Selected receipt when its pointer exists, else the configured database.
+
+    A redirected or non-directory dataset state tree reports the unknown selection instead of
+    reading through it.
+    """
+    if not state_available:
+        return ServingStatus(selection_enabled=None, embeddings_enabled=embeddings_enabled)
+    settings = load_administrative_dataset_settings()
+    root = admin_state_root(settings)
+    receipt = read_dataset_role(root, "selected")
+    if receipt is None:
+        return ServingStatus(selection_enabled=False, embeddings_enabled=embeddings_enabled)
     return ServingStatus(
         selection_enabled=True,
+        embeddings_enabled=embeddings_enabled,
         dataset_id=receipt.dataset_id,
         kind=receipt.kind,
         predecessor_id=receipt.predecessor_id,
-        pointer=(settings.admin_state_root / "selected-dataset.json").as_posix(),
+        pointer=dataset_pointer_path(root, "selected")
+        .relative_to(administration.repository_root())
+        .as_posix(),
         receipt_schema_revision=receipt.verification.alembic_revision,
     )
 
@@ -578,17 +620,27 @@ def _read_host(root: Path, *, runner: mechanics.ProcessRunner) -> HostStatus:
     )
 
 
-def _read_hubs(root: Path, website: WebsiteStatus) -> tuple[HubStatus, ...]:
-    """Stat both hub files and compare each file time with the measured web start.
+def _read_hubs(
+    root: Path,
+    settings: DatabaseSettings,
+    website: WebsiteStatus,
+    *,
+    embedding: EmbeddingRuntimeSettings | None,
+) -> tuple[HubStatus, ...]:
+    """Stat both hub files of the configured embedding directory and compare their times.
 
-    A reference that names an existing file must resolve to a regular file, whose own modification
-    time is reported. A reference that names no file is unknown, and any other metadata failure or a
-    non-regular target fails the report.
+    ``embedding`` is the resolved site configuration or ``None`` when the embedding features are
+    off. Such a site writes no hub file, so the report holds no hub entry and no artifact path is
+    resolved. An existing file must be a regular file, whose own modification time is reported. Any
+    other metadata failure or a non-regular target fails the report.
     """
+    if embedding is None:
+        return ()
+    family = serving_artifact_root(root / settings.admin_state_root, serving_key(settings))
+    directory = configured_embedding_directory(family, embedding)
     hubs: list[HubStatus] = []
-    for alias in _HUB_ALIASES:
-        reference = hub_reference_path(root, alias)
-        resolved = root / reference
+    for name, filename in _HUB_FILES:
+        resolved = directory / filename
         try:
             metadata = resolved.stat()
         except FileNotFoundError:
@@ -596,15 +648,17 @@ def _read_hubs(root: Path, website: WebsiteStatus) -> tuple[HubStatus, ...]:
         modified_at: datetime | None = None
         if metadata is not None:
             if not stat.S_ISREG(metadata.st_mode):
-                raise ValueError("an embedding hub reference must name a regular file")
+                raise ValueError("an embedding hub path must name a regular file")
             modified_at = datetime.fromtimestamp(metadata.st_mtime, tz=UTC)
         newer: bool | None = None
         if modified_at is not None and website.started_at is not None:
             newer = modified_at > website.started_at
         hubs.append(
             HubStatus(
-                alias=alias,
-                path=reference.as_posix(),
+                name=name,
+                path=resolved.relative_to(root).as_posix()
+                if resolved.is_relative_to(root)
+                else resolved.as_posix(),
                 modified_at=modified_at,
                 newer_than_web_start=newer,
             )
@@ -614,10 +668,14 @@ def _read_hubs(root: Path, website: WebsiteStatus) -> tuple[HubStatus, ...]:
 
 def read_server_status(*, runner: mechanics.ProcessRunner) -> ServerStatusReport:
     """Read one server-only status report. It writes nothing and contacts no worker."""
-    root = repository_root()
+    root = administration.repository_root()
     website = read_web_service(runner=runner)
     services = _compose_services(runner, root=root)
-    settings = load_database_settings()
+    administration_settings = load_administrative_dataset_settings()
+    state_available = dataset_state_refusal(admin_state_path(administration_settings)) is None
+    settings = _served_database_settings(state_available=state_available)
+    web = load_web_settings()
+    embedding = embedding_configuration_for_site(web)
     return ServerStatusReport(
         website=website,
         host=_read_host(root, runner=runner),
@@ -629,6 +687,8 @@ def read_server_status(*, runner: mechanics.ProcessRunner) -> ServerStatusReport
             settings=settings,
         ),
         embedding=_read_embedding(_container_status(services, _EMBEDDING_SERVICE)),
-        serving=_read_serving(settings),
-        hubs=_read_hubs(root, website),
+        serving=_read_serving(
+            state_available=state_available, embeddings_enabled=web.embeddings_enabled
+        ),
+        hubs=_read_hubs(root, settings, website, embedding=embedding),
     )

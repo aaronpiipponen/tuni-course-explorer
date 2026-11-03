@@ -20,8 +20,11 @@ import sys
 from pathlib import Path
 
 import pytest
+from pydantic import RootModel
 
+from course_explorer_admin import commands as admin_commands
 from course_explorer_admin.commands import format_operator_error
+from course_explorer_admin_web import runner as admin_runner
 from tests.admin_web import _support
 
 TARGET_ID = "tuni-canonical-0f3a91"
@@ -33,6 +36,35 @@ CONFIG_KEY = "WEB_PORT"
 CONFIG_VALUE = json.dumps(_support.VALUE_SENTINEL)
 BACKUP_NAME = "before-inference.dump"
 WORKER_BRANCH = "origin-branch"
+FEEDBACK_ID = "3f1c2a64-5b7d-4e29-8c10-6a9d2b4e7f01"
+FEEDBACK_ATTACHMENT_ID = "8e2d4b17-9c63-4a52-b0f8-1d7c3e5a9b24"
+FEEDBACK_QUERY = "synthetic feedback query"
+FEEDBACK_FILTERS = {"role": "student"}
+FEEDBACK_ATTACHMENT_CARRIER = "c3ludGhldGljLWZlZWRiYWNrLWNhcnJpZXI="
+_FEEDBACK_ATTACHMENT_REPORT: dict[str, object] = {
+    "attachment": {
+        "id": FEEDBACK_ATTACHMENT_ID,
+        "feedback_id": FEEDBACK_ID,
+        "field_id": "screenshots",
+        "mime_type": "image/png",
+    },
+    "content_base64": FEEDBACK_ATTACHMENT_CARRIER,
+}
+_SUCCESS_REPORTS: dict[str, dict[str, object]] = {
+    "feedback-attachment": _FEEDBACK_ATTACHMENT_REPORT
+}
+
+# The routes the runner answers in process, and the command function it calls for each.
+_IN_PROCESS_READS: dict[str, str] = {
+    "dashboard": "run_administrative_server_status",
+    "preparation-status": "run_administrative_command",
+    "preparation-catalogue": "run_administrative_summary",
+    "preparation-teaching-text": "run_administrative_coverage",
+    "preparation-embedding": "run_administrative_coverage",
+    "inference-status": "run_administrative_command",
+    "inference-summary": "run_administrative_summary",
+    "datasets": "run_administrative_dataset_list",
+}
 
 # One row per console feature route: its method, its path, its body, the exact argv tail the runner
 # admits for it, and the request-supplied values that must not reach the retained log entry.
@@ -73,7 +105,13 @@ _ROUTES: dict[str, tuple[str, str, dict[str, object] | None, tuple[str, ...], tu
         ("coverage", "embedding"),
         (),
     ),
-    "preparation-hubs": ("POST", "/api/preparation/hubs", {}, ("hubs",), ()),
+    "preparation-serving-artifacts": (
+        "POST",
+        "/api/preparation/serving-artifacts",
+        {},
+        ("serving-artifacts",),
+        (),
+    ),
     "inference-status": ("GET", "/api/inference/status", None, ("inference", "status"), ()),
     "inference-action": (
         "POST",
@@ -97,12 +135,48 @@ _ROUTES: dict[str, tuple[str, str, dict[str, object] | None, tuple[str, ...], tu
         ("dispose", "inference", TARGET_ID, "failed"),
         (TARGET_ID, "failed"),
     ),
-    "inference-datasets": ("GET", "/api/inference/datasets", None, ("datasets", "list"), ()),
-    "inference-dataset-delete": (
+    "datasets": ("GET", "/api/datasets", None, ("datasets", "list"), ()),
+    "datasets-setup": ("POST", "/api/datasets/setup", {}, ("setup", "datasets"), ()),
+    "datasets-migrate-selected": (
         "POST",
-        "/api/inference/datasets/delete",
+        "/api/datasets/migrate",
+        {"role": "selected"},
+        ("migrate", "selected"),
+        (),
+    ),
+    "datasets-migrate-working": (
+        "POST",
+        "/api/datasets/migrate",
+        {"role": "working"},
+        ("migrate", "working"),
+        (),
+    ),
+    "datasets-migrate-database": (
+        "POST",
+        "/api/datasets/migrate",
+        {"role": "database"},
+        ("migrate", "database"),
+        (),
+    ),
+    "datasets-delete": (
+        "POST",
+        "/api/datasets/delete",
         {"dataset_id": DATASET_ID},
         ("datasets", "delete", DATASET_ID),
+        (DATASET_ID,),
+    ),
+    "datasets-delete-working": (
+        "POST",
+        "/api/datasets/delete",
+        {"dataset_id": DATASET_ID, "confirm_working": True},
+        ("datasets", "delete", DATASET_ID, "--confirm-working"),
+        (DATASET_ID,),
+    ),
+    "datasets-copy-to-working": (
+        "POST",
+        "/api/datasets/copy-to-working",
+        {"source_dataset_id": DATASET_ID},
+        ("datasets", "copy-to-working", DATASET_ID),
         (DATASET_ID,),
     ),
     "logs-commands": ("GET", "/api/logs/commands", None, ("logs", "commands"), ()),
@@ -127,6 +201,32 @@ _ROUTES: dict[str, tuple[str, str, dict[str, object] | None, tuple[str, ...], tu
         (),
     ),
     "logs-usage": ("POST", "/api/logs/usage", {"hours": 24}, ("usage", "--hours", "24"), ()),
+    "feedback-list": (
+        "POST",
+        "/api/feedback/list",
+        {"query": FEEDBACK_QUERY, "filters": FEEDBACK_FILTERS},
+        (
+            "feedback",
+            "list",
+            f"--query={FEEDBACK_QUERY}",
+            f"--filters={json.dumps(FEEDBACK_FILTERS)}",
+        ),
+        (FEEDBACK_QUERY, *FEEDBACK_FILTERS.values()),
+    ),
+    "feedback-attachment": (
+        "POST",
+        "/api/feedback/attachment",
+        {"feedback_id": FEEDBACK_ID, "attachment_id": FEEDBACK_ATTACHMENT_ID},
+        ("feedback", "attachment", FEEDBACK_ID, FEEDBACK_ATTACHMENT_ID),
+        (FEEDBACK_ID, FEEDBACK_ATTACHMENT_ID, FEEDBACK_ATTACHMENT_CARRIER),
+    ),
+    "feedback-delete": (
+        "POST",
+        "/api/feedback/delete",
+        {"feedback_id": FEEDBACK_ID},
+        ("feedback", "delete", FEEDBACK_ID),
+        (FEEDBACK_ID,),
+    ),
     "settings-config-files": (
         "GET",
         "/api/settings/config/files",
@@ -164,20 +264,6 @@ _ROUTES: dict[str, tuple[str, str, dict[str, object] | None, tuple[str, ...], tu
         ("rebuild-admin",),
         (),
     ),
-    "settings-datasets-setup": (
-        "POST",
-        "/api/settings/datasets/setup",
-        {},
-        ("setup", "datasets"),
-        (),
-    ),
-    "settings-datasets-migrate": (
-        "POST",
-        "/api/settings/datasets/migrate",
-        {},
-        ("migrate", "datasets"),
-        (),
-    ),
     "settings-worker-setup": (
         "POST",
         "/api/settings/worker/setup",
@@ -213,6 +299,57 @@ _ROUTE_CASES = tuple(
     )
 )
 
+# The operator operation whose fixed guidance line a failed request carries.
+_ROUTE_GUIDANCE: dict[str, str] = {
+    "dashboard": "server",
+    "preparation-status": "stage",
+    "preparation-action": "stage",
+    "preparation-catalogue": "report",
+    "preparation-teaching-text": "report",
+    "preparation-embedding": "report",
+    "preparation-serving-artifacts": "serving-artifacts",
+    "inference-status": "stage",
+    "inference-action": "stage",
+    "inference-summary": "report",
+    "inference-target-read": "target-read",
+    "inference-decision": "disposition",
+    "datasets": "dataset-list",
+    "datasets-setup": "setup",
+    "datasets-migrate-selected": "migration",
+    "datasets-migrate-working": "migration",
+    "datasets-migrate-database": "migration",
+    "datasets-delete": "dataset-cleanup",
+    "datasets-delete-working": "dataset-cleanup",
+    "datasets-copy-to-working": "dataset-copy",
+    "logs-commands": "logs",
+    "logs-sessions": "logs",
+    "logs-read": "logs",
+    "logs-embedding": "logs",
+    "logs-usage": "usage",
+    "feedback-list": "feedback",
+    "feedback-attachment": "feedback",
+    "feedback-delete": "feedback",
+    "settings-config-files": "configuration",
+    "settings-config-read": "configuration",
+    "settings-config-set": "configuration",
+    "settings-backups": "backup-list",
+    "settings-backups-delete": "backup-cleanup",
+    "settings-rebuild": "rebuild",
+    "settings-rebuild-admin": "rebuild",
+    "settings-worker-setup": "setup",
+    "settings-worker-preflight": "preflight",
+}
+
+# The routes whose in-process summary read resolves the dataset role before it runs its report.
+_ROLE_SCOPED_ROUTES = frozenset(
+    {
+        "preparation-catalogue",
+        "preparation-teaching-text",
+        "preparation-embedding",
+        "inference-summary",
+    }
+)
+
 # The routes whose handler forwards the console's automatic-read marker, so a successful automatic
 # invocation of them records no command-log entry. Every other route keeps the default false.
 _AUTOMATIC_READ_ROUTES = frozenset(
@@ -224,7 +361,7 @@ _AUTOMATIC_READ_ROUTES = frozenset(
         "preparation-embedding",
         "inference-status",
         "inference-summary",
-        "inference-datasets",
+        "datasets",
         "logs-commands",
         "logs-sessions",
         "logs-read",
@@ -233,6 +370,8 @@ _AUTOMATIC_READ_ROUTES = frozenset(
         "settings-config-files",
         "settings-config-read",
         "settings-backups",
+        "feedback-list",
+        "feedback-attachment",
     }
 )
 
@@ -260,7 +399,26 @@ def test_admin_feature_route_runs_its_fixed_command(
         stderr=_support.OUTPUT_SENTINEL.encode("utf-8"),
     )
     follow_up = _FOLLOW_UP_TAILS.get(route)
-    success = _report_bytes()
+    success = json.dumps(_SUCCESS_REPORTS.get(route, {})).encode("utf-8")
+    in_process = route in _IN_PROCESS_READS
+    expected_guidance = admin_commands.operator_guidance(_ROUTE_GUIDANCE[route])
+    if route in _ROLE_SCOPED_ROUTES:
+        monkeypatch.setattr(admin_runner, "_report_role", lambda: "working")
+    if in_process:
+        reader = _IN_PROCESS_READS[route]
+        if outcome == "checked-failure":
+
+            def failing(*_args: object, **_kwargs: object) -> object:
+                raise RuntimeError(_support.OUTPUT_SENTINEL)
+
+            monkeypatch.setattr(admin_commands, reader, failing)
+            expected_failure = format_operator_error(RuntimeError("failure"))
+        else:
+            payload = _SUCCESS_REPORTS.get(route, {})
+            monkeypatch.setattr(
+                admin_commands, reader, lambda *_args, **_kwargs: RootModel[dict](payload)
+            )
+            expected_failure = format_operator_error(RuntimeError("failure"))
     # One prepared outcome per admitted command call. The build-failure case stops at the first call,
     # so no restart is queued.
     outcomes: tuple[bytes | BaseException, ...] = (
@@ -295,7 +453,7 @@ def test_admin_feature_route_runs_its_fixed_command(
     assert response.status_code == 200
     assert response.headers["cache-control"] == "no-store"
     payload = response.json()
-    assert set(payload) == {"exit_code", "report", "failure_line"}
+    assert set(payload) == {"exit_code", "report", "failure_line", "guidance_line"}
 
     if follow_up is not None:
         # The answered build is the one response. A queued restart does not appear in it, however
@@ -304,9 +462,15 @@ def test_admin_feature_route_runs_its_fixed_command(
             assert payload["exit_code"] == 1
             assert payload["report"] is None
             assert payload["failure_line"] == format_operator_error(failure)
+            assert payload["guidance_line"] == expected_guidance
             assert _support.OUTPUT_SENTINEL not in response.text
         else:
-            assert payload == {"exit_code": 0, "report": {}, "failure_line": None}
+            assert payload == {
+                "exit_code": 0,
+                "report": {},
+                "failure_line": None,
+                "guidance_line": None,
+            }
 
         expected_tails = [tail] if outcome == "checked-failure" else [tail, follow_up]
         assert boundary.calls == [
@@ -335,17 +499,29 @@ def test_admin_feature_route_runs_its_fixed_command(
         return
 
     if outcome == "success":
-        assert payload == {"exit_code": 0, "report": {}, "failure_line": None}
+        scoped = _SUCCESS_REPORTS.get(route, {})
+        assert payload == {
+            "exit_code": 0,
+            "report": (
+                {"role": "working", "report": scoped} if route in _ROLE_SCOPED_ROUTES else scoped
+            ),
+            "failure_line": None,
+            "guidance_line": None,
+        }
     else:
         assert payload["exit_code"] == 1
         assert payload["report"] is None
-        assert payload["failure_line"] == format_operator_error(failure)
+        assert payload["failure_line"] == (
+            expected_failure if in_process else format_operator_error(failure)
+        )
+        assert payload["guidance_line"] == expected_guidance
         assert _support.OUTPUT_SENTINEL not in response.text
 
-    # The marker changes no argument list, and every outcome runs the one admitted command.
-    assert boundary.calls == [
-        {"argv": (sys.executable, str(root / "scripts" / "admin.py"), *tail), "cwd": root}
-    ]
+    # The marker changes no argument list, and every subprocess outcome runs the one admitted command.
+    if not in_process:
+        assert boundary.calls == [
+            {"argv": (sys.executable, str(root / "scripts" / "admin.py"), *tail), "cwd": root}
+        ]
     lines = log_path.read_text(encoding="utf-8").splitlines()
     if marked and outcome == "success" and route in _AUTOMATIC_READ_ROUTES:
         # A successful automatic read leaves the sole command log as it was.

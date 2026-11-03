@@ -112,6 +112,7 @@ export function DiscoverPane() {
             loading={loading}
             error={error}
             hasBasis={hasBasis}
+            activeOnly={effective.activeOnly}
           />
         </div>
       </div>

@@ -1,0 +1,20 @@
+{
+  "type": "bar",
+  "title": "First prompt sequence F1 on the 15-target format subset",
+  "description": "F1 against the corrected reference for the six trials of the first prompt sequence, on the 15-target format subset with 14 valid targets each. Candidate 4 holds the highest value at 0.233, the v6 baseline 0.100, and the temperature 0.3 trial 0.154.",
+  "valueAxis": "F1 against the corrected reference",
+  "categories": [
+    "Baseline v6",
+    "Candidate 1",
+    "Candidate 2",
+    "Candidate 3",
+    "Candidate 4",
+    "Temperature 0.3"
+  ],
+  "series": [
+    {
+      "name": "F1",
+      "values": [0.1, 0.111, 0.19, 0.186, 0.233, 0.154]
+    }
+  ]
+}

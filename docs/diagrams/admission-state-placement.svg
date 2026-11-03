@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 420" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Admission state placement</title>
+  <desc id="d">The measured store design keeps the admission counters and tickets in a Redis container
+  beside the front router, which forwards each request to one of four worker processes. The serving
+  design keeps the counters, tickets, queue and graph costs in the front router process itself, with
+  no second store, and forwards each request to a worker process that carries no other heavy read.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="420" rx="12" fill="#232434"/>
+
+  <text x="48" y="44" font-size="16" fill="#a3a4b8">Store design, measured 21 October</text>
+  <rect x="48" y="56" width="432" height="316" rx="8"
+        fill="none" stroke="#4a4c6b" stroke-width="1.5"/>
+
+  <rect x="72" y="88" width="176" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="160" y="114" text-anchor="middle" font-size="16" fill="#ececf2">Front router</text>
+  <text x="160" y="136" text-anchor="middle" font-size="14" fill="#a3a4b8">admission checks</text>
+
+  <rect x="272" y="88" width="184" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="364" y="114" text-anchor="middle" font-size="16" fill="#ececf2">Redis container</text>
+  <text x="364" y="136" text-anchor="middle" font-size="14" fill="#a3a4b8">counters, tickets</text>
+
+  <line x1="248" y1="120" x2="272" y2="120" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <rect x="72" y="232" width="384" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="264" y="258" text-anchor="middle" font-size="16" fill="#ececf2">Worker processes</text>
+  <text x="264" y="280" text-anchor="middle" font-size="14" fill="#a3a4b8">one loopback listener each</text>
+
+  <line x1="160" y1="152" x2="160" y2="232" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="168" y="196" font-size="14" fill="#a3a4b8">forward</text>
+
+  <text x="72" y="324" font-size="14" fill="#a3a4b8">One container and one client at a time</text>
+
+  <text x="492" y="44" font-size="16" fill="#a3a4b8">Serving design</text>
+  <rect x="492" y="56" width="420" height="316" rx="8"
+        fill="none" stroke="#4a4c6b" stroke-width="1.5"/>
+
+  <rect x="516" y="88" width="372" height="80" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="702" y="120" text-anchor="middle" font-size="16" fill="#ececf2">Front router</text>
+  <text x="702" y="142" text-anchor="middle" font-size="14" fill="#a3a4b8">counters, tickets, queue, graph costs</text>
+
+  <rect x="516" y="232" width="372" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="702" y="258" text-anchor="middle" font-size="16" fill="#ececf2">Worker processes</text>
+  <text x="702" y="280" text-anchor="middle" font-size="14" fill="#a3a4b8">least busy, heavy reads apart</text>
+
+  <line x1="702" y1="168" x2="702" y2="232" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="710" y="204" font-size="14" fill="#a3a4b8">forward</text>
+
+  <text x="516" y="324" font-size="14" fill="#a3a4b8">The state lives in the router process</text>
+</svg>

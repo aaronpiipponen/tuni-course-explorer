@@ -58,6 +58,7 @@ export function LookupVirtualList<T>({
   const previousKeys = useRef<readonly string[]>([]);
   const [focusedKey, setFocusedKey] = useState<string | null>(null);
   const [scrollMargin, setScrollMargin] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
   const keys = useMemo(() => items.map(getItemKey), [items, getItemKey]);
   const indexByKey = useMemo(
     () => new Map(keys.map((key, index) => [key, index])),
@@ -216,6 +217,28 @@ export function LookupVirtualList<T>({
     const owner = scrollElement ?? listRef.current;
     if (owner) owner.scrollTop = 0;
   }, [resetKey, scrollElement]);
+  // The changed result set fades its rows in, without replaying the effect on a scroll.
+  useLayoutEffect(() => {
+    setRefreshing(true);
+    const timer = setTimeout(() => setRefreshing(false), 180);
+    return () => clearTimeout(timer);
+  }, [resetKey]);
+  // Mark the scroll owner so a short list can pad its free right side like its left side.
+  useEffect(() => {
+    const owner = scrollElement ?? listRef.current;
+    if (!owner) return;
+    const update = () => {
+      owner.dataset.scrollable =
+        owner.scrollHeight > owner.clientHeight + 1 ? "true" : "false";
+    };
+    update();
+    const observer =
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(update);
+    observer?.observe(owner);
+    const spacer = listRef.current?.firstElementChild;
+    if (spacer instanceof Element) observer?.observe(spacer);
+    return () => observer?.disconnect();
+  }, [items, resetKey, scrollElement]);
   useEffect(() => {
     const keysChanged = keys !== previousKeys.current;
     previousKeys.current = keys;
@@ -281,7 +304,7 @@ export function LookupVirtualList<T>({
     <div
       {...containerProps}
       ref={listRef}
-      className={`${className} lookup-virtual-list`}
+      className={`${className} lookup-virtual-list${refreshing ? " refreshing" : ""}`}
       role="list"
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
@@ -289,7 +312,10 @@ export function LookupVirtualList<T>({
       <div
         className="lookup-virtual-spacer"
         style={{
-          height: Math.max(0, virtualizer.getTotalSize() - offset),
+          // The virtualizer reports the rows' total without the scroll margin, and each row is
+          // placed relative to this list, so the spacer reserves exactly that total. Subtracting
+          // the list's offset again would let the rows spill onto the next section.
+          height: Math.max(0, virtualizer.getTotalSize()),
         }}
       >
         {virtualItems.map((item) => (
@@ -305,7 +331,8 @@ export function LookupVirtualList<T>({
             aria-setsize={items.length}
             className="lookup-virtual-row"
             style={{
-              transform: `translateY(${item.start - offset}px)`,
+              // A painted offset keeps row text on whole pixels. A transform layer can blur it.
+              top: item.start - offset,
             }}
             onFocus={() => handleFocus(item.index)}
           >

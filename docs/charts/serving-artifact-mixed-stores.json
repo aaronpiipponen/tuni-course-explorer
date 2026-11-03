@@ -1,0 +1,11 @@
+{
+  "type": "bar",
+  "title": "Mixed load with shared and unshared stores",
+  "description": "Total and web core-seconds for the 80-request mixed load under unshared stores, shared stores and the unchanged product path. Shared stores cut total core-seconds from 44.98 to 38.39 and web core-seconds from 30.29 to 25.73.",
+  "valueAxis": "Core-seconds",
+  "categories": ["Unshared stores", "Shared stores", "Unchanged product path"],
+  "series": [
+    { "name": "Total core-seconds", "values": [44.98, 38.39, 101.76] },
+    { "name": "Web core-seconds", "values": [30.29, 25.73, 75.12] }
+  ]
+}

@@ -8,10 +8,11 @@ import pytest
 from course_explorer.config import SearchSettings
 from course_explorer.db import session as session_module
 from course_explorer.search import commands as command_module
-from tests.search._service_support import embedding_settings
+from course_explorer.search.projection import build_lookup_projection
 from tests.support import (
     FakeCurriculum,
     course,
+    embedding_settings,
     represented_rows,
     settings_factory,
     version,
@@ -40,29 +41,27 @@ def test_unified_search_command_wires_the_services_disposes_engine_and_returns_t
     calls: list[tuple] = []
 
     class Lookup:
-        def __init__(self, curriculum, search_settings, *, projection_cache=None):
-            calls.append(("lookup", curriculum, search_settings))
+        def __init__(self, search_settings, *, projection):
+            calls.append(("lookup", search_settings, projection))
 
     class Semantic:
-        def __init__(self, curriculum, repository, provider, embedding_settings, search_settings):
-            calls.append(
-                ("semantic", curriculum, repository, provider, embedding_settings, search_settings)
-            )
+        def __init__(self, repository, provider, hub, search_settings):
+            calls.append(("semantic", repository, provider, hub, search_settings))
 
     class Unified:
-        def __init__(self, curriculum, semantic_search, course_lookup, search_settings):
-            calls.append(("unified", curriculum, semantic_search, course_lookup, search_settings))
+        def __init__(self, semantic_search, course_lookup, search_settings):
+            calls.append(("unified", semantic_search, course_lookup, search_settings))
 
         def search(self, query, **kwargs):
             calls.append(("unified-search", query, kwargs))
             return expected
 
     class Repository:
-        def __init__(self, value):
-            calls.append(("repository", value))
+        def __init__(self, value, *, group_count):
+            calls.append(("repository", value, group_count))
 
     class Provider:
-        def __init__(self, settings):
+        def __init__(self, settings, *, client=None, query_cache=None, cache_configuration=None):
             calls.append(("provider", settings))
 
         def __enter__(self):
@@ -82,22 +81,28 @@ def test_unified_search_command_wires_the_services_disposes_engine_and_returns_t
     )
 
     monkeypatch.setattr(command_module, "load_database_settings", lambda: object())
-    monkeypatch.setattr(command_module, "load_embedding_settings", lambda: embedding)
+    monkeypatch.setattr(command_module, "load_embedding_runtime_settings", lambda: embedding)
     monkeypatch.setattr(command_module, "load_search_settings", lambda: settings)
     monkeypatch.setattr(session_module, "create_database_engine", lambda value: engine)
     monkeypatch.setattr(session_module, "create_session_factory", lambda value: factory)
-    monkeypatch.setattr(command_module, "CurriculumRepository", lambda value: "curriculum")
     monkeypatch.setattr(command_module, "SemanticSearchRepository", Repository)
     monkeypatch.setattr(command_module, "EmbeddingProvider", Provider)
     monkeypatch.setattr(command_module, "CourseLookupService", Lookup)
     monkeypatch.setattr(command_module, "CourseSearchService", Semantic)
     monkeypatch.setattr(command_module, "UnifiedCourseSearchService", Unified)
 
-    report = command_module.run_search_command("tensorit", display_language="fi")
+    projection = object()
+    report = command_module.run_search_command(
+        "tensorit",
+        display_language="fi",
+        search_group_count=251,
+        hub=(0.0,) * 1024,
+        projection=projection,
+    )
 
     assert report is expected
-    assert ("repository", factory) in calls
-    assert ("lookup", "curriculum", settings) in calls
+    assert ("repository", factory, 251) in calls
+    assert ("lookup", settings, projection) in calls
     assert (
         "unified-search",
         "tensorit",
@@ -109,7 +114,7 @@ def test_unified_search_command_wires_the_services_disposes_engine_and_returns_t
         },
     ) in calls
     semantic_call = next(entry for entry in calls if entry[0] == "semantic")
-    assert isinstance(semantic_call[3], Provider)
+    assert isinstance(semantic_call[2], Provider)
     # The provider gets the query-local projection, and every similarity consumer keeps the
     # stage's own embedding settings.
     query_embedding_settings = next(entry[1] for entry in calls if entry[0] == "provider")
@@ -119,16 +124,14 @@ def test_unified_search_command_wires_the_services_disposes_engine_and_returns_t
     )
     assert query_embedding_settings.embedding_max_attempts == settings.search_embedding_max_attempts
     assert query_embedding_settings.embedding_model == embedding.embedding_model
-    assert query_embedding_settings.embedding_hub_vector == embedding.embedding_hub_vector
     assert embedding.embedding_request_timeout_seconds == 30
     assert embedding.embedding_max_attempts == 3
-    assert semantic_call[4] is embedding
-    assert semantic_call[5] is settings
+    assert semantic_call[3] == (0.0,) * 1024
+    assert semantic_call[4] is settings
     unified_call = next(entry for entry in calls if entry[0] == "unified")
-    assert unified_call[1] == "curriculum"
-    assert isinstance(unified_call[2], Semantic)
-    assert isinstance(unified_call[3], Lookup)
-    assert unified_call[4] is settings
+    assert isinstance(unified_call[1], Semantic)
+    assert isinstance(unified_call[2], Lookup)
+    assert unified_call[3] is settings
     assert engine.disposed
 
     calls.clear()
@@ -139,6 +142,9 @@ def test_unified_search_command_wires_the_services_disposes_engine_and_returns_t
         semantic_min_score=0.25,
         fuzzy_min_score=90,
         include_inactive=False,
+        search_group_count=251,
+        hub=(0.0,) * 1024,
+        projection=projection,
     )
     assert override is expected
     assert (
@@ -157,14 +163,20 @@ def test_unified_search_command_wires_the_services_disposes_engine_and_returns_t
     # embedding settings load here would fail the test.
     calls.clear()
     monkeypatch.setattr(
-        command_module, "load_embedding_settings", lambda: pytest.fail("settings load reached")
+        command_module,
+        "load_embedding_runtime_settings",
+        lambda: pytest.fail("settings load reached"),
     )
     with pytest.raises(ValueError):
-        command_module.run_search_command("   ", display_language="fi")
+        command_module.run_search_command("   ", display_language="fi", projection=projection)
     with pytest.raises(ValueError):
-        command_module.run_search_command("tensorit", display_language="fi", semantic_min_score=1.5)
+        command_module.run_search_command(
+            "tensorit", display_language="fi", semantic_min_score=1.5, projection=projection
+        )
     with pytest.raises(ValueError):
-        command_module.run_search_command("tensorit", display_language="fi", fuzzy_min_score=101)
+        command_module.run_search_command(
+            "tensorit", display_language="fi", fuzzy_min_score=101, projection=projection
+        )
     assert calls == []
 
 
@@ -191,23 +203,29 @@ def test_search_command_limits_query_embedding_to_one_short_attempt(monkeypatch)
 
     provider_class = command_module.EmbeddingProvider
 
-    def provider(configured):
-        return provider_class(configured, transport=httpx.MockTransport(handler))
+    def provider(configured, **options):
+        return provider_class(configured, transport=httpx.MockTransport(handler), **options)
 
     monkeypatch.setattr(command_module, "EmbeddingProvider", provider)
     monkeypatch.setattr(command_module, "load_database_settings", lambda: object())
-    monkeypatch.setattr(command_module, "load_embedding_settings", lambda: embedding)
+    monkeypatch.setattr(command_module, "load_embedding_runtime_settings", lambda: embedding)
     monkeypatch.setattr(command_module, "load_search_settings", lambda: settings)
     monkeypatch.setattr(session_module, "create_database_engine", lambda value: engine)
     monkeypatch.setattr(session_module, "create_session_factory", lambda value: object())
     monkeypatch.setattr(
         command_module,
-        "CurriculumRepository",
-        lambda value: FakeCurriculum((), summaries_by_activity={None: records}),
+        "SemanticSearchRepository",
+        lambda value, *, group_count: object(),
     )
-    monkeypatch.setattr(command_module, "SemanticSearchRepository", lambda value: object())
+    projection = build_lookup_projection(FakeCurriculum((), summaries_by_activity={None: records}))
 
-    report = command_module.run_search_command("COMP.CS.100", display_language="fi")
+    report = command_module.run_search_command(
+        "COMP.CS.100",
+        display_language="fi",
+        search_group_count=251,
+        hub=(0.0,) * 1024,
+        projection=projection,
+    )
 
     assert attempts == [settings.search_embedding_request_timeout_seconds]
     assert attempts == [5.0]
@@ -242,7 +260,7 @@ def test_search_without_semantic_preserves_lexical_results(monkeypatch) -> None:
     monkeypatch.setattr(command_module, "load_database_settings", lambda: object())
     monkeypatch.setattr(command_module, "load_search_settings", lambda: settings)
     monkeypatch.setattr(
-        command_module, "load_embedding_settings", refuse_reached("embedding settings")
+        command_module, "load_embedding_runtime_settings", refuse_reached("embedding settings")
     )
     monkeypatch.setattr(command_module, "EmbeddingProvider", refuse_reached("embedding provider"))
     monkeypatch.setattr(
@@ -250,14 +268,13 @@ def test_search_without_semantic_preserves_lexical_results(monkeypatch) -> None:
     )
     monkeypatch.setattr(session_module, "create_database_engine", lambda value: engine)
     monkeypatch.setattr(session_module, "create_session_factory", lambda value: object())
-    monkeypatch.setattr(
-        command_module,
-        "CurriculumRepository",
-        lambda value: FakeCurriculum((), summaries_by_activity={None: records}),
-    )
+    projection = build_lookup_projection(FakeCurriculum((), summaries_by_activity={None: records}))
 
     report = command_module.run_search_command(
-        "COMP.CS.100", display_language="fi", include_semantic=False
+        "COMP.CS.100",
+        display_language="fi",
+        include_semantic=False,
+        projection=projection,
     )
 
     assert [result.course.group_id for result in report.results] == ["group-target"]

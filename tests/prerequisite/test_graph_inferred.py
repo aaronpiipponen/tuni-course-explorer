@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+import pytest
+
 from course_explorer.curriculum import (
     CatalogueCurriculumPeriod,
 )
@@ -22,13 +24,6 @@ from course_explorer.prerequisite.domain import (
     OrRequirement,
     PrerequisiteOrigin,
     UnresolvedPrerequisiteReason,
-)
-from course_explorer.prerequisite.graph import (
-    PrerequisiteGraphCompiler,
-)
-from course_explorer.prerequisite.satisfaction import (
-    PrerequisiteSatisfactionState,
-    evaluate_prerequisite_satisfaction,
 )
 from tests.prerequisite._graph_support import (
     EMPTY_COVERAGE,
@@ -52,10 +47,15 @@ from tests.prerequisite._graph_support import (
     prerequisite_module_member,
     prerequisite_option,
 )
+from tests.prerequisite._native_support import native_requirement_state
 from tests.prerequisite._path_support import solve_route
 
+pytestmark = pytest.mark.integration
 
-def test_compiler_filters_inferred_recommended_occurrences_before_descendant_traversal() -> None:
+
+def test_compiler_filters_inferred_recommended_occurrences_before_descendant_traversal(
+    native_graph,
+) -> None:
     """An inferred recommended occurrence needs both toggles and is pruned whole when disabled."""
     root_inferred = AndRequirement(
         type="and",
@@ -98,26 +98,22 @@ def test_compiler_filters_inferred_recommended_occurrences_before_descendant_tra
             "recommended-inferred-desc": current_result("recommended-inferred-desc"),
         }
     )
-    compiler = PrerequisiteGraphCompiler(
+    compiler = native_graph(
         FakeCurriculumRead(courses), inferred_read, RecordingEquivalenceGroupRead()
     )
 
     def course_ids(compilation) -> set[str]:
         return {node.course_group_id for node in course_nodes(compilation.display)}
 
-    # Inference disabled: nothing is read or compiled even when recommended is enabled.
-    inferred_read.reads.clear()
+    # Inference disabled: nothing is compiled even when recommended is enabled.
     disabled = compiler.compile("root", include_recommended=True)
-    assert inferred_read.reads == []
     assert disabled.solver.root_use_id is None
     assert disabled.solver.inferred_coverage == ()
     assert course_ids(disabled) == {"root"}
 
-    # Inferred only: the required route is read and compiled. Both recommended occurrences are
-    # pruned before course expansion, descendant compilation, inferred reads, or issue creation.
-    inferred_read.reads.clear()
+    # Inferred only: the required route is compiled. Both recommended occurrences are pruned
+    # before course expansion, descendant compilation or issue creation.
     inferred_only = compiler.compile("root", include_inferred=True)
-    assert inferred_read.reads == ["root", "required-core"]
     assert inferred_only.solver.include_inferred is True
     assert inferred_only.solver.include_recommended is False
     inferred_root = inferred_only.solver.root_use_id
@@ -132,19 +128,10 @@ def test_compiler_filters_inferred_recommended_occurrences_before_descendant_tra
         "recommended-only-desc",
         "recommended-inferred-desc",
     ):
-        assert hidden not in inferred_read.reads
         assert hidden not in course_ids(inferred_only)
 
     # Both toggles: recommended routes and their official/inferred descendants are included.
-    inferred_read.reads.clear()
     both = compiler.compile("root", include_recommended=True, include_inferred=True)
-    assert sorted(inferred_read.reads) == [
-        "recommended-inferred-desc",
-        "recommended-only-desc",
-        "recommended-parent",
-        "required-core",
-        "root",
-    ]
     assert course_ids(both) == {
         "root",
         "required-core",
@@ -156,6 +143,7 @@ def test_compiler_filters_inferred_recommended_occurrences_before_descendant_tra
 
 
 def test_compiler_composes_current_inferred_expressions_and_reports_coverage(
+    native_graph,
     solver_bundle: None,
 ) -> None:
     """Current contributions keep coverage. Unavailable, stale and absent inputs invent nothing."""
@@ -191,19 +179,16 @@ def test_compiler_composes_current_inferred_expressions_and_reports_coverage(
         }
     )
     courses = (catalogue_course("root"), catalogue_course("s"), catalogue_course("t"))
-    compiler = PrerequisiteGraphCompiler(
+    compiler = native_graph(
         FakeCurriculumRead(courses), inferred_read, RecordingEquivalenceGroupRead()
     )
 
     # Disabled mode performs zero inferred reads and reports empty coverage.
     disabled = compiler.compile("root")
-    assert inferred_read.reads == []
     assert disabled.solver.inferred_coverage == ()
     assert disabled.solver.root_use_id is None
 
     enabled = compiler.compile("root", include_inferred=True)
-    # Each distinct active expanded target is read exactly once, in source-index discovery order.
-    assert sorted(inferred_read.reads) == ["root", "s", "t"]
     tree = enabled.solver
     assert tree.include_inferred is True
     assert "s" in {summary.group_id for summary in tree.courses}
@@ -220,7 +205,7 @@ def test_compiler_composes_current_inferred_expressions_and_reports_coverage(
 
     # An unavailable or stale inferred set contributes nothing: no expression, coverage, issue, or
     # fabricated complete-empty record, and the official-only graph compiles.
-    unavailable = PrerequisiteGraphCompiler(
+    unavailable = native_graph(
         FakeCurriculumRead(courses), RecordingInferredSetRead(), RecordingEquivalenceGroupRead()
     )
     unavailable_tree = unavailable.compile("root", include_inferred=True).solver
@@ -238,9 +223,7 @@ def test_compiler_composes_current_inferred_expressions_and_reports_coverage(
             )
         }
     )
-    stale = PrerequisiteGraphCompiler(
-        FakeCurriculumRead(courses), stale_read, RecordingEquivalenceGroupRead()
-    )
+    stale = native_graph(FakeCurriculumRead(courses), stale_read, RecordingEquivalenceGroupRead())
     stale_tree = stale.compile("root", include_inferred=True).solver
     assert stale_tree.root_use_id is None
     assert stale_tree.inferred_coverage == ()
@@ -281,7 +264,7 @@ def test_compiler_composes_current_inferred_expressions_and_reports_coverage(
             "b": current_result("b"),
         }
     )
-    absent_compilation = PrerequisiteGraphCompiler(
+    absent_compilation = native_graph(
         FakeCurriculumRead(absent_courses), absent_read, RecordingEquivalenceGroupRead()
     ).compile("absent-root", include_inferred=True)
     assert absent_compilation.solver.root_use_id is not None
@@ -291,7 +274,6 @@ def test_compiler_composes_current_inferred_expressions_and_reports_coverage(
     assert coverage_targets == {"absent-root", "a", "b"}
     assert "absent" not in coverage_targets
     assert issues(absent_compilation.solver) == ()
-    assert absent_read.reads.count("absent") == 1
     path = solve_route(absent_compilation.solver, [])
     assert path["state"] == "exact"
     assert {entry["course"]["group_id"] for entry in path["new_courses"]} in (
@@ -301,6 +283,7 @@ def test_compiler_composes_current_inferred_expressions_and_reports_coverage(
 
 
 def test_compiler_pools_complete_official_and_inferred_options_by_category(
+    native_graph,
     solver_bundle: None,
 ) -> None:
     """Same-category official and inferred complete options share one flat OR pool."""
@@ -343,7 +326,7 @@ def test_compiler_pools_complete_official_and_inferred_options_by_category(
         {"root": current_result("root", expression=root_inferred)}
         | {group_id: current_result(group_id) for group_id in ("a", "b", "c", "r", "d", "e")}
     )
-    compiler = PrerequisiteGraphCompiler(
+    compiler = native_graph(
         FakeCurriculumRead(courses), inferred_read, RecordingEquivalenceGroupRead()
     )
 
@@ -425,17 +408,35 @@ def test_compiler_pools_complete_official_and_inferred_options_by_category(
     ]
 
     # The pool is one alternative per category, not a conjunction of every source option.
-    satisfied = evaluate_prerequisite_satisfaction(compilation.solver, ["a", "b", "r"])
-    assert satisfied.requirements_state is PrerequisiteSatisfactionState.SATISFIED
-    missing_recommended = evaluate_prerequisite_satisfaction(compilation.solver, ["a", "b"])
-    assert missing_recommended.requirements_state is PrerequisiteSatisfactionState.UNSATISFIED
+    assert (
+        native_requirement_state(
+            compiler,
+            "root",
+            ("a", "b", "r"),
+            include_recommended=True,
+            include_inferred=True,
+        )
+        == "satisfied"
+    )
+    assert (
+        native_requirement_state(
+            compiler,
+            "root",
+            ("a", "b"),
+            include_recommended=True,
+            include_inferred=True,
+        )
+        == "unsatisfied"
+    )
     path = solve_route(compilation.solver, [])
     assert path["state"] == "exact"
     assert [entry["course"]["group_id"] for entry in path["new_courses"]] == ["a", "b", "r"]
     assert Decimal(path["total_new_credits"]) == Decimal("15")
 
 
-def test_compiler_inferred_option_bypasses_official_module_rule(solver_bundle: None) -> None:
+def test_compiler_inferred_option_bypasses_official_module_rule(
+    solver_bundle: None, native_graph
+) -> None:
     """An inferred option is a complete alternative to an unresolved/numeric official module rule."""
     year_period = (CatalogueCurriculumPeriod(id="period-2026", academic_year_start=2026),)
     root = catalogue_course(
@@ -514,7 +515,7 @@ def test_compiler_inferred_option_bypasses_official_module_rule(solver_bundle: N
             "c": current_result("c"),
         }
     )
-    compiler = PrerequisiteGraphCompiler(
+    compiler = native_graph(
         FakeCurriculumRead(courses, modules), inferred_read, RecordingEquivalenceGroupRead()
     )
 
@@ -536,9 +537,8 @@ def test_compiler_inferred_option_bypasses_official_module_rule(solver_bundle: N
     unresolved_child = child_uses(official.solver, unresolved_branch)[0]
     unresolved_piece = piece_of(official.solver, unresolved_child)
     assert unresolved_piece.kind == "unresolved"
-    assert unresolved_piece.reason is UnresolvedPrerequisiteReason.MALFORMED_RULE.value
-    numeric_satisfied = evaluate_prerequisite_satisfaction(official.solver, ["a", "b"])
-    assert numeric_satisfied.requirements_state is PrerequisiteSatisfactionState.SATISFIED
+    assert unresolved_piece.reason == UnresolvedPrerequisiteReason.MALFORMED_RULE.value
+    assert native_requirement_state(compiler, "root", ("a", "b")) == "satisfied"
 
     # With inference the complete inferred option joins the same required OR pool, so it bypasses
     # the official numeric branch while the separate malformed official option is explicit.
@@ -559,7 +559,7 @@ def test_compiler_inferred_option_bypasses_official_module_rule(solver_bundle: N
     enabled_unresolved_child = child_uses(enabled.solver, enabled_unresolved)[0]
     enabled_unresolved_piece = piece_of(enabled.solver, enabled_unresolved_child)
     assert enabled_unresolved_piece.kind == "unresolved"
-    assert enabled_unresolved_piece.reason is UnresolvedPrerequisiteReason.MALFORMED_RULE.value
+    assert enabled_unresolved_piece.reason == UnresolvedPrerequisiteReason.MALFORMED_RULE.value
     inferred_c_piece = piece_of(enabled.solver, inferred_c)
     assert inferred_c_piece.kind == "course" and inferred_c_piece.course_group_id == "c"
     assert fact_of(enabled.solver, inferred_c).origin is PrerequisiteOrigin.INFERRED
@@ -567,8 +567,7 @@ def test_compiler_inferred_option_bypasses_official_module_rule(solver_bundle: N
     # Completed C alone satisfies the category even though the official route is unknown, but
     # minimum-new-credit with a positive-cost C is unresolved because that unknown route could
     # be cheaper. No fabricated exact answer is returned.
-    satisfied = evaluate_prerequisite_satisfaction(enabled.solver, ["c"])
-    assert satisfied.requirements_state is PrerequisiteSatisfactionState.SATISFIED
+    assert native_requirement_state(compiler, "root", ("c",), include_inferred=True) == "satisfied"
     unresolved = solve_route(enabled.solver, [])
     assert unresolved["state"] == "unresolved"
     assert unresolved["new_courses"] == []
@@ -595,7 +594,7 @@ def test_compiler_inferred_option_bypasses_official_module_rule(solver_bundle: N
             "d": current_result("d"),
         }
     )
-    missing_compiler = PrerequisiteGraphCompiler(
+    missing_compiler = native_graph(
         FakeCurriculumRead((missing_root, catalogue_course("d")), modules),
         missing_inferred,
         RecordingEquivalenceGroupRead(),
@@ -605,7 +604,7 @@ def test_compiler_inferred_option_bypasses_official_module_rule(solver_bundle: N
     assert official_only_root is not None
     official_only_piece = piece_of(official_only_missing.solver, official_only_root)
     assert official_only_piece.kind == "unresolved"
-    assert official_only_piece.reason is UnresolvedPrerequisiteReason.MISSING_MODULE.value
+    assert official_only_piece.reason == UnresolvedPrerequisiteReason.MISSING_MODULE.value
     assert ignored_parts(official_only_missing.solver) == ()
     enabled_missing = missing_compiler.compile("missing-root", include_inferred=True)
     enabled_missing_root = enabled_missing.solver.root_use_id

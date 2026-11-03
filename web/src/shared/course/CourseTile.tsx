@@ -22,6 +22,7 @@ export function CourseTile({
   tags,
   actions,
   className,
+  structureSurface,
 }: {
   course: CourseSummary;
   open: boolean;
@@ -32,6 +33,8 @@ export function CourseTile({
   tags?: ReactNode;
   actions: ReactNode;
   className?: string;
+  /** Whether the tile sits inside Structure of studies, where a move needs no prompt. */
+  structureSurface?: boolean;
 }) {
   const language = useProfileSelector((state) => state.language).value;
   const { t } = useWording();
@@ -74,6 +77,7 @@ export function CourseTile({
         open={open}
         onOpenChange={changeOpen}
         onInteractionChange={onInteractionChange}
+        structureSurface={structureSurface}
       >
         <button
           className="tile-trigger"

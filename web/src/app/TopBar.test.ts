@@ -77,7 +77,10 @@ describe("served header tabs", () => {
                 dataset_identity: "synthetic-dataset",
               },
             },
-            createElement(TopBar, { openDocs: () => {} }),
+            createElement(TopBar, {
+              openDocs: () => {},
+              openFeedback: () => {},
+            }),
           ),
         ),
       ),
@@ -100,5 +103,9 @@ describe("served header tabs", () => {
       1,
     );
     expect(tabs[0].classList.contains("active")).toBe(true);
+    // The feedback entry is a standalone page link beside Docs, not another course tab.
+    expect(container.querySelector('a[href="/feedback"]')?.textContent).toBe(
+      uiText("en", "Feedback"),
+    );
   });
 });

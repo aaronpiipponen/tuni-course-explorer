@@ -19,7 +19,7 @@ export type SearchTierListHandle = {
   count: number;
 };
 /** One tier's method, results, scroll element and boundary handler. */
-export type SearchTierListProps = {
+type SearchTierListProps = {
   method: SearchMethod;
   results: readonly UnifiedCourseSearchResult[];
   scrollElement: HTMLElement | null;

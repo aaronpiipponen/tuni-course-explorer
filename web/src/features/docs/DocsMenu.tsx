@@ -5,7 +5,7 @@ import { PHONE_SHELL_QUERY } from "../../shared/viewport";
 import { GITHUB_MARK } from "../../shared/icons";
 import { DocsSearch } from "./DocsSearch";
 import { DocsSidebar } from "./DocsSidebar";
-import { DOCS_REPOSITORY_URL } from "./registry";
+import { DOCS_REPOSITORY_URL } from "./repository";
 import type { DocsPageId } from "./registry";
 
 /** Render the mobile navigation dialog with search and the repository link. */

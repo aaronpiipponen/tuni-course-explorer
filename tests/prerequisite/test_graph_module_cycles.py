@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from course_explorer.curriculum import (
     CatalogueCurriculumPeriod,
 )
@@ -11,9 +13,6 @@ from course_explorer.enums import (
 )
 from course_explorer.prerequisite.domain import (
     UnresolvedPrerequisiteReason,
-)
-from course_explorer.prerequisite.graph import (
-    PrerequisiteGraphCompiler,
 )
 from tests.prerequisite._graph_support import (
     FakeCurriculumRead,
@@ -32,8 +31,12 @@ from tests.prerequisite._graph_support import (
     substitution_option,
 )
 
+pytestmark = pytest.mark.integration
 
-def test_module_expansion_preserves_course_guards_and_detects_course_and_module_cycles() -> None:
+
+def test_module_expansion_preserves_course_guards_and_detects_course_and_module_cycles(
+    native_graph,
+) -> None:
     """Module expansion keeps inactive leaves and terminates on course and module cycles."""
     year_period = (CatalogueCurriculumPeriod(id="period-2026", academic_year_start=2026),)
     # An inactive course emitted by a module is a leaf: no children, substitutions, or reads.
@@ -88,10 +91,9 @@ def test_module_expansion_preserves_course_guards_and_detects_course_and_module_
         catalogue_course("hidden-substitute"),
     )
     inferred_read = RecordingInferredSetRead()
-    compilation = PrerequisiteGraphCompiler(
+    compilation = native_graph(
         FakeCurriculumRead(courses, modules), inferred_read, RecordingEquivalenceGroupRead()
     ).compile("root")
-    assert inferred_read.reads == []
     inlined_root = compilation.solver.root_use_id
     assert inlined_root is not None
     inlined = piece_of(compilation.solver, inlined_root)
@@ -114,7 +116,7 @@ def test_module_expansion_preserves_course_guards_and_detects_course_and_module_
             ),
         ),
     )
-    direct = PrerequisiteGraphCompiler(
+    direct = native_graph(
         FakeCurriculumRead((direct_cycle_root,), modules),
         RecordingInferredSetRead(),
         RecordingEquivalenceGroupRead(),
@@ -125,7 +127,7 @@ def test_module_expansion_preserves_course_guards_and_detects_course_and_module_
     assert direct_rule.kind == "module_block"
     direct_unresolved = piece_of(direct.solver, child_uses(direct.solver, direct_root)[0])
     assert direct_unresolved.kind == "unresolved"
-    assert direct_unresolved.reason is UnresolvedPrerequisiteReason.MODULE_CYCLE.value
+    assert direct_unresolved.reason == UnresolvedPrerequisiteReason.MODULE_CYCLE.value
 
     # module -> course -> module terminates with the same structured reason.
     backedge_rule = module_rule(
@@ -160,7 +162,7 @@ def test_module_expansion_preserves_course_guards_and_detects_course_and_module_
             ),
         ),
     )
-    backedge = PrerequisiteGraphCompiler(
+    backedge = native_graph(
         FakeCurriculumRead(backedge_courses, backedge_modules),
         RecordingInferredSetRead(),
         RecordingEquivalenceGroupRead(),
@@ -178,7 +180,7 @@ def test_module_expansion_preserves_course_guards_and_detects_course_and_module_
     assert backedge_course_leaf.kind == "course"
     assert backedge_course_leaf.course_group_id == "module-back-course"
     assert backedge_cycle.kind == "unresolved"
-    assert backedge_cycle.reason is UnresolvedPrerequisiteReason.MODULE_CYCLE.value
+    assert backedge_cycle.reason == UnresolvedPrerequisiteReason.MODULE_CYCLE.value
 
     # A module course leaf that participates in a course cycle keeps the COURSE_CYCLE issue.
     course_cycle_rule = module_rule(ModuleRuleType.COURSE_UNIT_RULE, referenced_group_id="cycle-a")
@@ -225,7 +227,7 @@ def test_module_expansion_preserves_course_guards_and_detects_course_and_module_
             ),
         ),
     )
-    cycle_compilation = PrerequisiteGraphCompiler(
+    cycle_compilation = native_graph(
         FakeCurriculumRead(cycle_courses, cycle_modules),
         RecordingInferredSetRead(),
         RecordingEquivalenceGroupRead(),

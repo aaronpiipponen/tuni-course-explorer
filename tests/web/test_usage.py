@@ -11,12 +11,14 @@ import httpx
 import pytest
 
 from course_explorer.config import AdmissionSettings
-from course_explorer.search import lookup_commands
 from course_explorer.usage import UsageRecord
 from course_explorer_web.app import create_app
 from course_explorer_web.router.app import create_router
-from tests.support import settings_factory
+from course_explorer_web.routes import catalogue as catalogue_routes
+from tests.support import settings_factory, write_example_config_tree
+from tests.support.repository import bind_repository_root
 from tests.web._router_support import WorkerHarness
+from tests.web.conftest import refresh_serving_settings
 
 _USAGE_PATH = Path("data") / "usage" / "requests"
 _SENTINELS = ("sentinel-course-code", "?query=sentinel", "sentinel-header")
@@ -114,6 +116,9 @@ _CASES = (
         pre_admit=True,
         cookie=_LIMITED_COOKIE,
     ),
+    _UsageCase("GET", "/feedback", "/feedback", 200),
+    _UsageCase("GET", "/api/feedback/definition", "/api/feedback/definition", 200),
+    _UsageCase("POST", "/api/feedback", "/api/feedback", 403, body={}),
 )
 _CASE_IDS = (
     "feature-read",
@@ -126,6 +131,9 @@ _CASE_IDS = (
     "missing-asset",
     "handler-failure",
     "limited",
+    "feedback-shell",
+    "feedback-definition",
+    "feedback-site-refused",
 )
 
 
@@ -140,12 +148,18 @@ def test_http_requests_record_only_safe_route_usage(
     (dist / "index.html").write_text("<main>built shell</main>", encoding="utf-8")
     (assets / "app.js").write_text("console.log('built asset')", encoding="utf-8")
     monkeypatch.setenv("WEB_EMBEDDINGS_ENABLED", "1" if case.use_embeddings else "0")
+    refresh_serving_settings()
+    usage_root = tmp_path
+    if case.path == "/api/feedback/definition":
+        example_root = write_example_config_tree(tmp_path / "checkout")
+        bind_repository_root(monkeypatch, example_root)
+        usage_root = example_root
     if case.status == 500:
 
-        def failing_catalogue(**_kwargs: object) -> None:
+        def failing_catalogue(*_args: object, **_kwargs: object) -> None:
             raise RuntimeError("handler-payload-value")
 
-        monkeypatch.setattr(lookup_commands, "run_catalogue_command", failing_catalogue)
+        monkeypatch.setattr(catalogue_routes, "serving_caches", failing_catalogue)
     harness = WorkerHarness(
         (create_app(frontend_directory=dist), create_app(frontend_directory=dist))
     )
@@ -175,8 +189,11 @@ def test_http_requests_record_only_safe_route_usage(
 
     response = asyncio.run(exercise())
     assert response.status_code == case.status
+    if case.path == "/api/feedback":
+        # The exact-site refusal reaches no worker and so serves no feedback.
+        assert harness.calls == []
 
-    lines = (tmp_path / _USAGE_PATH).read_text(encoding="utf-8").splitlines()
+    lines = (usage_root / _USAGE_PATH).read_text(encoding="utf-8").splitlines()
     assert len(lines) == 1
     record = UsageRecord.model_validate_json(lines[0])
     assert set(json.loads(lines[0])) == {"hour", "route", "status", "duration_seconds"}

@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 400" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Three confidence and flag tests</title>
+  <desc id="d">The stated confidence of the 386 judged reference findings was read in bins. The
+  target-level routing confidence and flags were checked on the 200 reference targets. A drop or
+  demote rule was fitted on 100 ByteShape fit targets and applied to the distinct 50. Each test
+  ended without a rule.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="400" rx="12" fill="#232434"/>
+
+  <text x="64" y="48" font-size="16" fill="#a3a4b8">Signal tested</text>
+  <text x="536" y="48" font-size="16" fill="#a3a4b8">Result</text>
+
+  <rect x="64" y="64" width="360" height="64" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="244" y="90" text-anchor="middle" font-size="16" fill="#ececf2">Stated confidence per finding</text>
+  <text x="244" y="112" text-anchor="middle" font-size="14" fill="#a3a4b8">386 judged findings</text>
+
+  <rect x="536" y="64" width="360" height="64" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="716" y="90" text-anchor="middle" font-size="16" fill="#ececf2">Flat and not monotone</text>
+  <text x="716" y="112" text-anchor="middle" font-size="14" fill="#a3a4b8">no cutoff on 26 September</text>
+
+  <rect x="64" y="168" width="360" height="64" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="244" y="194" text-anchor="middle" font-size="16" fill="#ececf2">Routing confidence and flags</text>
+  <text x="244" y="216" text-anchor="middle" font-size="14" fill="#a3a4b8">200 reference targets</text>
+
+  <rect x="536" y="168" width="360" height="64" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="716" y="194" text-anchor="middle" font-size="16" fill="#ececf2">Weak out of sample</text>
+  <text x="716" y="216" text-anchor="middle" font-size="14" fill="#a3a4b8">0.75 fitted, 0.57 held out</text>
+
+  <rect x="64" y="272" width="360" height="64" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="244" y="298" text-anchor="middle" font-size="16" fill="#ececf2">Per-finding confidence and flags</text>
+  <text x="244" y="320" text-anchor="middle" font-size="14" fill="#a3a4b8">100 fit and 50 validation targets</text>
+
+  <rect x="536" y="272" width="360" height="64" rx="8" fill="#2e3045"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="716" y="298" text-anchor="middle" font-size="16" fill="#ececf2">No rule improved either cohort</text>
+  <text x="716" y="320" text-anchor="middle" font-size="14" fill="#a3a4b8">neither signal removed the errors</text>
+
+  <line x1="424" y1="96" x2="536" y2="96" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="424" y1="200" x2="536" y2="200" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="424" y1="304" x2="536" y2="304" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+</svg>

@@ -16,6 +16,7 @@ export function DiscoverResults({
   loading,
   error,
   hasBasis,
+  activeOnly,
 }: {
   next: NextCoursesReport | null;
   similarity: readonly SimilarityRecommendation[];
@@ -23,6 +24,7 @@ export function DiscoverResults({
   loading: boolean;
   error: Error | null;
   hasBasis: boolean;
+  activeOnly: boolean;
 }) {
   const { language, t } = useWording();
   if (!hasBasis) return null;
@@ -50,7 +52,13 @@ export function DiscoverResults({
     list === "next" ? nextRows.length === 0 : similarity.length === 0;
   if (empty)
     return (
-      <p className="discover-empty">{t("No course matches these options.")}</p>
+      <p className="discover-empty">
+        {t(
+          activeOnly
+            ? "No active course matches these options. Consider turning Active only off."
+            : "No course matches these options.",
+        )}
+      </p>
     );
 
   return (

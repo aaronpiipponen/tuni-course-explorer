@@ -1,0 +1,19 @@
+{
+  "type": "bar",
+  "title": "Operation mix of one light cycle and one heavy cycle",
+  "description": "The operations in one light cycle and one heavy cycle of the capacity workload, counted by operation. Both cycles hold 44 operations, and the heavy cycle trades searches and comparisons for prerequisite, recommendation and next-course requests.",
+  "valueAxis": "Operations per cycle",
+  "categories": [
+    "Title search",
+    "Code search",
+    "Study structure",
+    "Prerequisite drawing",
+    "Comparison",
+    "Recommendation",
+    "Next courses"
+  ],
+  "series": [
+    { "name": "Light cycle", "values": [12, 12, 10, 5, 3, 1, 1] },
+    { "name": "Heavy cycle", "values": [10, 10, 10, 7, 3, 2, 2] }
+  ]
+}

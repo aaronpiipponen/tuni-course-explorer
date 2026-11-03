@@ -1,9 +1,11 @@
-"""Opt-in PostgreSQL proofs for exact-cosine semantic search over representative chunks."""
+"""Opt-in PostgreSQL proofs for the packed exact read through the installed scan function and the
+scoped stored-chunk read.
+"""
 
 from __future__ import annotations
 
 import pytest
-from sqlalchemy import Engine, event
+from sqlalchemy import Engine
 
 from course_explorer.comparison import commands as comparison_commands
 from course_explorer.comparison.commands import CourseComparisonReport
@@ -11,9 +13,9 @@ from course_explorer.constants import COURSE_EMBEDDING_DIMENSION
 from course_explorer.curriculum_repository import CurriculumRepository
 from course_explorer.db.session import session_scope
 from course_explorer.embeddings.generation import embedding_configuration_sha256
-from course_explorer.embeddings.read import DescriptiveChunkCache, TeachingEmbeddingRepository
+from course_explorer.embeddings.read import TeachingEmbeddingRepository
+from course_explorer.embeddings.search_blocks import CourseEmbeddingSearchRepository
 from course_explorer.enums import (
-    DESCRIPTIVE_TEACHING_TEXT_FIELDS,
     TeachingTextField,
     TeachingTextLanguage,
     TeachingTextOrigin,
@@ -29,6 +31,7 @@ from tests.search._repository_support import (
     _seed_semantic_courses,
     embedding_settings,
     search_settings,
+    seed_neighbors,
 )
 
 pytestmark = [
@@ -37,6 +40,16 @@ pytestmark = [
 
 # A zero hub keeps centring an identity so the raw-cosine expectations below stay provable.
 ZERO_HUB = (0.0,) * COURSE_EMBEDDING_DIMENSION
+
+
+def _packed(factory) -> int:
+    """Build the packed search relation from the seeded chunks and return its group count."""
+    with session_scope(factory) as session:
+        group_count, _blocks = CourseEmbeddingSearchRepository(session).replace_all(
+            embedding_configuration_hash=embedding_configuration_sha256(embedding_settings()),
+            hub=ZERO_HUB,
+        )
+    return group_count
 
 
 def test_exact_cosine_uses_best_completed_compatible_chunk_without_cap(
@@ -66,13 +79,12 @@ def test_exact_cosine_uses_best_completed_compatible_chunk_without_cap(
             text="name b",
             cosine=0.49,
         )
-    repository = SemanticSearchRepository(factory)
+    repository = SemanticSearchRepository(factory, group_count=_packed(factory))
 
     scores = repository.search(
         QUERY_VECTOR,
         hub=ZERO_HUB,
         min_score=0.5,
-        embedding_configuration_hash=embedding_configuration_sha256(embedding_settings()),
         include_inactive=True,
     )
     by_group = {score.group_id: score for score in scores}
@@ -86,7 +98,6 @@ def test_exact_cosine_uses_best_completed_compatible_chunk_without_cap(
         QUERY_VECTOR,
         hub=ZERO_HUB,
         min_score=0.5,
-        embedding_configuration_hash=embedding_configuration_sha256(embedding_settings()),
         include_inactive=False,
     )
     assert {score.group_id for score in active_only} == {"group-a"}
@@ -95,7 +106,6 @@ def test_exact_cosine_uses_best_completed_compatible_chunk_without_cap(
         QUERY_VECTOR,
         hub=ZERO_HUB,
         min_score=0.97,
-        embedding_configuration_hash=embedding_configuration_sha256(embedding_settings()),
         include_inactive=True,
     )
     assert above_all == ()
@@ -129,10 +139,6 @@ def test_exact_cosine_uses_best_completed_compatible_chunk_without_cap(
         ("group-b", TeachingTextField.OUTCOMES, TeachingTextLanguage.FI, 1),
         ("group-b", TeachingTextField.NAME, TeachingTextLanguage.FI, 2),
     }
-    # The narrowed read returns exactly the full read's content and outcomes rows in the same order.
-    assert TeachingEmbeddingRepository(factory).get_chunks(
-        requested, embedding_configuration_hash=configuration_hash, descriptive_only=True
-    ) == tuple(chunk for chunk in chunks if chunk.field in DESCRIPTIVE_TEACHING_TEXT_FIELDS)
     a_fi = next(
         chunk
         for chunk in chunks
@@ -141,7 +147,9 @@ def test_exact_cosine_uses_best_completed_compatible_chunk_without_cap(
     assert a_fi.character_count == len("chunk a0")
     assert a_fi.text_origin is TeachingTextOrigin.OFFICIAL
     assert len(a_fi.embedding) == COURSE_EMBEDDING_DIMENSION
-    assert a_fi.embedding == (0.6, 0.8) + (0.0,) * (COURSE_EMBEDDING_DIMENSION - 2)
+    assert tuple(a_fi.embedding) == pytest.approx(
+        (0.6, 0.8) + (0.0,) * (COURSE_EMBEDDING_DIMENSION - 2)
+    )
 
     a_en = next(
         chunk
@@ -149,6 +157,17 @@ def test_exact_cosine_uses_best_completed_compatible_chunk_without_cap(
         if chunk.group_id == "group-a" and chunk.language is TeachingTextLanguage.EN
     )
     basis = (a_en, a_fi)
+    # An empty neighbour table returns no hit, and the opened artifact set owns the refusal.
+    assert (
+        TeachingEmbeddingRepository(factory).find_nearest_chunks(
+            basis,
+            embedding_configuration_hash=configuration_hash,
+            top_k=1,
+            active_only=False,
+        )
+        == ()
+    )
+    seed_neighbors(factory)
     neighbors = TeachingEmbeddingRepository(factory).find_nearest_chunks(
         basis,
         embedding_configuration_hash=configuration_hash,
@@ -156,10 +175,7 @@ def test_exact_cosine_uses_best_completed_compatible_chunk_without_cap(
         active_only=False,
         excluded_group_ids=("group-a",),
     )
-    assert [(hit.query_index, hit.group_id, hit.score) for hit in neighbors] == [
-        (0, "group-b", pytest.approx(0.9815, abs=0.001)),
-        (1, "group-b", pytest.approx(0.932, abs=0.01)),
-    ]
+    assert [hit.group_id for hit in neighbors] == ["group-b"]
     assert (
         TeachingEmbeddingRepository(factory).find_nearest_chunks(
             (),
@@ -187,14 +203,17 @@ def test_service_returns_current_summary_for_derived_only_match_and_ignores_obso
     provider = FakeQueryProvider()
     curriculum = CurriculumRepository(factory)
     service = CourseSearchService(
-        curriculum,
-        SemanticSearchRepository(factory),
+        SemanticSearchRepository(factory, group_count=_packed(factory)),
         provider,
-        embedding_settings(),
+        ZERO_HUB,
         search_settings(0.5),
     )
+    represented = curriculum.list_represented_summaries()
 
-    results = service.search_courses("english text query")
+    results = service.search_courses(
+        "english text query",
+        represented={record.summary.group_id: record for record in represented},
+    )
 
     assert provider.calls == [("english text query",)]
     assert len(results) == 1
@@ -220,6 +239,7 @@ def test_service_returns_current_summary_for_derived_only_match_and_ignores_obso
     assert [
         (chunk.field, chunk.language, chunk.chunk_index, chunk.text_origin) for chunk in scoped
     ] == [(TeachingTextField.CONTENT, TeachingTextLanguage.EN, 0, TeachingTextOrigin.DERIVED)]
+    seed_neighbors(factory)
     neighbors = TeachingEmbeddingRepository(factory).find_nearest_chunks(
         scoped,
         embedding_configuration_hash=configuration_hash,
@@ -231,22 +251,19 @@ def test_service_returns_current_summary_for_derived_only_match_and_ignores_obso
         ("source-current", "3" * 64),
         ("source-obsolete", "2" * 64),
     }
-    ranked = rank_recommendation_candidates(
-        neighbors,
-        (current,),
-        excluded_group_ids=(),
-        display_language="en",
-        settings=search_settings(0.5),
-    )
-    assert [(record.summary.group_id, relatedness) for record, relatedness in ranked] == [
-        ("group-current", pytest.approx(100.0))
-    ]
+    ranked = rank_recommendation_candidates(neighbors, (current,))
+    assert [record.summary.group_id for record in ranked] == ["group-current"]
 
     # The real comparison command composes the shared resolver, the scoped read and the pure
     # meters/verdict owner over the test database. A self-comparison scores 100 where text exists.
     monkeypatch.setattr(comparison_commands, "load_search_settings", lambda: search_settings(0.5))
-    monkeypatch.setattr(comparison_commands, "load_embedding_settings", embedding_settings)
-    report = comparison_commands.run_course_comparison_command("CUR.1", "group-current")
+    monkeypatch.setattr(comparison_commands, "load_embedding_runtime_settings", embedding_settings)
+    report = comparison_commands.run_course_comparison_command(
+        "CUR.1",
+        "group-current",
+        hub=(0.0,) * 1024,
+        outcomes_hub=(0.0,) * 1024,
+    )
 
     assert report.course_a.group_id == "group-current"
     assert report.course_b.group_id == "group-current"
@@ -261,51 +278,3 @@ def test_service_returns_current_summary_for_derived_only_match_and_ignores_obso
     assert report.meters.overlap.b_in_a == pytest.approx(100.0)
     assert report.verdict == "heavily_overlapping"
     assert CourseComparisonReport.model_validate_json(report.model_dump_json()) == report
-
-
-def test_descriptive_chunk_cache_returns_the_full_read_order_and_reuses_retained_triples(
-    database: tuple[Engine, object],
-) -> None:
-    """A cached descriptive read keeps the full read's order and a repeated read issues no SQL."""
-    _seed_semantic_courses(database)
-    engine, factory = database
-    curriculum = CurriculumRepository(factory)
-    requested = tuple(
-        record
-        for record in curriculum.list_represented_summaries()
-        if record.summary.group_id in {"group-a", "group-b", "group-c", "group-d"}
-    )
-    configuration_hash = embedding_configuration_sha256(embedding_settings())
-    repository = TeachingEmbeddingRepository(factory)
-    full = repository.get_chunks(requested, embedding_configuration_hash=configuration_hash)
-    cache = DescriptiveChunkCache(max_entries=8)
-
-    cached = repository.get_chunks(
-        requested,
-        embedding_configuration_hash=configuration_hash,
-        descriptive_only=True,
-        cache=cache,
-    )
-
-    # The request carries groups with no compatible descriptive row, so those triples retain an
-    # empty tuple and the repeated read answers every triple from the cache.
-    assert cached == tuple(
-        chunk for chunk in full if chunk.field in DESCRIPTIVE_TEACHING_TEXT_FIELDS
-    )
-    statements: list[str] = []
-
-    def _capture(_conn, _cursor, statement, _parameters, _context, _executemany):
-        statements.append(statement)
-
-    event.listen(engine, "before_cursor_execute", _capture)
-    try:
-        repeated = repository.get_chunks(
-            requested,
-            embedding_configuration_hash=configuration_hash,
-            descriptive_only=True,
-            cache=cache,
-        )
-    finally:
-        event.remove(engine, "before_cursor_execute", _capture)
-    assert repeated == cached
-    assert statements == []

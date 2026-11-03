@@ -53,14 +53,14 @@
   background: #0a0a0f;
   box-shadow:
     0 0 0 4px rgb(176 123 232 / 7%),
-    0 24px 80px -20px rgb(78 0 142 / 50%);
+    0 24px 80px -20px rgb(90 30 156 / 50%);
   transition: 0.2s;
 }
 .search-bar:focus-within {
   border-color: #b07be8;
   box-shadow:
     0 0 0 4px rgb(176 123 232 / 14%),
-    0 24px 90px -10px rgb(78 0 142 / 70%);
+    0 24px 90px -10px rgb(90 30 156 / 70%);
 }
 .search-bar > svg {
   flex: none;
@@ -106,7 +106,7 @@
   border: 1px solid rgb(176 123 232 / 55%);
   border-radius: 12px;
   color: #fff;
-  background: #4e008e;
+  background: var(--color-accent-strong);
   cursor: pointer;
 }
 .search-submit:hover {
@@ -308,13 +308,13 @@
     background: #0a0a0f;
     box-shadow:
       0 0 0 4px rgb(176 123 232 / 7%),
-      0 24px 80px -20px rgb(78 0 142 / 50%);
+      0 24px 80px -20px rgb(90 30 156 / 50%);
   }
   .search-pane .search-bar:focus-within {
     border-color: #b07be8;
     box-shadow:
       0 0 0 4px rgb(176 123 232 / 14%),
-      0 24px 90px -10px rgb(78 0 142 / 70%);
+      0 24px 90px -10px rgb(90 30 156 / 70%);
   }
   .search-pane .search-bar > svg {
     grid-column: 1;

@@ -4,15 +4,17 @@ from __future__ import annotations
 
 import difflib
 import json
+import secrets
 from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
 
-from course_explorer import configuration
+from course_explorer import administration, configuration
 from course_explorer.config import (
     SETTINGS_SOURCE_MARKER,
-    load_administrative_site_settings,
+    load_feedback_sender_settings,
+    load_feedback_settings,
 )
 from course_explorer_admin import configuration as editor
 from tests.support import write_example_config_tree
@@ -21,6 +23,7 @@ from tests.support import write_example_config_tree
 # subsystem-file save validates against, and every remaining line exercises one binding shape.
 _SYNTHETIC_ENVIRONMENT = (
     "POSTGRES_PASSWORD=synthetic-database-password\n"
+    "FEEDBACK_POSTGRES_PASSWORD=synthetic-feedback-password\n"
     "web_host=127.0.0.1\n"
     'SEARCH_TIER_PRIORITY=\'["exact_code","substring","fuzzy_name","semantic"]\'\n'
     "UNRELATED_SECRET=plain value\n"
@@ -31,8 +34,6 @@ _SYNTHETIC_ENVIRONMENT = (
     "\n"
     "LITERAL_KEY='initial'\n"
     "MULTILINE_KEY='one'\n"
-    "ADMIN_SITE_WEB_SERVICE_UNIT=synthetic-site-web.service\n"
-    "ADMIN_SITE_ADMIN_SERVICE_UNIT=synthetic-site-admin.service\n"
 )
 
 _TIER_METHODS = ["semantic", "exact_code", "substring", "fuzzy_name"]
@@ -66,16 +67,12 @@ def _editor_root(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     """Bind the editor and the file-source owner to one temporary checkout.
 
     The tree is the committed example configuration plus one synthetic environment file, so every
-    family a subsystem-file save validates has its values and no device file is read. A second hub
-    artifact beside the committed one is a valid reference target for a hub-key edit.
+    family a subsystem-file save validates has its values and no device file is read.
     """
     root = write_example_config_tree(tmp_path / "checkout")
     (root / ".env").write_text(_SYNTHETIC_ENVIRONMENT, encoding="utf-8")
     (root / ".env").chmod(0o600)
-    hubs = root / "config" / "derived"
-    (hubs / "embedding-hub-copy.json").write_bytes((hubs / "embedding-hub.json").read_bytes())
-    monkeypatch.setattr(editor, "repository_root", lambda: root)
-    monkeypatch.setattr(configuration, "repository_root", lambda: root)
+    monkeypatch.setattr(administration, "repository_root", lambda: root)
     configuration.clear_configuration_caches()
     return root
 
@@ -115,13 +112,8 @@ def _rewrite_line_endings(path: Path, newline: str) -> None:
     [
         ("config/curriculum.toml", "CURRENT_ACADEMIC_YEAR", json.dumps("2027-2028")),
         ("config/curriculum.toml", "CAPTURE_CHECKPOINT_RESPONSE_COUNT", json.dumps(250)),
-        ("config/database.toml", "SELECTED_DATASET_ENABLED", json.dumps(True)),
+        ("config/database.toml", "EXAMPLE_POSTGRES_DB", json.dumps("course_explorer_example")),
         ("config/search.toml", "COMPARISON_OVERLAP_FLOOR", json.dumps(0.25)),
-        (
-            "config/search.toml",
-            "EMBEDDING_HUB_VECTOR",
-            json.dumps({"path": "config/derived/embedding-hub-copy.json"}),
-        ),
         (
             "config/search.toml",
             "SEARCH_TIER_PRIORITY",
@@ -129,8 +121,27 @@ def _rewrite_line_endings(path: Path, newline: str) -> None:
         ),
         ("config/inference.toml", "INFERENCE_LOCAL_VARIANTS", json.dumps(_LOCAL_VARIANTS)),
         ("config/worker.toml", "ADMIN_POLL_INTERVAL_SECONDS", json.dumps(1.5)),
+        ("config/worker.toml", "TRANSLATION_CONTROLLER_SSH_TARGET", json.dumps("synthetic-worker")),
+        (
+            "config/admin_web.toml",
+            "ADMIN_SITE_WEB_SERVICE_UNIT",
+            json.dumps("synthetic-site-web.service"),
+        ),
+        (
+            "config/admin_web.toml",
+            "ADMIN_SITE_WEB_SERVICE_SCOPE",
+            json.dumps("system"),
+        ),
         ("config/admin_web.toml", "ADMIN_WEB_PORT", json.dumps(18027)),
+        ("config/feedback.toml", "FEEDBACK_POSTGRES_PORT", json.dumps(15433)),
+        (
+            "config/feedback.toml",
+            "FEEDBACK_GITHUB_REPOSITORY",
+            json.dumps("synthetic-owner/synthetic-repository"),
+        ),
+        ("config/feedback.toml", "FEEDBACK_GITHUB_VISIBILITY", json.dumps("private")),
         ("config/web.toml", "WEB_PORT", json.dumps(18026)),
+        ("config/web.toml", "WEB_APP_URL", json.dumps("http://localhost:18037/")),
         ("config/admission.toml", "ADMISSION_SCORE_HEADROOM", json.dumps(0.55)),
     ],
 )
@@ -228,6 +239,7 @@ def test_toml_configuration_save_preserves_file_contract(
             'SEARCH_TIER_PRIORITY=\'["exact_code","substring","fuzzy_name","semantic"]\'\n',
             'SEARCH_TIER_PRIORITY=\'["semantic","exact_code","substring","fuzzy_name"]\'\n',
         ),
+        ("GENERATED_PASSWORDS", "null", "", ""),
     ],
 )
 def test_environment_configuration_save_preserves_literal_values(
@@ -251,6 +263,29 @@ def test_environment_configuration_save_preserves_literal_values(
     """
     root = _editor_root(monkeypatch, tmp_path)
     path = root / ".env"
+    if key == "GENERATED_PASSWORDS":
+        # The self-host workflow generates both database passwords and saves each through this same
+        # owner. Every unrelated binding keeps its value, publication is 0600, and the
+        # acknowledgment never echoes a generated secret.
+        before = configuration.parse_local_configuration(path.read_text(encoding="utf-8"))
+        generated = {
+            name: secrets.token_urlsafe(32)
+            for name in ("POSTGRES_PASSWORD", "FEEDBACK_POSTGRES_PASSWORD")
+        }
+        acknowledgments: list[object] = []
+        for name, value in generated.items():
+            acknowledgments.append(editor.set_configuration_value(".env", name, json.dumps(value)))
+        after = configuration.parse_local_configuration(path.read_text(encoding="utf-8"))
+        assert path.stat().st_mode & 0o777 == 0o600
+        for name, value in generated.items():
+            assert after[name] == value
+            for acknowledgment in acknowledgments:
+                assert value not in acknowledgment.model_dump_json()
+        for name, value in before.items():
+            if name not in generated:
+                assert after[name] == value
+        assert after["UNRELATED_SECRET"] == "plain value"
+        return
     path.chmod(0o644)
     _rewrite_line_endings(path, newline)
     before_bytes = path.read_bytes()
@@ -279,60 +314,72 @@ def test_environment_configuration_save_preserves_literal_values(
 
 @pytest.mark.parametrize("newline", ["\n", "\r\n"])
 @pytest.mark.parametrize(
-    ("literal", "scope"),
+    ("key", "literal", "expected"),
     [
-        (json.dumps("user"), "user"),
-        (json.dumps("system"), "system"),
-        (json.dumps("cluster"), None),
+        (
+            "FEEDBACK_POSTGRES_PASSWORD",
+            json.dumps("synthetic-inserted-feedback-password"),
+            "synthetic-inserted-feedback-password",
+        ),
+        (
+            "FEEDBACK_GITHUB_TOKEN",
+            json.dumps("synthetic-inserted-sender-token"),
+            "synthetic-inserted-sender-token",
+        ),
+        ("FEEDBACK_POSTGRES_PASSWORD", json.dumps(""), None),
+        ("FEEDBACK_GITHUB_TOKEN", json.dumps(""), None),
     ],
 )
-def test_environment_save_inserts_an_owned_machine_key(
+def test_environment_save_inserts_an_owned_credential(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
+    key: str,
     literal: str,
-    scope: str | None,
+    expected: str | None,
     newline: str,
 ) -> None:
-    """One save appends an absent owned environment key, and the owning family loads it.
+    """One save appends an absent owned environment credential, and the owning family loads it.
 
-    The fixture carries both site unit identities, so the saved scope validates through the family
-    that owns it. The file holds either line ending, and every comparison is a byte comparison. The
-    invalid scope is refused by that family before any file changes.
+    The fixture carries both database passwords and no sender token. The file holds either line
+    ending, and every comparison is a byte comparison. The blank value is refused by the owning
+    family before any file changes.
     """
     root = _editor_root(monkeypatch, tmp_path)
     path = root / ".env"
     _rewrite_line_endings(path, newline)
+    payload = path.read_bytes().decode("utf-8")
+    path.write_bytes(
+        payload.replace(
+            f"FEEDBACK_POSTGRES_PASSWORD=synthetic-feedback-password{newline}", ""
+        ).encode("utf-8")
+    )
     before_bytes = path.read_bytes()
 
-    if scope is None:
+    if expected is None:
         with pytest.raises(ValidationError):
-            editor.set_configuration_value(".env", "ADMIN_SITE_WEB_SERVICE_SCOPE", literal)
+            editor.set_configuration_value(".env", key, literal)
         assert path.read_bytes() == before_bytes
         return
 
-    acknowledgment = editor.set_configuration_value(".env", "ADMIN_SITE_WEB_SERVICE_SCOPE", literal)
+    acknowledgment = editor.set_configuration_value(".env", key, literal)
 
     assert acknowledgment.model_dump() == {
         "schema_version": 1,
         "file": ".env",
-        "key": "ADMIN_SITE_WEB_SERVICE_SCOPE",
+        "key": key,
     }
-    expected = before_bytes + (f"ADMIN_SITE_WEB_SERVICE_SCOPE='{scope}'" + newline).encode()
-    assert path.read_bytes() == expected
+    expected_bytes = before_bytes + (f"{key}='{expected}'" + newline).encode()
+    assert path.read_bytes() == expected_bytes
     assert path.stat().st_mode & 0o777 == 0o600
 
-    for alias in (
-        SETTINGS_SOURCE_MARKER,
-        "ADMIN_SITE_WEB_SERVICE_UNIT",
-        "ADMIN_SITE_ADMIN_SERVICE_UNIT",
-        "ADMIN_SITE_WEB_SERVICE_SCOPE",
-    ):
-        monkeypatch.delenv(alias, raising=False)
+    monkeypatch.delenv(SETTINGS_SOURCE_MARKER, raising=False)
+    monkeypatch.delenv(key, raising=False)
     configuration.clear_configuration_caches()
-    settings = load_administrative_site_settings()
-    assert settings.web_service_scope == scope
-    assert settings.web_service_unit == "synthetic-site-web.service"
-    assert settings.admin_service_unit == "synthetic-site-admin.service"
+    if key == "FEEDBACK_GITHUB_TOKEN":
+        token = load_feedback_sender_settings().feedback_github_token
+    else:
+        token = load_feedback_settings().feedback_postgres_password
+    assert token.get_secret_value() == expected
 
 
 _REFUSED_CASES: dict[str, tuple[str, str, str]] = {
@@ -373,14 +420,19 @@ _REFUSED_CASES: dict[str, tuple[str, str, str]] = {
         json.dumps(["exact_code", "substring", "fuzzy_name"]),
     ),
     "app-url-query-marker": (
-        "config/admin_web.toml",
-        "ADMIN_WEB_APP_URL",
+        "config/web.toml",
+        "WEB_APP_URL",
         json.dumps("https://example.org/?"),
     ),
     "app-url-fragment-marker": (
-        "config/admin_web.toml",
-        "ADMIN_WEB_APP_URL",
+        "config/web.toml",
+        "WEB_APP_URL",
         json.dumps("https://example.org/#"),
+    ),
+    "app-url-remote-plain-http": (
+        "config/web.toml",
+        "WEB_APP_URL",
+        json.dumps("http://example.org/"),
     ),
     "lowercase-owned-invalid-environment-value": (
         ".env",
@@ -389,6 +441,7 @@ _REFUSED_CASES: dict[str, tuple[str, str, str]] = {
     ),
     "non-string-environment-value": (".env", "WEB_HOST", json.dumps(12)),
     "unowned-absent-environment-key": (".env", "UNOWNED_ABSENT_KEY", json.dumps("value")),
+    "non-credential-environment-key": (".env", "WEB_PORT", json.dumps("18026")),
     "differently-cased-duplicate-binding": (
         ".env",
         "WEB_HOST",
@@ -413,16 +466,16 @@ def test_configuration_write_refuses_invalid_or_unconfined_candidates(
     The cases are an unlisted path, a traversal, a missing key, a JSON null, a non-finite number, a
     boolean for a port, a non-loopback host beside a valid local value and beside a valid process
     value, a non-loopback administration host beside a valid process value, a cached local value
-    beside a changed file, a duplicated and a malformed local input, a lowercase local alias that
-    must not mask an invalid subsystem-file candidate, an academic-year order, an invalid structured
-    value, an App URL carrying a query or fragment marker, a non-string environment value, an
-    unowned absent environment key, a lowercase owned environment value that its validator refuses,
+    beside a changed file, a duplicated and a malformed local input, and a lowercase local alias
+    that must not mask an invalid subsystem-file candidate. Further cases are an academic-year
+    order, an invalid structured value, an App URL carrying a query or fragment marker or a remote
+    plain-HTTP address, a non-string environment value, an unowned absent environment key, an owned
+    non-credential environment key, a lowercase owned environment value that its validator refuses,
     a differently cased duplicate environment binding, a duplicated environment assignment, a
     symlinked environment file, a symlinked directory and a score line above a sibling line. Every
     case runs the real validators and files, refuses before publication, and leaves no temporary
-    file behind.
-    A subsystem-file save reads the local input freshly, so neither a cached value nor an ambiguous
-    file can mask the candidate, and a malformed input reports nothing.
+    file behind. A subsystem-file save reads the local input freshly, so neither a cached value nor
+    an ambiguous file can mask the candidate, and a malformed input reports nothing.
     """
     root = _editor_root(monkeypatch, tmp_path)
     file, key, literal = _REFUSED_CASES[case]
@@ -480,8 +533,10 @@ def test_configuration_write_refuses_invalid_or_unconfined_candidates(
     before_entries = sorted(entry.name for entry in root.iterdir())
     before_config = sorted(entry.name for entry in (root / "config").iterdir())
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as refusal:
         editor.set_configuration_value(file, key, literal)
+    if case == "non-credential-environment-key":
+        assert "configuration key is not a credential" in str(refusal.value)
 
     assert {name: (root / name).read_bytes() for name in sources} == before_bytes
     assert outside.read_text(encoding="utf-8") == before_outside

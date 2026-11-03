@@ -32,13 +32,13 @@ One record holds the current state of a stage, and one immutable receipt per ses
 
 A status read adds one projected state, interrupted, in place of starting or running when the recorded owned process is not alive. No command writes it, and the projection writes nothing. A start resumes the retained session when its work identity matches this device and refuses it when the identity differs, and the retained work is left in place.
 
-![One stage moves from idle through starting to running, and the run then ends at a durable boundary as completed, failed, paused, or stopped. A stop finalizes any of those states to idle, and a status read projects the interrupted state while a starting or running stage has no live owned process.](/docs/diagrams/stage-lifecycle.svg)
+![One stage moves from idle through starting to running as its worker reports, and the run then ends at a durable boundary as completed, failed, paused, or stopped. A status read projects the interrupted state while a starting or running stage has no live owned process, a resume returns a paused stage to starting, and a stop action from any non-idle state finalizes the session and publishes idle.](/docs/diagrams/stage-lifecycle.svg)
 
 ## Starting a session
 
 A start on a stage with no state creates a fresh session. The stage chooses its options, records a work identity from those options and its validated configuration, records the revision of the running checkout, and publishes starting. An ingestion start adopts the one partial capture the stage retained, and it fails when more than one candidate exists.
 
-A start on a stage with a state continues that session when the retained identity matches this device, and it re-reads the retained capture manifest before it continues. Which of the two happens follows from the retained state.
+A start on a stage with a state continues that session when the retained identity matches this device. A retained ingestion session also re-reads its capture manifest, requires a regular file, and compares its bytes with the recorded hash when one is recorded. Which of the two happens follows from the retained state.
 
 | The retained state | What a start does |
 |---|---|
@@ -84,13 +84,11 @@ Normalization is one transaction. It reads the completed capture, validates it, 
 
 A stage measures active time only while it is running and its recorded start time is known, so the idle time between two runs does not inflate the measured rate or the projected remaining time.
 
-Coverage counts the stored rows of the selected dataset, so it says what has been written and not what the run is doing. The two facts are independent. A stage returns to idle after a completed run with complete coverage, and it also returns to idle after a partial run with pending rows. The [Full-catalogue inference run](/docs/experiments/inference/full-catalogue-inference-run.md) report records a run that stopped part-way and resumed to a complete cycle. The coverage reports are described in the [Operator menu](/docs/operations/operator-menu.md#coverage-and-summaries).
+Coverage counts the stored rows of the role the report names, so it says what has been written and not what the run is doing. The two facts are independent. A stage returns to idle after a completed run with complete coverage, and it also returns to idle after a partial run with pending rows. The [Full-catalogue inference run](/docs/experiments/inference/full-catalogue-inference-run.md) report records a run that stopped part-way and resumed to a complete cycle. The coverage reports are described in the [Operator menu](/docs/operations/operator-menu.md#coverage-and-summaries).
 
 ## The worker at a stop
 
-A remote stage finalizes on the worker before the dataset changes. The worker session imports the output the stage retained into the worker's own copy of the dataset, and inference publishes the accepted proposals and equivalence groups there. The finished copy then returns as one whole, is checked against the snapshot taken when the session started, and is restored and selected as the selected dataset. The returned worker database is dropped once the server receipt exists, and the dataset rotation retains the selected dataset and the one before it.
-
-A stop of a remote stage therefore has an order: the run ends, the worker session is stopped and finalized, the copy returns, and only then do the owned resources and the local scratch go. [Worker sessions](/docs/operations/worker-sessions.md) describes the session and its return, [Datasets](/docs/operations/datasets.md) describes the selection and the rotation, and [Translation](/docs/backend/text-and-vectors/translation.md#the-output-it-publishes) describes the import that writes the retained output.
+A remote stage finalizes on the worker and returns the finished copy before it releases the resources the session owns and its local scratch, which [Worker sessions](/docs/operations/worker-sessions.md#owned-resources-only) describes.
 
 ## The periodic reboot
 

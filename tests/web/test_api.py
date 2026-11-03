@@ -7,21 +7,21 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from course_explorer.config import SearchSettings
 from course_explorer.curriculum_repository import CurriculumRepository
 from course_explorer.hashing import json_sha256
 from course_explorer.ingestion.normalization import normalize_curriculum
 from course_explorer.ingestion.normalization_repository import NormalizationRepository
 from course_explorer.ingestion.repository import CaptureRepository
-from course_explorer.search import lookup_commands
-from course_explorer.search.lookup import CourseLookupService
+from course_explorer.search.projection import build_lookup_projection
+from course_explorer.search.resolver import CourseResolver
+from course_explorer_web import serving_cache
 from course_explorer_web.app import app
 from course_explorer_web.dataset import SERVING_GENERATION_ENV
 from tests.ingestion._normalization_repository_support import (
     GUIDE_URL,
     build_completed_fixture_store,
 )
-from tests.support import settings_factory
+from tests.web.conftest import refresh_serving_settings
 
 pytestmark = [
     pytest.mark.integration,
@@ -42,14 +42,18 @@ def test_course_summaries_route_preserves_resolution(
         course_guide_base_url=GUIDE_URL,
     )
     monkeypatch.setattr(
-        lookup_commands, "load_search_settings", lambda: settings_factory(SearchSettings)
+        serving_cache,
+        "_preloaded_projection",
+        build_lookup_projection(CurriculumRepository(factory)),
     )
     generation = "a" * 32
     monkeypatch.setenv(SERVING_GENERATION_ENV, generation)
-    expected_records = CourseLookupService(
-        CurriculumRepository(factory), settings_factory(SearchSettings)
-    ).resolve_courses(("course-group-inactive", "CS.A2", "course-group-inactive"))
-    response = TestClient(app).post(
+    refresh_serving_settings()
+    expected_records = CourseResolver(CurriculumRepository(factory)).resolve_courses(
+        ("course-group-inactive", "CS.A2", "course-group-inactive")
+    )
+    client = TestClient(app)
+    response = client.post(
         "/api/course-summaries",
         json={"identifiers": ["course-group-inactive", "CS.A2", "course-group-inactive"]},
     )

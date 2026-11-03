@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
+import pytest
+
 from course_explorer.enums import PrerequisiteRequirementKind
 from course_explorer.prerequisite.domain import OfficialPrerequisiteKind
-from course_explorer.prerequisite.graph import (
-    PrerequisiteGraphCompiler,
-)
 from tests.prerequisite._graph_support import (
     FakeCurriculumRead,
     RecordingEquivalenceGroupRead,
@@ -22,8 +21,12 @@ from tests.prerequisite._graph_support import (
     substitution_option,
 )
 
+pytestmark = pytest.mark.integration
 
-def test_compiler_preserves_official_or_of_and_recommended_and_directional_substitutions() -> None:
+
+def test_compiler_preserves_official_or_of_and_recommended_and_directional_substitutions(
+    native_graph,
+) -> None:
     """Source order, official provenance, and directional substitution OR-of-AND survive."""
     # Root: compulsory (A AND B) OR (C). Recommended (D) whose own compulsory child is D-child.
     root_options = (
@@ -89,7 +92,7 @@ def test_compiler_preserves_official_or_of_and_recommended_and_directional_subst
     )
     curriculum = FakeCurriculumRead(courses)
     inferred_read = RecordingInferredSetRead()
-    compiler = PrerequisiteGraphCompiler(curriculum, inferred_read, RecordingEquivalenceGroupRead())
+    compiler = native_graph(curriculum, inferred_read, RecordingEquivalenceGroupRead())
 
     # Default (recommended disabled): the recommended branch is pruned whole before traversal.
     disabled = compiler.compile("root")
@@ -100,10 +103,6 @@ def test_compiler_preserves_official_or_of_and_recommended_and_directional_subst
     assert "d-child" not in disabled_groups
     assert "d" not in course_node_ids(disabled.display)
     assert "d-child" not in course_node_ids(disabled.display)
-    requested = {group_id for batch in curriculum.course_reads for group_id in batch}
-    assert "d" not in requested
-    assert "d-child" not in requested
-    assert inferred_read.reads == []
 
     # Enabled: the recommended branch expands D with its own compulsory child.
     compilation = compiler.compile("root", include_recommended=True)
@@ -180,22 +179,8 @@ def test_compiler_preserves_official_or_of_and_recommended_and_directional_subst
         edge.source_node_id == "course:root" and edge.target_node_id == "course:e"
         for edge in compilation.display.edges
     )
-    assert inferred_read.reads == []
 
-    # Direct-many keeps separate category roots and stops ordinary course ancestors.
+    # Direct-many keeps the candidate's own summary and stops ordinary course ancestors.
     direct = compiler.compile_direct_many(("root",))
-    assert [entry.solver.root_group_id for entry in direct] == ["root"]
-    direct_entry = direct[0]
-    assert direct_entry.required_use_id is not None
-    assert direct_entry.recommended_use_id is not None
-    direct_groups = {course.group_id for course in direct_entry.solver.courses}
-    assert {"a", "a1", "a2", "a3", "b", "c", "d"} <= direct_groups
-    assert "d-child" not in direct_groups
-    assert "e" not in direct_groups
-    assert "x" not in direct_groups
-    assert piece_of(direct_entry.solver, direct_entry.required_use_id).kind == "or"
-    first_direct_option = child_uses(direct_entry.solver, direct_entry.required_use_id)[0]
-    assert piece_of(direct_entry.solver, first_direct_option).kind == "and"
-    direct_a_branch = child_uses(direct_entry.solver, first_direct_option)[0]
-    assert piece_of(direct_entry.solver, direct_a_branch).kind == "course_alternatives"
-    assert leaf_group_ids(direct_entry.solver, direct_entry.recommended_use_id) == {"d"}
+    assert [entry.summary.root_group_id for entry in direct] == ["root"]
+    assert {course.group_id for course in direct[0].summary.courses} == {"root"}

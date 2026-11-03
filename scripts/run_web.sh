@@ -1,4 +1,6 @@
 #!/usr/bin/bash
-# Hand only the web allowlist to its launcher. Configuration loads automatically.
+# Run the web launcher of the checkout that contains this script.
+# Usage: scripts/run_web.sh
 set -euo pipefail
-exec ./.venv/bin/python -m course_explorer_web.launch
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec env PYTHONPATH="$SCRIPT_DIR/../src" "$SCRIPT_DIR/../.venv/bin/python" -m course_explorer_web.launch

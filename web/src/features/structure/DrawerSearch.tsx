@@ -1,5 +1,6 @@
 /** Drawer-local course/module/programme substring search and category controls. */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import type {
   CatalogueCourse,
   CatalogueModule,
@@ -13,12 +14,14 @@ import { courseCredits, courseName } from "../../shared/course/presentation";
 import { readCachedCourseSummaries } from "../../shared/course/reads";
 import { moduleName } from "./presentation";
 import { ModuleVersionHandoff } from "./ModuleVersionHandoff";
+import { AnimatedHeight } from "../../shared/AnimatedHeight";
 import { ErrorNotice } from "../../shared/ErrorNotice";
 import { LookupVirtualList } from "../../shared/LookupVirtualList";
 import type { StructureNode } from "./model";
 import { useProfileSelector } from "../../state/useProfileSelector";
 import { useWording } from "../../shared/useWording";
 import { useModuleVersionHandoff } from "./useModuleVersionHandoff";
+import { useReducedMotion } from "../../shared/useReducedMotion";
 
 type Filter = "all" | "course" | "module" | "programme";
 const FILTER_KEYS = {
@@ -73,6 +76,7 @@ export function DrawerSearch({
     (state) => state.language,
   );
   const { t } = useWording();
+  const reducedMotion = useReducedMotion();
   const close = useCallback(() => {
     setQuery("");
     onOpenChange(false);
@@ -90,11 +94,17 @@ export function DrawerSearch({
   useEffect(() => {
     if (!open) return;
     const outside = (event: PointerEvent) => {
-      if (event.target instanceof Node && !host.current?.contains(event.target))
+      if (
+        event.target instanceof Element &&
+        !event.target.closest('[role="dialog"], .dialog-scrim') &&
+        !host.current?.contains(event.target)
+      )
         close();
     };
     const keys = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        // An open prompt owns Escape, so dismissing it keeps the drawer results.
+        if (document.querySelector('[role="dialog"]')) return;
         event.stopPropagation();
         close();
       }
@@ -199,129 +209,153 @@ export function DrawerSearch({
           }}
         />
       </div>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            className="dseg-row"
+            initial={{ height: 0, opacity: 0, marginTop: 0 }}
+            animate={{ height: "auto", opacity: 1, marginTop: 8 }}
+            exit={{ height: 0, opacity: 0, marginTop: 0 }}
+            transition={{
+              duration: reducedMotion ? 0 : 0.3,
+              ease: [0.22, 0.8, 0.2, 1],
+            }}
+            style={{ overflow: "hidden" }}
+          >
+            <div className="seg dseg">
+              {(["all", "course", "module", "programme"] as const).map(
+                (value) => (
+                  <button
+                    type="button"
+                    className={filter === value ? "on" : ""}
+                    key={value}
+                    onClick={() => setFilter(value)}
+                  >
+                    {t(FILTER_KEYS[value])}
+                  </button>
+                ),
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <div
         className={`dres${open ? " open" : ""}`}
-        ref={setDrawer}
         aria-hidden={!open}
         inert={!open}
       >
-        <div className="seg dseg">
-          {(["all", "course", "module", "programme"] as const).map((value) => (
-            <button
-              type="button"
-              className={filter === value ? "on" : ""}
-              key={value}
-              onClick={() => setFilter(value)}
-            >
-              {t(FILTER_KEYS[value])}
-            </button>
-          ))}
-        </div>
-        {!query.trim() ? (
-          <div className="dnote">
-            {t("Type to search courses, modules and programmes.")}
+        <AnimatedHeight>
+          <div className="dres-results thin-scrollbar" ref={setDrawer}>
+            {!query.trim() ? (
+              <div className="dnote">
+                {t("Type to search courses, modules and programmes.")}
+              </div>
+            ) : (
+              <>
+                {pickError && (
+                  <ErrorNotice error={pickError} language={language} />
+                )}
+                {courses.error && showCourses && (
+                  <ErrorNotice error={courses.error} language={language} />
+                )}{" "}
+                {modules.error && showModules && (
+                  <ErrorNotice error={modules.error} language={language} />
+                )}
+                {courses.loading && showCourses && (
+                  <div
+                    className="course-lookup-skeletons"
+                    aria-label={t("Loading courses")}
+                  >
+                    <div className="course-lookup-skeleton" />
+                  </div>
+                )}
+                {modules.loading && showModules && (
+                  <div
+                    className="course-lookup-skeletons"
+                    aria-label={t("Loading modules")}
+                  >
+                    <div className="course-lookup-skeleton" />
+                  </div>
+                )}
+                {showCourses && !courses.loading && !courses.error && (
+                  <section className="tier eyebrow">
+                    <div>// {t("courses (heading)")}</div>
+                    {courses.report?.results.length ? (
+                      <LookupVirtualList
+                        items={courses.report.results}
+                        getItemKey={courseKey}
+                        className="plist"
+                        resetKey={resetIdentity}
+                        inputRef={input}
+                        scrollElement={drawer}
+                        renderRow={(course) => (
+                          <button
+                            className="prow"
+                            type="button"
+                            onClick={() => void chooseCourse(course)}
+                            disabled={disabled}
+                          >
+                            <span className="code">{course.code}</span>
+                            <span className="pn">
+                              {courseName(course, language)}
+                            </span>
+                            <span className="cr">
+                              {courseCredits(course, language)}
+                            </span>
+                            <span className="add">{t("+ add")}</span>
+                          </button>
+                        )}
+                      />
+                    ) : (
+                      <div className="dnote">{t("No matches.")}</div>
+                    )}
+                  </section>
+                )}
+                {showModules && !modules.loading && !modules.error && (
+                  <section className="tier eyebrow">
+                    {filter === "programme" ? (
+                      <div>// {t("programmes")}</div>
+                    ) : (
+                      <div>// {t("modules")}</div>
+                    )}
+                    {moduleResults.length ? (
+                      <LookupVirtualList
+                        items={moduleResults}
+                        getItemKey={groupKey}
+                        className="plist"
+                        resetKey={resetIdentity}
+                        inputRef={input}
+                        scrollElement={drawer}
+                        renderRow={(item) => (
+                          <button
+                            className="prow root-module-row"
+                            type="button"
+                            onClick={() => handoff.activate(item)}
+                            disabled={disabled}
+                          >
+                            <span className="code">{item.code ?? ""}</span>
+                            <span className="pn">
+                              {moduleName(item, language)}
+                            </span>
+                          </button>
+                        )}
+                      />
+                    ) : (
+                      <div className="dnote">{t("No matches.")}</div>
+                    )}
+                  </section>
+                )}
+              </>
+            )}
+            <ModuleVersionHandoff
+              group={handoff.group}
+              cancelRef={handoff.cancelRef}
+              disabled={disabled}
+              onCancel={handoff.cancel}
+              onSelect={handoff.pick}
+            />
           </div>
-        ) : handoff.group ? (
-          <ModuleVersionHandoff
-            group={handoff.group}
-            cancelRef={handoff.cancelRef}
-            disabled={disabled}
-            onCancel={handoff.cancel}
-            onSelect={handoff.pick}
-          />
-        ) : (
-          <>
-            {pickError && <ErrorNotice error={pickError} language={language} />}
-            {courses.error && showCourses && (
-              <ErrorNotice error={courses.error} language={language} />
-            )}{" "}
-            {modules.error && showModules && (
-              <ErrorNotice error={modules.error} language={language} />
-            )}
-            {courses.loading && showCourses && (
-              <div
-                className="course-lookup-skeletons"
-                aria-label={t("Loading courses")}
-              >
-                <div className="course-lookup-skeleton" />
-              </div>
-            )}
-            {modules.loading && showModules && (
-              <div
-                className="course-lookup-skeletons"
-                aria-label={t("Loading modules")}
-              >
-                <div className="course-lookup-skeleton" />
-              </div>
-            )}
-            {showCourses && !courses.loading && !courses.error && (
-              <section className="tier eyebrow">
-                <div>// {t("courses (heading)")}</div>
-                {courses.report?.results.length ? (
-                  <LookupVirtualList
-                    items={courses.report.results}
-                    getItemKey={courseKey}
-                    className="plist"
-                    resetKey={resetIdentity}
-                    inputRef={input}
-                    scrollElement={drawer}
-                    renderRow={(course) => (
-                      <button
-                        className="prow"
-                        type="button"
-                        onClick={() => void chooseCourse(course)}
-                        disabled={disabled}
-                      >
-                        <span className="code">{course.code}</span>
-                        <span className="pn">
-                          {courseName(course, language)}
-                        </span>
-                        <span className="cr">
-                          {courseCredits(course, language)}
-                        </span>
-                        <span className="add">{t("+ add")}</span>
-                      </button>
-                    )}
-                  />
-                ) : (
-                  <div className="dnote">{t("No matches.")}</div>
-                )}
-              </section>
-            )}
-            {showModules && !modules.loading && !modules.error && (
-              <section className="tier eyebrow">
-                {filter === "programme" ? (
-                  <div>// {t("programmes")}</div>
-                ) : (
-                  <div>// {t("modules")}</div>
-                )}
-                {moduleResults.length ? (
-                  <LookupVirtualList
-                    items={moduleResults}
-                    getItemKey={groupKey}
-                    className="plist"
-                    resetKey={resetIdentity}
-                    inputRef={input}
-                    scrollElement={drawer}
-                    renderRow={(item) => (
-                      <button
-                        className="prow root-module-row"
-                        type="button"
-                        onClick={() => handoff.activate(item)}
-                        disabled={disabled}
-                      >
-                        <span className="code">{item.code ?? ""}</span>
-                        <span className="pn">{moduleName(item, language)}</span>
-                      </button>
-                    )}
-                  />
-                ) : (
-                  <div className="dnote">{t("No matches.")}</div>
-                )}
-              </section>
-            )}
-          </>
-        )}
+        </AnimatedHeight>
       </div>
     </div>
   );

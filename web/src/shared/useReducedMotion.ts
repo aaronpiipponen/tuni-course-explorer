@@ -30,3 +30,8 @@ function getServerSnapshot(): boolean {
 export function useReducedMotion(): boolean {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
+
+/** Report the current reduced-motion preference outside a component. */
+export function prefersReducedMotion(): boolean {
+  return query().matches;
+}

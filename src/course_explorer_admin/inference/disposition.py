@@ -1,10 +1,10 @@
 """Operator disposition of one canonical inference target.
 
 This module is the disposition surface of the administration command: it reads and sets the
-durable NOTHING/DONE/FAILED choice on the selected dataset through the scheduling repository and
-sole publication owner. A read resolves the selected dataset and requires the executing checkout's
-schema head. A decision write additionally requires all four stages idle and a verified returned
-selected dataset.
+durable NOTHING/DONE/FAILED choice on the Working dataset through the scheduling repository and
+sole publication owner. A read resolves the Working dataset and requires the executing checkout's
+schema head. A decision write additionally requires all four stages idle and a verified returned or
+copied Working dataset.
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ from course_explorer.config import (
 )
 from course_explorer.curriculum import CourseSummary
 from course_explorer.curriculum_repository import CurriculumRepository
-from course_explorer.datasets import require_database_schema, resolve_selected_dataset
+from course_explorer.datasets import require_database_schema, resolve_dataset_role
 from course_explorer.db.session import database_context
 from course_explorer.inference.publication import publish_current_cohort
 from course_explorer.inference.scheduling import TargetDisposition
@@ -51,29 +51,27 @@ class InferenceTargetDisposition(BaseModel):
 
 @contextmanager
 def _disposition_context(*, mutating: bool) -> Iterator[tuple[str, sessionmaker[Session]]]:
-    """Guard and open one selected-dataset context for a read or a decision write.
+    """Guard and open one Working-dataset context for a read or a decision write.
 
-    It resolves the configured admin state root, requires the selected-dataset switch and the
-    live schema head of the selected database, then yields the dataset id and one short-lived
-    session factory bound to the selected database. A decision write additionally requires a
-    verified returned receipt and takes the shared datasets action lock with idle stages. A read
-    takes no action lock.
+    It resolves the configured admin state root, requires the Working dataset and the live schema
+    head of its database, then yields the dataset id and one short-lived session factory bound to
+    that database. A decision write additionally requires a verified returned or copied receipt and
+    takes the shared datasets action lock with idle stages. A read takes no action lock.
     """
     settings = load_administrative_dataset_settings()
     root = admin_state_root(settings)
     raw = load_raw_database_settings()
-    if not raw.selected_dataset_enabled:
-        raise ValueError("target disposition requires the selected dataset")
     with ExitStack() as stack:
         if mutating:
             stack.enter_context(
                 mechanics.exclusive_action_lock(root, controller_name="datasets", create=True)
             )
-        receipt = resolve_selected_dataset(root)
+        receipt = resolve_dataset_role(root, "working")
         if mutating:
-            if receipt.kind != "returned":
+            if receipt.kind not in {"returned", "copied"}:
                 raise ValueError(
-                    "target disposition write requires a verified returned selected dataset"
+                    "target disposition write requires a verified returned or copied "
+                    "Working dataset"
                 )
             require_stages_idle()
         database = raw.model_copy(update={"postgres_db": receipt.database_name})

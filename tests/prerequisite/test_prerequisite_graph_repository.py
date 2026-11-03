@@ -34,6 +34,7 @@ from tests.ingestion._normalization_repository_support import (
 )
 from tests.prerequisite._command_support import search_settings
 from tests.prerequisite._graph_support import root_summary
+from tests.prerequisite._native_support import reset_worker_handle
 
 pytestmark = [
     pytest.mark.integration,
@@ -138,6 +139,7 @@ def test_inferred_recommended_toggle_matrix_flows_through_postgresql_and_command
     # official-only report.
     with factory.begin() as session:
         session.execute(update(InferredPrerequisiteSet).values(expression={"type": "unsupported"}))
+    reset_worker_handle()
     with pytest.raises(ValueError):
         run_prerequisite_command("CS.A2", include_inferred=True, include_recommended=True)
     with pytest.raises(ValueError):

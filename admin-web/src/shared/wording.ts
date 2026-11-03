@@ -6,7 +6,8 @@
  * site.
  */
 export const wording = {
-  brand: "TUNI Course Explorer",
+  brand: "course-explorer",
+  brandSite: "tuni",
   admin: "Admin",
   app: "App",
   docs: "Docs",
@@ -26,7 +27,9 @@ export const wording = {
   ageHours: "{count} hours ago",
   ageDay: "1 day ago",
   ageDays: "{count} days ago",
-  selectionDisabled: "The selected dataset is not enabled on this site.",
+  selectionDisabled: "No dataset is selected on this site.",
+  stateUnavailable:
+    "The dataset state is unavailable: data/ or its dataset tree is a symlink or not a directory.",
   notRead: "no read",
   readFailed: "The read failed.",
   writeFailed: "The command failed.",
@@ -45,6 +48,7 @@ export const wording = {
     inference: "Inference",
     logs: "Logs",
     settings: "Settings",
+    feedback: "Feedback",
   },
   action: {
     start: "Start",
@@ -98,6 +102,7 @@ export const wording = {
     outcomesHub: "outcomes hub",
     webServerHubs: "web server hubs",
     hubsAtProcessStart: "read at process start",
+    embeddingsOff: "Embedding features are off on this site.",
     restartHint:
       "Restart the web server to load the hub files written at {time}.",
     bind: "bind",
@@ -149,9 +154,13 @@ export const wording = {
     missing: "Missing",
     cell: "Field, language, origin",
     total: "Total",
-    writeHubs: "Write hubs",
-    hubsWritten: "Hubs written: {catalogue} and {outcomes}.",
-    hubsRestart: "Loading hubs requires a web restart.",
+    buildServingArtifacts: "Build serving artifacts",
+    servingArtifactsBuilt:
+      "Serving artifacts built at {pair}: {groups} search groups in {blocks} blocks, {centroids} centroids, {neighbors} neighbour rows and {roots} study roots. Hubs {catalogue} and {outcomes}.",
+    servingArtifactsBuiltWithoutEmbeddings:
+      "Serving artifacts built at {catalogue}: {roots} study roots. Embedding features are off on this site, so the build wrote no embedding artifacts.",
+    servingArtifactsRestart:
+      "The web server reads the artifacts at start, so restart it after a build.",
   },
   inference: {
     run: "Inference run",
@@ -159,7 +168,6 @@ export const wording = {
     coverage: "Coverage",
     targetDecisions: "Target decisions",
     identities: "Generation identities",
-    datasetCleanup: "Dataset cleanup",
     failures: "Failures",
     selected: "selected",
     processed: "processed",
@@ -192,9 +200,6 @@ export const wording = {
     exhausted: "Exhausted",
     created: "Created",
     dataset: "dataset",
-    datasetName: "Dataset",
-    namedDatabase: "Database",
-    dump: "Dump",
     canonicalGroup: "canonical group",
     officialCode: "official code",
     englishName: "English name",
@@ -211,13 +216,63 @@ export const wording = {
     decisionFailed:
       "FAILED is terminal. The cycle stays incomplete while it stands.",
     retainedScope: "Retained server dataset",
-    deleteDataset: "Delete retained dataset",
-    deleteMessage:
-      "Drops the database and removes the retained dump of dataset {dataset_id} ({database_name}).",
     cancel: "Cancel",
     confirm: "Confirm",
     delete: "Delete",
-    selectedTag: "selected",
+  },
+  datasets: {
+    panel: "Datasets",
+    inventory: "Retained datasets",
+    selectedRole: "Selected dataset",
+    workingRole: "Working dataset",
+    noRole: "No dataset enrolled",
+    workingAbsentTitle: "No Working dataset",
+    workingAbsentHint: "Copy a dataset to Working before starting a stage.",
+    bootstrap:
+      "No dataset is enrolled. The site serves {database_name} directly.",
+    dataset: "dataset",
+    predecessor: "predecessor",
+    noPredecessor: "none",
+    namedDatabase: "database",
+    recordedHead: "receipt records",
+    dump: "dump",
+    artifacts: "artifacts",
+    absent: "absent",
+    artifactsPresent: "present",
+    artifactsAbsent: "absent",
+    noDatasets: "No dataset is retained.",
+    selectedTag: "SELECTED",
+    workingTag: "WORKING",
+    copyToWorking: "Copy to Working",
+    copyToWorkingMessage:
+      "Copy dataset {dataset_id} ({database_name}) to Working? Serving is untouched.",
+    copyToSelected: "Copy to Selected",
+    copyToSelectedMessage:
+      "Copy dataset {dataset_id} ({database_name}) to Selected? Serving restarts and is briefly unavailable.",
+    delete: "Delete",
+    deleteTitle: "Delete dataset",
+    deleteMessage: "Delete dataset {dataset_id} ({database_name})?",
+    deleteWorkingMessage:
+      "Delete Working dataset {dataset_id} ({database_name})? Working becomes absent.",
+    enroll: "Enroll or select dataset",
+    enrollConfirm: "Enroll the configured database as the selected dataset?",
+    migrateSelected: "Migrate Selected dataset",
+    migrateSelectedConfirm:
+      "Apply this checkout's migration head to the Selected dataset?",
+    migrateWorking: "Migrate Working dataset",
+    migrateWorkingConfirm:
+      "Apply this checkout's migration head to the Working dataset? Every stage must be idle.",
+    migrateDatabase: "Migrate configured database",
+    migrateDatabaseConfirm:
+      "Apply this checkout's migration head to the configured database {database_name}?",
+    promotionSteps: {
+      copy: "Copy dataset",
+      build: "Build serving artifacts",
+      switch: "Switch Selected",
+      restart: "Restart serving",
+      prove: "Prove serving",
+      rollback: "Restore previous selection",
+    },
   },
   logs: {
     commandLog: "Command log",
@@ -255,7 +310,42 @@ export const wording = {
     route: "Route",
     requests: "Requests",
     mean: "Mean",
+    p95: "p95",
+    p99: "p99",
     noWindow: "The window holds no recorded request.",
+  },
+  feedback: {
+    heading: "Feedback",
+    search: "Search feedback",
+    apply: "Apply",
+    all: "All",
+    filtersCount: "Filters ({count})",
+    clearFilters: "Clear filters",
+    viewAttachment: "View {name}",
+    downloadAttachments: "Download attachments ({count})",
+    preparingDownload: "Preparing the archive…",
+    id: "Feedback ID",
+    created: "Submitted",
+    private: "Private",
+    pending: "GitHub publication pending",
+    published: "Issue created",
+    partial: "Issue created with incomplete attachments",
+    failed: "Publication failed before issue creation",
+    uncertain: "Publication outcome unconfirmed",
+    issueLink: "Open GitHub issue",
+    publicationFailure: {
+      attachment_upload_incomplete: "Some designated images were not uploaded.",
+      github_outcome_unconfirmed:
+        "Check the destination repository before taking further action.",
+      github_unavailable: "The GitHub CLI could not be started.",
+      publication_input_invalid:
+        "The configured publication fields or stored images could not be read.",
+    },
+    empty: "No feedback matches the current search and filters.",
+    delete: "Delete",
+    deleteTitle: "Delete feedback",
+    deleteMessage:
+      "Delete feedback {id}, submitted {time}, and its stored images? This does not delete a GitHub issue or GitHub-hosted images.",
   },
   settings: {
     configuration: "Configuration",
@@ -264,7 +354,7 @@ export const wording = {
     restartNote: "The affected process reads a saved change when it restarts.",
     savedAll: "All changed keys are saved.",
     partialSave:
-      "{saved} of {total} changed keys are saved. The remaining keys are unsaved.",
+      "Changed keys saved: {saved} of {total}. The remaining keys are unsaved.",
     invalidValue: "The {key} value is not valid JSON.",
     featureSwitches: "Feature switches",
     inferenceFeatures: "Inference features",
@@ -295,17 +385,6 @@ export const wording = {
     steps: "steps",
     bind: "bind",
     pending: "Running…",
-    dataset: "Dataset",
-    recordedHead: "receipt records",
-    liveHead: "database head",
-    enroll: "Enroll or select dataset",
-    enrollConfirm: "Enroll the configured database as the selected dataset?",
-    migrate: "Migrate selected dataset",
-    migrateConfirm:
-      "Apply this checkout's migration head to the selected dataset?",
-    verifiedTables: "verified tables",
-    datasetReceipt:
-      "Enrolled {dataset_id} as {kind}, database {database_name}.",
     workerProvisioning: "Worker provisioning",
     originBranch: "origin branch",
     codeOnly: "code only",

@@ -1,10 +1,10 @@
 """Machine-readable "What Can I Study Next?" discovery for a selected/completed course basis.
 
 Usage:
-    uv run python scripts/next_courses.py --completed COMP.CS.100 --display-language en
-    uv run python scripts/next_courses.py --completed COMP.CS.100 --mode at_least_one --display-language fi
-    uv run python scripts/next_courses.py --selected COMP.CS.100 --selected COMP.CS.110 --basis selected --display-language en
-    uv run python scripts/next_courses.py --completed COMP.CS.100 --include-inferred --all-courses --display-language en
+    uv run python scripts/next_courses.py --display-language {fi|en}
+        [--completed ID]... [--selected ID]... [--basis {completed|selected}]
+        [--mode {all|at_least_one}] [--include-inferred]
+        [--active-only | --all-courses]
 
 The script is an adapter over `course_explorer.next_courses.commands.run_next_courses_command`
 and prints exactly one JSON report line. `--selected`/`--completed` accept canonical group IDs or
@@ -19,11 +19,14 @@ basis courses. The command is read-only and runs in-process.
 import argparse
 from collections.abc import Sequence
 
-from course_explorer.next_courses.commands import run_next_courses_command
+from _checkout_source import install
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     """Parse one discovery request, delegate once, and print one JSON report line."""
+    install()
+    from course_explorer.next_courses.commands import run_next_courses_command
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--selected", action="append", default=[])
     parser.add_argument("--completed", action="append", default=[])

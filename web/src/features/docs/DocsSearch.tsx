@@ -1,5 +1,5 @@
 /** Ephemeral plain-substring search over generated page titles and Markdown text, title matches first. */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { DOCS_ORDER, DOCS_PAGES, type DocsPageId } from "./registry";
 
 /**
@@ -33,9 +33,31 @@ export function DocsSearch({ shortcut = true }: { shortcut?: boolean }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
+  const results = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const value = query.trim().toLocaleLowerCase();
   const matches = matchPages(value);
+  const showing = open && value !== "";
+  const [panelMax, setPanelMax] = useState<number>();
+
+  // The panel hangs 44 px below the field, so its room is measured from where the field actually
+  // is: in the header on desktop, and further down the article on the phone.
+  useLayoutEffect(() => {
+    if (!showing) return;
+    const measure = () => {
+      const at = root.current?.getBoundingClientRect().top;
+      if (at !== undefined) setPanelMax(window.innerHeight - at - 56);
+      const panel = results.current;
+      if (panel)
+        panel.toggleAttribute(
+          "data-gutter",
+          panel.offsetWidth - panel.clientWidth > 2,
+        );
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [showing, value]);
 
   useEffect(() => {
     const outside = (event: MouseEvent) => {
@@ -89,7 +111,11 @@ export function DocsSearch({ shortcut = true }: { shortcut?: boolean }) {
         autoComplete="off"
         aria-label="Search the docs"
       />
-      <div className={`docs-results${open && value ? " open" : ""}`}>
+      <div
+        ref={results}
+        className={`docs-results${open && value ? " open" : ""}`}
+        style={{ maxHeight: panelMax }}
+      >
         {matches.length ? (
           matches.map(({ id, snippet }) => (
             <a

@@ -1,0 +1,23 @@
+{
+  "type": "bar",
+  "title": "Drawing endpoint core-seconds before the port and in the final product",
+  "description": "Mean core-seconds of three samples for the five drawing targets, ordered by piece count. Every target is faster in the final product, and the zero-piece target falls from 0.1388 to 0.0185 core-seconds.",
+  "valueAxis": "Core-seconds",
+  "categories": [
+    "0 pieces",
+    "209 pieces",
+    "369 pieces",
+    "566 pieces",
+    "567 pieces"
+  ],
+  "series": [
+    {
+      "name": "Pre-port",
+      "values": [0.1388, 0.3123, 0.3625, 0.4045, 0.4514]
+    },
+    {
+      "name": "Final product",
+      "values": [0.0185, 0.0701, 0.1051, 0.1358, 0.1450]
+    }
+  ]
+}

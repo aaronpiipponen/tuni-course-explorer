@@ -1,14 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 484" role="img"
      aria-labelledby="t d" font-family="system-ui, sans-serif">
-  <title id="t">Single-query read time for exact, pushdown and centred SQL</title>
-  <desc id="d">Wall time per query for the product exact read, the representative-filter pushdown and the centred SQL read on four fixed stored vectors.</desc>
+  <title id="t">Single-query read time for the exact reference, pushdown and centred SQL</title>
+  <desc id="d">Wall time per query for the exact reference read, the representative-filter pushdown and the centred SQL read on four fixed stored vectors.</desc>
   <rect width="960" height="484" rx="12" fill="#232434"/>
   <rect x="61" y="33" width="14" height="14" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
-  <text x="96" y="45" font-size="14" fill="#a3a4b8">Exact product read</text>
-  <rect x="284.2" y="33" width="14" height="14" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
-  <text x="319.2" y="45" font-size="14" fill="#a3a4b8">Representative pushdown</text>
-  <rect x="549.4" y="33" width="14" height="14" fill="#ffb454" stroke="none" stroke-width="1.5"/>
-  <text x="584.4" y="45" font-size="14" fill="#a3a4b8">Centred SQL</text>
+  <text x="96" y="45" font-size="14" fill="#a3a4b8">Exact reference read</text>
+  <rect x="301" y="33" width="14" height="14" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="336" y="45" font-size="14" fill="#a3a4b8">Representative pushdown</text>
+  <rect x="566.2" y="33" width="14" height="14" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="601.2" y="45" font-size="14" fill="#a3a4b8">Centred SQL</text>
   <line x1="131.2" y1="72" x2="131.2" y2="408" stroke="#a3a4b8" stroke-width="1"/>
   <text x="131.2" y="430" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
   <line x1="274.1" y1="72" x2="274.1" y2="408" stroke="#4a4c6b" stroke-width="1"/>

@@ -13,6 +13,7 @@ from uuid import uuid4
 
 import pytest
 
+from course_explorer import administration
 from course_explorer.administration import administrative_json, atomic_write_private_text
 from course_explorer.config import (
     load_administrative_dataset_settings,
@@ -24,8 +25,7 @@ from course_explorer.inference.diagnostics import (
     InferenceGenerationCount,
 )
 from course_explorer.inference.job import InferenceJobProgress
-from course_explorer_admin import datasets as datasets_module
-from course_explorer_admin import remote, worker_session
+from course_explorer_admin import worker_session
 from course_explorer_admin.inference.controller import (
     InferenceControllerPolicy,
     InferenceControllerWorkerState,
@@ -60,7 +60,6 @@ def raw_settings():
     base = load_raw_database_settings()
     return base.model_copy(
         update={
-            "selected_dataset_enabled": False,
             "postgres_db": configured.database_name(SESSION_ID, worker=True),
         }
     )
@@ -84,8 +83,10 @@ def configure(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setenv("INGESTION_CONTROLLER_STATE_ROOT", "data/admin/ingestion")
     monkeypatch.setenv("EMBEDDING_CONTROLLER_STATE_ROOT", "data/admin/embedding")
     monkeypatch.setenv("TRANSLATION_CONTROLLER_STATE_ROOT", "data/admin/translation")
-    monkeypatch.setattr(remote, "repository_root", lambda: tmp_path)
-    monkeypatch.setattr(datasets_module, "repository_root", lambda: tmp_path)
+    from tests.support.repository import scratch_repository
+
+    scratch_repository(tmp_path)
+    monkeypatch.setattr(administration, "repository_root", lambda: tmp_path)
     (tmp_path / "data" / "admin").mkdir(mode=0o700, parents=True, exist_ok=True)
     # The real received-database schema barrier opens a database. These network-free contracts
     # stub only its success result, while the disposable SQL proof keeps the real checker.

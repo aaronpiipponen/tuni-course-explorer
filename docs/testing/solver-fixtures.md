@@ -20,9 +20,29 @@ The satisfaction fixture holds the structures and node-state cases of the satisf
 
 ## Regeneration
 
+The exporters build their structures through the test-only native projector, so build it once
+before the first run:
+
+```bash
+./.venv/bin/python scripts/build_native.py --fixtures
+```
+
+Then run an exporter:
+
 ```bash
 uv run python -m tests.prerequisite.export_solver_fixtures
 uv run python -m tests.prerequisite.export_route_fixtures
+```
+
+The route exporter compiles its fixture catalogues through the native loader against a disposable
+database, so it refuses a configured database name without the `_test` suffix. The satisfaction
+exporter reads no database.
+
+The exporters write arrays one element per line, while the committed files use the web app's
+Prettier layout. Format the written files:
+
+```bash
+npm --prefix web exec -- prettier --write "web/src/solver/fixtures/*.json"
 ```
 
 Run the exporter that owns the changed scenario. Each command writes every file in its own group with a trailing newline. Regeneration is an explicit step after a change to a structure builder or to an exported DTO, and the regenerated file is reviewed with that change.

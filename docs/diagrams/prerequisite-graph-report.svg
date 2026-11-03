@@ -12,13 +12,13 @@
   </defs>
   <rect width="960" height="320" rx="12" fill="#232434"/>
 
-  <rect x="48" y="108" width="200" height="104" rx="8" fill="#2e3045"
+  <rect x="48" y="128" width="200" height="64" rx="8" fill="#2e3045"
         stroke="#4a4c6b" stroke-width="1.5"/>
   <text x="148" y="154" text-anchor="middle" font-size="16" fill="#ececf2">Graph read</text>
   <text x="148" y="176" text-anchor="middle" font-size="14" fill="#a3a4b8">one request</text>
 
   <rect x="320" y="32" width="248" height="64" rx="8" fill="#2e3045"
-        stroke="#a98ae0" stroke-width="1.5"/>
+        stroke="#4a4c6b" stroke-width="1.5"/>
   <text x="444" y="58" text-anchor="middle" font-size="16" fill="#ececf2">Solver structure</text>
   <text x="444" y="80" text-anchor="middle" font-size="14" fill="#a3a4b8">with its support bindings</text>
 
@@ -40,18 +40,18 @@
   <rect x="632" y="128" width="280" height="64" rx="8" fill="#2e3045"
         stroke="#4a4c6b" stroke-width="1.5"/>
   <text x="772" y="154" text-anchor="middle" font-size="16" fill="#ececf2">Route outcome</text>
-  <text x="772" y="176" text-anchor="middle" font-size="14" fill="#a3a4b8">one of six labels</text>
+  <text x="772" y="176" text-anchor="middle" font-size="14" fill="#a3a4b8">the route outcome</text>
 
-  <polyline points="248,128 268,128 268,64 320,64" fill="none" stroke="#a3a4b8"
+  <polyline points="248,144 268,144 268,64 320,64" fill="none" stroke="#a3a4b8"
             stroke-width="1.5" marker-end="url(#arrow)"/>
   <line x1="248" y1="160" x2="320" y2="160" stroke="#a3a4b8" stroke-width="1.5"
         marker-end="url(#arrow)"/>
-  <polyline points="248,192 296,192 296,256 320,256" fill="none" stroke="#a3a4b8"
+  <polyline points="248,176 296,176 296,256 320,256" fill="none" stroke="#a3a4b8"
             stroke-width="1.5" marker-end="url(#arrow)"/>
 
   <line x1="568" y1="64" x2="632" y2="64" stroke="#a3a4b8" stroke-width="1.5"
         marker-end="url(#arrow)"/>
-  <text x="600" y="48" text-anchor="middle" font-size="14" fill="#a3a4b8">reads</text>
+  <text x="608" y="56" text-anchor="middle" font-size="14" fill="#a3a4b8">read by</text>
 
   <line x1="772" y1="96" x2="772" y2="128" stroke="#a3a4b8" stroke-width="1.5"
         marker-end="url(#arrow)"/>

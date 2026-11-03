@@ -3,8 +3,7 @@
 from fastapi import APIRouter, Response
 from pydantic import BaseModel, ConfigDict
 
-from course_explorer.config import load_web_settings
-from course_explorer_web.dataset import resolve_serving_dataset
+from course_explorer_web.serving_cache import preloaded_serving_settings
 
 router = APIRouter()
 
@@ -28,11 +27,10 @@ class WebFeaturesReport(BaseModel):
 @router.post("/api/features")
 def features(request: FeaturesRequest) -> Response:
     """Return the two configured feature switches with the resolved dataset identity."""
-    settings = load_web_settings()
-    serving = resolve_serving_dataset()
+    bundle = preloaded_serving_settings()
     report = WebFeaturesReport(
-        embeddings_enabled=settings.embeddings_enabled,
-        inference_enabled=settings.inference_enabled,
-        dataset_identity=serving.identity,
+        embeddings_enabled=bundle.web.embeddings_enabled,
+        inference_enabled=bundle.web.inference_enabled,
+        dataset_identity=bundle.dataset.identity,
     )
     return Response(content=report.model_dump_json(), media_type="application/json")

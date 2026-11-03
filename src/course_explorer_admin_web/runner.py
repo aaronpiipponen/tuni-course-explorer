@@ -1,10 +1,16 @@
-"""The fixed-command subprocess runner of the administration backend.
+"""The fixed-command runner of the administration backend.
 
-Each admitted command shape names one ``scripts/admin.py`` invocation, and this module builds its
-exact argument list. The caller never supplies an executable, a script, a shell fragment or an extra
-argument, so the process boundary admits only the command shapes defined here. Every execution
-appends one fixed-label entry to the sole command log before it returns, except a successful
-automatic read, which appends none, and no command's captured streams or report are persisted.
+A closed read table answers the routine server, dataset, coverage, summary and stage-status reads in
+process through the same owning command functions the CLI uses, and passes them the caller's process
+runner so their own service probes keep the same boundary. The dataset promotion is the one admitted
+mutation that also runs in process: its owner is the only place that knows each coarse step, and an
+observer supplies those steps to the console's streamed report without any subprocess streaming
+machinery. Every other admitted command shape names one ``scripts/admin.py`` invocation, and this
+module builds its exact argument list. The caller never supplies an executable, a script, a shell
+fragment or an extra argument, so either path admits only the command shapes defined here. Every
+execution appends one fixed-label entry to the sole command log before it returns, except a
+successful automatic read, which appends none, and no command's captured streams or report are
+persisted.
 
 A command's own operation-specific guard stays with its owning service: the web layer validates the
 shape of a parameter and never the course existence, stage idleness, dataset chain or selected
@@ -17,16 +23,29 @@ import json
 import subprocess
 import sys
 import time
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated, Literal, cast
+from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, TypeAdapter, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    JsonValue,
+    TypeAdapter,
+    ValidationError,
+    field_validator,
+)
 
 from course_explorer.administration import utc_now
-from course_explorer.datasets import DatasetId
+from course_explorer.config import load_administrative_dataset_settings
+from course_explorer.datasets import DatasetId, read_dataset_role
 from course_explorer.validation import require_error_type, require_text
+from course_explorer_admin import commands as administrative_commands
 from course_explorer_admin.commands import format_operator_error
+from course_explorer_admin.datasets import PromotionStep, admin_state_root
 from course_explorer_admin.logs import LogSource
 from course_explorer_admin.mechanics import ProcessRunner, SubprocessRunner
 from course_explorer_admin_web.command_log import CommandLog, CommandLogEntry
@@ -50,6 +69,71 @@ class UsageCommand(BaseModel):
 
     kind: Literal["usage"]
     hours: int = Field(gt=0, strict=True)
+
+
+class FeedbackListInput(BaseModel):
+    """One feedback listing's optional search text and select filters.
+
+    The query and filter text are excluded from the rendered form, so a rendered command carries
+    neither the search text nor a filter value.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True, hide_input_in_errors=True)
+
+    query: str | None = Field(default=None, repr=False)
+    filters: dict[str, str] = Field(default_factory=dict, repr=False)
+
+    @field_validator("query")
+    @classmethod
+    def validate_query(cls, value: str | None) -> str | None:
+        """Require text without NUL characters while preserving the supplied query."""
+        if value is not None and "\x00" in value:
+            raise ValueError("feedback query must be text without NUL characters")
+        return value
+
+    @field_validator("filters")
+    @classmethod
+    def validate_filters(cls, value: dict[str, str]) -> dict[str, str]:
+        """Require text field IDs and option values without NUL characters."""
+        for field_id, option in value.items():
+            if "\x00" in field_id or "\x00" in option:
+                raise ValueError("feedback filters must not contain NUL characters")
+        return value
+
+
+class FeedbackListCommand(FeedbackListInput):
+    """The fixed feedback listing command."""
+
+    kind: Literal["feedback-list"]
+
+
+class FeedbackAttachmentInput(BaseModel):
+    """One transient attachment read, keyed by both stored identities."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, hide_input_in_errors=True)
+
+    feedback_id: UUID
+    attachment_id: UUID
+
+
+class FeedbackAttachmentCommand(FeedbackAttachmentInput):
+    """The fixed transient attachment read."""
+
+    kind: Literal["feedback-attachment"]
+
+
+class FeedbackDeleteInput(BaseModel):
+    """The named feedback submission a deletion removes with its stored images."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, hide_input_in_errors=True)
+
+    feedback_id: UUID
+
+
+class FeedbackDeleteCommand(FeedbackDeleteInput):
+    """The fixed deletion of one named feedback submission."""
+
+    kind: Literal["feedback-delete"]
 
 
 class StageCommand(BaseModel):
@@ -80,12 +164,12 @@ class SummaryCommand(BaseModel):
     report: Literal["catalogue", "inference"]
 
 
-class HubsCommand(BaseModel):
-    """The fixed embedding hub writer command, whose request carries no argument."""
+class ServingArtifactsCommand(BaseModel):
+    """The fixed served-database serving-artifact build command."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    kind: Literal["hubs"]
+    kind: Literal["serving-artifacts"]
 
 
 class TargetInput(BaseModel):
@@ -128,20 +212,66 @@ class TargetDecisionCommand(TargetDecisionInput):
 
 
 class DatasetListCommand(BaseModel):
-    """The fixed retained-dataset listing command, whose request carries no argument."""
+    """The fixed receipt-bearing dataset listing command, whose request carries no argument."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     kind: Literal["datasets-list"]
 
 
-class DatasetDeleteCommand(BaseModel):
-    """The fixed single non-selected dataset deletion command."""
+class DatasetDeleteInput(BaseModel):
+    """One named dataset deletion and the explicit Working confirmation it may carry."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    kind: Literal["datasets-delete"]
     dataset_id: DatasetId
+    confirm_working: bool = Field(default=False, strict=True)
+
+
+class DatasetDeleteCommand(DatasetDeleteInput):
+    """The fixed single non-Selected dataset deletion command."""
+
+    kind: Literal["datasets-delete"]
+
+
+class DatasetCopyInput(BaseModel):
+    """One source dataset identity for a copy operation."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    source_dataset_id: DatasetId
+
+
+class DatasetCopyCommand(DatasetCopyInput):
+    """The fixed copy command that assigns its verified copy to Working."""
+
+    kind: Literal["datasets-copy-to-working"]
+
+
+class DatasetPromotionInput(DatasetCopyInput):
+    """One source dataset identity and the serving-restart confirmation a promotion requires."""
+
+    confirm_restart: bool = Field(default=False, strict=True)
+
+
+class DatasetPromotionCommand(DatasetPromotionInput):
+    """The fixed copy, build, switch, restart and serving-proof command."""
+
+    kind: Literal["datasets-copy-to-selected"]
+
+
+class DatasetMigrateInput(BaseModel):
+    """One closed dataset role or the bootstrap configured database to migrate."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    role: Literal["selected", "working", "database"]
+
+
+class DatasetMigrateCommand(DatasetMigrateInput):
+    """The fixed explicit database migration command over its closed role vocabulary."""
+
+    kind: Literal["datasets-migrate"]
 
 
 class CommandLogCommand(BaseModel):
@@ -314,19 +444,11 @@ class RestartAdminCommand(BaseModel):
 
 
 class DatasetSetupCommand(BaseModel):
-    """The fixed selected-dataset enrollment command, whose request carries no argument."""
+    """The fixed Selected-dataset enrollment command, whose request carries no argument."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     kind: Literal["datasets-setup"]
-
-
-class DatasetMigrateCommand(BaseModel):
-    """The fixed selected-dataset migration command, whose request carries no argument."""
-
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    kind: Literal["datasets-migrate"]
 
 
 class WorkerSetupInput(BaseModel):
@@ -362,14 +484,19 @@ class WorkerPreflightCommand(BaseModel):
 FixedCommand = Annotated[
     ServerStatusCommand
     | UsageCommand
+    | FeedbackListCommand
+    | FeedbackAttachmentCommand
+    | FeedbackDeleteCommand
     | StageCommand
     | CoverageCommand
     | SummaryCommand
-    | HubsCommand
+    | ServingArtifactsCommand
     | TargetReadCommand
     | TargetDecisionCommand
     | DatasetListCommand
     | DatasetDeleteCommand
+    | DatasetCopyCommand
+    | DatasetPromotionCommand
     | CommandLogCommand
     | LogSessionsCommand
     | SessionLogCommand
@@ -392,11 +519,88 @@ FixedCommand = Annotated[
 _FIXED_COMMAND_ADAPTER = TypeAdapter(FixedCommand)
 
 
+def _read_server_status(_request: FixedCommand, runner: ProcessRunner) -> BaseModel:
+    """Return the server status through its owning read."""
+    return administrative_commands.run_administrative_server_status(runner=runner)
+
+
+def _read_dataset_list(_request: FixedCommand, runner: ProcessRunner) -> BaseModel:
+    """Return the retained dataset listing through its owning read."""
+    return administrative_commands.run_administrative_dataset_list(runner=runner)
+
+
+def _report_role() -> Literal["selected", "working"] | None:
+    """Return Working when it exists, else Selected, else None for a bootstrap state."""
+    root = admin_state_root(load_administrative_dataset_settings())
+    if read_dataset_role(root, "working") is not None:
+        return "working"
+    if read_dataset_role(root, "selected") is not None:
+        return "selected"
+    return None
+
+
+def _read_coverage(request: FixedCommand, _runner: ProcessRunner) -> BaseModel:
+    """Return the named coverage report for the role the console reads."""
+    kind = cast(CoverageCommand, request).report
+    role = _report_role()
+    if role is None:
+        return ReportScope(role=None, report=None)
+    report = administrative_commands.run_administrative_coverage(kind, role=role)
+    return ReportScope(role=role, report=report.model_dump(mode="json"))
+
+
+def _read_summary(request: FixedCommand, _runner: ProcessRunner) -> BaseModel:
+    """Return the named summary report for the role the console reads."""
+    kind = cast(SummaryCommand, request).report
+    role = _report_role()
+    if role is None:
+        return ReportScope(role=None, report=None)
+    report = administrative_commands.run_administrative_summary(kind, role=role)
+    return ReportScope(role=role, report=report.model_dump(mode="json"))
+
+
+def _read_stage_status(request: FixedCommand, _runner: ProcessRunner) -> BaseModel:
+    """Return one stage's status through its owning lifecycle read."""
+    return administrative_commands.run_administrative_command(
+        cast(StageCommand, request).stage, "status"
+    )
+
+
+# The closed read table: a validated kind and action dispatch to the function that owns the read.
+_IN_PROCESS_READS: dict[
+    tuple[str, str | None], Callable[[FixedCommand, ProcessRunner], BaseModel]
+] = {
+    ("server-status", None): _read_server_status,
+    ("datasets-list", None): _read_dataset_list,
+    ("coverage", None): _read_coverage,
+    ("summary", None): _read_summary,
+    ("stage", "status"): _read_stage_status,
+}
+
+
+def _read_key(request: FixedCommand) -> tuple[str, str | None]:
+    """Return the closed read-table key of one admitted command."""
+    if isinstance(request, StageCommand):
+        return (request.kind, request.action)
+    return (request.kind, None)
+
+
+class ReportScope(BaseModel):
+    """One role-resolved console report. A bootstrap state carries no role and no report."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    role: Literal["selected", "working"] | None
+    report: dict[str, JsonValue] | None
+
+
 class CommandResult(BaseModel):
-    """One transient command outcome: its exit code, its decoded report and its safe failure line.
+    """One transient command outcome: its exit code, its decoded report and its failure text.
 
     The report is the command's own decoded JSON object and is never written to the log or kept. The
-    failure line names an exception class and an optional checked-process return code alone.
+    failure line names an exception class and an optional checked-process return code alone. The
+    guidance line is the owning command operation's fixed advice for the operator, and it lives only
+    in this response.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -404,6 +608,7 @@ class CommandResult(BaseModel):
     exit_code: int
     report: dict[str, JsonValue] | None
     failure_line: str | None
+    guidance_line: str | None = None
 
 
 class FixedCommandRunner:
@@ -418,7 +623,13 @@ class FixedCommandRunner:
         self._log = log
         self._runner = runner if runner is not None else SubprocessRunner()
 
-    def run(self, command: FixedCommand, *, automatic: bool = False) -> CommandResult:
+    def run(
+        self,
+        command: FixedCommand,
+        *,
+        automatic: bool = False,
+        on_progress: Callable[[PromotionStep], None] | None = None,
+    ) -> CommandResult:
         """Run one admitted command once and record its outcome.
 
         The command's UTC start time and its monotonic start are captured before it executes, and
@@ -429,28 +640,66 @@ class FixedCommandRunner:
         captured stream or an exception message. A log write failure propagates instead of reporting
         a successful command.
 
+        The dataset promotion is the one admitted command that runs in process rather than as a
+        subprocess, because its owner reports each coarse step before that step's mutation.
+        ``on_progress`` receives those steps and changes nothing else. Every other admitted command
+        keeps its own execution path.
+
+        A failed outcome carries the owning command operation's fixed guidance line in its transient
+        result. That line is response data alone and never reaches the command log.
+
         ``automatic`` marks one read the console repeats on its own timer. A successful automatic
         read appends no entry, while a failed one records like any other outcome. The flag selects
         no argv and changes no admission: the calling route alone decides which commands are reads.
         """
         request = _FIXED_COMMAND_ADAPTER.validate_python(command)
-        argv = self._argv(request)
+        reader = _IN_PROCESS_READS.get(_read_key(request))
         started_at = utc_now()
         started = time.monotonic()
         try:
-            completed = self._runner.run(argv, cwd=self._root)
-            result = CommandResult(
-                exit_code=completed.returncode,
-                report=_decode_report(completed.stdout),
-                failure_line=None,
-            )
+            if isinstance(request, DatasetPromotionCommand):
+                result = CommandResult(
+                    exit_code=0,
+                    report=administrative_commands.run_administrative_dataset_promotion(
+                        request.source_dataset_id,
+                        confirm_restart=request.confirm_restart,
+                        on_progress=on_progress,
+                        runner=self._runner,
+                    ).model_dump(mode="json"),
+                    failure_line=None,
+                )
+            elif reader is not None:
+                result = CommandResult(
+                    exit_code=0,
+                    report=reader(request, self._runner).model_dump(mode="json"),
+                    failure_line=None,
+                )
+            else:
+                completed = self._runner.run(self._argv(request), cwd=self._root)
+                result = CommandResult(
+                    exit_code=completed.returncode,
+                    report=_decode_report(completed.stdout),
+                    failure_line=None,
+                )
         except subprocess.CalledProcessError as exc:
             result = CommandResult(
-                exit_code=exc.returncode, report=None, failure_line=_checked_failure_line(exc)
+                exit_code=exc.returncode,
+                report=None,
+                failure_line=_checked_failure_line(exc),
+                guidance_line=administrative_commands.operator_guidance(
+                    _guidance_operation(request),
+                    configuration_error=isinstance(exc, ValidationError),
+                ),
             )
         except Exception as exc:
             result = CommandResult(
-                exit_code=1, report=None, failure_line=format_operator_error(exc)
+                exit_code=1,
+                report=None,
+                failure_line=format_operator_error(exc),
+                guidance_line=administrative_commands.operator_guidance(
+                    _guidance_operation(request),
+                    configuration_error=isinstance(exc, ValidationError),
+                ),
             )
         if not (automatic and result.exit_code == 0 and result.failure_line is None):
             self._record(
@@ -464,31 +713,43 @@ class FixedCommandRunner:
     def _argv(self, request: FixedCommand) -> tuple[str, ...]:
         """Return the exact argument list of one admitted command.
 
-        Every admitted kind has its own branch, and the function holds no other argument source, so
-        an argument list cannot be assembled for a command the union does not admit.
+        Every admitted kind that runs as a subprocess has its own branch, and the function holds no
+        other argument source, so an argument list cannot be assembled for a command the union does
+        not admit. The `server-status`, `datasets-list`, `coverage` and `summary` reads, `stage
+        status` and the in-process `datasets-copy-to-selected` promotion do not reach this function.
         """
         prefix = (sys.executable, str(self._root / ADMIN_SCRIPT))
         match request.kind:
-            case "server-status":
-                return (*prefix, "server", "status")
             case "usage":
                 return (*prefix, "usage", "--hours", str(request.hours))
+            case "feedback-list":
+                argv = (*prefix, "feedback", "list")
+                if request.query is not None:
+                    argv = (*argv, f"--query={request.query}")
+                return (*argv, f"--filters={json.dumps(request.filters)}")
+            case "feedback-attachment":
+                return (
+                    *prefix,
+                    "feedback",
+                    "attachment",
+                    str(request.feedback_id),
+                    str(request.attachment_id),
+                )
+            case "feedback-delete":
+                return (*prefix, "feedback", "delete", str(request.feedback_id))
             case "stage":
                 return (*prefix, request.stage, request.action)
-            case "coverage":
-                return (*prefix, "coverage", request.report)
-            case "summary":
-                return (*prefix, "summary", request.report)
-            case "hubs":
-                return (*prefix, "hubs")
+            case "serving-artifacts":
+                return (*prefix, "serving-artifacts")
             case "target-read":
                 return (*prefix, "target", "inference", request.target_id)
             case "target-decision":
                 return (*prefix, "dispose", "inference", request.target_id, request.disposition)
-            case "datasets-list":
-                return (*prefix, "datasets", "list")
             case "datasets-delete":
-                return (*prefix, "datasets", "delete", request.dataset_id)
+                argv = (*prefix, "datasets", "delete", request.dataset_id)
+                return (*argv, "--confirm-working") if request.confirm_working else argv
+            case "datasets-copy-to-working":
+                return (*prefix, "datasets", "copy-to-working", request.source_dataset_id)
             case "command-log":
                 return (*prefix, "logs", "commands")
             case "log-sessions":
@@ -525,12 +786,13 @@ class FixedCommandRunner:
             case "datasets-setup":
                 return (*prefix, "setup", "datasets")
             case "datasets-migrate":
-                return (*prefix, "migrate", "datasets")
+                return (*prefix, "migrate", request.role)
             case "worker-setup":
                 argv = (*prefix, "setup", "worker", f"--branch={request.branch}")
                 return (*argv, "--code-only") if request.code_only else argv
             case "worker-preflight":
                 return (*prefix, "preflight")
+        raise ValueError(f"command kind {request.kind} carries no process argument list")
 
     def _record(
         self,
@@ -542,9 +804,9 @@ class FixedCommandRunner:
     ) -> None:
         """Append one fixed-label entry for one command outcome.
 
-        The entry carries the fixed command label, the outcome's exit code and safe failure line, the
-        command's start time, the elapsed monotonic duration and the outcome token the failure line
-        selects.
+        The entry carries the fixed command label, the outcome's exit code and safe failure line,
+        the command's start time, the elapsed monotonic duration and the outcome token the failure
+        line selects.
         """
         self._log.append(
             CommandLogEntry(
@@ -556,6 +818,51 @@ class FixedCommandRunner:
                 failure_line=result.failure_line,
             )
         )
+
+
+def _guidance_operation(request: FixedCommand) -> str:
+    """Return the operator operation whose fixed guidance explains one command failure."""
+    match request.kind:
+        case "server-status":
+            return "server"
+        case "datasets-list":
+            return "dataset-list"
+        case "coverage" | "summary":
+            return "report"
+        case "stage":
+            return "stage"
+        case "serving-artifacts":
+            return "serving-artifacts"
+        case "target-read":
+            return "target-read"
+        case "target-decision":
+            return "disposition"
+        case "datasets-setup" | "worker-setup":
+            return "setup"
+        case "datasets-migrate":
+            return "migration"
+        case "datasets-delete":
+            return "dataset-cleanup"
+        case "datasets-copy-to-working":
+            return "dataset-copy"
+        case "datasets-copy-to-selected":
+            return "dataset-promotion"
+        case "backups-list":
+            return "backup-list"
+        case "backups-delete":
+            return "backup-cleanup"
+        case "config-files" | "config-read" | "config-set":
+            return "configuration"
+        case "command-log" | "log-sessions" | "session-log" | "embedding-log":
+            return "logs"
+        case "rebuild" | "rebuild-admin" | "restart-admin":
+            return "rebuild"
+        case "usage":
+            return "usage"
+        case "feedback-list" | "feedback-attachment" | "feedback-delete":
+            return "feedback"
+        case "worker-preflight":
+            return "preflight"
 
 
 def _command_label(request: FixedCommand) -> str:
@@ -570,14 +877,20 @@ def _command_label(request: FixedCommand) -> str:
             return "server status"
         case "usage":
             return "usage"
+        case "feedback-list":
+            return "feedback list"
+        case "feedback-attachment":
+            return "feedback attachment"
+        case "feedback-delete":
+            return "feedback delete"
         case "stage":
             return f"{request.stage} {request.action}"
         case "coverage":
             return f"coverage {request.report}"
         case "summary":
             return f"summary {request.report}"
-        case "hubs":
-            return "hubs"
+        case "serving-artifacts":
+            return "serving artifacts"
         case "target-read":
             return "target inference"
         case "target-decision":
@@ -586,6 +899,10 @@ def _command_label(request: FixedCommand) -> str:
             return "datasets list"
         case "datasets-delete":
             return "datasets delete"
+        case "datasets-copy-to-working":
+            return "datasets copy-to-working"
+        case "datasets-copy-to-selected":
+            return "datasets copy-to-selected"
         case "command-log":
             return "logs commands"
         case "log-sessions":
@@ -613,7 +930,7 @@ def _command_label(request: FixedCommand) -> str:
         case "datasets-setup":
             return "setup datasets"
         case "datasets-migrate":
-            return "migrate datasets"
+            return f"migrate {request.role}"
         case "worker-setup":
             return "setup worker"
         case "worker-preflight":

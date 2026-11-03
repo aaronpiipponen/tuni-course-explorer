@@ -12,6 +12,8 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 
+import numpy
+
 from course_explorer.enums import TeachingTextField
 
 
@@ -43,11 +45,37 @@ def mean_unit_vectors(vectors: Sequence[Sequence[float]]) -> tuple[float, ...]:
     return tuple(total / count for total in totals)
 
 
+def subtract_hub_rows(
+    rows: Sequence[Sequence[float]],
+    fields: Sequence[TeachingTextField],
+    hub: Sequence[float],
+    outcomes_hub: Sequence[float],
+) -> numpy.ndarray:
+    """Return the field-specific hub-subtracted rows as one float64 array.
+
+    Outcomes rows subtract `outcomes_hub` and every other row subtracts `hub`. The two sequences
+    must have the same length, the hub pair must share the row dimension, and a mismatch raises
+    `ValueError`.
+    """
+    if len(rows) != len(fields):
+        raise ValueError("rows and fields must have the same length")
+    if len(hub) != len(outcomes_hub):
+        raise ValueError("hub and outcomes hub must have the same dimension")
+    matrix = numpy.asarray(rows, dtype=numpy.float64)
+    if matrix.size == 0:
+        return numpy.empty((0, len(hub)), dtype=numpy.float64)
+    if matrix.ndim != 2 or matrix.shape[1] != len(hub):
+        raise ValueError("rows and hub must have the same dimension")
+    centres = numpy.asarray(
+        [outcomes_hub if field is TeachingTextField.OUTCOMES else hub for field in fields],
+        dtype=numpy.float64,
+    )
+    return matrix - centres
+
+
 def subtract_hub(vector: Sequence[float], hub: Sequence[float]) -> tuple[float, ...]:
-    """Return `vector - hub`, requiring equal dimensions."""
-    if len(vector) != len(hub):
-        raise ValueError("vector and hub must have the same dimension")
-    return tuple(component - centre for component, centre in zip(vector, hub, strict=True))
+    """Return `vector - hub` component by component."""
+    return tuple(value - centre for value, centre in zip(vector, hub, strict=True))
 
 
 def subtract_hub_for_field(
@@ -57,5 +85,4 @@ def subtract_hub_for_field(
     outcomes_hub: Sequence[float],
 ) -> tuple[float, ...]:
     """Return `vector` minus the field's hub: the outcomes hub for outcomes, the global hub otherwise."""
-    selected = outcomes_hub if field is TeachingTextField.OUTCOMES else hub
-    return subtract_hub(vector, selected)
+    return subtract_hub(vector, outcomes_hub if field is TeachingTextField.OUTCOMES else hub)

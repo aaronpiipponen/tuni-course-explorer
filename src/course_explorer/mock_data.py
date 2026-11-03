@@ -1,18 +1,20 @@
-"""One-shot import of the authored fictional served mock curriculum and its bundled vectors.
+"""One-shot import of the fictional example dataset and its bundled vectors.
 
 This is the offline adapter behind ``scripts/mock_data.py``. It represents the authored fixture
-bytes through the ``RawCaptureStore``
-and registers them exactly like a completed capture, reuses the real normalization repository,
-parser, embedding reconciliation and worker readiness owners, and stores the fixture curriculum
-and its bundled vectors.
+bytes through the ``RawCaptureStore`` and registers them exactly like a completed capture, reuses
+the real normalization repository, parser, embedding reconciliation and worker readiness owners,
+and stores the fixture curriculum and its bundled vectors.
 
 The fixture is authored fiction: it occupies the source layer of an entirely fictional dataset and
-is never presented as university data. The ``load-curriculum``, ``load`` and
-``write-artifacts`` actions are the supported actions. Both the loader and the artifact writer prepare the fixture
-through one shared helper and then apply the same projected fixture-identity guard at their entry:
-foreign or changed retained curriculum fails before any database provenance/normalized write and
-before any fixture-bundle or hub output file is touched, and the writer computes both hub means
-before its first output mutation.
+is never presented as university data. The ``load-curriculum``, ``load``, ``write-artifacts`` and
+``write-bundle`` actions are the supported actions. Both the loader and the writer actions prepare
+the fixture through one shared helper and then apply the same projected fixture-identity guard at
+their entry: foreign or changed retained curriculum fails before any database provenance/normalized
+write and before any fixture-bundle or artifact output file is touched. The artifact writer then
+calls the one serving artifact builder, so the example and administrative paths share one artifact
+owner. The
+separate ``write-bundle`` action regenerates the tracked bundled-vector file as explicit fixture
+maintenance, so a deployment never rewrites the tracked bundle.
 """
 
 from __future__ import annotations
@@ -27,16 +29,20 @@ from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field, TypeAdapter, fiel
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from course_explorer import administration
 from course_explorer.config import (
+    DatabaseSettings,
     EmbeddingRuntimeSettings,
     NormalizationSettings,
+    embedding_configuration_for_site,
     load_embedding_runtime_settings,
     load_normalization_settings,
     load_raw_database_settings,
+    load_web_settings,
 )
 from course_explorer.constants import COURSE_EMBEDDING_DIMENSION
 from course_explorer.curriculum_repository import CurriculumRepository
-from course_explorer.datasets import require_database_schema
+from course_explorer.datasets import read_dataset_role, require_database_schema
 from course_explorer.db.models import Course, Module, SourceSnapshot
 from course_explorer.db.session import database_context
 from course_explorer.embeddings.generation import (
@@ -45,11 +51,7 @@ from course_explorer.embeddings.generation import (
     CourseEmbeddingResult,
     build_course_embedding_chunks,
 )
-from course_explorer.embeddings.hub_files import (
-    compute_embedding_hubs,
-    read_current_chunk_vectors,
-    write_hub_files,
-)
+from course_explorer.embeddings.hub_files import read_current_chunk_vectors
 from course_explorer.embeddings.repository import CourseEmbeddingRepository
 from course_explorer.enums import (
     IngestionRunStatus,
@@ -71,6 +73,7 @@ from course_explorer.ingestion.normalization import (
 from course_explorer.ingestion.normalization_repository import NormalizationRepository
 from course_explorer.ingestion.repository import CaptureRepository
 from course_explorer.ingestion.source import CapturedResponse, CurriculumPeriodRef
+from course_explorer.serving_build import ServingArtifactsReport, build_serving_artifacts
 from course_explorer.teaching_text.repository import DerivedTranslationRepository
 from course_explorer.teaching_text.service import TeachingTextService
 from course_explorer.validation import require_sha256
@@ -79,12 +82,10 @@ from course_explorer.validation import require_sha256
 # than a fetched response. They participate in the content-addressed request identity.
 _FIXTURE_REQUEST_PARAMS: tuple[tuple[str, str], ...] = (("fixture", "fictional"),)
 _BUNDLE_NAME = "embeddings.json"
-_CATALOGUE_HUB_NAME = "embedding-hub.json"
-_OUTCOMES_HUB_NAME = "embedding-outcomes-hub.json"
 
 _ANY_HTTP_URL_ADAPTER = TypeAdapter(AnyHttpUrl)
 
-MockDataAction = Literal["load-curriculum", "load", "write-artifacts"]
+MockDataAction = Literal["load-curriculum", "load", "write-artifacts", "write-bundle"]
 
 
 class _MockModel(BaseModel):
@@ -105,6 +106,7 @@ class _MockEmbeddingChunk(_MockModel):
     @field_validator("group_id")
     @classmethod
     def reject_blank_group_id(cls, value: str) -> str:
+        """Require a nonblank bundled chunk group ID."""
         if not value.strip():
             raise ValueError("bundled chunk group_id must not be blank")
         return value
@@ -131,6 +133,7 @@ class _MockEmbeddingBundle(_MockModel):
     @field_validator("input_sha256")
     @classmethod
     def validate_input_sha256(cls, value: str) -> str:
+        """Require one full lowercase SHA-256 digest of the bundle input."""
         return require_sha256(value, "bundled embeddings input_sha256")
 
 
@@ -455,30 +458,70 @@ def _write_json(path: Path, payload: object) -> None:
     )
 
 
+def _prepare_writer_fixture(
+    factory: sessionmaker[Session],
+    *,
+    fixture_dir: Path,
+    raw_root: Path,
+    normalization: NormalizationSettings,
+) -> None:
+    """Prepare the authored fixture capture and apply the projected fixture-identity guard.
+
+    A foreign or changed retained dataset is refused before any artifact or bundle output file is
+    touched, so both writer actions share one entry guard.
+    """
+    _, _, batch = _prepare_mock_fixture(
+        fixture_dir=fixture_dir, raw_root=raw_root, normalization=normalization
+    )
+    _require_fixture_dataset(factory, batch)
+
+
 def write_mock_artifacts(
     factory: sessionmaker[Session],
     *,
     fixture_dir: Path,
     raw_root: Path,
     normalization: NormalizationSettings,
-    embedding: EmbeddingRuntimeSettings,
-    hubs_dir: Path,
-) -> None:
-    """Write the fixture's bundled vectors and both computed hub means from stored vectors.
+    embedding: EmbeddingRuntimeSettings | None,
+    database_settings: DatabaseSettings | None = None,
+) -> ServingArtifactsReport:
+    """Build the mock dataset's serving artifacts for the site's embedding mode.
 
-    This writer is database-read-only. At entry it prepares the named fixture and applies the same
-    projected fixture-identity guard the loader uses, so a foreign or changed retained dataset is
-    refused before the teaching catalogue is built, vectors are read or any output path is touched.
-    Both hub means are then computed from the exact current key set before the first bundle or hub
-    write, so a not-ready dataset fails without mutating the fixture bundle or the derived hubs. It
-    reads the stored vectors and writes the fixture bundle and both hub files.
+    ``embedding`` is the resolved embedding configuration on a site that serves the embedding
+    features and ``None`` on a site with them off. The entry guard runs first, so a foreign or
+    changed retained dataset is refused before any artifact path is touched. The full
+    serving-artifact builder then produces the study fragments, catalogue, ``current`` build and,
+    when the site serves the embedding features, the hubs, shared stores and packed search relation.
+    The writer never rewrites the bundled fixture file. That file changes only through the separate
+    ``write-bundle`` action.
     """
-    _, _, batch = _prepare_mock_fixture(
-        fixture_dir=fixture_dir, raw_root=raw_root, normalization=normalization
+    _prepare_writer_fixture(
+        factory, fixture_dir=fixture_dir, raw_root=raw_root, normalization=normalization
     )
-    _require_fixture_dataset(factory, batch)
+    return build_serving_artifacts(
+        database_settings or load_raw_database_settings(),
+        embedding=embedding,
+    )
+
+
+def write_mock_bundle(
+    factory: sessionmaker[Session],
+    *,
+    fixture_dir: Path,
+    raw_root: Path,
+    normalization: NormalizationSettings,
+    embedding: EmbeddingRuntimeSettings,
+) -> None:
+    """Rewrite the bundled fixture vectors from the prepared fixture's stored vectors.
+
+    This is the explicit fixture-maintenance action that regenerates the tracked example bundle
+    when the fixture's chunks or vectors change. The serving artifact build never writes it, so a
+    deployment never rewrites the tracked bundle.
+    """
+    _prepare_writer_fixture(
+        factory, fixture_dir=fixture_dir, raw_root=raw_root, normalization=normalization
+    )
     current = read_current_chunk_vectors(factory, embedding)
-    hubs = compute_embedding_hubs(current)
     _write_json(
         fixture_dir / _BUNDLE_NAME,
         {
@@ -495,35 +538,50 @@ def write_mock_artifacts(
             ],
         },
     )
-    write_hub_files(hubs_dir / _CATALOGUE_HUB_NAME, hubs_dir / _OUTCOMES_HUB_NAME, hubs)
 
 
 def run_mock_data_command(
-    action: MockDataAction, *, fixture_dir: Path, raw_root: Path, hubs_dir: Path
+    action: MockDataAction, *, fixture_dir: Path, raw_root: Path
 ) -> BaseModel | None:
     """Run exactly one mock action against the configured database.
 
-    A selected-dataset-enabled configuration is refused before any engine is opened, and the
-    single Alembic head is required on the database this command opens.
+    A site whose state root resolves an enrolled dataset is refused before any engine is opened, and
+    the single Alembic head is required on the database this command opens. ``write-artifacts``
+    reads the site's embedding switch once here and passes that mode to the one artifact builder.
     """
-    if action not in ("load-curriculum", "load", "write-artifacts"):
+    if action not in ("load-curriculum", "load", "write-artifacts", "write-bundle"):
         raise ValueError(f"unknown mock data action: {action}")
     database = load_raw_database_settings()
-    if database.selected_dataset_enabled:
-        raise ValueError("mock data import refuses a selected-dataset enabled configuration")
+    if read_dataset_role(administration.repository_root() / database.admin_state_root, "selected"):
+        raise ValueError("mock data import requires a bootstrap dataset state root")
     normalization = load_normalization_settings()
-    embedding = load_embedding_runtime_settings()
+    if action in ("load", "write-bundle"):
+        # The import and bundle-maintenance actions prepare the fixture itself, so they read the
+        # configured embedding family whether or not the site serves the embedding features.
+        embedding = load_embedding_runtime_settings()
+    elif action == "write-artifacts":
+        embedding = embedding_configuration_for_site(load_web_settings())
+    else:
+        embedding = None
     with database_context(database) as factory:
         with factory() as session:
             require_database_schema(session.connection())
         if action == "write-artifacts":
-            write_mock_artifacts(
+            return write_mock_artifacts(
                 factory,
                 fixture_dir=fixture_dir,
                 raw_root=raw_root,
                 normalization=normalization,
                 embedding=embedding,
-                hubs_dir=hubs_dir,
+                database_settings=database,
+            )
+        if action == "write-bundle":
+            write_mock_bundle(
+                factory,
+                fixture_dir=fixture_dir,
+                raw_root=raw_root,
+                normalization=normalization,
+                embedding=embedding,
             )
             return None
         report = load_mock_curriculum(

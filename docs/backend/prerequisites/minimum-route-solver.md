@@ -37,7 +37,7 @@ Pruning is exact. Zero suppression merges equal families, the inclusive-bound `f
 - `course`: an eligible leaf contributes a witness variable and, only outside the basis, a new variable. An ineligible leaf yields no candidate and one located problem.
 - `opaque_credits`: a zero source minimum is the neutral frontier, and a positive minimum contributes one witness and one new-charge identity keyed by `work_key`, so repeated identical work is charged once.
 - `module_block`: folds transparently over its child under the same owner.
-- `unresolved`: returns no candidates, sets `has_unresolved_alternative`, and emits one `PathBlocker`.
+- `unresolved`: returns no candidates, sets `hasUnresolvedAlternative`, and emits one `PathBlocker`.
 
 ## Expanded courses and module shortfalls
 
@@ -93,11 +93,11 @@ Selection has three stages, and the variable rank appears in none of them.
 
 The browser host is `web/src/features/prerequisites/route/worker.ts`. It receives one `SolverRequest`, calls `runRequest` in `web/src/solver/request.ts` once, and posts the returned `MinimumRoute`. `workerClient.ts` creates one worker per uncached explicit calculation, posts once, and settles on the result, its error or cancellation. The worker imports no React, DOM, profile, configuration, HTTP or Node CLI module.
 
-The machine host is `run_minimum_route_command(target_code, *, completed_codes, selected_codes, excluded_codes, include_recommended, include_inferred, active_only, basis, completed_node_keys, excluded_node_keys)` in `src/course_explorer/prerequisite/commands.py`. It returns the JSON object the bundled solver wrote.
+The machine host is `run_minimum_route_command(target_code, *, completed_codes, selected_codes, excluded_codes, include_recommended, include_inferred, active_only, basis, completed_node_keys, excluded_node_keys, projection)` in `src/course_explorer/prerequisite/commands.py`. It returns the JSON object the bundled solver wrote.
 
-1. `_prepare_prerequisite_command` resolves the target, selected, completed and excluded inputs through `CourseLookupService.resolve_courses`, and rejects a completed course outside a non-empty selected set. It also rejects a completed or excluded node key that is not a graph-box key of the form `s:<owner>:d:<24 hex>`, and sorts and deduplicates each validated key list. The shape check reads the key string alone, and a well-formed key that names no drawn box in the compiled structure changes nothing.
+1. `_prepare_prerequisite_command` resolves the target, selected, completed and excluded inputs through the [course resolver](/docs/reference/glossary.md#search-and-comparison), and rejects a completed course outside a non-empty selected set. It also rejects a completed or excluded node key that is not a graph-box key of the form `s:<owner>:d:<24 hex>`, and sorts and deduplicates each validated key list. The shape check reads the key string alone, and a well-formed key that names no drawn box in the compiled structure changes nothing.
 2. It chooses the calculation basis: the completed set, or the effective selected set when `basis="selected"`. Without selected input the effective selected set is the completed set. This one set is the route's sole calculation basis.
-3. It compiles one solver structure through `PrerequisiteGraphCompiler.compile_structure(...)` and projects it once with `include_display=False`, disposes the database context, and returns one `_PrerequisiteCommandContext`.
+3. It compiles one solver structure through `PrerequisiteGraphCompiler.compile(...)` with `include_display=False`, so the call projects no drawing, disposes the database context, and returns one `_PrerequisiteCommandContext`.
 4. `_node_route` sends `{"operation": "route", structure, basis_group_ids, max_compact_nodes}` to `node web/.solver-cli/cli.js` through `_run_node_solver` and returns the parsed result. A missing bundle raises `FileNotFoundError` naming `npm --prefix web run solver:build`, and a nonzero exit or unparsable output raises `RuntimeError` with standard error.
 
 `scripts/prerequisites.py --route` prints that JSON. The graph operation `run_prerequisite_command` shares the same preparation in points one to three and returns the drawing report instead. The web server exposes no route endpoint and starts no solver process.

@@ -41,8 +41,10 @@ export function CourseNode({ data }: NodeProps & { data: GraphNodeData }) {
   const completeRef = useRef<HTMLButtonElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   useGraphNodeHeight(rootRef, data.phone, data.id, data.onNodeHeight);
-  const completion = useCourseCompletion(course, () =>
-    completeRef.current?.focus(),
+  const completion = useCourseCompletion(
+    course,
+    () => completeRef.current?.focus(),
+    "added-only",
   );
   useEffect(() => {
     if (data.interactionDisabled) setOpen(false);
@@ -113,9 +115,7 @@ export function CourseNode({ data }: NodeProps & { data: GraphNodeData }) {
               type="button"
               className={completed ? "is-done" : ""}
               aria-pressed={completed}
-              aria-label={t(
-                completed ? "Mark not completed" : "Mark completed",
-              )}
+              aria-label={t(completed ? "Remove completion" : "Mark completed")}
               onClick={completion.toggle}
             >
               {t(completed ? "Completed (course)" : "Complete (course)")}

@@ -50,7 +50,7 @@
   <rect x="480" y="352" width="200" height="64" rx="8"
         fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
   <text x="580" y="378" text-anchor="middle" font-size="16" fill="#ececf2">Serving process b</text>
-  <text x="580" y="400" text-anchor="middle" font-size="14" fill="#a3a4b8">cold heavy call</text>
+  <text x="580" y="400" text-anchor="middle" font-size="14" fill="#a3a4b8">one cold heavy call</text>
 
   <rect x="696" y="352" width="200" height="64" rx="8"
         fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"
@@ -64,11 +64,12 @@
   <text x="796" y="450" text-anchor="middle" font-size="16" fill="#ececf2">Holder process d</text>
   <text x="796" y="472" text-anchor="middle" font-size="14" fill="#a3a4b8">builds, then idles</text>
 
-  <rect x="40" y="540" width="300" height="52" rx="8"
+  <rect x="40" y="520" width="340" height="76" rx="8"
         fill="none" stroke="#4a4c6b" stroke-width="1.5"/>
-  <line x1="56" y1="566" x2="96" y2="566" stroke="#a3a4b8"
+  <line x1="56" y1="546" x2="96" y2="546" stroke="#a3a4b8"
         stroke-width="1.5" stroke-dasharray="5 4"/>
-  <text x="112" y="571" font-size="14" fill="#a3a4b8">Idle during the calls</text>
-
-  <text x="920" y="571" text-anchor="end" font-size="14" fill="#a3a4b8">Each group covers both concurrency variants</text>
+  <text x="112" y="551" font-size="14" fill="#a3a4b8">Idle during the calls</text>
+  <line x1="56" y1="574" x2="96" y2="574" stroke="#a98ae0"
+        stroke-width="1.5"/>
+  <text x="112" y="579" font-size="14" fill="#a3a4b8">Interactive catalogue read</text>
 </svg>

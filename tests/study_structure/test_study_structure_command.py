@@ -28,7 +28,14 @@ def test_structure_command_validates_input_and_forwards_version_selection(monkey
         def __init__(self, *_args, **_kwargs):
             pass
 
-        def read_many(self, root_group_ids, *, allow_unavailable=False, module_versions=None):
+        def read_many(
+            self,
+            root_group_ids,
+            *,
+            allow_unavailable=False,
+            module_versions=None,
+            fragment_store=None,
+        ):
             service_calls.append(
                 (tuple(root_group_ids), allow_unavailable, dict(module_versions or {}))
             )
@@ -37,7 +44,7 @@ def test_structure_command_validates_input_and_forwards_version_selection(monkey
     monkeypatch.setattr(command_module, "StudyStructureService", _Service)
     monkeypatch.setattr(command_module, "CurriculumRepository", lambda _factory: object())
     monkeypatch.setattr(
-        command_module, "_database_context", lambda _settings: nullcontext(object())
+        command_module, "_database_context", lambda _settings, **_kwargs: nullcontext(object())
     )
     monkeypatch.setattr(
         command_module,

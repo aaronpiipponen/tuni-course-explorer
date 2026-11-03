@@ -1,18 +1,25 @@
 /**
- * The signed-in console: the header, the five mounted tab trees and their one shared report.
+ * The signed-in console: the header, the six mounted tab trees and their two shared reads.
  *
- * The shell owns one server-status read for the whole signed-in session. The dashboard renders it,
- * the Settings tab forwards it to the Dataset panel, and its reported selection state gates the
- * three dataset-dependent automatic reads. An unknown state waits for a successful read, a disabled
- * state states the site's own reason without a failure, and a failed refresh keeps the last report
- * and gates from it. The header carries branding, tab navigation, GitHub, Docs, App and sign-out
- * controls. The open tab is stored in this browser tab's session storage, so a reload restores it,
- * while every inactive tab tree is mounted and hidden.
+ * The shell owns one server-status read and one dataset inventory read for the whole signed-in
+ * session. The dashboard renders the server status, the Settings dataset panel renders the
+ * inventory, and the inventory's Working presence controls the four stage action rows. The reported
+ * selection state gates the inference summary alone. An unknown state waits for a successful read,
+ * a disabled state states the site's own reason without a failure, and a failed refresh keeps the
+ * last report and gates from it. The header carries branding, tab navigation, GitHub, Docs, App and
+ * sign-out controls. The open tab is stored in this browser tab's session storage, so a reload
+ * restores it, while every inactive tab tree is mounted and hidden.
  */
 import { useState } from "react";
 import { readDashboard } from "../api/dashboard";
-import type { ServerStatusReport, SessionReport } from "../api/types";
+import { readDatasets } from "../api/datasets";
+import type {
+  DatasetListReport,
+  ServerStatusReport,
+  SessionReport,
+} from "../api/types";
 import { Dashboard } from "../features/dashboard/Dashboard";
+import { Feedback } from "../features/feedback/Feedback";
 import { Inference } from "../features/inference/Inference";
 import { Logs } from "../features/logs/Logs";
 import { DataPreparation } from "../features/preparation/DataPreparation";
@@ -22,10 +29,14 @@ import { GITHUB_MARK } from "../shared/icons";
 import type { SessionAccess } from "../shared/StagePanel";
 import { usePanelRead } from "../shared/usePanelRead";
 import { wording } from "../shared/wording";
+import { BrandMark } from "./BrandMark";
 import { isTabId, TabBar, type TabId } from "./TabBar";
 
 const dashboardRead = (signal: AbortSignal, automatic: boolean) =>
   readDashboard(signal, automatic);
+
+const datasetsRead = (signal: AbortSignal, automatic: boolean) =>
+  readDatasets(signal, automatic);
 
 /** The session-storage key of the open tab. */
 const TAB_STORAGE_KEY = "course-explorer-admin-tab";
@@ -66,13 +77,25 @@ export function SignedInConsole({
     onRefusal,
     failureTextValue: wording.readFailed,
   });
-  const selectionEnabled = dashboard.report?.serving.selection_enabled ?? null;
+  const datasets = usePanelRead<DatasetListReport>(datasetsRead, {
+    pollSeconds: session.poll_seconds,
+    enabled: true,
+    onRefusal,
+    failureTextValue: wording.readFailed,
+  });
+  const selectionEnabled =
+    dashboard.report === null
+      ? null
+      : (dashboard.report.serving.selection_enabled ?? "unavailable");
+  const workingPresent =
+    datasets.report === null || datasets.report.mode === "unavailable"
+      ? null
+      : datasets.report.datasets.some((entry) => entry.working);
   return (
     <div>
       <header>
         <div className="logo">
-          <i>T</i>
-          {wording.brand}
+          <BrandMark />
         </div>
         <span className="docl">{wording.admin}</span>
         <TabBar current={tab} onSelect={selectTab} />
@@ -107,7 +130,11 @@ export function SignedInConsole({
           <Dashboard panel={dashboard} />
         </div>
         <div className="tab-pane" hidden={tab !== "preparation"}>
-          <DataPreparation session={access} onRefusal={onRefusal} />
+          <DataPreparation
+            session={access}
+            onRefusal={onRefusal}
+            workingPresent={workingPresent}
+          />
         </div>
         <div className="tab-pane" hidden={tab !== "inference"}>
           <Inference
@@ -115,6 +142,7 @@ export function SignedInConsole({
             onRefusal={onRefusal}
             selectionEnabled={selectionEnabled}
             selectionFailure={dashboard.failure}
+            workingPresent={workingPresent}
           />
         </div>
         <div className="tab-pane" hidden={tab !== "logs"}>
@@ -126,7 +154,11 @@ export function SignedInConsole({
             onRefusal={onRefusal}
             onAdminRebuild={onAdminRebuild}
             dashboard={dashboard}
+            datasets={datasets}
           />
+        </div>
+        <div className="tab-pane" hidden={tab !== "feedback"}>
+          <Feedback session={access} onRefusal={onRefusal} />
         </div>
       </div>
     </div>

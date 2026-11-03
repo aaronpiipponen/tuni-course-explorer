@@ -16,11 +16,12 @@ from pathlib import Path, PurePosixPath
 
 import pytest
 
+from course_explorer import administration
 from course_explorer.administration import administrative_json, atomic_write_private_text
 from course_explorer.config import load_administrative_dataset_settings
 from course_explorer.datasets import DatabaseSnapshot
 from course_explorer_admin import datasets as datasets_admin
-from course_explorer_admin import lifecycle, logs, mechanics
+from course_explorer_admin import logs, mechanics
 from course_explorer_admin.lifecycle import (
     EmbeddingOptions,
     InferenceOptions,
@@ -75,9 +76,7 @@ def _bind_log_roots(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     monkeypatch.setenv("ADMIN_STATE_ROOT", _ADMIN_STATE_ROOT)
     monkeypatch.setenv("TRANSLATION_CONTROLLER_WORKER_PROJECT_ROOT", str(tmp_path / _WORKER_ROOT))
     monkeypatch.setenv("TRANSLATION_CONTROLLER_STOP_TIMEOUT_SECONDS", _STOP_TIMEOUT_SECONDS)
-    monkeypatch.setattr(lifecycle, "repository_root", lambda: tmp_path)
-    monkeypatch.setattr(datasets_admin, "repository_root", lambda: tmp_path)
-    monkeypatch.setattr(logs, "repository_root", lambda: tmp_path)
+    monkeypatch.setattr(administration, "repository_root", lambda: tmp_path)
     return tmp_path
 
 
@@ -329,7 +328,7 @@ def test_fixed_log_read_uses_only_its_selected_source(
             assert _SENTINEL not in str(failure.value)
         else:
             report = logs.read_embedding_log(lines=lines, runner=boundary)
-        prefix = mechanics.compose_prefix(non_interactive=True)
+        prefix = mechanics.compose_prefix(non_interactive=True, interpreter=True)
         assert boundary.calls == [
             (*prefix, "logs", "--no-color", "--no-log-prefix", "--tail", str(lines), "embedding")
         ]

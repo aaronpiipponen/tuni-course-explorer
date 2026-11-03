@@ -16,13 +16,14 @@ from course_explorer.ingestion.normalization import normalize_curriculum
 from course_explorer.ingestion.normalization_repository import NormalizationRepository
 from course_explorer.ingestion.repository import CaptureRepository
 from course_explorer.prerequisite import commands as command_module
+from course_explorer.prerequisite.graph import PrerequisiteGraphCompiler
 from tests.ingestion._normalization_repository_support import (
     GUIDE_URL,
     build_completed_fixture_store,
     fixture_bytes,
 )
 from tests.prerequisite._command_support import search_settings
-from tests.prerequisite._graph_support import course_nodes, root_summary
+from tests.prerequisite._graph_support import course_nodes
 from tests.prerequisite._path_support import selected_group_ids, solve_route
 
 
@@ -172,18 +173,18 @@ def test_graph_and_route_commands_share_preparation_without_mixing_results(
     monkeypatch.setattr(command_module, "load_search_settings", search_settings)
     projector_calls: list[str] = []
     solver_calls: list[str] = []
-    real_projector = command_module.project_prerequisite_graph
+    real_compile = PrerequisiteGraphCompiler.compile
     real_node_route = command_module._node_route
 
-    def watched_projector(structure, **kwargs):
-        projector_calls.append(root_summary(structure).group_id)
-        return real_projector(structure, **kwargs)
+    def watched_compile(compiler, target, **kwargs):
+        projector_calls.append(target)
+        return real_compile(compiler, target, **kwargs)
 
     def watched_node_route(context):
         solver_calls.append(context.solver.root_group_id)
         return real_node_route(context)
 
-    monkeypatch.setattr(command_module, "project_prerequisite_graph", watched_projector)
+    monkeypatch.setattr(PrerequisiteGraphCompiler, "compile", watched_compile)
     monkeypatch.setattr(command_module, "_node_route", watched_node_route)
 
     graph_report = command_module.run_prerequisite_command("CS.A2", completed_codes=["CS.I1"])
@@ -193,7 +194,7 @@ def test_graph_and_route_commands_share_preparation_without_mixing_results(
     assert "path" not in type(graph_report).model_fields
 
     route = command_module.run_minimum_route_command("CS.A2", completed_codes=["CS.I1"])
-    # The route read reuses the one shared preparation and its single projection, then solves.
+    # The route read prepares and projects once for its own context, then solves.
     assert projector_calls == ["course-group-a", "course-group-a"]
     assert solver_calls == ["course-group-a"]
     assert isinstance(route, dict)

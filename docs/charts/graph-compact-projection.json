@@ -1,17 +1,22 @@
 {
   "type": "bar",
-  "title": "Largest projection time across the corrected passes",
-  "description": "The largest project stage across all 110 cases in each corrected pass. The first correction reached 15,706.5 ms, and the second and module-drawing passes stayed near 600 ms.",
-  "valueAxis": "Projection time (ms)",
+  "title": "Projection stage for the four largest baseline cases",
+  "description": "Baseline project-and-prepare time and the compact Python projector's stage time for MATH.MA.880 and MATH.MA.725, each with Active only on and off. The compact stage is lower in all four cases. The baseline column includes preparation and the compact column does not.",
+  "valueAxis": "Stage time (ms)",
   "categories": [
-    "First correction",
-    "Second correction",
-    "Module drawing"
+    "MATH.MA.880, Active only on",
+    "MATH.MA.880, Active only off",
+    "MATH.MA.725, Active only on",
+    "MATH.MA.725, Active only off"
   ],
   "series": [
     {
-      "name": "Largest project",
-      "values": [15706.5, 593.5, 600.5]
+      "name": "Baseline project and prepare",
+      "values": [502, 5664, 5103, 15578]
+    },
+    {
+      "name": "Compact project",
+      "values": [160.3, 464.5, 136.3, 500.6]
     }
   ]
 }

@@ -4,7 +4,7 @@
   inset: 0 0 var(--phone-tabbar-space) 0;
   z-index: 24;
   background: rgb(0 0 0 / 45%);
-  transition: bottom 0.24s cubic-bezier(0.22, 0.8, 0.2, 1);
+  transition: bottom var(--phone-rise-duration) var(--phone-rise-ease);
 }
 .phone-sheet {
   position: fixed;
@@ -24,8 +24,8 @@
   box-shadow: 0 -20px 60px rgb(0 0 0 / 70%);
   touch-action: pan-y;
   transition:
-    bottom 0.24s cubic-bezier(0.22, 0.8, 0.2, 1),
-    max-height 0.24s cubic-bezier(0.22, 0.8, 0.2, 1);
+    bottom var(--phone-rise-duration) var(--phone-rise-ease),
+    max-height var(--phone-rise-duration) var(--phone-rise-ease);
 }
 .phone-sheet-head {
   display: flex;

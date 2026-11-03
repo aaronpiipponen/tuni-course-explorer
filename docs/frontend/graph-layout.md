@@ -20,16 +20,16 @@ The structural snapshot is `graphRequest: PrerequisiteGraphRequest | null`, `gra
 - A cache hit publishes the held report without a request.
 - A resolved key that the cache does not hold starts one `AbortController` read, and the effect cleanup aborts it, so a changed key, a pane exit and an unmount all cancel the pending read.
 - A fresh successful response is stored with `cache.put(report.dataset_identity, graphKey, report)` before it is published, and neither an error nor an aborted response enters the cache.
-- A same-root read holds the last successful report while it runs, and a different root never shows it.
+- A read holds the last successful report while it runs, including a change of root, so the drawing can animate into the new root.
 - Leaving the pane aborts a pending read and does not delete successful entries, so reopening the pane or switching back to a held structural input shows the report again without a request.
-- `ready` is true only when the pane is active, the root has no pending classification and no input error, the graph key is resolved, and the settled result belongs to that exact key and root. A held same-root report while changed structural inputs load is not ready.
+- `ready` is true only when the pane is active, the root has no pending classification and no input error, the graph key is resolved, and the settled result belongs to that exact key and root. A held report while changed structural inputs or a new root load is not ready.
 
 `useMinimumRoute(inputs, report, graphReady)` in `web/src/features/prerequisites/route/useMinimumRoute.ts` owns the explicit local calculation, and only `find` starts a worker.
 
 - The route key is `JSON.stringify(["minimum-route", report.dataset_identity, inputs.graphKey, inputs.key, report.max_compact_nodes])`, and it is null unless the pane is active, the graph is ready, a report is held and the request exists.
-- `find` returns when the route key, the request or the report is null, and when the cache identity differs from the report's dataset identity. It aborts a previous controller, reads the cache under the route key, and installs a held successful outcome without starting a worker. A worker result or error that arrives after its calculation was aborted or replaced, or after the route key or the report changed, is discarded. A result is also discarded when the cache identity no longer matches the report's dataset identity.
+- `find` returns when the route key, the request or the report is null, and when the cache identity differs from the report's dataset identity. It aborts a previous controller, reads the cache under the route key, and installs a held successful outcome without starting a worker. A worker result or error that arrives after its calculation was aborted or replaced, or after the route key or the report changed, is discarded. A result is also discarded when the cache identity differs from the report's dataset identity.
 - On a miss it calls `withLiveInputs(report.solver, request)` for the shallow structure copy and the selected or completed basis, passes the report's allocation limit, and calls `calculateRouteInWorker` with the controller's signal. The held report and its structure tables are never mutated.
-- A settled worker result is accepted only when its signal is not aborted, its controller is the current one, its route key and report reference are current, and the cache still holds the report's dataset identity. The hook stores the outcome with `cache.put` before it publishes it, including a no-solution or approximation-failed outcome, and stores no exception or aborted work.
+- A settled worker result is accepted only when its signal is not aborted, its controller is the current one, its route key and report reference are current, and the cache identity equals the report's dataset identity. The hook stores the outcome with `cache.put` before it publishes it, including a no-solution or approximation-failed outcome, and stores no exception or aborted work.
 - `clear` aborts, drops the controller ref and writes the empty route state, and it leaves successful cache values in place.
 - An effect runs `discard` on a changed route key, a replaced report and unmount, so changed inputs, readiness loss, a pane exit and a new report abort the worker and clear the visible route.
 - The returned session is withheld unless the route key is current, the held report is the current one and the cache identity matches, which prevents a result from showing against inputs that have moved on before the cleanup runs.
@@ -73,16 +73,16 @@ The result is read into a node map of positions and sizes and an edge map of poi
 
 `GraphCanvas` lays out the report with the `NODE_SIZES` footprints first. On a phone it replaces the height of each course and module node with its measured height when one exists and uses the base width and every other node and edge value. Desktop uses the model exactly. The first layout of a root therefore uses the base footprint, and a content or language change produces another layout once the measurement arrives.
 
-`useGraphLayout` in `web/src/features/prerequisites/graph/useGraphLayout.ts` keys its work on a signature of the root identity, each node identity and kind, each node's footprint width and height, and each edge identity. A change to node states with every footprint equal leaves the signature identical, so the held layout is returned with the model and no layout runs. The pane recomputes the states, the model rebinds them, and the viewport stays where it is. A changed footprint produces another layout. A changed signature holds the previous graph while the root identity matches, clears it for a different root, and drops a settled layout whose effect was cleaned up.
+`useGraphLayout` in `web/src/features/prerequisites/graph/useGraphLayout.ts` keys its work on a signature of the root identity, each node identity and kind, each node's footprint width and height, and each edge identity. A change to node states with every footprint equal leaves the signature identical, so the held layout is returned with the model and no layout runs. The pane recomputes the states, the model rebinds them, and the viewport stays where it is. A changed footprint produces another layout. A changed signature holds the previous graph while the next layout computes, including a different root, and drops a settled layout whose effect was cleaned up.
 
 ## The animated frame
 
 `useAnimatedGraph` in `web/src/features/prerequisites/graph/useAnimatedGraph.ts` returns one `AnimatedGraphFrame` of nodes and edges, each with a position, an opacity and an `exiting` flag.
 
-- The first graph, a changed root, and a frame whose geometry already equals the target publish the exact target with no transition. `sameGeometry` compares every node position and footprint and every edge point list.
-- Any other change animates over `duration` 600 ms with a cubic ease. A node interpolates its position and footprint and fades in or out, and an exiting node holds its frame on screen until the animation ends.
+- The first graph and a frame whose geometry already equals the target publish the exact target with no transition. `sameGeometry` compares every node position and footprint and every edge point list.
+- Any other change animates over `duration` 600 ms with a cubic ease. A node interpolates its position and footprint. An exiting node fades out over the first 30% and an entering node fades in over the remaining 70%, while a node in both frames keeps full opacity. An exiting node holds its frame on screen until the animation ends.
 - Under the operating system's reduced-motion preference the exact target frame is published with no transition: every node takes its target position and footprint at full opacity, an exiting node leaves the frame at once, and no glide or fade runs. The classes of the frame supply the static route lighting, dimming and selection styles.
-- An edge whose points changed is fully transparent at the midpoint, where its drawn geometry swaps from the previous route to the new one, so a layout change never shows a slanted partial route.
+- An edge whose points changed is fully transparent at the exit boundary, where its drawn geometry swaps from the previous route to the new one, so a layout change never shows a slanted partial route.
 - An edge whose points are identical produces no fade and no movement, so a drawing-neutral refresh moves nothing.
 - The final tick publishes the exact target frame and cancels the pending animation frame, and the effect cancels it on cleanup.
 
@@ -96,7 +96,7 @@ The rendering state on the canvas:
 
 - `routing` is true when a route result exists or a route calculation is pending. Every node and edge the route lights holds full opacity and everything else is dimmed, and a course node that only the selected basis covers carries `selectedOnly`.
 - `lit` comes from `buildRouteView`. `lit.levels` supplies the `--dl` style that spreads the lighting from the root outward.
-- Without a route, a hovered or open node lights its `connectionChain` instead.
+- Without a route, an open node or a node hovered through a hover-capable pointer lights its `connectionChain` instead. Opening a menu takes the chain from the hover, and a report or route result change clears the menu, the panel and the hover.
 - A node that an `approximation_failed` result marks carries the `timeout` flag, and an inactive course node renders at reduced opacity.
 - `PrerequisiteEdge` draws the ELK point list as a polyline with a rounded corner per bend, plus a dark halo edge and the parent hue as the stroke. It maps the model's `inferred` flag to an `inferred` class on both paths, and `graph.css` dashes only the foreground path through `.react-flow__edge-path.prereq-edge.inferred.line`, so a connection whose members are all inferred is dashed and one with any official member is solid. The component carries the fade opacity and the lighting delay on its own group, because React Flow hands an edge's style to the edge component rather than to its wrapper group.
 
@@ -115,7 +115,7 @@ The rendering state on the canvas:
 - `newCredits` comes from `total_new_credits` and `fullCredits` adds the credits of the covered course nodes. A null total means no credits.
 - `problems` are grouped by drawn node, reason and detail for presentation only, and each carries the title of its `node_id` resolved from the display and course summaries.
 - `shortfalls` resolve a module or connector title through their `node_id` and read as a course count or a credit comparison.
-- `missingCourseIds` is the new course identities, and `blockedCourseIds` and `blockedNodeTitles` come from `blocked_excluded_group_ids` and `blocked_excluded_node_keys`.
+- `missingCourseIds` is the new course identities.
 
 `projectRoute(structure, drawing)` in `web/src/solver/route-projection.ts` runs inside the solver and turns one chosen drawing derivation into the route's lit members and selected nodes. It indexes the projected contexts and relationship members, starts from the root context paired with the drawing root, and collects each visited context's member IDs. It follows only the child slots the selected drawing node carries, pairs each with that slot's child context, and memoizes by context identity and drawing node identity, so one shared selected child visits every context that selects it. A missing context, member or child slot and a mismatched owner or piece raise an error. The selected nodes are the root plus the source and target endpoints of the lit members. An unchosen alternative, including an equal-cost one, contributes no member.
 
@@ -127,7 +127,7 @@ The rendering state on the canvas:
 
 ## The refused-drawing boundary
 
-`PrerequisitesPane` is the early boundary of the drawing. It renders the empty state with no root, the loading skeleton while `graphLoading && !report`, `ErrorNotice` when the report read or the activity classification failed, `PrerequisiteGraph` when `report.drawing.allowed` is true, and `RefusedGraph` otherwise. For the allowed drawing it memoizes `evaluateGraphNodeStates(report, inputs.request)` from the held report and the live snapshot and passes the result as `nodeStates`. A refused drawing computes none. `RefusedGraph` renders the same `RouteControl` and `RoutePanel` in the same stage layout, so the explicit route operation works while the drawing is refused. The pane computes the route summary with `useMemo` from the report and the route result and passes it to both branches.
+`PrerequisitesPane` is the early boundary of the drawing. It renders the empty state with no root, the loading skeleton while `graphLoading && !report`, `ErrorNotice` when the report read or the activity classification failed, `PrerequisiteGraph` when `report.drawing.allowed` is true, and `RefusedGraph` otherwise. The skeleton appears only when no previous drawing is held, so a root change keeps the held drawing on screen while its report loads. For the allowed drawing it memoizes `evaluateGraphNodeStates(report, inputs.request)` from the held report and the live snapshot and passes the result as `nodeStates`. A refused drawing computes none. `RefusedGraph` renders the same `RouteControl` and `RoutePanel` in the same stage layout, so the explicit route operation works while the drawing is refused. The pane computes the route summary with `useMemo` from the report and the route result and passes it to both branches.
 
 ## Graph actions and stored state
 

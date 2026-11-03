@@ -1,5 +1,5 @@
-# Portable bind, exact site origin, session and anonymous-grant budget, and log bounds of the
-# administration backend.
+# Bind, exact site origin, session and anonymous-grant budget, log bounds and site
+# identity of the administration backend.
 # The origin is the external HTTPS address the administration site answers for. The value holds one
 # exact HTTPS origin: a scheme, a host and an optional port. The local value describes a development
 # instance, and a deployment sets its own address.
@@ -19,8 +19,11 @@ ADMIN_WEB_ANONYMOUS_SESSION_WINDOW_SECONDS = 60
 ADMIN_WEB_COMMAND_LOG_LIMIT = 200
 # Seconds between completed automatic reads of one enabled panel of the signed-in console page.
 ADMIN_WEB_POLL_SECONDS = 60
-# Absolute address the console's App link points at. The example describes a development instance:
-# a deployment sets its own address in its runtime configuration file.
-ADMIN_WEB_APP_URL = "http://localhost:8037/"
+# The systemd unit that runs this checkout's web process, the unit that runs its administration
+# process, and the manager that owns the web unit. The administration unit always belongs to the
+# user manager. The values are placeholders, and a deployment states its own unit names and scope.
+ADMIN_SITE_WEB_SERVICE_UNIT = "replace-with-web.service"
+ADMIN_SITE_ADMIN_SERVICE_UNIT = "replace-with-admin.service"
+ADMIN_SITE_WEB_SERVICE_SCOPE = "user"
 # GitHub repository address the console's GitHub link opens.
 ADMIN_WEB_REPOSITORY_URL = "https://github.com/aaronpiipponen/tuni-course-explorer"

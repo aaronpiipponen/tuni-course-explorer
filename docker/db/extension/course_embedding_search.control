@@ -1,0 +1,7 @@
+# Register the exact semantic scan extension.
+comment = 'Exact packed semantic scan over course embedding blocks'
+default_version = '1.0'
+module_pathname = '$libdir/course_embedding_search'
+relocatable = true
+requires = 'vector'
+superuser = true

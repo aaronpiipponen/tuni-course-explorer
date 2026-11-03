@@ -17,6 +17,7 @@ from pathlib import Path
 import pytest
 from sqlalchemy import Engine, func, select
 
+from course_explorer import administration
 from course_explorer.administration import administrative_json, atomic_write_private_text
 from course_explorer.config import (
     load_administrative_dataset_settings,
@@ -85,6 +86,10 @@ def test_partial_worker_publication_preserves_unfinished_cycle_and_real_results(
     # unique scratch location and points the raw session-name check at the derived worker DB.
 
     with monkeypatch.context() as m:
+        from tests.support.repository import scratch_repository
+
+        scratch = scratch_repository(tmp_path / "repository")
+        m.setattr(administration, "repository_root", lambda: scratch)
         admin_state = f"data/admin-tests/{uuid.uuid4().hex}"
         m.setenv("ADMIN_STATE_ROOT", admin_state)
         m.setenv("INGESTION_CONTROLLER_STATE_ROOT", f"{admin_state}/ingestion")

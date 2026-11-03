@@ -9,7 +9,7 @@
   "sections": [
     {
       "title": "Guides",
-      "description": "How to use the app: a first session, each tab, profiles and language.",
+      "description": "How to use the app: a first session, each tab, profiles and language, Sisu import and feedback.",
       "page": {
         "id": "quickstart",
         "path": "docs/guides/README.md",
@@ -46,6 +46,12 @@
             "children": []
           },
           {
+            "id": "guide-structure-edit",
+            "path": "docs/guides/editing-structure-of-studies.md",
+            "nav": "Editing a structure of studies",
+            "children": []
+          },
+          {
             "id": "guide-profiles",
             "path": "docs/guides/profiles-and-language.md",
             "nav": "Profiles and language",
@@ -61,6 +67,12 @@
             "id": "guide-phone",
             "path": "docs/guides/phone.md",
             "nav": "Using the app on a phone",
+            "children": []
+          },
+          {
+            "id": "guide-feedback",
+            "path": "docs/guides/feedback.md",
+            "nav": "Sending feedback",
             "children": []
           }
         ]
@@ -101,6 +113,12 @@
             "id": "configuration",
             "path": "docs/backend/configuration.md",
             "nav": "Configuration",
+            "children": []
+          },
+          {
+            "id": "feedback-publication-states",
+            "path": "docs/backend/feedback-publication-states.md",
+            "nav": "Feedback publication states",
             "children": []
           },
           {
@@ -250,6 +268,12 @@
                 "path": "docs/backend/interfaces/command-line.md",
                 "nav": "Command line",
                 "children": []
+              },
+              {
+                "id": "administration-commands",
+                "path": "docs/backend/interfaces/administration-commands.md",
+                "nav": "Administration commands",
+                "children": []
               }
             ]
           }
@@ -258,7 +282,7 @@
     },
     {
       "title": "Frontend",
-      "description": "Browser state, shared interactions, graph rendering, the structure of studies, and the documentation wiki.",
+      "description": "The browser app shell, tab layouts, the feedback page, the structure editor, the prerequisite graph view and the documentation wiki.",
       "page": {
         "id": "frontend-overview",
         "path": "docs/frontend/README.md",
@@ -271,9 +295,27 @@
             "children": []
           },
           {
+            "id": "tab-layouts",
+            "path": "docs/frontend/tab-layouts.md",
+            "nav": "Tab layouts",
+            "children": []
+          },
+          {
+            "id": "feedback-page",
+            "path": "docs/frontend/feedback-page.md",
+            "nav": "Feedback page",
+            "children": []
+          },
+          {
             "id": "structure-editor",
             "path": "docs/frontend/structure-editor.md",
             "nav": "Structure editor",
+            "children": []
+          },
+          {
+            "id": "course-placement",
+            "path": "docs/frontend/course-placement.md",
+            "nav": "Course placement",
             "children": []
           },
           {
@@ -293,7 +335,7 @@
     },
     {
       "title": "Operations",
-      "description": "Running the administration command, the preparation stages, the worker, and the selected dataset.",
+      "description": "Running the administration command, the preparation stages, the worker, the Selected and Working datasets, and the setup workflows.",
       "page": {
         "id": "operations",
         "path": "docs/operations/README.md",
@@ -344,6 +386,18 @@
                 "id": "admin-console-settings",
                 "path": "docs/operations/admin-console/settings.md",
                 "nav": "Settings",
+                "children": []
+              },
+              {
+                "id": "admin-console-dataset-roles",
+                "path": "docs/operations/admin-console/dataset-roles.md",
+                "nav": "Dataset roles",
+                "children": []
+              },
+              {
+                "id": "admin-console-feedback",
+                "path": "docs/operations/admin-console/feedback.md",
+                "nav": "Feedback",
                 "children": []
               },
               {
@@ -400,7 +454,7 @@
     },
     {
       "title": "Experiments",
-      "description": "The experiments behind the system: questions, setups, measurements, corrections and outcomes.",
+      "description": "The experiments behind the system: questions, setups, measurements, results and open questions.",
       "page": {
         "id": "experiments",
         "path": "docs/experiments/README.md",
@@ -436,15 +490,21 @@
                 "children": []
               },
               {
-                "id": "inference-confidence",
-                "path": "docs/experiments/inference/confidence-and-corrected-references.md",
-                "nav": "Confidence and corrections",
+                "id": "inference-confidence-and-flag-calibration",
+                "path": "docs/experiments/inference/confidence-and-flag-calibration.md",
+                "nav": "Confidence and flag calibration",
                 "children": []
               },
               {
-                "id": "inference-prompt-tuning",
-                "path": "docs/experiments/inference/prompt-and-structured-output-tuning.md",
-                "nav": "Prompt tuning",
+                "id": "prompt-and-flag-schema-tuning",
+                "path": "docs/experiments/inference/prompt-and-flag-schema-tuning.md",
+                "nav": "Prompt and flag schema tuning",
+                "children": []
+              },
+              {
+                "id": "inference-prompt-sweeps",
+                "path": "docs/experiments/inference/prompt-sweeps-and-v9-selection.md",
+                "nav": "Prompt sweeps and v9 selection",
                 "children": []
               },
               {
@@ -479,9 +539,21 @@
                 "children": []
               },
               {
+                "id": "packed-exact-semantic-search",
+                "path": "docs/experiments/search-and-translation/packed-exact-semantic-search.md",
+                "nav": "Packed exact semantic search",
+                "children": []
+              },
+              {
                 "id": "lexical-matching-and-collation",
                 "path": "docs/experiments/search-and-translation/lexical-matching-and-collation.md",
                 "nav": "Lexical matching and collation",
+                "children": []
+              },
+              {
+                "id": "lookup-projection-and-native-fuzzy",
+                "path": "docs/experiments/search-and-translation/lexical-lookup-projection-and-native-fuzzy.md",
+                "nav": "Lookup projection and fuzzy",
                 "children": []
               }
             ]
@@ -514,6 +586,30 @@
                 "path": "docs/experiments/recommendations/vectorization-and-narrow-reads.md",
                 "nav": "Vectorization and reads",
                 "children": []
+              },
+              {
+                "id": "recommendation-composition-overheads",
+                "path": "docs/experiments/recommendations/recommendation-composition-overheads.md",
+                "nav": "Composition overheads",
+                "children": []
+              },
+              {
+                "id": "recommendation-centroid-prefilter",
+                "path": "docs/experiments/recommendations/centroid-candidate-prefilter.md",
+                "nav": "Centroid candidate prefilter",
+                "children": []
+              },
+              {
+                "id": "recommendation-nearest-neighbours",
+                "path": "docs/experiments/recommendations/nearest-neighbour-retrieval.md",
+                "nav": "Nearest-neighbour retrieval",
+                "children": []
+              },
+              {
+                "id": "native-recommendation-scoring",
+                "path": "docs/experiments/recommendations/native-recommendation-scoring.md",
+                "nav": "Native recommendation scoring",
+                "children": []
               }
             ]
           },
@@ -529,6 +625,12 @@
                 "children": []
               },
               {
+                "id": "route-solver-parity",
+                "path": "docs/experiments/graph-and-route-algorithms/route-solver-parity.md",
+                "nav": "Route solver parity",
+                "children": []
+              },
+              {
                 "id": "structural-route-deduplication",
                 "path": "docs/experiments/graph-and-route-algorithms/structural-route-deduplication.md",
                 "nav": "Route deduplication",
@@ -537,13 +639,25 @@
               {
                 "id": "cyclic-graph-compilation",
                 "path": "docs/experiments/graph-and-route-algorithms/cyclic-graph-compilation.md",
-                "nav": "Cyclic graph compilation",
+                "nav": "Cyclic graph compilation cost",
                 "children": []
               },
               {
                 "id": "compact-graph-identity",
-                "path": "docs/experiments/graph-and-route-algorithms/compact-graph-identity-and-projection.md",
+                "path": "docs/experiments/graph-and-route-algorithms/compact-graph-identity.md",
                 "nav": "Compact graph identity",
+                "children": []
+              },
+              {
+                "id": "graph-report-payload",
+                "path": "docs/experiments/graph-and-route-algorithms/graph-report-payload-and-projection.md",
+                "nav": "Graph report payload",
+                "children": []
+              },
+              {
+                "id": "native-prerequisite-compilation",
+                "path": "docs/experiments/graph-and-route-algorithms/native-prerequisite-compilation.md",
+                "nav": "Native prerequisite compilation",
                 "children": []
               }
             ]
@@ -554,27 +668,45 @@
             "nav": "Runtime, storage and serving",
             "children": [
               {
-                "id": "data-loading-and-connection-overheads",
-                "path": "docs/experiments/runtime-storage-and-serving/data-loading-and-connection-overheads.md",
-                "nav": "Data loading and overheads",
-                "children": []
-              },
-              {
-                "id": "read-memory-and-serialization",
-                "path": "docs/experiments/runtime-storage-and-serving/read-memory-and-serialization.md",
-                "nav": "Read memory and serialization",
-                "children": []
-              },
-              {
-                "id": "descriptive-chunk-caching",
-                "path": "docs/experiments/runtime-storage-and-serving/descriptive-chunk-caching.md",
-                "nav": "Descriptive chunk caching",
-                "children": []
-              },
-              {
                 "id": "serving-load-method",
                 "path": "docs/experiments/runtime-storage-and-serving/serving-load-method.md",
                 "nav": "Serving load method",
+                "children": []
+              },
+              {
+                "id": "serving-capacity",
+                "path": "docs/experiments/runtime-storage-and-serving/serving-capacity.md",
+                "nav": "Serving capacity",
+                "children": []
+              },
+              {
+                "id": "serving-request-cost-and-admission",
+                "path": "docs/experiments/runtime-storage-and-serving/serving-request-cost-and-admission.md",
+                "nav": "Request cost and curves",
+                "children": []
+              },
+              {
+                "id": "serving-front-router-state",
+                "path": "docs/experiments/runtime-storage-and-serving/serving-front-router-state.md",
+                "nav": "Front router state",
+                "children": []
+              },
+              {
+                "id": "web-memory-allocator-retention",
+                "path": "docs/experiments/runtime-storage-and-serving/web-memory-and-allocator-retention.md",
+                "nav": "Web memory and arenas",
+                "children": []
+              },
+              {
+                "id": "serving-artifact-build-and-shared-stores",
+                "path": "docs/experiments/runtime-storage-and-serving/serving-artifact-build-and-shared-stores.md",
+                "nav": "Serving artifact and stores",
+                "children": []
+              },
+              {
+                "id": "served-read-path",
+                "path": "docs/experiments/runtime-storage-and-serving/served-read-path.md",
+                "nav": "Served read path",
                 "children": []
               },
               {
@@ -584,21 +716,33 @@
                 "children": []
               },
               {
-                "id": "serving-workers-and-admission",
-                "path": "docs/experiments/runtime-storage-and-serving/serving-workers-and-admission.md",
-                "nav": "Serving workers and admission",
+                "id": "full-catalogue-read-projection",
+                "path": "docs/experiments/runtime-storage-and-serving/full-catalogue-read-projection.md",
+                "nav": "Full-catalogue read projection",
                 "children": []
               },
               {
-                "id": "serving-cost-and-routing",
-                "path": "docs/experiments/runtime-storage-and-serving/serving-cost-and-routing.md",
-                "nav": "Serving cost and routing",
+                "id": "read-memory-and-bounded-reads",
+                "path": "docs/experiments/runtime-storage-and-serving/read-memory-and-bounded-reads.md",
+                "nav": "Read memory and bounded reads",
                 "children": []
               },
               {
-                "id": "serving-load-and-limits",
-                "path": "docs/experiments/runtime-storage-and-serving/serving-load-and-limits.md",
-                "nav": "Serving load and limits",
+                "id": "array-storage-and-float-precision",
+                "path": "docs/experiments/runtime-storage-and-serving/array-storage-and-float-precision.md",
+                "nav": "Array storage and precision",
+                "children": []
+              },
+              {
+                "id": "response-compression",
+                "path": "docs/experiments/runtime-storage-and-serving/response-compression.md",
+                "nav": "Response compression",
+                "children": []
+              },
+              {
+                "id": "descriptive-chunk-caching",
+                "path": "docs/experiments/runtime-storage-and-serving/descriptive-chunk-caching.md",
+                "nav": "Descriptive chunk caching",
                 "children": []
               },
               {

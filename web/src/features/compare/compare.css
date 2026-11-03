@@ -17,6 +17,11 @@
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 16px;
 }
+.compare-help-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
 .compare-slot-card,
 .compare-slot-empty,
 .compare-slot-card > .course-card-shell {
@@ -166,7 +171,7 @@
 .compare-slot-empty.target {
   border-color: #b07be8;
   color: #fff;
-  background: rgb(78 0 142 / 20%);
+  background: rgb(90 30 156 / 20%);
 }
 .compare-slot-skeleton {
   margin-top: 12px;
@@ -255,8 +260,8 @@
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #4e008e, #b07be8);
-  box-shadow: 0 0 14px rgb(78 0 142 / 50%);
+  background: linear-gradient(90deg, var(--color-accent-strong), #b07be8);
+  box-shadow: 0 0 14px rgb(90 30 156 / 50%);
   transition: width 0.7s cubic-bezier(0.22, 0.8, 0.2, 1);
 }
 .comparison-meter > b {
@@ -305,7 +310,7 @@
   background: #0a0a0f;
   box-shadow:
     0 30px 90px rgb(0 0 0 / 85%),
-    0 0 60px -10px rgb(78 0 142 / 50%);
+    0 0 60px -10px rgb(90 30 156 / 50%);
 }
 .compare-picker-top {
   display: flex;
@@ -379,7 +384,7 @@
     place-items: center;
     border-radius: 8px;
     color: #fff;
-    background: #4e008e;
+    background: var(--color-accent-strong);
     font:
       500 12px "JetBrains Mono",
       ui-monospace,
@@ -468,6 +473,24 @@
     min-height: 48px;
   }
   .compare-picker-panel > .course-lookup-list {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
+  }
+  .compare-picker-panel > .animated-height {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    flex-direction: column;
+  }
+  .compare-picker-panel > .animated-height > div {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    flex-direction: column;
+  }
+  .compare-picker-panel > .animated-height .course-lookup-list {
     flex: 1;
     min-height: 0;
     max-height: none;

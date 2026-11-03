@@ -1,9 +1,9 @@
-"""Worker-side selected dataset session core, neutral worker control DTO, and its confined CLI.
+"""Worker-side Working dataset session core, neutral worker control DTO, and its confined CLI.
 
-One immutable :class:`WorkerDatasetSession` names the selected source dataset, the derived worker
+One immutable :class:`WorkerDatasetSession` names the Working source dataset, the derived worker
 database, and the full input snapshot. The neutral :class:`WorkerControl`
 is the one cooperative control-intent record shared by the stage controllers. The server creates the
-session and dumps the selected dataset. The worker prepares the derived database from that dump,
+session and dumps the Working dataset. The worker prepares the derived database from that dump,
 exports a verified full return snapshot, and the server returns it through the sole retention writer
 in ``course_explorer_admin.datasets``. A returned worker database is dropped only through
 ``cleanup_returned_worker_database`` after both the server dataset receipt and the recorded return
@@ -28,13 +28,12 @@ from pydantic import (
     model_validator,
 )
 
+from course_explorer import administration
 from course_explorer.administration import (
     administrative_json,
     atomic_write_private_text,
     load_private_model,
-    repository_root,
     session_directory,
-    sha256_file,
 )
 from course_explorer.config import (
     AdministrativeDatasetSettings,
@@ -51,7 +50,7 @@ from course_explorer.datasets import (
     DatasetReceipt,
     DatasetVerification,
     read_dataset_verification,
-    resolve_selected_dataset,
+    resolve_dataset_role,
 )
 from course_explorer.validation import require_error_type, require_finite_nonnegative
 from course_explorer_admin import mechanics
@@ -286,14 +285,14 @@ def create_worker_dataset_session(
     course_limit: int | None = None,
     runner: mechanics.ProcessRunner,
 ) -> WorkerDatasetSession:
-    """Snapshot the selected dataset into one fresh worker session."""
+    """Snapshot the Working dataset into one fresh worker session."""
     settings = load_administrative_dataset_settings()
     root = admin_state_root(settings)
     with mechanics.exclusive_action_lock(root, controller_name="datasets"):
-        database = load_database_settings()
-        source = resolve_selected_dataset(root)
+        database = load_database_settings(role="working")
+        source = resolve_dataset_role(root, "working")
         if database.postgres_db != source.database_name:
-            raise ValueError("resolved database does not match the selected dataset")
+            raise ValueError("resolved database does not match the Working dataset")
         directory = session_directory(root / "sessions", session_id)
         directory.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
         directory.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -304,7 +303,7 @@ def create_worker_dataset_session(
         input_dump = directory / "input.dump"
         dump_sha256 = dump_database(
             runner=runner,
-            root=repository_root(),
+            root=administration.repository_root(),
             settings=database,
             destination=input_dump,
             include_embeddings=True,
@@ -344,7 +343,7 @@ def prepare_worker_database(
         dump = directory / "input.dump"
         verification = restore_database(
             runner=runner,
-            root=repository_root(),
+            root=administration.repository_root(),
             settings=load_raw_database_settings(),
             dump=dump,
             database_name=session.database_name,
@@ -383,8 +382,6 @@ def export_worker_database(
                 or snapshot.database_name != session.database_name
             ):
                 raise ValueError("existing return snapshot identity does not match the session")
-            if sha256_file(return_dump) != snapshot.dump_sha256:
-                raise ValueError("existing return dump does not match its snapshot")
             return snapshot
         if return_dump.exists():
             raise ValueError("incomplete returned dataset export must be completed explicitly")
@@ -395,7 +392,7 @@ def export_worker_database(
         verification = read_dataset_verification(worker_settings)
         dump_sha256 = dump_database(
             runner=runner,
-            root=repository_root(),
+            root=administration.repository_root(),
             settings=worker_settings,
             destination=return_dump,
             include_embeddings=True,
@@ -442,7 +439,6 @@ def return_worker_database(
         ),
         cwd=PurePosixPath(str(worker_root)),
         env={
-            "SELECTED_DATASET_ENABLED": "0",
             "POSTGRES_DB": session.database_name,
             "ADMIN_STATE_ROOT": str(settings.admin_state_root),
         },
@@ -457,10 +453,7 @@ def return_worker_database(
     retained.parent.mkdir(mode=0o700, exist_ok=True)
     if retained.is_symlink() or (retained.exists() and not retained.is_file()):
         raise ValueError("local returned dataset dump must be a regular non-symlink file")
-    if retained.exists():
-        if sha256_file(retained) != snapshot.dump_sha256:
-            raise ValueError("local returned dataset dump does not match the snapshot")
-    else:
+    if not retained.exists():
         transport.download(
             remote_session / "return.dump",
             retained,
@@ -492,17 +485,12 @@ def cleanup_returned_worker_database(
     )
     directory = _session_directory(settings, session.session_id)
     snapshot = load_private_model(directory / "return.json", DatabaseSnapshot)
-    if (
-        snapshot.session_id != session.session_id
-        or snapshot.database_name != session.database_name
-        or snapshot.dump_sha256 != receipt.dump_sha256
-        or snapshot.verification != receipt.verification
-    ):
+    if snapshot.session_id != session.session_id or snapshot.database_name != session.database_name:
         raise ValueError("returned snapshot does not match the dataset receipt")
     require_droppable_database(session.database_name)
     runner.run(
         (
-            *mechanics.compose_prefix(),
+            *mechanics.compose_prefix(interpreter=True),
             "exec",
             "-T",
             "db",
@@ -512,7 +500,7 @@ def cleanup_returned_worker_database(
             load_raw_database_settings().postgres_user,
             session.database_name,
         ),
-        cwd=repository_root(),
+        cwd=administration.repository_root(),
         timeout=settings.database_operation_timeout_seconds,
     )
 

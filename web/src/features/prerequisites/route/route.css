@@ -7,7 +7,9 @@
   border-style: none;
 }
 .rbtn {
+  position: relative;
   display: inline-flex;
+  overflow: hidden;
   align-items: center;
   gap: 14px;
   padding: 12px 20px 12px 16px;
@@ -20,11 +22,27 @@
   text-align: left;
   cursor: pointer;
 }
+/* The active fill fades in over the idle fill, so a state change is never a hard swap. */
+.rbtn::before {
+  position: absolute;
+  border-radius: inherit;
+  background: linear-gradient(135deg, var(--color-accent-strong), #7a2fc4);
+  content: "";
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.28s ease;
+}
+.rbtn.on::before {
+  opacity: 1;
+}
+.rbtn > * {
+  position: relative;
+  z-index: 1;
+}
 .rbtn.on:hover {
   box-shadow:
     0 0 0 4px rgb(176 123 232 / 20%),
     0 12px 50px -4px #7a2fc4;
-  transform: translateY(-1px);
 }
 .rbtn:not(.on):hover {
   box-shadow: 0 0 0 2px rgb(176 123 232 / 8%);
@@ -41,13 +59,59 @@
   fill: #fff;
   stroke: none;
 }
-.rbtn > span {
-  display: flex;
-  flex-direction: column;
+.rbtn-copy {
+  display: grid;
   font-size: 14px;
   font-weight: 600;
   letter-spacing: -0.01em;
   line-height: 1.25;
+}
+.rbtn-copy-state {
+  display: flex;
+  grid-area: 1 / 1;
+  flex-direction: column;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.22s ease,
+    visibility 0s linear 0.22s;
+}
+.rbtn[data-state="idle"] .rbtn-copy-idle,
+.rbtn[data-state="active"] .rbtn-copy-active,
+.rbtn[data-state="busy"] .rbtn-copy-busy {
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity 0.22s ease,
+    visibility 0s;
+}
+.rbtn-icon {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  place-items: center;
+}
+.rbtn-icon > * {
+  grid-area: 1 / 1;
+  transition:
+    opacity 0.22s ease,
+    visibility 0s linear 0.22s;
+}
+.rbtn-icon .route-control-spinner {
+  opacity: 0;
+  visibility: hidden;
+}
+.rbtn[data-state="busy"] .rbtn-icon svg {
+  opacity: 0;
+  visibility: hidden;
+}
+.rbtn[data-state="busy"] .rbtn-icon .route-control-spinner {
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity 0.22s ease,
+    visibility 0s;
 }
 .rbtn small {
   margin-top: 1px;
@@ -60,12 +124,9 @@
     monospace;
 }
 .rbtn.on {
-  background: linear-gradient(135deg, #4e008e, #7a2fc4);
-}
-.rbtn.on {
   box-shadow:
     0 0 0 4px rgb(176 123 232 / 10%),
-    0 12px 40px -8px rgb(78 0 142 / 90%);
+    0 12px 40px -8px rgb(90 30 156 / 90%);
 }
 .rbtn.busy {
   cursor: default;
@@ -97,93 +158,96 @@
   pointer-events: none;
   border-style: none;
   filter: drop-shadow(0 30px 45px rgb(0 0 0 / 85%))
-    drop-shadow(0 0 25px rgb(78 0 142 / 50%));
+    drop-shadow(0 0 25px rgb(90 30 156 / 50%));
 }
 .route-stack::-webkit-scrollbar {
   display: none;
 }
-/* The expanded route panel fills its stack at every width. The breakpoint blocks add the
-   desktop insets and scrollbar and the phone insets and sheet layout. */
-.route-stack:has(> .route-panel.expanded) {
-  max-height: none;
-  overflow: hidden;
-}
-.route-stack:has(> .route-panel.expanded) > .route-panel.open {
-  display: flex;
-  flex: 1;
-  min-height: 0;
-  flex-direction: column;
-}
-.route-panel.expanded.open > .panelclip {
-  display: flex;
-  flex: 1;
-  min-height: 0;
-  flex-direction: column;
-  overflow: hidden;
-}
-.route-panel.expanded .route-panel-content {
-  display: flex;
-  flex: 1;
-  min-height: 0;
-  flex-direction: column;
-}
-.route-panel.expanded .route-head {
-  flex: none;
-}
-.route-panel.expanded .route-list-disclosure {
-  display: flex;
-  flex: 1;
-  min-height: 0;
-  flex-direction: column;
-}
-.route-panel.expanded .route-list-disclosure > .panelclip {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-.route-panel.expanded .route-foot {
-  flex: none;
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid rgb(255 255 255 / 12%);
-}
-.route-panel.expanded .route-foot .route-add {
-  width: 100%;
-  margin-top: 0;
-}
-@media (min-width: 681px) {
+/* The phone sheet fills the stack, and the desktop panel stays content-sized, so the phone rule is
+   scoped to the phone widths and the desktop keeps the Disclosure's own height animation. */
+@media (max-width: 680px) {
   .route-stack:has(> .route-panel.expanded) {
-    top: 16px;
-    right: 16px;
-    bottom: 16px;
-  }
-  .route-panel.expanded .route-panel-content {
+    max-height: none;
     overflow: hidden;
   }
+  .route-stack:has(> .route-panel.expanded) > .route-panel.open {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    flex-direction: column;
+  }
+  .route-panel.expanded.open > .panelclip {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .route-panel.expanded .route-panel-content {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    flex-direction: column;
+  }
+  .route-panel.expanded .route-head {
+    flex: none;
+  }
+  .route-panel.expanded .route-list-disclosure {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    flex-direction: column;
+  }
   .route-panel.expanded .route-list-disclosure > .panelclip {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .route-panel.expanded .route-foot {
+    flex: none;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgb(255 255 255 / 12%);
+  }
+  .route-panel.expanded .route-foot .route-add {
+    width: 100%;
+    margin-top: 0;
+  }
+}
+/* A leaving route folds away with the one rise every other bottom surface uses, so the notice
+   leaves with it instead of waiting for it to finish. */
+.route-panel.closing {
+  transition:
+    grid-template-rows var(--phone-rise-duration) var(--phone-rise-ease),
+    opacity var(--phone-rise-duration) var(--phone-rise-ease);
+  pointer-events: none;
+}
+/* On desktop the expanded panel grows with its rows and the stack takes a thin scrollbar once
+   the route does not fit under the graph. */
+@media (min-width: 681px) {
+  .route-stack {
     scrollbar-width: thin;
     scrollbar-color: rgb(176 123 232 / 55%) transparent;
   }
-  .route-panel.expanded .route-list-disclosure > .panelclip::-webkit-scrollbar {
-    width: 8px;
+  .route-stack::-webkit-scrollbar {
+    display: block;
+    width: 18px;
   }
-  .route-panel.expanded
-    .route-list-disclosure
-    > .panelclip::-webkit-scrollbar-track {
+  .route-stack::-webkit-scrollbar-button {
+    display: none;
+  }
+  .route-stack::-webkit-scrollbar-track {
     background: transparent;
   }
-  .route-panel.expanded
-    .route-list-disclosure
-    > .panelclip::-webkit-scrollbar-thumb {
-    border: 2px solid transparent;
+  .route-stack::-webkit-scrollbar-thumb {
+    min-height: 40px;
+    border: 5px solid transparent;
     border-radius: 999px;
     background: rgb(176 123 232 / 55%);
     background-clip: padding-box;
   }
-  .route-panel.expanded
-    .route-list-disclosure
-    > .panelclip::-webkit-scrollbar-thumb:hover {
+  .route-stack::-webkit-scrollbar-thumb:hover {
     background: rgb(176 123 232 / 80%);
     background-clip: padding-box;
   }
@@ -366,7 +430,7 @@
 .graph-panel.route .react-flow__node.rt .graph-course > .tile,
 .graph-panel.route .react-flow__node.rt .graph-module {
   border-color: #b07be8;
-  box-shadow: 0 0 28px -6px rgb(78 0 142 / 50%);
+  box-shadow: 0 0 28px -6px rgb(90 30 156 / 50%);
 }
 .graph-panel.route .react-flow__edge.rt > g {
   animation: route-light 0.35s both;
@@ -461,10 +525,6 @@
     gap: 10px;
     padding: 10px 12px;
   }
-  .routebox .rbtn > svg,
-  .routebox .rbtn > .route-control-spinner {
-    flex: none;
-  }
   .routebox .rbtn > span {
     min-width: 0;
     overflow-wrap: anywhere;
@@ -489,8 +549,23 @@
     pointer-events: auto;
     touch-action: pan-y;
   }
-  .route-stack:not(:has(.disclosure.open)) {
-    display: none;
+  .route-stack {
+    visibility: hidden;
+    opacity: 0;
+    transform: translateY(12px);
+    transition:
+      opacity var(--phone-rise-duration) var(--phone-rise-ease),
+      transform var(--phone-rise-duration) var(--phone-rise-ease),
+      visibility 0s linear var(--phone-rise-duration);
+  }
+  .route-stack:has(.disclosure.open) {
+    visibility: visible;
+    opacity: 1;
+    transform: none;
+    transition:
+      opacity var(--phone-rise-duration) var(--phone-rise-ease),
+      transform var(--phone-rise-duration) var(--phone-rise-ease),
+      visibility 0s;
   }
   .route-stack > .disclosure {
     flex: none;
@@ -535,8 +610,15 @@
   .route-stack > .route-panel.open {
     margin-bottom: 0;
   }
+  /* The sheet's own rectangle carries the phone fold, so the list must not animate its height
+     again inside it. */
+  .route-stack .route-list-disclosure {
+    transition: none;
+  }
   .route-stack .course-list-row {
     grid-template-columns: minmax(0, 1fr) auto;
+    /* The title sits midway between the code's line and the card's bottom edge. */
+    padding-bottom: 13px;
   }
   .route-stack .course-list-code {
     grid-row: 1;

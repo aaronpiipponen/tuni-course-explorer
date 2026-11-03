@@ -1,13 +1,13 @@
 # Worker stages
 
-The worker runs translation and inference on its own copy of the selected dataset, and each session returns that copy.
+The worker runs translation and inference on its own copy of the Working dataset, and each session returns that copy.
 
-Translation and inference run on the worker, a separate machine that runs the model runtimes. Each run of one of them is a worker session, and the selected dataset changes only at the verified return of that session. [Worker sessions](/docs/operations/worker-sessions.md) describes the session in full.
+Translation and inference run on the worker, a separate machine that runs the model runtimes. Each run of one of them is a worker session, and the Working pointer changes only at the verified return of that session. [Worker sessions](/docs/operations/worker-sessions.md) describes the session in full.
 
 ## What the worker stages need
 
-- A copy set up by the [Installation](/docs/getting-started/installation.md) steps, with the selected dataset enrolled. [Enroll the dataset](/docs/getting-started/data-preparation.md#enroll-the-dataset) describes the enrollment.
-- `SELECTED_DATASET_ENABLED` set to true in `config/database.toml`, so each stage resolves the selected dataset through the pointer under `ADMIN_STATE_ROOT`.
+- A copy set up by the [Installation](/docs/getting-started/installation.md) steps, with the Selected dataset enrolled and copied to Working. [Enroll the dataset](/docs/getting-started/data-preparation.md#enroll-the-dataset) describes the enrollment and the copy.
+- The Working pointer under `ADMIN_STATE_ROOT`, so each stage resolves Working.
 - The worker connection settings below, and a prepared worker before the first remote stage start.
 
 ## The worker connection settings
@@ -16,9 +16,9 @@ What the operator configures for the worker:
 
 | File | Key | Holds |
 |---|---|---|
-| `.env` | `TRANSLATION_CONTROLLER_SSH_TARGET` | The SSH target of the worker. The example file carries a placeholder value. |
-| `.env` | `TRANSLATION_CONTROLLER_WSL_DISTRIBUTION` | The WSL distribution on that target that holds the checkout. The example file carries a placeholder value. |
-| `.env` | `TRANSLATION_CONTROLLER_WORKER_PROJECT_ROOT` | The absolute path of the project checkout inside that distribution. The example file carries a placeholder value. |
+| `config/worker.toml` | `TRANSLATION_CONTROLLER_SSH_TARGET` | The SSH target of the worker. The example file carries a placeholder value. |
+| `config/worker.toml` | `TRANSLATION_CONTROLLER_WSL_DISTRIBUTION` | The WSL distribution on that target that holds the checkout. The example file carries a placeholder value. |
+| `config/worker.toml` | `TRANSLATION_CONTROLLER_WORKER_PROJECT_ROOT` | The absolute path of the project checkout inside that distribution. The example file carries a placeholder value. |
 | `config/worker.toml` | `WORKER_SETUP_PROJECT_URL` | The expected origin URL. The worker update compares both checkout origins against it, the preflight compares the server checkout origin against it, and the example file carries a placeholder value. |
 | `config/worker.toml` | `TRANSLATION_CONTROLLER_SSH_CONNECT_TIMEOUT_SECONDS` | The bound on one connect attempt, 10 seconds in the example. |
 | `config/worker.toml` | `WORKER_SETUP_TIMEOUT_SECONDS` | The bound on each remote install, download, or build step, four hours in the example. |
@@ -33,9 +33,9 @@ What the code requires of the worker, and what each requirement follows from:
 - The configured WSL distribution exists on that target and holds the checkout at the configured project root, because every remote command runs inside that distribution.
 - The SSH target and the WSL distribution are each 1 to 64 ASCII letters, digits, underscore, dot, or hyphen.
 - The project root is an absolute path without dot components or percent characters.
-- The account runs `sudo` without a password prompt, because the setup bootstrap installs system packages and pulls the database service image through `sudo` over a transport that has no terminal.
+- The account runs `sudo` without a password prompt, because the setup bootstrap installs system packages and builds the database service image through `sudo` over a transport that has no terminal.
 - The checkout is on a non-detached Git branch, because the update reads the current branch before it switches to the selected origin branch. The update fetches the selected origin branch, refuses a local branch ahead of or diverged from the origin branch, switches the checkout onto the branch, and pulls the branch fast-forward. Git refuses an operation that would overwrite a local change.
-- Docker and Docker Compose are available, because the pinned database image runs through the Compose bridge.
+- Docker and Docker Compose are available, because the prepared database image and the embedding image run through the Compose bridge. The database image build installs the serving extension from `docker/db/extension/`, and readiness requires its capability label.
 
 [Worker transport and datasets](/docs/operations/worker-transport.md) describes the transport and the connection values.
 
@@ -70,7 +70,7 @@ What the code requires of the worker, and what each requirement follows from:
    uv run python scripts/admin.py translation start
    ```
 
-   The start captures a session: it dumps the selected dataset, transfers it to the worker, and the worker restores its own copy before the one detached worker helper translates. The report is the lifecycle status with the session id, the revision, the options, and the recorded progress.
+   The start captures a session: it dumps the Working dataset, transfers it to the worker, and the worker restores its own copy before the one detached worker helper translates. The report is the lifecycle status with the session id, the revision, the options, and the recorded progress.
 
 2. Read the status.
 
@@ -96,7 +96,7 @@ What the code requires of the worker, and what each requirement follows from:
    uv run python scripts/admin.py inference start
    ```
 
-   Inference proposes inferred prerequisites and equivalence groups for the target courses. The start takes a session over the selected dataset, and its progress names the preparation step of that session, `snapshot`, `transfer`, `restore`, or `job`, or the mirrored worker status once running work begins.
+   Inference proposes inferred prerequisites and equivalence groups for the target courses. The start takes a session over the Working dataset, and its progress names the preparation step of that session, `snapshot`, `transfer`, `restore`, or `job`, or the mirrored worker status once running work begins.
 
 2. Read the status.
 
@@ -120,11 +120,8 @@ The stage holds one further entry, the operator decision for one target course:
 uv run python scripts/admin.py dispose inference TARGET_ID {nothing|done|failed}
 ```
 
-The decision requires every stage to be idle, a verified returned selected dataset, and the current schema head. [Operator disposition](/docs/backend/inference/inference-scheduling.md#operator-disposition) states what each decision does.
+The decision requires every stage to be idle, a verified returned or copied Working dataset, and the current schema head. [Operator disposition](/docs/backend/inference/inference-scheduling.md#operator-disposition) states what each decision does.
 
 ## The return and the rotation
 
-Every remote stage ends the same way. The worker exports a fresh snapshot of its database, the command downloads it and checks it against the snapshot taken when the session started, restores it into the derived server database, writes the returned receipt, selects it, and rotates the older datasets. The worker database is dropped once the server receipt exists.
-
-> [!WARNING]
-> The rotation retains the selected dataset and its immediate predecessor, and it deletes the database and the retained dump of every older dataset in the receipt chain. The rows of a dataset outside the retained pair are not recoverable from the chain. Rotation deletes a database and its dump alone, and the receipt of every dataset is read from the state root. [Rotation](/docs/operations/datasets.md#rotation) lists the guards and the outcomes.
+A remote stage returns its verified copy and rotates the older Working ancestors, and [the dataset return](/docs/operations/datasets.md#the-return-and-the-working-role) and [rotation](/docs/operations/datasets.md#rotation) state the receipt and the guards.

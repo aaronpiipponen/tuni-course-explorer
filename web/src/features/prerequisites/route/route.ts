@@ -25,14 +25,12 @@ export type RouteSummary = {
   fullCredits: string | null;
   rows: RouteRow[];
   missingCourseIds: string[];
-  blockedCourseIds: string[];
-  blockedNodeTitles: string[];
   problems: {
     identity: string;
     nodeId: string;
-    courseId: string | null;
     title: string | null;
-    reason: string;
+    /** A reason that adds information, or null when it only restates the outcome. */
+    reason: string | null;
   }[];
   shortfalls: { title: string; text: string }[];
 };
@@ -180,10 +178,6 @@ export function buildRouteSummary(
     .reduce((sum, course) => sum + Number(course.credits_min), 0);
   const total =
     path.total_new_credits === null ? null : Number(path.total_new_credits);
-  const blockedCourseIds = [...path.blocked_excluded_group_ids];
-  const blockedNodeTitles = path.blocked_excluded_node_keys.map(
-    (key) => nodeTitle(graph, key, language) ?? key,
-  );
   const seen = new Set<string>();
   const problems = path.problems.flatMap((problem) => {
     const identity = [
@@ -193,16 +187,17 @@ export function buildRouteSummary(
     ].join("|");
     if (seen.has(identity)) return [];
     seen.add(identity);
-    const courseId = problem.node_id.startsWith("course:")
-      ? problem.node_id.slice("course:".length)
-      : null;
     return [
       {
         identity,
         nodeId: problem.node_id,
-        courseId,
         title: nodeTitle(graph, problem.node_id, language, problem.support_id),
-        reason: diagnosticText(problem.reason, problem.detail, language),
+        // The blocked heading and the size reason already say these, so they add nothing.
+        reason:
+          problem.reason === "excluded_node" ||
+          problem.reason === "search_too_large"
+            ? null
+            : diagnosticText(problem.reason, problem.detail, language),
       },
     ];
   });
@@ -233,8 +228,6 @@ export function buildRouteSummary(
       total === null ? null : format(total + coveredCredits, language),
     rows,
     missingCourseIds: path.new_courses.map(({ course }) => course.group_id),
-    blockedCourseIds,
-    blockedNodeTitles,
     problems,
     shortfalls,
   };

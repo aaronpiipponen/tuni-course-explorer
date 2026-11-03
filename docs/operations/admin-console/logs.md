@@ -53,22 +53,24 @@ The line count and its **Apply** control work as they do in **Session logs**. Th
 The **Usage** panel summarizes the requests the course-exploration site answered in one window of hours. The window is 24 hours at first and reads automatically, and its marker shows the time since the last successful read.
 
 1. Enter a positive whole number of hours and select **Apply**.
-2. Read the **Window**, **Requests** and **Mean** rows.
+2. Read the **Window**, **Requests**, **Mean**, **p95** and **p99** rows.
 3. Read one row per route in the table.
 
 The panel accepts a positive whole number of hours. Selecting **Apply** with any other value shows **Enter a positive whole hour count.**
 
-The **Window** row shows the start and the end of the window in UTC. The window covers the current hour and the whole hours before it, up to the entered number of hours, and it ends at the end of the current hour. **Requests** gives the total number of requests, and **Mean** gives the mean duration to two decimals of a second.
+The **Window** row shows the start and the end of the window in UTC. The window covers the current hour and the whole hours before it, up to the entered number of hours, and it ends at the end of the current hour. **Requests** gives the total number of requests. **Mean** gives the arithmetic mean duration, and **p95** and **p99** give the exact nearest-rank percentiles of the recorded durations, each to two decimals of a second. The p95 value is the smallest recorded duration at or below which at least 95 percent of the requests fall, and p99 is the same for 99 percent. These rows cover every recorded request in the window, and each route row covers that route alone.
 
 | Column | Meaning |
 |---|---|
 | **Route** | The fixed route label. |
 | **Requests** | The number of requests on that route. |
 | **Mean** | The mean duration on that route, to two decimals of a second. |
+| **p95** | The exact nearest-rank 95th percentile duration on that route, to two decimals of a second. |
+| **p99** | The exact nearest-rank 99th percentile duration on that route, to two decimals of a second. |
 
-![The Usage panel with the 24-hour window, the request total, the mean duration and one row for each recorded route](/docs/screenshots/admin-console-logs-usage.png)
+![The Usage panel with the 24-hour window, the request total, the mean, p95 and p99 durations, and one row for each recorded route with its count, mean, p95 and p99](/docs/screenshots/admin-console-logs-usage.png)
 
-A window with no recorded request shows zero requests, **unknown** for the mean, no route row and the message **The window holds no recorded request.**
+A window with no recorded request shows zero requests, **unknown** for the mean, p95 and p99, no route row and the message **The window holds no recorded request.**
 
 Each report removes the request records older than the configured retention. A window longer than that retention is refused, and the panel shows the failure.
 

@@ -11,6 +11,7 @@ import { UNPLACED_KEY } from "./state";
 import type { SisuPlan } from "./sisu";
 import {
   buildProgrammeForest,
+  courseHolders,
   indexResolved,
   officialHomes,
   programmeKey,
@@ -22,12 +23,15 @@ import {
   clearedScopePlacements,
   holderPulls,
   insideScope,
-  keepCoursePlacements,
   moveScope,
   replacedScopeHomes,
+  officialPulls,
+  moveResetOptions,
+  resetMoved,
   resetScope,
-  scopePulls,
+  restoreScopeContents,
   type PulledCourse,
+  type PulledModule,
 } from "./edits";
 import { moduleSource } from "./display";
 import { resolvedNodeLabel } from "./presentation";
@@ -59,13 +63,35 @@ export type ProgrammeOperation =
 export const VERSION_CONFLICT =
   "Another version of this module is already selected";
 
-/** One operation's next programme list, edits, pulled courses and uncompleted discards. */
+/** One operation's next programme list, edits, card order, pulled courses and discards. */
 type ProgrammeOutcome = {
   programmeGroupIds: string[];
   edits: StructureEdits;
+  courseOrder: string[];
   moves: readonly PulledCourse[];
+  moduleMoves: readonly PulledModule[];
+  /** The courses a reset of the moved holder returns from the nodes that render them. */
+  resetMoves: readonly PulledCourse[];
+  /** The highest-level official modules a reset of the moved holder returns. */
+  resetModuleMoves: readonly PulledModule[];
+  /** The pulled module identities the ordered programme list renders. */
+  resetProgrammeIds: readonly string[];
+  /** The moved holder's scope before and after the operation, for a destructive reset. */
+  resetHeldKey: string | null;
+  resetRestoredKey: string | null;
+  /** The reset actions the move offers beside Move, from the moved module's own state. */
+  moveOptions: "reset" | "reset-all" | "both" | undefined;
   discards: readonly CourseId[];
 };
+
+/** Return the saved order without the listed identities, keeping every other rank as it is. */
+export function clearCourseOrder(
+  order: readonly string[],
+  ids: Iterable<string>,
+): string[] {
+  const cleared = new Set(ids);
+  return order.filter((id) => !cleared.has(id));
+}
 
 /** Return whether two id lists hold the same ids in the same order. */
 export function sameIdList(
@@ -155,8 +181,8 @@ function withoutPlacement(
  * Return one programme operation's next list and edits, or throw a visible failure.
  *
  * `moves` names the courses the operation pulls into a holder it adds, each with the node it sits
- * in now, so an interface can confirm the moves before it writes. `pull` is whether the operation
- * moves those courses: a kept course stays in the node that renders it now.
+ * in, so an interface can confirm the moves before it writes. `pull` is whether the operation
+ * moves those courses: a kept course stays in the node that renders it.
  */
 function programmeOutcome(
   state: StructureState,
@@ -164,6 +190,7 @@ function programmeOutcome(
   content: PlacedContent,
   completedCourseIds: readonly string[],
   pull: boolean,
+  reset?: "keep" | "all",
 ): ProgrammeOutcome {
   const edits: StructureEdits = {
     choices: state.choices,
@@ -178,11 +205,11 @@ function programmeOutcome(
       ? holderNode(before, state, content, operation.groupId)
       : null;
     const programmeGroupIds = [...state.programmeGroupIds, operation.groupId];
-    // The ordered list renders this identity now, so it keeps no placement record of its own: a
+    // The ordered list renders this identity, so it keeps no placement record of its own. A
     // record, a removal record included, would suppress the added top-level entry. A programme the
-    // tree already displays moves to the list with its whole current subtree and its former place
-    // keeps no record, while one the tree does not display renders only after this addition and so
-    // takes its scope's official defaults rather than any record that scope carries.
+    // tree already displays moves to the list with its whole current subtree and the place it
+    // leaves keeps no record, while one the tree does not display renders only after this addition
+    // and so takes its scope's official defaults rather than any record that scope carries.
     const edited = withoutPlacement(edits, operation.groupId);
     const after = programmeForest(programmeGroupIds, content);
     if (!after) throw new Error("Programme is unavailable");
@@ -190,20 +217,58 @@ function programmeOutcome(
       resolveStructure(after, edited, content),
     ).byKey.get(programmeKey(operation.groupId));
     if (!holder) throw new Error("Programme is unavailable");
-    const pulls = holderPulls(
-      after,
+    const moved =
       source === null
         ? edited
-        : moveScope(edited, content, source, holder.node),
+        : moveScope(edited, content, source, holder.node);
+    const pulls = holderPulls(
+      after,
+      moved,
       holder.node,
       content,
       source !== null,
       pull,
     );
+    // The reset lists read the moved holder at its new place, so the preview and the write see
+    // one state.
+    const movedIndex = indexResolved(
+      resolveStructure(after, pulls.edits, content),
+    );
+    const moveOptions =
+      source === null
+        ? undefined
+        : moveResetOptions(
+            after,
+            pulls.edits,
+            content,
+            movedIndex,
+            holder.node.key,
+            completedCourseIds,
+          );
+    const resetPulls =
+      source === null
+        ? null
+        : officialPulls(after, pulls.edits, content, holder.node);
+    const resetEdits =
+      reset !== undefined && source !== null
+        ? resetMoved(after, pulls.edits, content, holder.node, reset, pull)
+        : null;
+    const dropped = new Set([
+      ...pulls.programmeIds,
+      ...(resetEdits?.programmeIds ?? []),
+    ]);
     return {
-      programmeGroupIds,
-      edits: pulls.edits,
+      programmeGroupIds: programmeGroupIds.filter((id) => !dropped.has(id)),
+      edits: resetEdits?.edits ?? pulls.edits,
+      courseOrder: [...state.courseOrder],
       moves: pulls.moves,
+      moduleMoves: pulls.moduleMoves,
+      resetMoves: resetPulls?.courses ?? [],
+      resetModuleMoves: resetPulls?.modules ?? [],
+      resetProgrammeIds: resetPulls?.programmeIds ?? [],
+      resetHeldKey: source === null ? null : source.key,
+      resetRestoredKey: source === null ? null : holder.node.key,
+      moveOptions,
       discards: [],
     };
   }
@@ -240,22 +305,38 @@ function programmeOutcome(
       (id) => id !== operation.groupId,
     );
   }
-  const after = programmeForest(programmeGroupIds, content);
+  let after = programmeForest(programmeGroupIds, content);
   if (!after) throw new Error("Programme is unavailable");
   // The replacement renders from the ordered list after this operation, so it keeps no placement
   // record of its own: a record, a removal record included, would suppress the top-level entry the
   // list renders at the replaced position.
   const edited =
     replacementId === null ? edits : withoutPlacement(edits, replacementId);
-  let scoped =
-    operation.kind === "reset" && !pull
-      ? keepCoursePlacements(
-          resetScope(edited, homes, clearedKey),
-          edits,
-          scopePulls(before, state, content, clearedKey),
-        )
-      : resetScope(edited, homes, clearedKey);
+  const keepExternalPlacements =
+    operation.kind === "delete" || operation.kind === "replace";
+  let scoped = resetScope(edited, homes, clearedKey, keepExternalPlacements);
   let moves: readonly PulledCourse[] = [];
+  let moduleMoves: readonly PulledModule[] = [];
+  if (operation.kind === "reset") {
+    const restored = restoreScopeContents(
+      before,
+      edited,
+      content,
+      affected.node,
+      pull,
+    );
+    scoped = restored.edits;
+    moves = restored.pulls.courses;
+    moduleMoves = restored.pulls.modules;
+    if (pull && restored.pulls.programmeIds.length > 0) {
+      programmeGroupIds = programmeGroupIds.filter(
+        (id) => !restored.pulls.programmeIds.includes(id),
+      );
+      const reduced = programmeForest(programmeGroupIds, content);
+      if (!reduced) throw new Error("Programme is unavailable");
+      after = reduced;
+    }
+  }
   if (replacementKey) {
     const holder = indexResolved(
       resolveStructure(after, edited, content),
@@ -270,6 +351,7 @@ function programmeOutcome(
         moveScope(edited, content, source, holder.node),
         replacedScopeHomes(homes, source.key),
         clearedKey,
+        true,
       );
     }
     // A replacement programme the tree already displays keeps its own contents, and one it does not
@@ -284,28 +366,59 @@ function programmeOutcome(
     );
     scoped = pulls.edits;
     moves = pulls.moves;
+    moduleMoves = pulls.moduleMoves;
+    // A pulled module that the ordered list renders leaves that list, so its own official place
+    // inside the replacement renders it with the contents this operation moves there.
+    if (pulls.programmeIds.length > 0) {
+      programmeGroupIds = programmeGroupIds.filter(
+        (id) => !pulls.programmeIds.includes(id),
+      );
+      const reduced = programmeForest(programmeGroupIds, content);
+      if (!reduced) throw new Error("Programme is unavailable");
+      after = reduced;
+    }
   }
   // A holder the action leaves alone does not take over a course the named programme held.
   const replacements = clearedScopePlacements(
     affected,
-    edits,
     after,
     scoped,
     content,
-    clearedKey,
     (key) =>
       key === UNPLACED_KEY ||
       insideScope(clearedKey, key) ||
       (replacementKey !== null && insideScope(replacementKey, key)),
     completedCourseIds,
   );
+  const finalEdits: StructureEdits = {
+    ...scoped,
+    coursePlacements: { ...scoped.coursePlacements, ...replacements },
+  };
+  // The named scope's cards lose their ranks. A replacement subtree that travels intact keeps the
+  // relative order of its courses, and every other saved rank stays as it was.
+  const projection = resolveStructure(after, finalEdits, content);
+  const cleared = new Set(affected.subtree.map((course) => course.group_id));
+  if (operation.kind === "reset")
+    for (const [id, node] of indexResolved(projection).courseAt)
+      if (insideScope(clearedKey, node.node.key)) cleared.add(id);
+  if (operation.kind === "replace" && source !== null) {
+    const kept = indexResolved(
+      resolveStructure(before, state, content),
+    ).byKey.get(source.key);
+    for (const course of kept?.subtree ?? []) cleared.delete(course.group_id);
+  }
   return {
     programmeGroupIds,
-    edits: {
-      ...scoped,
-      coursePlacements: { ...scoped.coursePlacements, ...replacements },
-    },
+    edits: finalEdits,
+    courseOrder: clearCourseOrder(state.courseOrder, cleared),
     moves,
+    moduleMoves,
+    resetMoves: [],
+    resetModuleMoves: [],
+    resetProgrammeIds: [],
+    resetHeldKey: null,
+    resetRestoredKey: null,
+    moveOptions: undefined,
     discards: affected.subtree.map((course) => course.group_id),
   };
 }
@@ -315,21 +428,62 @@ function programmeOutcome(
  *
  * It reads the same outcome the write applies, so an interface can confirm the moves first and a
  * cancelled confirmation writes nothing. A reset returns the courses whose official home is inside
- * the reset scope and which the nodes outside it render now.
+ * the reset scope and which the nodes outside it render.
  */
 export function programmeMoves(
   state: StructureState,
   operation: ProgrammeOperation,
   content: PlacedContent,
   completedCourseIds: readonly string[] = [],
-): readonly PulledCourse[] {
-  if (operation.kind === "delete") return [];
+): {
+  moves: readonly PulledCourse[];
+  moduleMoves: readonly PulledModule[];
+  resetMoves: readonly PulledCourse[];
+  resetModuleMoves: readonly PulledModule[];
+  resetProgrammeIds: readonly string[];
+  moveOptions: "reset" | "reset-all" | "both" | undefined;
+} {
+  if (operation.kind === "delete")
+    return {
+      moves: [],
+      moduleMoves: [],
+      resetMoves: [],
+      resetModuleMoves: [],
+      resetProgrammeIds: [],
+      moveOptions: undefined,
+    };
   const forest = programmeForest(state.programmeGroupIds, content);
   if (!forest) throw new Error("Programme is unavailable");
-  if (operation.kind === "reset")
-    return scopePulls(forest, state, content, programmeKey(operation.groupId));
-  return programmeOutcome(state, operation, content, completedCourseIds, true)
-    .moves;
+  if (operation.kind === "reset") {
+    const affected = indexResolved(
+      resolveStructure(forest, state, content),
+    ).byKey.get(programmeKey(operation.groupId));
+    if (!affected) throw new Error("Programme is unavailable");
+    const pulls = officialPulls(forest, state, content, affected.node);
+    return {
+      moves: pulls.courses,
+      moduleMoves: pulls.modules,
+      resetMoves: [],
+      resetModuleMoves: [],
+      resetProgrammeIds: pulls.programmeIds,
+      moveOptions: undefined,
+    };
+  }
+  const outcome = programmeOutcome(
+    state,
+    operation,
+    content,
+    completedCourseIds,
+    true,
+  );
+  return {
+    moves: outcome.moves,
+    moduleMoves: outcome.moduleMoves,
+    resetMoves: outcome.resetMoves,
+    resetModuleMoves: outcome.resetModuleMoves,
+    resetProgrammeIds: outcome.resetProgrammeIds,
+    moveOptions: outcome.moveOptions,
+  };
 }
 
 /**
@@ -366,6 +520,9 @@ export function applyStructure(
         seen.add(id);
         selected.push(id);
       }
+    // The order names selected courses only, so an identity that leaves every set with the
+    // selection migration leaves the order in the same write.
+    const chosen = new Set(selected);
     return {
       ...state,
       selectedCourseIds: selected,
@@ -379,6 +536,8 @@ export function applyStructure(
         modulePlacements: next.modulePlacements,
         moduleVersions: { ...next.moduleVersions },
         placedCourseIds: [...next.placedCourseIds],
+        courseHolders: next.courseHolders ?? state.structure.courseHolders,
+        courseOrder: next.courseOrder.filter((id) => chosen.has(id)),
       },
       pendingSisuImport:
         result.pendingSisuImport === undefined
@@ -397,12 +556,15 @@ export function applyStructure(
  * and uncompleted. A completed course the reset discards keeps no restored place: the ordinary
  * reset would leave it loose in Unplaced studies, so its place is cleared too. A completed
  * identity the scope only mentions but another holder actually owns is never touched.
+ * `restoredKey` names the scope the ordinary change renders, which a moved module reads as its
+ * destination while the held identities still come from the scope it leaves.
  */
 export function resetCompletionChange(
   state: ProfileState,
   scopeKey: string,
   content: PlacedContent,
   ordinary: StructureChange,
+  restoredKey: string = scopeKey,
 ): StructureChange {
   const before = programmeForest(state.structure.programmeGroupIds, content);
   if (!before) throw new Error("Programme is unavailable");
@@ -428,7 +590,7 @@ export function resetCompletionChange(
   ).courseAt;
   for (const id of removedCompleted) {
     const at = restoredAt.get(id);
-    if (!at || !insideScope(scopeKey, at.node.key))
+    if (!at || !insideScope(restoredKey, at.node.key))
       edits.coursePlacements[id] = null;
   }
   const projection = resolveStructure(candidate, edits, content);
@@ -439,6 +601,8 @@ export function resetCompletionChange(
       ...edits,
       moduleVersions: ordinary.next.moduleVersions,
       placedCourseIds: projection.subtree.map((course) => course.group_id),
+      courseHolders: courseHolders(projection),
+      courseOrder: ordinary.next.courseOrder,
     },
     removedCourseIds: removedCompleted,
   };
@@ -463,8 +627,8 @@ export function resetCompletionChange(
  * A kept course stays there, and the addition and replacement paths read the flag the same way.
  *
  * `moduleVersions` is the prospective selection the operation's reports were read under. It
- * defaults to the latest stored map, a picked identity is added to it, and any entry that disagrees
- * with the latest stored map refuses the write instead of replacing an existing selection. The
+ * defaults to the stored map, a picked identity is added to it, and any entry that disagrees
+ * with the stored map refuses the write instead of replacing a stored selection. The
  * write forgets the version entries of the groups the operation removes from the rendered tree, so
  * a removed programme or module can be added again with another explicit version.
  */
@@ -475,6 +639,7 @@ export function changeProgrammes(
   removeCompletedCourses = false,
   pull = true,
   moduleVersions?: Readonly<Record<string, string>>,
+  reset?: "keep" | "all",
 ): void {
   applyStructure(store, (state) => {
     const latestVersions = state.structure.moduleVersions;
@@ -507,6 +672,7 @@ export function changeProgrammes(
       content,
       state.completedCourseIds,
       pull,
+      reset,
     );
     const after = programmeForest(outcome.programmeGroupIds, content);
     if (!after) throw new Error("Programme is unavailable");
@@ -532,6 +698,8 @@ export function changeProgrammes(
           projection,
         ),
         placedCourseIds: projection.subtree.map((course) => course.group_id),
+        courseHolders: courseHolders(projection),
+        courseOrder: outcome.courseOrder,
       },
       discardUncompletedCourseIds: outcome.discards,
       removedCourseIds: removedCompleted,
@@ -542,6 +710,18 @@ export function changeProgrammes(
         programmeKey(operation.groupId),
         content,
         ordinary,
+      );
+    if (
+      reset === "all" &&
+      outcome.resetHeldKey !== null &&
+      outcome.resetRestoredKey !== null
+    )
+      return resetCompletionChange(
+        state,
+        outcome.resetHeldKey,
+        content,
+        ordinary,
+        outcome.resetRestoredKey,
       );
     return ordinary;
   });
@@ -570,25 +750,31 @@ export function resetUnplaced(
       ),
     ];
     const homes = officialHomes(tree, edits, content);
-    const inBucket = (key: string) =>
-      key === UNPLACED_KEY || key.startsWith(`${UNPLACED_KEY}/`);
     const resetPlacements = (placements: Record<string, string | null>) => {
       const retained: Record<string, string | null> = {};
       for (const [id, target] of Object.entries(placements)) {
         if (target === null) {
-          if ((homes.get(id) ?? []).some((home) => !inBucket(home)))
+          if (
+            (homes.get(id) ?? []).some(
+              (home) => !insideScope(UNPLACED_KEY, home),
+            )
+          )
             retained[id] = null;
           continue;
         }
-        if (!inBucket(target)) retained[id] = target;
-        else if ((homes.get(id) ?? []).some((home) => !inBucket(home)))
+        if (!insideScope(UNPLACED_KEY, target)) retained[id] = target;
+        else if (
+          (homes.get(id) ?? []).some((home) => !insideScope(UNPLACED_KEY, home))
+        )
           retained[id] = null;
       }
       return retained;
     };
     const next: StructureEdits = {
       choices: Object.fromEntries(
-        Object.entries(edits.choices).filter(([key]) => !inBucket(key)),
+        Object.entries(edits.choices).filter(
+          ([key]) => !insideScope(UNPLACED_KEY, key),
+        ),
       ),
       coursePlacements: resetPlacements(edits.coursePlacements),
       modulePlacements: resetPlacements(edits.modulePlacements),
@@ -604,22 +790,10 @@ export function resetUnplaced(
           projection,
         ),
         placedCourseIds: projection.subtree.map((course) => course.group_id),
+        courseHolders: courseHolders(projection),
+        courseOrder: clearCourseOrder(edits.courseOrder, discard),
       },
       discardUncompletedCourseIds: discard,
     };
   });
-}
-
-/** Remove one course from the selection and from completion. */
-export function removeFromSelection(
-  store: BrowserStore,
-  courseId: CourseId,
-): void {
-  store.updateCurrent((state) => ({
-    ...state,
-    selectedCourseIds: state.selectedCourseIds.filter((id) => id !== courseId),
-    completedCourseIds: state.completedCourseIds.filter(
-      (id) => id !== courseId,
-    ),
-  }));
 }

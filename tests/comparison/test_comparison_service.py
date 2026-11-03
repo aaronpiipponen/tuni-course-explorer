@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
+import uuid
+
 import pytest
 
 from course_explorer.comparison.service import (
     PreparedTeachingOverlap,
     compare_teaching_chunks,
     comparison_verdict,
-    teaching_overlap,
 )
 from course_explorer.config import SearchSettings
+from course_explorer.embeddings.hub import subtract_hub, subtract_hub_rows
 from course_explorer.embeddings.read import TeachingEmbeddingChunk
 from course_explorer.enums import TeachingTextField, TeachingTextLanguage, TeachingTextOrigin
 from tests.support import settings_factory
@@ -27,6 +29,7 @@ def _chunk(
 ) -> TeachingEmbeddingChunk:
     """Build one real chunk carrier with an explicit character weight."""
     return TeachingEmbeddingChunk(
+        chunk_id=uuid.uuid5(uuid.NAMESPACE_URL, f"{group_id}/{field}/{language}/{chunk_index}"),
         group_id=group_id,
         field=field,
         language=language,
@@ -40,8 +43,8 @@ def _chunk(
 def _settings() -> SearchSettings:
     """Build the explicit comparison policy the mechanics are proved against.
 
-    A zero floor and unit ceiling make the graded overlap equal to the character-weighted mean of the
-    best cosines times 100, so the synthetic vectors give exact expectations.
+    A zero floor and unit ceiling make the graded overlap the character-weighted mean of the best
+    cosines times 100, so the synthetic vectors give exact expectations.
     """
     return settings_factory(
         SearchSettings,
@@ -80,12 +83,20 @@ def test_hub_subtraction_removes_a_shared_component() -> None:
     assert raw.content_similarity > 90.0
     assert centred.content_similarity == pytest.approx(0.0)
     assert comparison_verdict(centred, settings=settings) == "unrelated"
+    # One subtraction primitive serves the single-row and multi-row forms component by component.
+    assert subtract_hub((1.0, 0.1), shared) == (0.0, 0.1)
+    assert subtract_hub_rows(
+        ((1.0, 0.1), (1.0, -0.1)),
+        (TeachingTextField.CONTENT, TeachingTextField.OUTCOMES),
+        shared,
+        (1.0, 0.0),
+    ).tolist() == [[0.0, 0.1], [0.0, -0.1]]
 
 
 def test_comparison_identical_chunks_are_fully_similar_and_overlapping() -> None:
+    """Identical descriptive teaching is fully similar and fully overlapping."""
     settings = _settings()
 
-    # Identical descriptive teaching is fully similar and fully overlapping.
     identical = compare_teaching_chunks(
         (_chunk("a", vector=(1.0, 0.0)),),
         (_chunk("b", vector=(1.0, 0.0)),),
@@ -113,9 +124,6 @@ def test_prepared_overlap_preserves_directional_containment() -> None:
     prepared_overlap = prepared.compare(a, floor=0.0, ceiling=1.0)
     contained = compare_teaching_chunks(a, b, settings=settings, hub=_HUB, outcomes_hub=_HUB)
     assert prepared_overlap == contained.overlap
-    assert prepared_overlap == teaching_overlap(
-        a, b, hub=_HUB, outcomes_hub=_HUB, floor=0.0, ceiling=1.0
-    )
     assert contained.overlap.a_in_b == pytest.approx(100.0)
     assert contained.overlap.b_in_a == pytest.approx(10.0)
     assert comparison_verdict(contained, settings=settings) == "heavily_overlapping"
@@ -133,11 +141,6 @@ def test_graded_overlap_is_partial_for_partly_shared_chunks() -> None:
     thematic = compare_teaching_chunks(
         thematic_a, thematic_b, settings=settings, hub=_HUB, outcomes_hub=_HUB
     )
-    assert PreparedTeachingOverlap(thematic_b).compare(
-        thematic_a, floor=0.0, ceiling=1.0
-    ) == teaching_overlap(
-        thematic_a, thematic_b, hub=_HUB, outcomes_hub=_HUB, floor=0.0, ceiling=1.0
-    )
     assert thematic.overall_relatedness == pytest.approx(100.0)
     assert thematic.overlap.a_in_b == pytest.approx(70.7, abs=0.1)
     assert thematic.overlap.b_in_a == pytest.approx(70.7, abs=0.1)
@@ -145,8 +148,8 @@ def test_graded_overlap_is_partial_for_partly_shared_chunks() -> None:
 
 
 def test_partial_overlap_uses_configured_verdict() -> None:
+    """Two descriptive chunks with about 0.6 cosine read as a partial overlap."""
     settings = _settings()
-    # Two descriptive chunks sharing about 0.6 cosine read as a partial overlap.
     partial = compare_teaching_chunks(
         (_chunk("a", vector=(1.0, 0.0), characters=100),),
         (_chunk("b", vector=(0.6, 0.8), characters=100),),
@@ -160,8 +163,8 @@ def test_partial_overlap_uses_configured_verdict() -> None:
 
 
 def test_unrelated_chunks_have_zero_similarity_and_overlap() -> None:
+    """Orthogonal teaching reads zero similarity and no overlap."""
     settings = _settings()
-    # Unrelated orthogonal teaching is zero similarity and unrelated.
     unrelated = compare_teaching_chunks(
         (_chunk("a", vector=(1.0, 0.0)),),
         (_chunk("b", vector=(0.0, 1.0)),),
@@ -176,8 +179,8 @@ def test_unrelated_chunks_have_zero_similarity_and_overlap() -> None:
 
 
 def test_name_only_relatedness_has_no_descriptive_overlap() -> None:
+    """Name-only teaching has no content or outcome meter and no descriptive overlap."""
     settings = _settings()
-    # Name-only teaching produces a null content/outcome meter and descriptive overlap.
     name_only = compare_teaching_chunks(
         (_chunk("a", field=TeachingTextField.NAME, vector=(1.0, 0.0)),),
         (_chunk("b", field=TeachingTextField.NAME, vector=(1.0, 0.0)),),
@@ -194,8 +197,8 @@ def test_name_only_relatedness_has_no_descriptive_overlap() -> None:
 
 
 def test_disjoint_languages_have_unavailable_meters() -> None:
+    """Disjoint languages leave every meter without a value."""
     settings = _settings()
-    # Disjoint languages produce a null value in every meter.
     disjoint = compare_teaching_chunks(
         (_chunk("a", language=TeachingTextLanguage.FI, vector=(1.0, 0.0)),),
         (_chunk("b", language=TeachingTextLanguage.EN, vector=(1.0, 0.0)),),
@@ -212,8 +215,8 @@ def test_disjoint_languages_have_unavailable_meters() -> None:
 
 
 def test_common_languages_are_averaged_equally() -> None:
+    """Both common languages weigh equally in the average."""
     settings = _settings()
-    # Both common languages are averaged equally rather than blended across languages.
     mixed = compare_teaching_chunks(
         (
             _chunk("a", language=TeachingTextLanguage.FI, vector=(1.0, 0.0)),

@@ -11,7 +11,11 @@ from collections.abc import Callable
 from contextlib import AbstractContextManager
 from pathlib import Path
 
-from course_explorer.config import load_database_settings, load_translation_settings
+from course_explorer.config import (
+    DatabaseSettings,
+    load_database_settings,
+    load_translation_settings,
+)
 from course_explorer.curriculum_repository import CurriculumRepository
 from course_explorer.db.session import database_context as _database_context
 from course_explorer.teaching_text.repository import DerivedTranslationRepository
@@ -27,16 +31,21 @@ def run_translation_command(
     on_checkpoint: Callable[[int], None] | None = None,
     before_request: Callable[[], bool] | None = None,
     request_scope: Callable[[float], AbstractContextManager[None]] | None = None,
+    database_settings: DatabaseSettings | None = None,
 ) -> TranslationRunReport:
     """Compose one worker run over the shared repositories and the one loopback provider.
 
-    The two optional lifecycle callbacks are forwarded to the single worker
-    service call. They never change resource or provider ownership. ``before_request`` and
-    ``request_scope`` are passed to the provider so a detached worker can refuse a
-    transport request after pause/stop and bound the request itself. Product callers omit them.
-    The worker service owns the nonpositive-limit and directory-output checks.
+    An omitted ``database_settings`` resolves the Working dataset. A worker controller supplies raw
+    settings with its recorded session database, so the session connection stays explicit. The two
+    optional lifecycle callbacks are forwarded to the single worker service call. They never change
+    resource or provider ownership. ``before_request`` and ``request_scope`` are passed to the
+    provider so a detached worker can refuse a transport request after pause/stop and bound the
+    request itself. Product callers omit them. The worker service owns the nonpositive-limit and
+    directory-output checks.
     """
-    database_settings = load_database_settings()
+    database_settings = (
+        load_database_settings(role="working") if database_settings is None else database_settings
+    )
     translation_settings = load_translation_settings()
     with _database_context(database_settings) as factory:
         curriculum = CurriculumRepository(factory)

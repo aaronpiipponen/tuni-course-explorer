@@ -4,7 +4,7 @@ The wiki compiler selects the configured Markdown pages, compiles them into sani
 
 ## buildWiki and the selection
 
-`buildWiki({ repoRoot })` in `web/tools/wiki/build.mjs` resolves the repository root with `realpath` and reads `config/wiki.json` from it. A read failure and invalid JSON each fail with one message.
+`readWikiMeta({ repoRoot })` in `web/tools/wiki/build.mjs` resolves the repository root with `realpath`, reads `config/wiki.json` and validates its shape. It returns `repositoryUrl` and `repositoryRef`, and `buildWiki({ repoRoot })` calls the same reader before it reads any page. A read failure and invalid JSON each fail with one message.
 
 The configuration is validated before any page is read:
 
@@ -57,11 +57,11 @@ The directory set is collected in a pre-pass over the page's non-remote links: a
 
 `buildWiki` visits every `image` node in the selected page. A remote destination is skipped. A local destination with a fragment or a query fails the build, a destination that resolves outside the repository fails, and the file goes through `selected`. An extension outside `imageExtensions` (`png`, `jpg`, `jpeg`, `gif`, `webp`, `svg`) fails the build. Each resolved path gets the token `__WIKI_ASSET_<n>__`, the assets map returns that token with the absolute path, and the image's URL in the page is replaced through `imageTokenByPath`, keyed by the resolved URL path of the page.
 
-`wikiPlugin` in `web/tools/wiki/plugin.mjs` serves the `virtual:wiki` module. On `load` it runs `buildWiki`, imports each asset as `${file}?url`, replaces every token in the page HTML with `__WIKI_IMPORTED_ASSET_<index>__`, and emits a module that assigns the imported URLs back onto the HTML and exports the registry. `handleHotUpdate` invalidates the virtual module when a watched file changes, and `generateBundle` adds `config/wiki.json`, every selected page and every asset to the watch list.
+`wikiPlugin` in `web/tools/wiki/plugin.mjs` serves two virtual modules. `virtual:wiki-meta` exports `{ repositoryUrl }` from `readWikiMeta`, so the app shell reads the repository address without loading the registry. `virtual:wiki` runs `buildWiki`, imports each asset as `${file}?url`, replaces every token in the page HTML with `__WIKI_IMPORTED_ASSET_<index>__`, and emits a module that assigns the imported URLs back onto the HTML and exports the registry. `handleHotUpdate` invalidates both virtual modules when a watched file changes, and `generateBundle` adds `config/wiki.json`, every selected page and every asset to the watch list.
 
 ## The registry and the docs view
 
-The registry contracts are `DocsPage`, `DocsSection` and `DocsRegistry` in `web/src/features/docs/types.ts`, and `registry.ts` binds the virtual module and adds `isDocsPageId`, `getDocsNeighbours` and `getDocsAncestors`. A page carries its `title` and `titleId`, its `nav`, its `summary`, its `text` and `html`, its `headings`, its `readingMinutes`, its `sourcePath`, its `updated` date, its `children` identities, its `parent` identity and its `section` title. `DocsSection` carries the section `title`, its `description` and the `page` identity of the section's own page.
+The registry contracts are `DocsPage`, `DocsSection` and `DocsRegistry` in `web/src/features/docs/types.ts`. `registry.ts` binds `virtual:wiki` and adds `isDocsPageId`, `getDocsNeighbours` and `getDocsAncestors`, and `repository.ts` binds `virtual:wiki-meta` and exports `DOCS_REPOSITORY_URL`. A page carries its `title` and `titleId`, its `nav`, its `summary`, its `text` and `html`, its `headings`, its `readingMinutes`, its `sourcePath`, its `updated` date, its `children` identities, its `parent` identity and its `section` title. `DocsSection` carries the section `title`, its `description` and the `page` identity of the section's own page.
 
 The view components:
 

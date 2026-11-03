@@ -318,7 +318,7 @@ def _require_canonical_run_environment[StateT: WorkerState, PolicyT: BaseModel](
     """Require the current policy and raw session-database environment before any write."""
     stage.require_policy(session, policy)
     raw = load_raw_database_settings()
-    if raw.selected_dataset_enabled or raw.postgres_db != session.database_name:
+    if raw.postgres_db != session.database_name:
         raise ValueError("canonical worker run requires the session database environment")
 
 

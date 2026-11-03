@@ -4,11 +4,11 @@ A running checkout reads one TOML file per configuration subsystem from ``config
 the environment file, caching both reads by checkout root until ``clear_configuration_caches``
 clears them, and hands the values to the settings layer through the standard Pydantic settings
 source protocol. The module owns no validator, settings class or policy value. It parses the
-files, checks the cross-file disjointness rule, returns each caller's requested projection with
-any requested derived-hub reference tables resolved, serializes portable values across a process
-boundary, and parses supplied replacement text for one subsystem file. The subsystem files carry
-portable values and the environment file carries the values that change per machine. Ordinary
-commands need no manual sourcing, and the ``configuration shell`` action exports the portable
+files, checks the cross-file disjointness rule, returns each caller's requested projection,
+serializes settings values across a process boundary, and parses supplied replacement text for one
+subsystem file. The subsystem files hold the tracked configuration values, including machine and
+site identity. The environment file holds the credential values the services read. Ordinary
+commands need no manual sourcing, and the ``configuration shell`` action exports the subsystem
 aliases for the shell recipes that need them.
 """
 
@@ -32,7 +32,7 @@ from dotenv import dotenv_values
 from dotenv.parser import parse_stream
 from pydantic_settings import BaseSettings, EnvSettingsSource, PydanticBaseSettingsSource
 
-from course_explorer.administration import repository_root
+from course_explorer import administration
 
 # Ordered subsystem files. The two serving files are last, web before admission, so the
 # loopback bind and the admission policy compose after the shared files.
@@ -44,14 +44,10 @@ PUBLIC_CONFIG_FILES: tuple[str, ...] = (
     "config/inference.toml",
     "config/worker.toml",
     "config/admin_web.toml",
+    "config/feedback.toml",
     "config/web.toml",
     "config/admission.toml",
 )
-
-# The only two values that are references to a derived hub file rather than inline policy. They
-# live beside the TOML files as a bare JSON numeric array so the large embedding hubs are
-# reviewable configuration instead of one very long line.
-_HUB_REFERENCE_ALIASES = ("EMBEDDING_HUB_VECTOR", "EMBEDDING_OUTCOMES_HUB_VECTOR")
 
 
 def _read_toml_file(path: Path) -> dict[str, Any]:
@@ -63,32 +59,6 @@ def _read_toml_file(path: Path) -> dict[str, Any]:
         return tomllib.loads(payload)
     except tomllib.TOMLDecodeError as exc:
         raise ValueError(f"public configuration file is not valid TOML: {path.name}") from exc
-
-
-def _hub_reference_path(alias: str, value: object) -> Path:
-    if not isinstance(value, dict) or set(value) != {"path"} or not isinstance(value["path"], str):
-        raise ValueError(f"{alias} must reference a derived artifact by a single path key")
-    reference = Path(value["path"])
-    if reference.is_absolute():
-        raise ValueError(f"{alias} derived artifact path must be repository-relative")
-    return reference
-
-
-def _resolve_hub_reference(root: Path, alias: str, value: object) -> object:
-    if isinstance(value, list):
-        return value
-    reference = _hub_reference_path(alias, value)
-    try:
-        payload = (root / reference).read_text(encoding="utf-8")
-    except OSError as exc:
-        raise ValueError(f"{alias} derived artifact is not readable") from exc
-    try:
-        parsed = json.loads(payload)
-    except json.JSONDecodeError as exc:
-        raise ValueError(f"{alias} derived artifact is not valid JSON") from exc
-    if not isinstance(parsed, list):
-        raise ValueError(f"{alias} derived artifact must be a JSON numeric array")
-    return parsed
 
 
 @cache
@@ -115,18 +85,13 @@ def _merge_configuration_documents(
 
 
 def _project_configuration(
-    root: Path, values: Mapping[str, object], aliases: Collection[str] | None
+    values: Mapping[str, object], aliases: Collection[str] | None
 ) -> dict[str, object]:
-    """Return one alias projection of merged values, resolving only the hub references requested."""
+    """Return one alias projection of merged values."""
     if aliases is None:
-        selected = dict(values)
-    else:
-        requested = set(aliases)
-        selected = {alias: value for alias, value in values.items() if alias in requested}
-    for alias in _HUB_REFERENCE_ALIASES:
-        if alias in selected:
-            selected[alias] = _resolve_hub_reference(root, alias, selected[alias])
-    return selected
+        return dict(values)
+    requested = set(aliases)
+    return {alias: value for alias, value in values.items() if alias in requested}
 
 
 def read_public_configuration(
@@ -135,15 +100,12 @@ def read_public_configuration(
     """Read and merge the subsystem files beneath ``root`` as one requested projection.
 
     The merged raw TOML read is cached by checkout root until ``clear_configuration_caches``
-    clears it, and a duplicate alias across files is rejected. Each call returns a
-    fresh projection: ``aliases`` selects exactly the requested keys, so a runtime/generation reader
-    never opens either derived similarity-hub artifact, while the default ``None`` returns every
-    value with both hub references resolved. Only hub aliases present in the projection are
-    resolved, so a full similarity read fails loudly when its artifact is missing or malformed.
-    No local value is read or rendered here.
+    clears it, and a duplicate alias across files is rejected. Each call returns a fresh
+    projection: ``aliases`` selects exactly the requested keys, while the default ``None`` returns
+    every value. No local value is read or rendered here.
     """
     merged = _read_merged_public_configuration_cached(str(root))
-    return _project_configuration(root, merged, aliases)
+    return _project_configuration(merged, aliases)
 
 
 def read_configuration_documents(
@@ -201,7 +163,7 @@ def read_candidate_local_configuration(root: Path) -> dict[str, str | None]:
 
     An absent file supplies no value, so any required setting fails through its owning validator.
     Every read reaches the file and parses it through ``parse_local_configuration`` after decoding
-    it as UTF-8 without newline translation, so a malformed binding and a key assigned more than once
+    it as UTF-8 without newline translation. A malformed binding and a key assigned more than once
     both raise a content-free ``ValueError``. Other read, decode and parse errors propagate.
     """
     try:
@@ -209,21 +171,6 @@ def read_candidate_local_configuration(root: Path) -> dict[str, str | None]:
     except FileNotFoundError:
         return {}
     return parse_local_configuration(payload.decode("utf-8"))
-
-
-def hub_reference_path(root: Path, alias: str) -> Path:
-    """Return the repository-relative artifact path that one hub alias references.
-
-    Only ``EMBEDDING_HUB_VECTOR`` and ``EMBEDDING_OUTCOMES_HUB_VECTOR`` are accepted. The referenced
-    artifact is not opened, so the path is available before the file exists. An absent alias, an
-    inline vector value or an absolute path raises ``ValueError``.
-    """
-    if alias not in _HUB_REFERENCE_ALIASES:
-        raise ValueError(f"{alias} is not an embedding hub alias")
-    merged = _read_merged_public_configuration_cached(str(root))
-    if alias not in merged:
-        raise ValueError(f"{alias} is not configured")
-    return _hub_reference_path(alias, merged[alias])
 
 
 @cache
@@ -245,13 +192,16 @@ def clear_configuration_caches() -> None:
     """Clear the cached subsystem-file and local reads so a changed checkout root is re-read."""
     _read_merged_public_configuration_cached.cache_clear()
     _read_local_configuration_cached.cache_clear()
+    # The dataset-role owner imports this module through the configuration chain, so the clearing
+    # hook is imported at call time.
+    from course_explorer.datasets import clear_dataset_cache
+
+    clear_dataset_cache()
 
 
 class CandidateConfiguration(NamedTuple):
-    """One transient candidate configuration: its root, its merged subsystem-file values and its
-    local values."""
+    """One transient candidate configuration: its merged subsystem-file values and local values."""
 
-    root: Path
     public: Mapping[str, object]
     local: Mapping[str, str | None]
 
@@ -268,7 +218,6 @@ def _candidate_configuration() -> CandidateConfiguration | None:
 
 @contextmanager
 def configuration_candidate(
-    root: Path,
     *,
     documents: Mapping[str, Mapping[str, object]],
     local: Mapping[str, str | None],
@@ -280,9 +229,7 @@ def configuration_candidate(
     the previous state whatever the block raises.
     """
     token = _CANDIDATE_CONFIGURATION.set(
-        CandidateConfiguration(
-            root=root, public=_merge_configuration_documents(documents), local=local
-        )
+        CandidateConfiguration(public=_merge_configuration_documents(documents), local=local)
     )
     try:
         yield
@@ -305,9 +252,7 @@ def candidate_settings_sources(
     from course_explorer.config import _settings_aliases
 
     def public_values() -> dict[str, object]:
-        return _project_configuration(
-            snapshot.root, snapshot.public, _settings_aliases(settings_cls)
-        )
+        return _project_configuration(snapshot.public, _settings_aliases(settings_cls))
 
     return (LocalConfigurationSource(settings_cls), public_values)
 
@@ -338,7 +283,9 @@ class LocalConfigurationSource(EnvSettingsSource):
     def _load_env_vars(self) -> Mapping[str, str | None]:
         snapshot = _candidate_configuration()
         values = (
-            snapshot.local if snapshot is not None else read_local_configuration(repository_root())
+            snapshot.local
+            if snapshot is not None
+            else read_local_configuration(administration.repository_root())
         )
         if not self.case_sensitive:
             return {name.lower(): value for name, value in values.items()}
@@ -349,7 +296,7 @@ def _shell_exports() -> dict[str, str]:
     """Project every subsystem-file value, with a process environment value of the same alias
     taking precedence.
     """
-    public = read_public_configuration(repository_root())
+    public = read_public_configuration(administration.repository_root())
     return {
         alias: os.environ.get(alias, environment_value(value)) for alias, value in public.items()
     }
@@ -362,7 +309,7 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Run the one explicit ``shell`` action and print the composed portable values as shell
+    """Run the one explicit ``shell`` action and print the composed non-secret values as shell
     exports."""
     args = _parser().parse_args(argv)
     if args.action == "shell":

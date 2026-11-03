@@ -1,0 +1,13 @@
+{
+  "type": "line",
+  "title": "Web cgroup charge by user level",
+  "description": "The web server's cgroup memory charge at each capacity level from 10 to 750 users, for the light and mixed profiles, in GB on a log user axis.",
+  "valueAxis": "Web charge (GB)",
+  "xAxis": "Users (log scale)",
+  "xScale": "log",
+  "x": [10, 20, 40, 60, 80, 100, 150, 200, 250, 300, 400, 500, 750],
+  "series": [
+    { "name": "Light profile", "values": [0.68, 0.75, 0.88, 0.99, 1.11, 1.25, 1.47, 1.64, 1.78, 2.01, 2.21, 2.48, 2.80] },
+    { "name": "Mixed profile", "values": [0.68, 0.78, 1.01, 1.20, 1.42, 1.61, 1.95, 2.17, 2.56, 2.89, 3.39, 4.29, 4.29] }
+  ]
+}

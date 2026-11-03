@@ -50,7 +50,7 @@ describe("comparison result presentation", () => {
         createElement(ComparisonResults, { report, loading: false }),
       ),
     );
-    expect(html).toContain("0 %");
+    expect(html).toContain("0%");
     expect(html).toContain("not available");
     expect(html).toContain("not available</strong>");
   });

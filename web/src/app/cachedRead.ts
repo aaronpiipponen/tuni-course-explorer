@@ -5,7 +5,7 @@
  * dataset rejects a response of the previous dataset, so an older outstanding request never rolls
  * the cache backwards. Otherwise the response identity becomes the cache's observed identity.
  */
-import type { ReadCache } from "./readCache";
+import type { ReportCache } from "./readCache";
 
 /** Error text used when a read crosses serving dataset identities. */
 export const DATASET_CHANGED_MESSAGE =
@@ -25,7 +25,7 @@ export function cancellationError(signal: AbortSignal): Error {
  * dataset replaced the one the operation started against.
  */
 export function acceptOperationIdentity(
-  cache: ReadCache,
+  cache: ReportCache,
   operationIdentity: string,
   responseIdentity: string,
 ): void {
@@ -38,7 +38,7 @@ export function acceptOperationIdentity(
 
 /** Accept one read response after checking cancellation and dataset identity. */
 export function acceptDatasetRead(
-  cache: ReadCache,
+  cache: ReportCache,
   startingIdentity: string,
   responseIdentity: string,
   signal: AbortSignal,
@@ -59,7 +59,7 @@ export function acceptDatasetRead(
  * propagate unchanged, and nothing is cached for them.
  */
 export async function readCachedReport<T extends { dataset_identity: string }>(
-  cache: ReadCache,
+  cache: ReportCache,
   key: string,
   read: (signal: AbortSignal) => Promise<T>,
   signal: AbortSignal,

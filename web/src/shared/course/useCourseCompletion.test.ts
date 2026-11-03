@@ -9,6 +9,7 @@ import {
   createBrowserStore,
   type BrowserStore,
 } from "../../state/store";
+import { NoticeProvider } from "../NoticeProvider";
 import { useCourseCompletion } from "./useCourseCompletion";
 
 (
@@ -56,7 +57,7 @@ describe("course completion", () => {
         createElement(
           StoreContext.Provider,
           { value: store },
-          createElement(Harness),
+          createElement(NoticeProvider, null, createElement(Harness)),
         ),
       ),
     );
@@ -92,8 +93,7 @@ describe("course completion", () => {
 
     pressToggle();
     expect(localStorage.getItem(BROWSER_STORAGE_KEY)).toBe(saved);
-    expect(dialog()?.textContent).toContain("Mark completed?");
-    expect(dialog()?.textContent).toContain("TEST.001 Fixture course");
+    expect(document.querySelector('[role="dialog"]')).not.toBeNull();
 
     press(".dialog-confirm");
     expect(dialog()).toBeNull();

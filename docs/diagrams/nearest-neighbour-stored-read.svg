@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 460" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Stored nearest-neighbour read</title>
+  <desc id="d">The serving artifact build uses every completed descriptive chunk as a query chunk, runs one
+  nearest-chunk scan per chunk and stores 128 ranked rows per query chunk. Each recommendation
+  request supplies its basis chunks and its request exclusions, reads the stored rows for those
+  chunks and returns the retained neighbours. The stored bound does not grow with the request
+  exclusions, so the request returns fewer rows than the direct scan at every measured basis.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="460" rx="12" fill="#232434"/>
+
+  <text x="64" y="88" font-size="16" fill="#a3a4b8">Build, once</text>
+
+  <rect x="64" y="104" width="360" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="244" y="130" text-anchor="middle" font-size="16" fill="#ececf2">Stored descriptive chunks</text>
+  <text x="244" y="152" text-anchor="middle" font-size="14" fill="#a3a4b8">36,790 query chunks</text>
+
+  <line x1="244" y1="168" x2="244" y2="200" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="258" y="188" font-size="14" fill="#a3a4b8">query vectors</text>
+
+  <rect x="64" y="200" width="360" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="244" y="226" text-anchor="middle" font-size="16" fill="#ececf2">Per-chunk nearest scan</text>
+  <text x="244" y="248" text-anchor="middle" font-size="14" fill="#a3a4b8">128 rows per query chunk</text>
+
+  <line x1="244" y1="264" x2="244" y2="296" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="258" y="284" font-size="14" fill="#a3a4b8">ranked rows</text>
+
+  <rect x="64" y="296" width="360" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="244" y="322" text-anchor="middle" font-size="16" fill="#ececf2">Stored neighbour table</text>
+  <text x="244" y="344" text-anchor="middle" font-size="14" fill="#a3a4b8">4,709,120 rows</text>
+
+  <text x="64" y="392" font-size="14" fill="#a3a4b8">Built in 11 minutes 11 seconds</text>
+
+  <text x="536" y="88" font-size="16" fill="#a3a4b8">Each request</text>
+
+  <rect x="536" y="104" width="360" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="716" y="130" text-anchor="middle" font-size="16" fill="#ececf2">Basis chunks</text>
+  <text x="716" y="152" text-anchor="middle" font-size="14" fill="#a3a4b8">18, 83 and 171 chunks</text>
+
+  <line x1="716" y1="168" x2="716" y2="200" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="730" y="188" font-size="14" fill="#a3a4b8">with exclusions</text>
+
+  <rect x="536" y="200" width="360" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="716" y="226" text-anchor="middle" font-size="16" fill="#ececf2">Stored rows by query chunk</text>
+  <text x="716" y="248" text-anchor="middle" font-size="14" fill="#a3a4b8">at most 128 per chunk</text>
+
+  <line x1="716" y1="264" x2="716" y2="296" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="730" y="284" font-size="14" fill="#a3a4b8">after exclusions</text>
+
+  <rect x="536" y="296" width="360" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="716" y="322" text-anchor="middle" font-size="16" fill="#ececf2">Retained neighbours</text>
+  <text x="716" y="344" text-anchor="middle" font-size="14" fill="#a3a4b8">644 of 720 at basis 5</text>
+
+  <text x="536" y="392" font-size="14" fill="#a3a4b8">3,200 of 3,320 and 6,640 of 6,840</text>
+
+  <text x="64" y="432" font-size="14" fill="#a3a4b8">The direct scan fills 720, 3,320 and 6,840 rows with the iterative scan</text>
+</svg>

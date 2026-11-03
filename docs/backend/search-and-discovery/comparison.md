@@ -39,7 +39,7 @@ Content similarity measures content against content, and Learning-outcome simila
 
 The two overlap meters read the content and the learning outcomes of both courses together. A content chunk may find its close match in a learning-outcomes chunk, because the overlap asks whether the teaching text of one course appears in the other course, and a chunk of either descriptive field answers that question. A title takes no part in an overlap meter, because a similar name does not show similar teaching.
 
-The weights are `COMPARISON_NAME_WEIGHT`, `COMPARISON_CONTENT_WEIGHT`, and `COMPARISON_OUTCOMES_WEIGHT` in `config/search.toml`, and the example sets 0.10, 0.45, and 0.45.
+The weights are `COMPARISON_NAME_WEIGHT`, `COMPARISON_CONTENT_WEIGHT`, and `COMPARISON_OUTCOMES_WEIGHT` in `config/search.toml`, and the example sets 0.10, 0.45, and 0.45. Each weight is greater than 0.
 
 ## Hubs
 
@@ -64,6 +64,8 @@ The verdict is one label, chosen in a fixed order.
 | `COMPARISON_SAME_AREA_PERCENT` | Overall relatedness at or above which the verdict is Same area, different content | 35 |
 | `COMPARISON_LOOSE_RELATED_PERCENT` | Overall relatedness at or above which the verdict is Loosely related | 20 |
 
+Both overlap keys take 0 to 1, with the ceiling above the floor. Every percent key takes 0 to 100, and the verdict thresholds must ascend: loose related below same area, and partial overlap below heavy overlap.
+
 The settings refuse a floor at or above the ceiling, a partial threshold at or above the heavy threshold, and a loose threshold at or above the same-area threshold, so the order of the thresholds always holds.
 
 ## Not available
@@ -80,7 +82,7 @@ A meter has no value when the two courses share no language, or when one side ha
 
 A name-only course has no value in Content similarity, Learning-outcome similarity, or either overlap meter, while Overall relatedness has one.
 
-A computed value of 0 is a result, not a missing comparison. A meter without the inputs it needs is shown as Not available. The app uses the same label when the comparison has no verdict.
+A computed value of 0 is a result, not a missing comparison. A meter without the inputs it needs shows the label **not available**. The app uses the same label when the comparison has no verdict.
 
 ## Self-comparison, inactive courses, and derived text
 

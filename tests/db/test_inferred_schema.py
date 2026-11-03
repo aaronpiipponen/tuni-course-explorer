@@ -39,6 +39,7 @@ from tests.db._schema_support import (
     inferred_set_row,
     target_course_id,
 )
+from tests.prerequisite.conftest import PrerequisiteCatalogueSeed
 
 pytestmark = [
     pytest.mark.integration,
@@ -52,70 +53,62 @@ def database(monkeypatch: pytest.MonkeyPatch):
     The irreversible 0014 conversion applies in one direction, so this module proves the historical
     category migration on its own dedicated database upgraded only to the pre-category revision.
     """
-    from course_explorer.administration import repository_root
-    from course_explorer.config import load_database_settings
+    from course_explorer.config import load_raw_database_settings
     from course_explorer.db.session import create_database_engine, create_session_factory
-    from course_explorer_admin import mechanics
 
     name = "course_category_migration_test"
     assert name.endswith("_test")
-    runner = mechanics.SubprocessRunner()
-    user = load_database_settings().postgres_user
-
-    def psql_argv(*argv: str) -> tuple[str, ...]:
-        return (
-            *mechanics.compose_prefix(),
-            "exec",
-            "-T",
-            "db",
-            "psql",
-            "--username",
-            user,
-            "--dbname",
-            "postgres",
-            "--tuples-only",
-            "--no-align",
-            *argv,
-        )
-
-    probe = (
-        runner.run(
-            psql_argv("--command", f"SELECT count(*) FROM pg_database WHERE datname='{name}'"),
-            cwd=repository_root(),
-        )
-        .stdout.decode()
-        .strip()
+    admin = create_database_engine(
+        load_raw_database_settings().model_copy(update={"postgres_db": "postgres"})
     )
-    if probe != "0":
-        raise ValueError("course_category_migration_test already exists")
-    runner.run(
-        (
-            *mechanics.compose_prefix(),
-            "exec",
-            "-T",
-            "db",
-            "createdb",
-            "--username",
-            user,
-            "--template",
-            "template0",
-            name,
-        ),
-        cwd=repository_root(),
-    )
-    monkeypatch.setenv("POSTGRES_DB", name)
-    monkeypatch.setenv("SELECTED_DATASET_ENABLED", "0")
-    engine = create_database_engine(load_database_settings())
     try:
-        with engine.connect() as connection:
-            command.upgrade(alembic_config(connection), "20260915_0006")
-        yield engine, create_session_factory(engine)
+        with admin.connect() as connection:
+            autocommit = connection.execution_options(isolation_level="AUTOCOMMIT")
+            autocommit.exec_driver_sql(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)')
+            autocommit.exec_driver_sql(f'CREATE DATABASE "{name}" TEMPLATE template0')
+        monkeypatch.setenv("POSTGRES_DB", name)
+        engine = create_database_engine(load_raw_database_settings())
+        try:
+            with engine.connect() as connection:
+                command.upgrade(alembic_config(connection), "20260915_0006")
+            yield engine, create_session_factory(engine)
+        finally:
+            engine.dispose()
     finally:
-        engine.dispose()
-        runner.run(
-            (*mechanics.compose_prefix(), "exec", "-T", "db", "dropdb", "--username", user, name),
-            cwd=repository_root(),
-        )
+        with admin.connect() as connection:
+            autocommit = connection.execution_options(isolation_level="AUTOCOMMIT")
+            autocommit.exec_driver_sql(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)')
+        admin.dispose()
+
+
+@pytest.fixture
+def prerequisite_catalogue(database: tuple[Engine, object]) -> PrerequisiteCatalogueSeed:
+    """Seed the dedicated pre-category database, not the shared test database."""
+    _, factory = database
+    seed = PrerequisiteCatalogueSeed(
+        active_target_group_id="prerequisite-active-target",
+        inactive_target_group_id="prerequisite-inactive-target",
+        active_source_group_id="prerequisite-active-source",
+        inactive_source_group_id="prerequisite-inactive-source",
+        activity_as_of_academic_year_start=2026,
+        activity_window_years=3,
+    )
+    with session_scope(factory) as session:
+        for group_id, is_active in (
+            (seed.active_target_group_id, True),
+            (seed.inactive_target_group_id, False),
+            (seed.active_source_group_id, True),
+            (seed.inactive_source_group_id, False),
+        ):
+            session.add(
+                Course(
+                    group_id=group_id,
+                    is_active=is_active,
+                    activity_as_of_academic_year_start=seed.activity_as_of_academic_year_start,
+                    activity_window_years=seed.activity_window_years,
+                )
+            )
+    return seed
 
 
 def test_inferred_category_migration_preserves_required_semantics_and_hash(
@@ -233,7 +226,7 @@ def test_inferred_category_migration_preserves_required_semantics_and_hash(
     assert _stored_payload_hash(factory, target) == migrated_hash
 
     # A recommended occurrence exists at head: downgrade must refuse the whole pass atomically
-    # instead of relabeling a recommendation as required under the old contract.
+    # instead of relabeling a recommendation as required under the downgraded schema.
     recommended_expression = AndRequirement(
         type="and",
         origin=PrerequisiteOrigin.INFERRED,

@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 372" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Measurement boundaries of the served request and the fixed-vector reads</title>
+  <desc id="d">The served request of 28 October spans the HTTP request, one query embedding call, one
+  semantic read and the response body. Its median was 1,783.9 ms before the change and 898.6 ms
+  after the change, and the final run, under a new serving generation, measured 858.6 ms. The
+  fixed-vector reads of 21 October start from a stored vector and span one database read, so they
+  include neither the embedding call nor the HTTP request. The two sets of values do not add.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="372" rx="12" fill="#232434"/>
+
+  <text x="48" y="60" font-size="16" fill="#a3a4b8">Served request, 28 October</text>
+  <line x1="48" y1="76" x2="912" y2="76" stroke="#a3a4b8" stroke-width="1.5"/>
+  <line x1="48" y1="76" x2="48" y2="84" stroke="#a3a4b8" stroke-width="1.5"/>
+  <line x1="912" y1="76" x2="912" y2="84" stroke="#a3a4b8" stroke-width="1.5"/>
+
+  <rect x="48" y="92" width="192" height="40" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="144" y="117" text-anchor="middle" font-size="16" fill="#ececf2">HTTP request</text>
+
+  <rect x="272" y="92" width="192" height="40" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="368" y="117" text-anchor="middle" font-size="16" fill="#ececf2">Query embedding</text>
+
+  <rect x="496" y="92" width="192" height="40" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="592" y="117" text-anchor="middle" font-size="16" fill="#ececf2">Semantic read</text>
+
+  <rect x="720" y="92" width="192" height="40" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="816" y="117" text-anchor="middle" font-size="16" fill="#ececf2">Response body</text>
+
+  <line x1="240" y1="112" x2="272" y2="112" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="464" y1="112" x2="496" y2="112" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="688" y1="112" x2="720" y2="112" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+
+  <text x="48" y="158" font-size="14" fill="#a3a4b8">Medians 1,783.9 ms before the change, 898.6 ms after the change, 858.6 ms in the final run</text>
+
+  <text x="344" y="196" font-size="16" fill="#a3a4b8">Fixed-vector read, 21 October, 0.4898 s to 0.8105 s</text>
+  <line x1="344" y1="212" x2="616" y2="212" stroke="#a3a4b8" stroke-width="1.5"/>
+  <line x1="344" y1="212" x2="344" y2="220" stroke="#a3a4b8" stroke-width="1.5"/>
+  <line x1="616" y1="212" x2="616" y2="220" stroke="#a3a4b8" stroke-width="1.5"/>
+
+  <rect x="48" y="228" width="272" height="40" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="184" y="253" text-anchor="middle" font-size="16" fill="#ececf2">Fixed stored vectors</text>
+
+  <rect x="344" y="228" width="272" height="40" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="480" y="253" text-anchor="middle" font-size="16" fill="#ececf2">Semantic read</text>
+
+  <rect x="640" y="228" width="272" height="40" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="776" y="253" text-anchor="middle" font-size="16" fill="#ececf2">Compare with exact read</text>
+
+  <line x1="320" y1="248" x2="344" y2="248" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="616" y1="248" x2="640" y2="248" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+
+  <text x="48" y="300" font-size="14" fill="#a3a4b8">The vector-read medians start after the query vector exists and cover one database read.</text>
+  <text x="48" y="324" font-size="14" fill="#a3a4b8">Each served median covers the HTTP request, the embedding call and the response.</text>
+</svg>

@@ -1,32 +1,51 @@
-/** App and docs composition with the provider and persistent store mounted across navigation. */
-import { useLayoutEffect } from "react";
+/** App, docs and feedback composition under the provider and persistent store. */
+import { lazy, Suspense, useLayoutEffect } from "react";
 import { TopBar } from "./TopBar";
 import { PhoneTabBar } from "./PhoneTabBar";
 import { TabCarousel } from "./TabCarousel";
 import { AppFooter } from "./AppFooter";
-import { DocsShell } from "../features/docs/DocsShell";
-import { DOCS_REPOSITORY_URL } from "../features/docs/registry";
+import { FeedbackPage } from "../features/feedback/FeedbackPage";
+import { DOCS_REPOSITORY_URL } from "../features/docs/repository";
 import { usePage } from "./usePage";
 import { useCurrentProfileId } from "../state/useCurrentProfile";
 import { NoticeProvider } from "../shared/NoticeProvider";
 import { useWording } from "../shared/useWording";
 
-/** Render the application shell or the documentation surface. */
+const DocsShell = lazy(() =>
+  import("../features/docs/DocsShell").then((module) => ({
+    default: module.DocsShell,
+  })),
+);
+
+/** Render the application shell, the documentation surface or the standalone feedback page. */
 export function App() {
   const { page, entranceKey, navigate } = usePage();
   const currentProfileId = useCurrentProfileId();
   const { language } = useWording();
-  // The English wiki and the app shell each own their document language.
+  // The English wiki keeps its own document language. Both app paths follow the profile language.
   useLayoutEffect(() => {
     document.documentElement.lang = page === "docs" ? "en" : language;
   }, [page, language]);
-  if (page === "docs") return <DocsShell returnToApp={() => navigate("app")} />;
+  if (page === "docs")
+    return (
+      <Suspense fallback={null}>
+        <DocsShell returnToApp={() => navigate("app")} />
+      </Suspense>
+    );
+  if (page === "feedback")
+    return <FeedbackPage returnToApp={() => navigate("app")} />;
   return (
     <NoticeProvider key={currentProfileId}>
       <div key={entranceKey} className="app-shell">
-        <TopBar openDocs={() => navigate("docs")} />
+        <TopBar
+          openDocs={() => navigate("docs")}
+          openFeedback={() => navigate("feedback")}
+        />
         <TabCarousel key={currentProfileId} />
-        <PhoneTabBar openDocs={() => navigate("docs")} />
+        <PhoneTabBar
+          openDocs={() => navigate("docs")}
+          openFeedback={() => navigate("feedback")}
+        />
         <AppFooter repositoryUrl={DOCS_REPOSITORY_URL} />
       </div>
     </NoticeProvider>

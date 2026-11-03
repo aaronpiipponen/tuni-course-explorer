@@ -4,11 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from course_explorer.config import SearchSettings
 from course_explorer.next_courses import commands as command_module
 from course_explorer.next_courses.service import NextCourseMode
 from course_explorer.prerequisite.commands import PrerequisiteCalculationBasis
-from tests.support import settings_factory
 
 
 def test_next_courses_command_validates_inputs_and_shortcuts_empty_basis(monkeypatch) -> None:
@@ -17,7 +15,6 @@ def test_next_courses_command_validates_inputs_and_shortcuts_empty_basis(monkeyp
     def _fail(*_args, **_kwargs):
         pytest.fail("settings or database I/O reached")
 
-    monkeypatch.setattr(command_module, "load_search_settings", _fail)
     monkeypatch.setattr(command_module, "load_database_settings", _fail)
     monkeypatch.setattr(command_module, "_database_context", _fail)
     with pytest.raises(ValueError):
@@ -38,11 +35,10 @@ def test_next_courses_command_validates_inputs_and_shortcuts_empty_basis(monkeyp
         def __exit__(self, *_exc):
             return False
 
-    monkeypatch.setattr(
-        command_module, "load_search_settings", lambda: settings_factory(SearchSettings)
-    )
     monkeypatch.setattr(command_module, "load_database_settings", lambda: object())
-    monkeypatch.setattr(command_module, "_database_context", lambda _settings: _NoIoContext())
+    monkeypatch.setattr(
+        command_module, "_database_context", lambda _settings, **_kwargs: _NoIoContext()
+    )
     empty = command_module.run_next_courses_command(display_language="en")
     assert empty.results == ()
     assert empty.selected_group_ids == ()

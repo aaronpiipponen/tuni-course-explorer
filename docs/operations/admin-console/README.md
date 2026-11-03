@@ -1,6 +1,6 @@
 # Administration console
 
-The administration console is a separate signed-in browser application that runs the same fixed administration commands as the operator menu and shows their reports.
+The administration console is a separate signed-in browser application that runs fixed administration commands, including feedback commands the operator menu does not offer, and shows their reports.
 
 The console uses a narrow desktop layout. A phone renders that layout scaled to the screen, with the same tabs, panels and controls.
 
@@ -8,7 +8,7 @@ The console uses a narrow desktop layout. A phone renders that layout scaled to 
 
 Open the console's address. The sign-in screen appears before any panel, with the site name, the **Administration** heading, the **Username** and **Password** fields and the **Sign in** button.
 
-![The sign-in card with the TUNI Course Explorer mark, the Administration heading, the empty Username and Password fields and the Sign in button](/docs/screenshots/admin-console-sign-in.png)
+![The sign-in card with the course-explorer/tuni mark, the Administration heading, the empty Username and Password fields and the Sign in button](/docs/screenshots/admin-console-sign-in.png)
 
 Enter the site's username and password, then select **Sign in**. A wrong username or password shows **Invalid username or password.** and clears the password field. A network or server failure shows **The sign-in attempt failed.**, and a console that cannot read its session at start shows **The administration console is unavailable.**
 
@@ -18,9 +18,9 @@ Opening many fresh sign-in sessions within a short time can temporarily delay an
 
 ## The header
 
-The signed-in header carries the site name, the **Admin** label and the five tabs: **Dashboard**, **Data preparation**, **Inference**, **Logs** and **Settings**. The right side holds **GitHub**, **Docs**, **App** and **Sign out**.
+The signed-in header carries the site name, the **Admin** label and the six tabs: **Dashboard**, **Data preparation**, **Inference**, **Logs**, **Settings** and **Feedback**. The right side holds **GitHub**, **Docs**, **App** and **Sign out**. At 1180 px wide or narrower the header and the tab row wrap onto more than one row, and every tab and control is reachable.
 
-![The console header with the site name, the Admin label, the five tabs and the GitHub, Docs, App and Sign out controls](/docs/screenshots/admin-console-header.png)
+![The console header with the site name, the Admin label, the tabs and the GitHub, Docs, App and Sign out controls](/docs/screenshots/admin-console-header.png)
 
 - **GitHub** opens the project's repository in another browser tab.
 - **Docs** opens the documentation home of the course-exploration site.
@@ -39,7 +39,7 @@ A few panels read only on request, because their read reaches the worker. The wo
 
 ## Confirmations
 
-Some actions ask for confirmation before they run. Each dialog names the action it runs. The backup and dataset deletions name the file or dataset they remove, and a worker setup names the branch. For a stage, **Stop** opens **Stop Ingestion** with **Stop the Ingestion stage.**, and the **Stop Translation** and **Stop Embedding** dialogs name their stage the same way. **Cancel**, Escape and a click outside the dialog close it and run nothing. **Confirm** runs the action.
+Some actions ask for confirmation before they run. Each dialog names the action it runs. The backup and dataset deletions name the file or dataset they remove, a dataset copy names its source dataset and database, and a feedback deletion names the exact feedback identity and submission time. The feedback confirmation states that it removes the local feedback and stored images, and that it does not delete a GitHub issue or GitHub-hosted images. A worker setup names the branch. For a stage, **Stop** opens **Stop Ingestion** with **Stop the Ingestion stage.**, and the **Stop Translation** and **Stop Embedding** dialogs name their stage the same way. **Cancel**, Escape and a click outside the dialog close it and run nothing. **Confirm** runs the action.
 
 Actions that do not ask for confirmation run immediately when selected. A stage's **Start**, **Pause** and **Resume** are examples.
 
@@ -47,7 +47,7 @@ The administration rebuild signs every operator out. Its confirmation states tha
 
 ## Failures
 
-Each panel shows the failure of its own read or command inside the panel, with a short message. A failed read leaves the last successful report and its marker in place, and the next successful read clears the failure. A failed command shows its failure in the same panel. The Dashboard's single read reports its failure above its five panels.
+Each panel shows the failure of its own read or command inside the panel, with a short message. A failed read leaves the last successful report and its marker in place, and the next successful read clears the failure. A failed command shows its owning guidance line in the same panel, and the command log keeps the safe class line alone. The Dashboard's single read reports its failure above its five panels.
 
 A request refused because the session has ended returns the console to the sign-in screen. While the failed-attempt lock exists, every request leaves the blank page.
 
@@ -56,9 +56,10 @@ A request refused because the session has ended returns the console to the sign-
 Each tab owns one part of the administration work.
 
 - **[Dashboard](/docs/operations/admin-console/dashboard.md)** reports the serving state, the website, the host, the database and the embedding runtime.
-- **[Data preparation](/docs/operations/admin-console/data-preparation.md)** holds the ingestion, translation and embedding stages, their controls and the three reports over the selected dataset.
-- **[Inference](/docs/operations/admin-console/inference.md)** holds the inference run, its publication diagnostics, coverage, generation identities and retained failures, the target decisions and the dataset cleanup.
+- **[Data preparation](/docs/operations/admin-console/data-preparation.md)** holds the ingestion, translation and embedding stages and their controls. The three reports read Working first, fall back to Selected and name the role they read, and the four stage actions need a Working dataset.
+- **[Inference](/docs/operations/admin-console/inference.md)** holds the inference run, its publication diagnostics, coverage, generation identities, retained failures and the target decisions. The summary reads Working first, falls back to Selected, names the role in Coverage, and the four run actions need a Working dataset.
 - **[Logs](/docs/operations/admin-console/logs.md)** holds the command log, the session and runtime logs and the request usage report.
-- **[Settings](/docs/operations/admin-console/settings.md)** holds the configuration editor, the feature switches, the backups, the two rebuilds, the dataset actions and the worker setup and preflight.
+- **[Settings](/docs/operations/admin-console/settings.md)** holds the configuration editor, the feature switches, the dataset roles panel, the backups, the two rebuilds and the worker setup and preflight. The dataset panel is the one console surface over both roles, the retained chain, the two copy actions, the role migrations and the single deletion.
+- **[Feedback](/docs/operations/admin-console/feedback.md)** holds the stored submissions, their configured answers and images, the search and select filters, and the named local deletion.
 
-The same commands are available from the [Operator menu](/docs/operations/operator-menu.md), and [Stage lifecycle](/docs/operations/stage-lifecycle.md) describes the states behind the stage actions.
+The stage, dataset and maintenance commands are also available from the [Operator menu](/docs/operations/operator-menu.md). The feedback listing, attachment read and deletion run in this console and as machine commands, and the menu offers no feedback entry. [Stage lifecycle](/docs/operations/stage-lifecycle.md) describes the states behind the stage actions.

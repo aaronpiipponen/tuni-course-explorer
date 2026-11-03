@@ -8,8 +8,9 @@ authentication events. Every entry producer chooses its command label from fixed
 so a request field, an argument or a shell fragment can never become one.
 
 Each entry holds the time, the fixed command label, the exit code, the duration and the outcome
-token, and an entry for a failed command also holds one safe failure line. It is the only durable history the administration
-backend writes, and ``read_command_log`` is the read the administration Logs view consumes.
+token, and an entry for a failed command also holds one safe failure line. That file is the only
+durable history the administration backend writes, and ``read_command_log`` is the read the
+administration Logs view consumes.
 """
 
 from __future__ import annotations
@@ -22,7 +23,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
-from course_explorer.administration import administrative_json, repository_root
+from course_explorer import administration
+from course_explorer.administration import administrative_json
 from course_explorer.config import load_admin_web_settings
 from course_explorer.validation import require_aware, require_finite_nonnegative
 from course_explorer_admin.credentials import ADMIN_WEB_STATE_ROOT
@@ -106,8 +108,8 @@ class CommandLog:
     """The sole bounded administration command log over one locked file.
 
     Every append and every read takes one exclusive lock on the same open file, so a concurrent
-    writer cannot lose an entry and a reader never sees a rewritable half-line. Appends keep the last
-    ``limit`` entries oldest first, and the locked inode is never replaced.
+    writer cannot lose an entry and a reader never sees a rewritable half-line. Appends keep the
+    last ``limit`` entries oldest first, and the locked inode is never replaced.
     """
 
     def __init__(self, root: Path, *, limit: int) -> None:
@@ -124,10 +126,10 @@ class CommandLog:
     def append(self, entry: CommandLogEntry) -> None:
         """Append one entry under the file lock, keeping only the last ``limit`` entries.
 
-        The state directory and the file are created when they are absent, and the file mode is 0600.
-        Every retained line is parsed before the rewrite, so malformed state fails instead of being
-        repaired or overwritten. The rewritten file keeps the locked inode and flushes before the
-        lock is released.
+        The state directory and the file are created when they are absent, and the file mode is
+        0600. Every retained line is parsed before the rewrite, so malformed state fails instead of
+        being repaired or overwritten. The rewritten file keeps the locked inode and flushes before
+        the lock is released.
         """
         path = self.path
         path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -153,7 +155,8 @@ class CommandLog:
 
         The read takes the same exclusive lock as an append. An absent file is absent state, while a
         file that holds a malformed or unreadable line fails instead of being skipped. A file that
-        holds more entries than the configured limit reports its newest entries and is not rewritten.
+        holds more entries than the configured limit reports its newest entries and is not
+        rewritten.
         """
         path = self.path
         try:
@@ -175,5 +178,5 @@ def read_command_log() -> CommandLogReport:
     describes the entries the log owner retains. An absent file is an empty report.
     """
     settings = load_admin_web_settings()
-    log = CommandLog(repository_root(), limit=settings.admin_web_command_log_limit)
+    log = CommandLog(administration.repository_root(), limit=settings.admin_web_command_log_limit)
     return CommandLogReport(entries=log.read())

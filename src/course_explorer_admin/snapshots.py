@@ -1,6 +1,6 @@
-"""One owner of the selected-dataset PostgreSQL dump and restore command mechanics.
+"""One owner of the Working-dataset PostgreSQL dump and restore command mechanics.
 
-The translation controller and the selected-dataset setup/return path both need exactly one
+The translation controller and the Working-dataset setup and return path both need exactly one
 pg_dump/pg_restore command owner, so this module owns the Compose dump/list/template0/restore logic
 for both in one place. The caller supplies an already-validated ``DatabaseSettings``
 and an explicit database/destination.
@@ -46,7 +46,7 @@ def _require_embedding_data(listing: bytes, *, include_embeddings: bool) -> None
 
 
 def _compose_exec(*, settings: DatabaseSettings, argv: tuple[str, ...]) -> tuple[str, ...]:
-    return (*mechanics.compose_prefix(), "exec", "-T", "db", *argv)
+    return (*mechanics.compose_prefix(interpreter=True), "exec", "-T", "db", *argv)
 
 
 def dump_database(
@@ -109,6 +109,50 @@ def dump_database(
     return sha256_file(destination)
 
 
+def existing_databases(
+    *,
+    runner: mechanics.ProcessRunner,
+    root: Path,
+    settings: DatabaseSettings,
+    database_names: tuple[str, ...],
+    timeout: float | None,
+) -> frozenset[str]:
+    """Return the validated names of the requested databases that the service holds.
+
+    One ``psql`` statement compares every requested name through ``ANY(ARRAY[...])``, so one probe
+    answers the whole set. A name outside the dataset-name pattern raises `ValueError` before the
+    statement is built. An empty request reads nothing.
+    """
+    names = tuple(sorted(set(database_names)))
+    if not names:
+        return frozenset()
+    for name in names:
+        _require_valid_database_name(name)
+    array = ", ".join(f"'{name}'" for name in names)
+    output = runner.run(
+        _compose_exec(
+            settings=settings,
+            argv=(
+                "psql",
+                "--username",
+                settings.postgres_user,
+                "--dbname",
+                "postgres",
+                "--tuples-only",
+                "--no-align",
+                "--command",
+                f"SELECT datname FROM pg_database WHERE datname = ANY(ARRAY[{array}])",
+            ),
+        ),
+        cwd=root,
+        timeout=timeout,
+    ).stdout.decode("utf-8")
+    found = {line.strip() for line in output.splitlines() if line.strip()}
+    if not found <= set(names):
+        raise ValueError("database existence probe returned an unexpected result")
+    return frozenset(found)
+
+
 def database_exists(
     *,
     runner: mechanics.ProcessRunner,
@@ -118,31 +162,13 @@ def database_exists(
     timeout: float | None,
 ) -> bool:
     """Return whether the database service holds a database of this validated name."""
-    count = (
-        runner.run(
-            _compose_exec(
-                settings=settings,
-                argv=(
-                    "psql",
-                    "--username",
-                    settings.postgres_user,
-                    "--dbname",
-                    "postgres",
-                    "--tuples-only",
-                    "--no-align",
-                    "--command",
-                    f"SELECT count(*) FROM pg_database WHERE datname = '{database_name}'",
-                ),
-            ),
-            cwd=root,
-            timeout=timeout,
-        )
-        .stdout.decode("utf-8")
-        .strip()
+    return database_name in existing_databases(
+        runner=runner,
+        root=root,
+        settings=settings,
+        database_names=(database_name,),
+        timeout=timeout,
     )
-    if count not in {"0", "1"}:
-        raise ValueError("database existence probe returned an unexpected result")
-    return count == "1"
 
 
 def restore_database(
@@ -152,22 +178,23 @@ def restore_database(
     settings: DatabaseSettings,
     dump: Path,
     database_name: str,
-    expected_sha256: str,
+    expected_sha256: str | None,
     include_embeddings: bool,
     expected_verification: DatasetVerification | None = None,
     timeout: float | None = None,
 ) -> DatasetVerification | None:
     """Restore one verified dump into a fresh or already-matching database.
 
-    The dump must be a regular non-symlink file with the expected digest and the requested embedding
-    policy, and the target name must be a validated lowercase identifier of at most 63 bytes. An
-    absent target is created from ``template0`` and restored with exit-on-error/single-transaction/
-    no-owner/no-privileges. A present target is refused unless a supplied expected verification
-    matches a fresh owning verification. A mismatching target is left in place.
+    The dump must be a regular non-symlink file with the requested embedding policy, and the target
+    name must be a validated lowercase identifier of at most 63 bytes. A supplied digest is checked
+    once. ``None`` means the same operation produced these exact bytes. An absent target is created
+    from ``template0`` and restored with exit-on-error/single-transaction/no-owner/no-privileges. A
+    present target is refused unless a supplied expected verification matches a fresh owning
+    verification. A mismatching target is left in place.
     """
     if dump.is_symlink() or not dump.is_file():
         raise ValueError("database dump must be a regular non-symlink file")
-    if sha256_file(dump) != expected_sha256:
+    if expected_sha256 is not None and sha256_file(dump) != expected_sha256:
         raise ValueError("database dump checksum does not match")
     _require_valid_database_name(database_name)
     listing = runner.run(

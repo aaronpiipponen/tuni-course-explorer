@@ -2,8 +2,23 @@
 /** Maximum number of successful reports retained by one read cache. */
 export const READ_CACHE_CAPACITY = 8;
 
+/** The dataset-bound cache surface one successful read publishes through. */
+export interface ReportCache {
+  /** Return the serving dataset identity the held values belong to. */
+  getDatasetIdentity(): string;
+
+  /** Record one serving dataset identity, clearing every held value of another identity. */
+  observeDatasetIdentity(datasetIdentity: string): void;
+
+  /** Return one successful value and mark it as the most recently used entry. */
+  get<T>(requestKey: string): T | undefined;
+
+  /** Store one successful value under its dataset identity. */
+  put<T>(datasetIdentity: string, requestKey: string, value: T): void;
+}
+
 /** Dataset-scoped least-recently-used cache for successful browser reads. */
-export class ReadCache {
+export class ReadCache implements ReportCache {
   private readonly capacity: number;
   private datasetIdentity: string;
   private readonly entries = new Map<string, unknown>();
@@ -28,6 +43,30 @@ export class ReadCache {
     this.entries.delete(requestKey);
     this.entries.set(requestKey, value);
     return value as T;
+  }
+
+  /** Return every held entry in least-recently-used to most-recently-used order. */
+  entriesSnapshot(): readonly (readonly [string, unknown])[] {
+    return [...this.entries.entries()];
+  }
+
+  /** Remove one held value without changing the observed dataset identity. */
+  remove(requestKey: string): void {
+    this.entries.delete(requestKey);
+  }
+
+  /** Remove every held value without changing the observed dataset identity. */
+  clear(): void {
+    this.entries.clear();
+  }
+
+  /** Remove the least recently used entry and return it, or `undefined` for an empty cache. */
+  evictOldest(): readonly [string, unknown] | undefined {
+    const oldest = this.entries.keys().next().value;
+    if (oldest === undefined) return undefined;
+    const value = this.entries.get(oldest);
+    this.entries.delete(oldest);
+    return value === undefined ? undefined : [oldest, value];
   }
 
   /**

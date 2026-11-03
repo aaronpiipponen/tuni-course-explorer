@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 440" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Full-catalogue commands and the reads they issue</title>
+  <desc id="d">Unified search, the prerequisites command and the coverage command each issue one
+  projected read. The command wall time covers the read and the work around it, and the read wall
+  time covers the read alone.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="440" rx="12" fill="#232434"/>
+
+  <text x="48" y="56" font-size="16" fill="#a3a4b8">Command wall time</text>
+  <text x="528" y="56" font-size="16" fill="#a3a4b8">Read wall time</text>
+
+  <rect x="48" y="80" width="384" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="240" y="106" text-anchor="middle" font-size="16" fill="#ececf2">Unified search</text>
+  <text x="240" y="128" text-anchor="middle" font-size="14" fill="#a3a4b8">one query over the catalogue</text>
+
+  <rect x="528" y="80" width="384" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="720" y="106" text-anchor="middle" font-size="16" fill="#ececf2">Represented-course summary read</text>
+  <text x="720" y="128" text-anchor="middle" font-size="14" fill="#a3a4b8">one per query, shared by four methods</text>
+
+  <line x1="432" y1="112" x2="520" y2="112" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <text x="476" y="104" text-anchor="middle" font-size="14" fill="#a3a4b8">issues</text>
+
+  <rect x="48" y="176" width="384" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="240" y="202" text-anchor="middle" font-size="16" fill="#ececf2">Prerequisites COMP.CS.500</text>
+  <text x="240" y="224" text-anchor="middle" font-size="14" fill="#a3a4b8">one graph root</text>
+
+  <rect x="528" y="176" width="384" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="720" y="202" text-anchor="middle" font-size="16" fill="#ececf2">Scoped graph read</text>
+  <text x="720" y="224" text-anchor="middle" font-size="14" fill="#a3a4b8">identities one compilation references</text>
+
+  <line x1="432" y1="208" x2="520" y2="208" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <text x="476" y="200" text-anchor="middle" font-size="14" fill="#a3a4b8">issues</text>
+
+  <rect x="48" y="272" width="384" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="240" y="298" text-anchor="middle" font-size="16" fill="#ececf2">Coverage command</text>
+  <text x="240" y="320" text-anchor="middle" font-size="14" fill="#a3a4b8">counts by field, language and origin</text>
+
+  <rect x="528" y="272" width="384" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="720" y="298" text-anchor="middle" font-size="16" fill="#ececf2">Aggregate coverage read</text>
+  <text x="720" y="320" text-anchor="middle" font-size="14" fill="#a3a4b8">one GROUP BY, no chunk entity</text>
+
+  <line x1="432" y1="304" x2="520" y2="304" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <text x="476" y="296" text-anchor="middle" font-size="14" fill="#a3a4b8">issues</text>
+
+  <text x="48" y="380" font-size="14" fill="#a3a4b8">A command wall time covers the read it issues and the work around it.</text>
+  <text x="48" y="404" font-size="14" fill="#a3a4b8">A read wall time covers the read alone.</text>
+</svg>

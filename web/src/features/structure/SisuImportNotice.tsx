@@ -1,18 +1,37 @@
 /** Transient result of one Sisu import: the items the placement left out and why. */
+import type { ReactNode } from "react";
 import { motion } from "framer-motion";
 import type { SisuImportIssue } from "./sisu";
+import { SISU_IMPORT_REASON_KEYS } from "./sisuImportWording";
 import { useReducedMotion } from "../../shared/useReducedMotion";
 import { useWording } from "../../shared/useWording";
-import { uiText, type UiTextKey } from "../../shared/wording";
 
-const REASON_KEYS: Record<SisuImportIssue["reason"], UiTextKey> = {
-  unresolved:
-    "Sisu data did not identify this item uniquely, so it was left out.",
-  module_not_placed:
-    "The catalogue has no structure for this module, so it was left out. Its courses that are in the catalogue are in Unplaced studies.",
-  course_not_represented:
-    "This course is not in the catalogue, so it was left out together with its completion.",
-};
+/** Return the code and name that label one captured item in the confirmation and result notice. */
+export function itemLabel(item: { code: string | null; name: string }): string {
+  return item.code ? `${item.code} ${item.name}` : item.name;
+}
+
+/** Render one captured item's label and the reason the import left it out. */
+export function SisuIssueItem({
+  label,
+  reason,
+  children,
+}: {
+  label: string;
+  reason: SisuImportIssue["reason"];
+  children?: ReactNode;
+}) {
+  const { t } = useWording();
+  return (
+    <>
+      <span className="sisu-import-item">{label}</span>
+      <span className="sisu-import-reason">
+        {t(SISU_IMPORT_REASON_KEYS[reason])}
+      </span>
+      {children}
+    </>
+  );
+}
 
 /** Render the transient result of one Sisu import. */
 export function SisuImportNotice({
@@ -23,7 +42,7 @@ export function SisuImportNotice({
   onDismiss(): void;
 }) {
   const reducedMotion = useReducedMotion();
-  const { language, t } = useWording();
+  const { t } = useWording();
   return (
     <motion.section
       className="sisu-import-notice"
@@ -47,12 +66,7 @@ export function SisuImportNotice({
             <li
               key={`${issue.reason}:${issue.code ?? ""}:${issue.name}:${index}`}
             >
-              <span className="sisu-import-item">
-                {issue.code ? `${issue.code} ${issue.name}` : issue.name}
-              </span>
-              <span className="sisu-import-reason">
-                {uiText(language, REASON_KEYS[issue.reason])}
-              </span>
+              <SisuIssueItem label={itemLabel(issue)} reason={issue.reason} />
             </li>
           ))}
         </ul>

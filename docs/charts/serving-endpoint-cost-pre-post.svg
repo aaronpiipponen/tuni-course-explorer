@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 628" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Core-seconds per request before the CPU port and on the product</title>
+  <desc id="d">Eight representative endpoint shapes measured on three samples per side. Every product bar is lower than its pre-port bar. The product bars span 0.2029 core-seconds for a basis-20 inactive next-course read to 0.9296 for a basis-60 inactive recommendation, against 1.9979 and 6.4053 on the pre-port tree.</desc>
+  <rect width="960" height="628" rx="12" fill="#232434"/>
+  <rect x="61" y="33" width="14" height="14" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="96" y="45" font-size="14" fill="#a3a4b8">Pre-port</text>
+  <rect x="200.2" y="33" width="14" height="14" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="235.2" y="45" font-size="14" fill="#a3a4b8">Product</text>
+  <line x1="299.2" y1="72" x2="299.2" y2="552" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="299.2" y="574" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="435.8" y1="72" x2="435.8" y2="552" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="435.8" y="574" text-anchor="middle" font-size="14" fill="#a3a4b8">2</text>
+  <line x1="572.4" y1="72" x2="572.4" y2="552" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="572.4" y="574" text-anchor="middle" font-size="14" fill="#a3a4b8">4</text>
+  <line x1="709" y1="72" x2="709" y2="552" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="709" y="574" text-anchor="middle" font-size="14" fill="#a3a4b8">6</text>
+  <line x1="845.6" y1="72" x2="845.6" y2="552" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="845.6" y="574" text-anchor="middle" font-size="14" fill="#a3a4b8">8</text>
+  <text x="287.2" y="107" text-anchor="end" font-size="14" fill="#ececf2">Search, inactive title</text>
+  <rect x="299.2" y="80" width="55.4" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="362.6" y="95" font-size="14" fill="#a3a4b8">0.8111</text>
+  <rect x="299.2" y="104" width="15.6" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="322.8" y="119" font-size="14" fill="#a3a4b8">0.2288</text>
+  <text x="287.2" y="167" text-anchor="end" font-size="14" fill="#ececf2">Recommendations, 20 active</text>
+  <rect x="299.2" y="140" width="93" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="400.2" y="155" font-size="14" fill="#a3a4b8">1.3611</text>
+  <rect x="299.2" y="164" width="34.4" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="341.6" y="179" font-size="14" fill="#a3a4b8">0.5035</text>
+  <text x="287.2" y="227" text-anchor="end" font-size="14" fill="#ececf2">Recommendations, 20 inactive</text>
+  <rect x="299.2" y="200" width="82" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="389.2" y="215" font-size="14" fill="#a3a4b8">1.2002</text>
+  <rect x="299.2" y="224" width="31.3" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="338.5" y="239" font-size="14" fill="#a3a4b8">0.4586</text>
+  <text x="287.2" y="287" text-anchor="end" font-size="14" fill="#ececf2">Recommendations, 50 active</text>
+  <rect x="299.2" y="260" width="246.7" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="553.9" y="275" font-size="14" fill="#a3a4b8">3.6121</text>
+  <rect x="299.2" y="284" width="48.2" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="355.4" y="299" font-size="14" fill="#a3a4b8">0.705</text>
+  <text x="287.2" y="347" text-anchor="end" font-size="14" fill="#ececf2">Recommendations, 60 inactive</text>
+  <rect x="299.2" y="320" width="437.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="744.7" y="335" font-size="14" fill="#a3a4b8">6.4053</text>
+  <rect x="299.2" y="344" width="63.5" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="370.7" y="359" font-size="14" fill="#a3a4b8">0.9296</text>
+  <text x="287.2" y="407" text-anchor="end" font-size="14" fill="#ececf2">Next courses, 20 inactive</text>
+  <rect x="299.2" y="380" width="136.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="443.7" y="395" font-size="14" fill="#a3a4b8">1.9979</text>
+  <rect x="299.2" y="404" width="13.9" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="321.1" y="419" font-size="14" fill="#a3a4b8">0.2029</text>
+  <text x="287.2" y="467" text-anchor="end" font-size="14" fill="#ececf2">Next courses, 60 inactive</text>
+  <rect x="299.2" y="440" width="198.6" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="505.8" y="455" font-size="14" fill="#a3a4b8">2.9071</text>
+  <rect x="299.2" y="464" width="43" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="350.2" y="479" font-size="14" fill="#a3a4b8">0.6299</text>
+  <text x="287.2" y="527" text-anchor="end" font-size="14" fill="#ececf2">Largest graph, inferred</text>
+  <rect x="299.2" y="500" width="86.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="393.7" y="515" font-size="14" fill="#a3a4b8">1.266</text>
+  <rect x="299.2" y="524" width="16.3" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="323.5" y="539" font-size="14" fill="#a3a4b8">0.238</text>
+  <text x="572.4" y="604" text-anchor="middle" font-size="14" fill="#a3a4b8">Core-seconds per request</text>
+</svg>

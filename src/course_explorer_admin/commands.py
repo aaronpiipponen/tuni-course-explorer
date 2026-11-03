@@ -2,10 +2,10 @@
 
 This module is the one normal operator surface. It owns the stage/action dispatcher, the two
 separate setup choices (selected-dataset enrollment and worker preparation), the read-only worker
-preflight, the routine read-only server reports, the embedding hub writer, the server-only
-target-disposition entry, the presentation-only safe failure surface, and the numbered menu. Every
-call delegates exactly once to its owning module and returns that owner's exact DTO. The menu keeps
-running until Exit, EOF, or interrupt. Reports read the server state read-only.
+preflight, the routine read-only server reports, the serving-artifact command surface, the
+server-only target-disposition entry, the presentation-only safe failure surface, and the numbered
+menu. Every call delegates exactly once to its owning module and returns that owner's exact DTO.
+The menu keeps running until Exit, EOF, or interrupt. Reports read the server state read-only.
 """
 
 from __future__ import annotations
@@ -14,32 +14,39 @@ import getpass
 import json
 import subprocess
 import warnings
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from typing import TYPE_CHECKING, Literal
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, SecretStr, ValidationError
 
-from course_explorer.administration import repository_root
+from course_explorer import administration
 from course_explorer.config import (
     ConfiguredSettings,
     DatabaseSettings,
+    embedding_configuration_for_site,
     load_database_settings,
-    load_embedding_runtime_settings,
     load_inference_selection_settings,
     load_inference_settings,
     load_usage_settings,
+    load_web_settings,
 )
-from course_explorer.configuration import hub_reference_path
+from course_explorer.configuration import read_public_configuration
 from course_explorer.curriculum_repository import CurriculumRepository
-from course_explorer.datasets import DatasetVerification
-from course_explorer.db.session import database_context
-from course_explorer.embeddings.hub_files import (
-    EmbeddingHubReport,
-    compute_embedding_hubs,
-    read_current_chunk_vectors,
-    write_hub_files,
+from course_explorer.datasets import (
+    DatasetEnrollmentReport,
+    DatasetReceipt,
+    DatasetRole,
+    DatasetVerification,
 )
+from course_explorer.db.session import database_context
 from course_explorer.embeddings.repository import CourseEmbeddingRepository
+from course_explorer.feedback.service import (
+    FeedbackAttachmentReport,
+    FeedbackDeletionReport,
+    FeedbackListReport,
+    feedback_context,
+)
 from course_explorer.inference.diagnostics import (
     InferenceCoverageSummary,
     PublicationDiagnostics,
@@ -47,10 +54,17 @@ from course_explorer.inference.diagnostics import (
 from course_explorer.inference.publication import read_inference_publication_diagnostics
 from course_explorer.inference.scheduling import TargetDisposition, TargetFailureRecord
 from course_explorer.inference.scheduling_repository import InferenceSchedulingRepository
+from course_explorer.serving_build import (
+    ServingArtifactsPruneReport,
+    ServingArtifactsReport,
+    build_serving_artifacts,
+    dataset_settings,
+    prune_serving_artifacts,
+)
 from course_explorer.teaching_text.repository import DerivedTranslationRepository
 from course_explorer.teaching_text.service import TeachingTextService
 from course_explorer.usage import UsageReport, read_usage_report
-from course_explorer_admin import local_stages, mechanics, remote_stages
+from course_explorer_admin import datasets, local_stages, mechanics, remote_stages
 from course_explorer_admin.backups import BackupDeletionReport, BackupListReport
 from course_explorer_admin.configuration import (
     ConfigurationFileReport,
@@ -58,7 +72,7 @@ from course_explorer_admin.configuration import (
     ConfigurationWriteReport,
 )
 from course_explorer_admin.credentials import PasswordSetReport, set_admin_password
-from course_explorer_admin.datasets import DatasetDeletionReport, DatasetListReport
+from course_explorer_admin.datasets import DatasetDeletionReport, DatasetListReport, PromotionStep
 from course_explorer_admin.inference.disposition import (
     InferenceTargetDisposition,
     read_inference_target_disposition,
@@ -74,6 +88,14 @@ from course_explorer_admin.provisioning import (
     update_worker_code,
 )
 from course_explorer_admin.rebuild import AdminRebuildReport, AdminRestartReport, RebuildReport
+from course_explorer_admin.self_host import (
+    ExampleSetupInput,
+    RealDatabaseSetupInput,
+    SelfHostReport,
+    StartupMode,
+    setup_example,
+    setup_real_database,
+)
 from course_explorer_admin.server import ServerStatusReport
 
 if TYPE_CHECKING:
@@ -137,13 +159,34 @@ def run_administrative_setup(
             raise ValueError("selected-dataset setup does not accept code-only")
         if branch != "main":
             raise ValueError("selected-dataset setup does not accept a branch")
-        from course_explorer_admin import datasets
 
         return datasets.initialize_selected_dataset(runner=process_runner)
     if code_only:
         code = update_worker_code(branch=branch, runner=process_runner)
         return ProvisioningReport(code=code, resources=None)
     return prepare_worker(branch=branch, runner=process_runner)
+
+
+def run_administrative_example_setup(
+    options: ExampleSetupInput,
+    *,
+    runner: mechanics.ProcessRunner | None = None,
+    write: Callable[[str], None] = print,
+) -> SelfHostReport:
+    """Delegate once to the example self-host workflow with one resolved runner."""
+    process_runner = runner if runner is not None else mechanics.SubprocessRunner()
+    return setup_example(options, runner=process_runner, write=write)
+
+
+def run_administrative_real_database_setup(
+    options: RealDatabaseSetupInput,
+    *,
+    runner: mechanics.ProcessRunner | None = None,
+    write: Callable[[str], None] = print,
+) -> SelfHostReport:
+    """Delegate once to the named-database self-host workflow with one resolved runner."""
+    process_runner = runner if runner is not None else mechanics.SubprocessRunner()
+    return setup_real_database(options, runner=process_runner, write=write)
 
 
 def run_administrative_preflight(
@@ -155,17 +198,26 @@ def run_administrative_preflight(
 
 
 def run_administrative_migration(
-    *, runner: mechanics.ProcessRunner | None = None
+    *, role: DatasetRole, runner: mechanics.ProcessRunner | None = None
 ) -> DatasetVerification:
-    """Delegate once to the guarded selected-dataset migration owner.
+    """Delegate once to the named role's guarded migration owner.
 
     One-shot explicit maintenance: it resolves the runner exactly like setup and returns the
     owner's verification report.
     """
     process_runner = runner if runner is not None else mechanics.SubprocessRunner()
-    from course_explorer_admin import datasets
+    return datasets.migrate_dataset(role, runner=process_runner)
 
-    return datasets.migrate_selected_dataset(runner=process_runner)
+
+def run_administrative_database_migration(
+    *, runner: mechanics.ProcessRunner | None = None
+) -> DatasetVerification:
+    """Delegate once to the guarded configured-database migration owner.
+
+    The configured database is the database a bootstrap site serves.
+    """
+    process_runner = runner if runner is not None else mechanics.SubprocessRunner()
+    return datasets.migrate_configured_database(runner=process_runner)
 
 
 def run_administrative_dataset_list(
@@ -177,23 +229,66 @@ def run_administrative_dataset_list(
     configured database service.
     """
     process_runner = runner if runner is not None else mechanics.SubprocessRunner()
-    from course_explorer_admin import datasets
 
     return datasets.list_retained_datasets(runner=process_runner)
 
 
+def run_administrative_dataset_copy(
+    source_dataset_id: str, *, runner: mechanics.ProcessRunner | None = None
+) -> DatasetReceipt:
+    """Delegate once to the copy owner that assigns the verified copy to Working."""
+    process_runner = runner if runner is not None else mechanics.SubprocessRunner()
+
+    return datasets.copy_to_working(source_dataset_id, runner=process_runner)
+
+
+def run_administrative_dataset_promotion(
+    source_dataset_id: str,
+    *,
+    confirm_restart: bool = False,
+    on_progress: Callable[[PromotionStep], None] | None = None,
+    runner: mechanics.ProcessRunner | None = None,
+) -> DatasetReceipt:
+    """Delegate once to the copy, build, switch and serving-proof owner.
+
+    The confirmation is forwarded unchanged, so an unconfirmed invocation refuses before any copy.
+    An optional step observer is forwarded unchanged for the console's one streamed report.
+    """
+    process_runner = runner if runner is not None else mechanics.SubprocessRunner()
+
+    return datasets.copy_to_selected(
+        source_dataset_id,
+        confirm_restart=confirm_restart,
+        on_progress=on_progress,
+        runner=process_runner,
+    )
+
+
+def run_administrative_dataset_ensure(
+    *, runner: mechanics.ProcessRunner | None = None
+) -> DatasetEnrollmentReport:
+    """Delegate once to the deploy enrollment owner and report its mode."""
+    process_runner = runner if runner is not None else mechanics.SubprocessRunner()
+    receipt = datasets.ensure_selected_dataset(runner=process_runner)
+    return DatasetEnrollmentReport(mode="bootstrap" if receipt is None else "enrolled")
+
+
 def run_administrative_dataset_delete(
-    dataset_id: str, *, runner: mechanics.ProcessRunner | None = None
+    dataset_id: str,
+    *,
+    confirm_working: bool = False,
+    runner: mechanics.ProcessRunner | None = None,
 ) -> DatasetDeletionReport:
     """Delegate once to the explicit dataset cleanup owner.
 
     The runner resolves exactly as setup does, so the owner's one Compose drop reaches the
-    configured database service.
+    configured database service. The Working confirmation is forwarded unchanged.
     """
     process_runner = runner if runner is not None else mechanics.SubprocessRunner()
-    from course_explorer_admin import datasets
 
-    return datasets.delete_retained_dataset(dataset_id, runner=process_runner)
+    return datasets.delete_retained_dataset(
+        dataset_id, confirm_working=confirm_working, runner=process_runner
+    )
 
 
 def run_administrative_backup_list() -> BackupListReport:
@@ -239,6 +334,19 @@ def run_administrative_config_set(
     )
 
 
+def _read_hidden_secret(prompt: str, *, read_password: Callable[[str], str] | None = None) -> str:
+    """Read one secret at a hidden prompt, refusing an entry the terminal would echo.
+
+    An omitted reader resolves to the interactive hidden prompt at call time. A terminal that cannot
+    hide the entry raises the reader's warning as an error rather than falling back to a visible
+    entry.
+    """
+    reader = read_password if read_password is not None else getpass.getpass
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", getpass.GetPassWarning)
+        return reader(prompt)
+
+
 def run_administrative_password(
     *, username: str, read_password: Callable[[str], str] | None = None
 ) -> PasswordSetReport:
@@ -249,12 +357,8 @@ def run_administrative_password(
     falling back to an echoed entry or a partial write. The password comes from that reader, and the
     acknowledgment reports the account as configured.
     """
-    reader = read_password if read_password is not None else getpass.getpass
-    with warnings.catch_warnings():
-        # An entry the terminal cannot hide is refused rather than echoed from the input stream.
-        warnings.simplefilter("error", getpass.GetPassWarning)
-        password = reader("Password: ")
-        repeated = reader("Repeat password: ")
+    password = _read_hidden_secret("Password: ", read_password=read_password)
+    repeated = _read_hidden_secret("Repeat password: ", read_password=read_password)
     if password != repeated:
         raise ValueError("password entries must match")
     return set_admin_password(username=username, password=SecretStr(password))
@@ -350,6 +454,28 @@ def run_administrative_usage(*, hours: int) -> UsageReport:
     return read_usage_report(hours=hours, retention_days=load_usage_settings().usage_retention_days)
 
 
+def run_administrative_feedback_list(
+    *, query: str | None = None, filters: Mapping[str, str] | None = None
+) -> FeedbackListReport:
+    """Delegate once to the feedback owner's configured listing."""
+    with feedback_context() as service:
+        return service.list_submissions(query=query, filters=filters)
+
+
+def run_administrative_feedback_attachment(
+    feedback_id: UUID, attachment_id: UUID
+) -> FeedbackAttachmentReport:
+    """Delegate once to the feedback owner's scoped attachment read."""
+    with feedback_context() as service:
+        return service.read_attachment(feedback_id, attachment_id)
+
+
+def run_administrative_feedback_delete(feedback_id: UUID) -> FeedbackDeletionReport:
+    """Delegate once to the feedback owner's named deletion."""
+    with feedback_context() as service:
+        return service.delete(feedback_id)
+
+
 class InferenceAdministrativeSummary(BaseModel):
     """One explicit inference report: coverage, publication diagnostics and failures.
 
@@ -373,26 +499,19 @@ class InferenceAdministrativeSummary(BaseModel):
     finding_filter_policy: str
 
 
-def _selected_dataset_settings() -> DatabaseSettings:
-    """Resolve the selected dataset database settings without opening an engine.
+def _dataset_settings(role: DatasetRole) -> DatabaseSettings:
+    """Resolve one dataset role's database settings without opening an engine.
 
-    The explicit admin read requires the selected-dataset switch. Missing pointer or database
-    failures propagate to the caller.
+    A missing or inconsistent role pointer fails through the role resolver and its own guidance.
     """
-    settings = load_database_settings()
-    if not settings.selected_dataset_enabled:
-        raise ValueError(
-            "administrative reports require the selected dataset; "
-            "run setup with `uv run python scripts/admin.py setup datasets`"
-        )
-    return settings
+    return load_database_settings(role=role)
 
 
-def run_administrative_coverage(kind: AdministrativeCoverage) -> BaseModel:
-    """Return one coverage report from its owning repository."""
+def run_administrative_coverage(kind: AdministrativeCoverage, *, role: DatasetRole) -> BaseModel:
+    """Return one role's coverage report from its owning repository."""
     if kind not in _COVERAGE_KINDS:
         raise ValueError("coverage kind must be teaching-text, embedding, or inference")
-    with database_context(_selected_dataset_settings()) as factory:
+    with database_context(_dataset_settings(role)) as factory:
         if kind == "teaching-text":
             return TeachingTextService(
                 CurriculumRepository(factory), DerivedTranslationRepository(factory)
@@ -402,11 +521,11 @@ def run_administrative_coverage(kind: AdministrativeCoverage) -> BaseModel:
         return InferenceSchedulingRepository(factory).read_coverage()
 
 
-def run_administrative_summary(kind: AdministrativeSummary) -> BaseModel:
-    """Return the catalogue summary or the one explicit detailed inference summary."""
+def run_administrative_summary(kind: AdministrativeSummary, *, role: DatasetRole) -> BaseModel:
+    """Return one role's catalogue summary or explicit detailed inference summary."""
     if kind not in _SUMMARY_KINDS:
         raise ValueError("summary kind must be catalogue or inference")
-    with database_context(_selected_dataset_settings()) as factory:
+    with database_context(_dataset_settings(role)) as factory:
         if kind == "catalogue":
             return CurriculumRepository(factory).summary()
         repository = InferenceSchedulingRepository(factory)
@@ -434,28 +553,29 @@ def run_administrative_summary(kind: AdministrativeSummary) -> BaseModel:
         )
 
 
-def run_administrative_hubs() -> EmbeddingHubReport:
-    """Compute both embedding hubs from the selected dataset and write their configured files.
+def run_administrative_serving_artifacts(
+    dataset_id: str | None = None, *, prune: bool = False
+) -> ServingArtifactsReport | ServingArtifactsPruneReport:
+    """Build one dataset's serving artifacts, or prune its namespace after a restart.
 
-    Both means are computed before either file is written, so incomplete embedding coverage fails
-    without touching the hub files. Both files are staged first and then replace their destinations
-    in sequence, so a failure during the replacement can leave only the first destination replaced.
-    The files are the paths ``EMBEDDING_HUB_VECTOR`` and
-    ``EMBEDDING_OUTCOMES_HUB_VECTOR`` reference. A running web server reads the hubs at start.
+    A build writes every artifact file first, opens the study-fragment store and, on a site that
+    serves the embedding features, the shared stores, then replaces the derived tables that site
+    serves and switches ``current`` last. A site with the embedding features off writes the
+    catalogue and study-fragment files alone and replaces no table. A named ``dataset_id`` targets
+    an in-pipeline dataset. The selected dataset or the configured raw database is the default.
+    ``prune`` is a separate housekeeping action. It builds nothing, changes no table or ``current``
+    target, and removes the target database namespace's obsolete builds, the embedding directories
+    of other embedding configurations with their staging and replaced copies, the builds of other
+    year families, and owned temporary outputs, while keeping the active current build, unknown
+    names and other database namespaces. On a site that serves the embedding features it also
+    removes the embedding directories of other year families and keeps the configured embedding
+    directory. With the features off it keeps every owned embedding directory.
     """
-    root = repository_root()
-    catalogue_path = hub_reference_path(root, "EMBEDDING_HUB_VECTOR")
-    outcomes_path = hub_reference_path(root, "EMBEDDING_OUTCOMES_HUB_VECTOR")
-    with database_context(_selected_dataset_settings()) as factory:
-        current = read_current_chunk_vectors(factory, load_embedding_runtime_settings())
-    hubs = compute_embedding_hubs(current)
-    write_hub_files(root / catalogue_path, root / outcomes_path, hubs)
-    return EmbeddingHubReport(
-        catalogue_path=catalogue_path.as_posix(),
-        outcomes_path=outcomes_path.as_posix(),
-        chunk_count=hubs.chunk_count,
-        outcomes_chunk_count=hubs.outcomes_chunk_count,
-    )
+    settings = dataset_settings(dataset_id)
+    embedding = embedding_configuration_for_site(load_web_settings())
+    if prune:
+        return prune_serving_artifacts(settings, embedding=embedding)
+    return build_serving_artifacts(settings, embedding=embedding)
 
 
 def format_operator_error(exc: Exception) -> str:
@@ -479,8 +599,12 @@ def operator_guidance(
         "migration",
         "disposition",
         "target-read",
-        "hubs",
+        "serving-artifacts",
         "dataset-cleanup",
+        "dataset-copy",
+        "dataset-list",
+        "dataset-promotion",
+        "backup-list",
         "backup-cleanup",
         "configuration",
         "server",
@@ -488,6 +612,9 @@ def operator_guidance(
         "rebuild",
         "usage",
         "password",
+        "feedback",
+        "self-host-example",
+        "self-host-real-database",
     ],
     *,
     configuration_error: bool = False,
@@ -529,32 +656,77 @@ def operator_guidance(
             "request a positive hour window no longer than the configured retention, "
             "and check the usage file permissions"
         )
+    if operation == "feedback":
+        return (
+            "check the configured feedback definition, the feedback database connection and the "
+            "stored submission identity, then retry"
+        )
     if operation in {"setup", "preflight"}:
         return (
             "finish or stop retained stages before updates, then check the checkout branch "
             "and the configured origin"
         )
     if operation == "migration":
-        return "ordinary-stop all four stages, ensure the server db is running, then retry"
+        return (
+            "ordinary-stop all four stages, copy a dataset to Working first when migrating "
+            "Working, ensure the server db is running, then retry"
+        )
+    if operation == "self-host-example":
+        return (
+            "use the operator menu for interactive entry, check the prepared environment, the "
+            "host tools and the loopback ports, confirm the pinned model download, and run the "
+            "workflow again after the reported step succeeds. A failed import leaves the copied "
+            "working files, .env, the account and the example schema in place; clear the example "
+            "database explicitly before a retry."
+        )
+    if operation == "self-host-real-database":
+        return (
+            "use the operator menu for interactive entry, run the example workflow first, keep "
+            "the database and embedding services running, stop every stage and end the foreground "
+            "pair before running this workflow again. A failed build or proof keeps the named "
+            "database, its initial receipt and Selected; inspect them with `datasets list` and use "
+            "the dataset owners for explicit maintenance before a retry."
+        )
     if operation == "target-read":
         return (
-            "select the dataset, ensure the server db is running at the current schema, "
-            "then retry the target read"
+            "copy a dataset to Working first if none is copied, ensure the server db is "
+            "running at the current schema, then retry the target read"
         )
     if operation == "disposition":
         return (
-            "ordinary-stop all four stages, select the verified returned selected dataset and keep "
-            "the server db running at the current schema, then retry"
+            "ordinary-stop all four stages, keep the verified returned or copied dataset as Working "
+            "and the server db running at the current schema, then retry"
         )
-    if operation == "hubs":
+    if operation == "serving-artifacts":
         return (
-            "complete the embedding stage on the selected dataset, ensure the server db is running, "
-            "then retry and restart the web server"
+            "complete the embedding stage on the served dataset, ensure the server db is running, "
+            "then retry and restart the web server after a successful build"
         )
     if operation == "dataset-cleanup":
         return (
-            "enroll the selected dataset, pick a non-selected target from the dataset listing "
+            "enroll the Selected dataset, pick a non-selected target from the dataset listing "
             "printed by this entry, and ensure the server db is running"
+        )
+    if operation == "dataset-copy":
+        return (
+            "pick a listed dataset whose database is present, stop every stage, ensure the server "
+            "db is running, and retry"
+        )
+    if operation == "dataset-list":
+        return (
+            "run setup datasets when the state root holds dataset records without a Selected "
+            "pointer, check the dataset state files, then retry the listing"
+        )
+    if operation == "dataset-promotion":
+        return (
+            "inspect the listed source, its database and serving artifacts with datasets list, "
+            "then promote it again with the serving restart confirmed once the reported step can "
+            "succeed"
+        )
+    if operation == "backup-list":
+        return (
+            "check that data/backups and every entry under it are a directory and regular files "
+            "this account can read, with no symlink, then retry the listing"
         )
     if operation == "backup-cleanup":
         return (
@@ -562,8 +734,15 @@ def operator_guidance(
             "and check its access permissions"
         )
     if operation == "stage":
-        return "inspect this tool's status, then retry its ordinary stop or resume as appropriate"
-    return "enroll the selected dataset and ensure the server PostgreSQL service is running"
+        return (
+            "copy a dataset to Working with datasets copy-to-working if none is copied, "
+            "inspect this tool's status, then retry its start, ordinary stop or resume as "
+            "appropriate"
+        )
+    return (
+        "enroll a dataset or copy one to Working, ensure the server db is running at the "
+        "current schema, then retry the report"
+    )
 
 
 def worker_origin_notice(report: object) -> str | None:
@@ -592,17 +771,40 @@ _MAIN_OPTIONS = (
 
 _SETUP_OPTIONS = (
     ("1", "Enroll/select dataset"),
-    ("2", "Worker setup/update"),
-    ("3", "Read-only worker preflight"),
-    ("4", "Migrate selected dataset"),
-    ("5", "Dataset cleanup"),
-    ("6", "Backup cleanup"),
-    ("7", "Configuration"),
-    ("8", "Rebuild app"),
-    ("9", "Administration password"),
-    ("10", "Rebuild admin panel"),
+    ("2", "Copy dataset to Working"),
+    ("3", "Worker setup/update"),
+    ("4", "Read-only worker preflight"),
+    ("5", "Migrate dataset"),
+    ("6", "Dataset cleanup"),
+    ("7", "Backup cleanup"),
+    ("8", "Configuration"),
+    ("9", "Rebuild app"),
+    ("10", "Administration password"),
+    ("11", "Rebuild admin panel"),
+    ("12", "Set up example site"),
+    ("13", "Set up real empty database"),
     ("0", "Back"),
 )
+
+_STARTUP_OPTIONS = (
+    ("1", "User units"),
+    ("2", "Foreground"),
+    ("0", "Cancel"),
+)
+_STARTUP_MODES: dict[str, StartupMode] = {"1": "user", "2": "foreground"}
+
+_DOWNLOAD_OPTIONS = (
+    ("1", "Confirm the pinned model download"),
+    ("0", "Do not download"),
+)
+
+_PUBLICATION_OPTIONS = (
+    ("1", "Set up feedback publication"),
+    ("0", "No publication"),
+)
+
+# The terminal default for a named initial database. The workflow owner has no hidden default.
+_DEFAULT_REAL_DATABASE = "course_explorer_real"
 
 _TOOL_OPTIONS = (
     ("1", "Start"),
@@ -622,20 +824,35 @@ _TOOL_ACTIONS = {
 
 # The inference and embedding tools add extra options before the trailing `0 Back` row. Every
 # other tool uses the base options.
-# The inference menu inserts `6 Dispose target` and `7 Dataset cleanup`.
+# The inference menu inserts `6 Dispose target`.
 _INFERENCE_TOOL_OPTIONS = (
     *_TOOL_OPTIONS[:-1],
     ("6", "Dispose target"),
-    ("7", "Dataset cleanup"),
     _TOOL_OPTIONS[-1],
 )
-# The embedding menu inserts `6 Write hubs`.
-_EMBEDDING_TOOL_OPTIONS = (*_TOOL_OPTIONS[:-1], ("6", "Write hubs"), _TOOL_OPTIONS[-1])
+# The embedding menu inserts `6 Build serving artifacts`.
+_EMBEDDING_TOOL_OPTIONS = (
+    *_TOOL_OPTIONS[:-1],
+    ("6", "Build serving artifacts"),
+    _TOOL_OPTIONS[-1],
+)
 
 _CLEANUP_OPTIONS = (
     ("1", "Delete"),
     ("0", "Cancel"),
 )
+
+_COPY_OPTIONS = (
+    ("1", "Copy"),
+    ("0", "Cancel"),
+)
+
+_ROLE_OPTIONS = (
+    ("1", "Selected"),
+    ("2", "Working"),
+    ("0", "Cancel"),
+)
+_ROLE_CHOICES: dict[str, DatasetRole] = {"1": "selected", "2": "working"}
 
 _SERVER_LOG_OPTIONS = (
     ("1", "Server status"),
@@ -685,7 +902,7 @@ _REPORT_OPTIONS = (
 )
 
 REPORT_SCOPE = (
-    "Reports read the selected dataset state, not unreturned worker progress; "
+    "Reports read the dataset role named by --role, not unreturned worker progress; "
     "use that tool's Status for the latter."
 )
 
@@ -712,8 +929,9 @@ def _perform(
         "report",
         "migration",
         "disposition",
-        "hubs",
+        "serving-artifacts",
         "dataset-cleanup",
+        "dataset-copy",
         "backup-cleanup",
         "configuration",
         "server",
@@ -721,6 +939,8 @@ def _perform(
         "rebuild",
         "usage",
         "password",
+        "self-host-example",
+        "self-host-real-database",
     ],
     call: Callable[[], object],
 ) -> None:
@@ -740,11 +960,13 @@ def _perform(
 
 
 def _setup_worker(read: Callable[[str], str], write: Callable[[str], None]) -> None:
-    """Prepare or update the worker, asking for a non-main origin branch when the server is not main."""
+    """Prepare or update the worker, asking for a non-main origin branch when the server is not
+    main.
+    """
     try:
         server_branch = (
             mechanics.SubprocessRunner()
-            .run(("git", "branch", "--show-current"), cwd=repository_root())
+            .run(("git", "branch", "--show-current"), cwd=administration.repository_root())
             .stdout.decode()
             .strip()
         )
@@ -878,9 +1100,9 @@ def _rebuild_menu(read: Callable[[str], str], write: Callable[[str], None]) -> N
 def _admin_rebuild_menu(read: Callable[[str], str], write: Callable[[str], None]) -> None:
     """Confirm the administration panel's rebuild, then build and queue its restart once.
 
-    The build delegate runs first, so a raised build failure stops the callback before the restart
-    delegate is reached and restarts nothing. The restart delegate's own acknowledgment is the report
-    the entry prints.
+    The build delegate runs first, so a raised build failure stops the callback before the
+    restart delegate is reached and restarts nothing. The restart delegate's own acknowledgment is
+    the report the entry prints.
     """
     question = "Rebuild the admin panel? This signs all operators out."
     if _prompt(read, write, question, _REBUILD_OPTIONS) != "1":
@@ -891,6 +1113,146 @@ def _admin_rebuild_menu(read: Callable[[str], str], write: Callable[[str], None]
         return run_administrative_restart_admin()
 
     _perform(write, "rebuild", rebuild_then_restart)
+
+
+def _role(read: Callable[[str], str], write: Callable[[str], None]) -> DatasetRole | None:
+    """Ask which dataset role one report or migration acts on."""
+    return _ROLE_CHOICES.get(_prompt(read, write, "Dataset role", _ROLE_OPTIONS))
+
+
+def _migration_menu(read: Callable[[str], str], write: Callable[[str], None]) -> None:
+    """Ask for the dataset role, then migrate that role's dataset."""
+    role = _role(read, write)
+    if role is None:
+        return
+    _perform(
+        write,
+        "migration",
+        lambda: run_administrative_migration(role=role),
+    )
+
+
+def _copy_to_working_menu(read: Callable[[str], str], write: Callable[[str], None]) -> None:
+    """List the datasets, ask for one source, then confirm and copy it to Working.
+
+    The listing is printed before the source prompt, so the operator answers against real
+    receipts. An answer outside the listing, a cancel and any confirmation other than the copy
+    choice each copy nothing.
+    """
+    try:
+        listing = run_administrative_dataset_list()
+    except Exception as exc:
+        write(format_operator_error(exc))
+        write(
+            operator_guidance("dataset-list", configuration_error=isinstance(exc, ValidationError))
+        )
+        return
+    write(listing.model_dump_json())
+    answer = read("Dataset id to copy to Working (0 to cancel): ").strip()
+    if answer == "0":
+        return
+    source = next((entry for entry in listing.datasets if entry.dataset_id == answer), None)
+    if source is None:
+        write("the answer is not a dataset of this listing; nothing was copied")
+        return
+    title = f"Copy dataset {source.dataset_id} ({source.database_name}) to Working?"
+    if _prompt(read, write, title, _COPY_OPTIONS) != "1":
+        return
+    _perform(
+        write,
+        "dataset-copy",
+        lambda: run_administrative_dataset_copy(answer),
+    )
+
+
+def _startup_mode(read: Callable[[str], str], write: Callable[[str], None]) -> StartupMode | None:
+    """Ask whether the two backends run as user units or as owned foreground children."""
+    return _STARTUP_MODES.get(_prompt(read, write, "Startup mode", _STARTUP_OPTIONS))
+
+
+def _example_setup_menu(read: Callable[[str], str], write: Callable[[str], None]) -> None:
+    """Ask the example workflow's device choices, then run it once.
+
+    The app URL defaults to the example's own address. The two administration password entries and
+    the optional publication token come from the hidden reader, never from the ordinary input
+    callback. A cancel, an end of input, an interrupt or a refused hidden entry writes nothing and
+    runs nothing.
+    """
+    try:
+        default_url = str(
+            read_public_configuration(
+                administration.repository_root() / "examples", aliases=("WEB_APP_URL",)
+            )["WEB_APP_URL"]
+        )
+    except Exception as exc:
+        write(format_operator_error(exc))
+        write(operator_guidance("self-host-example"))
+        return
+    answer = read(f"App URL [{default_url}]: ").strip()
+    app_url: str | None = answer or None
+    username = read("Administration username (0 to cancel): ").strip()
+    if username == "0":
+        return
+    mode = _startup_mode(read, write)
+    if mode is None:
+        return
+    download = (
+        _prompt(
+            read,
+            write,
+            "Download the pinned embedding model if it is absent?",
+            _DOWNLOAD_OPTIONS,
+        )
+        == "1"
+    )
+    publication = _prompt(read, write, "Set up feedback publication?", _PUBLICATION_OPTIONS) == "1"
+    try:
+        token = (
+            SecretStr(_read_hidden_secret("Feedback publication token: ")) if publication else None
+        )
+        password = _read_hidden_secret("Administration password: ")
+        repeated = _read_hidden_secret("Repeat administration password: ")
+    except Exception as exc:
+        write(format_operator_error(exc))
+        write(
+            operator_guidance(
+                "self-host-example", configuration_error=isinstance(exc, ValidationError)
+            )
+        )
+        return
+    if password != repeated:
+        write("password entries must match; nothing was written")
+        return
+    _perform(
+        write,
+        "self-host-example",
+        lambda: run_administrative_example_setup(
+            ExampleSetupInput(
+                app_url=app_url,
+                username=username,
+                password=SecretStr(password),
+                mode=mode,
+                confirm_download=download,
+                publication_token=token,
+            )
+        ),
+    )
+
+
+def _real_database_setup_menu(read: Callable[[str], str], write: Callable[[str], None]) -> None:
+    """Ask the new database name and the startup mode, then run the workflow once."""
+    answer = read(f"Database name [{_DEFAULT_REAL_DATABASE}]: ").strip()
+    name = answer or _DEFAULT_REAL_DATABASE
+    mode = _startup_mode(read, write)
+    if mode is None:
+        return
+    _perform(
+        write,
+        "self-host-real-database",
+        lambda: run_administrative_real_database_setup(
+            RealDatabaseSetupInput(database_name=name, mode=mode)
+        ),
+    )
 
 
 def _setup_menu(
@@ -906,32 +1268,38 @@ def _setup_menu(
         if choice == "1":
             _perform(write, "setup", lambda: run_administrative_setup("datasets"))
         elif choice == "2":
-            _setup_worker(read, write)
+            _copy_to_working_menu(read, write)
         elif choice == "3":
-            _perform(write, "preflight", run_administrative_preflight)
+            _setup_worker(read, write)
         elif choice == "4":
-            _perform(write, "migration", run_administrative_migration)
+            _perform(write, "preflight", run_administrative_preflight)
         elif choice == "5":
-            _cleanup_menu(read, write, kind="datasets")
+            _migration_menu(read, write)
         elif choice == "6":
-            _cleanup_menu(read, write, kind="backups")
+            _cleanup_menu(read, write, kind="datasets")
         elif choice == "7":
-            _configuration_menu(read, write, settings_families=configuration_families)
+            _cleanup_menu(read, write, kind="backups")
         elif choice == "8":
-            _rebuild_menu(read, write)
+            _configuration_menu(read, write, settings_families=configuration_families)
         elif choice == "9":
-            _password_menu(read, write)
+            _rebuild_menu(read, write)
         elif choice == "10":
+            _password_menu(read, write)
+        elif choice == "11":
             _admin_rebuild_menu(read, write)
+        elif choice == "12":
+            _example_setup_menu(read, write)
+        elif choice == "13":
+            _real_database_setup_menu(read, write)
 
 
 def _password_menu(read: Callable[[str], str], write: Callable[[str], None]) -> None:
     """Ask for one site username and store its password through the hidden terminal entry.
 
     The username comes from the ordinary menu input and cancels on ``0``. The two password entries
-    belong to the command's own hidden terminal prompt, never to the menu's input callback or output,
-    so no password reaches the menu's streams. An end of input and an interrupt keep the menu's
-    exit semantics.
+    belong to the command's own hidden terminal prompt, never to the menu's input callback or
+    output, so no password reaches the menu's streams. An end of input and an interrupt keep the
+    menu's exit semantics.
     """
     username = read("Username (0 to cancel): ").strip()
     if username == "0":
@@ -947,11 +1315,11 @@ def _configuration_menu(
 ) -> None:
     """List the configuration files, then read one file and save one validated key of it.
 
-    The file listing and the chosen file's values are printed before the prompts that select them, so
-    the operator answers against the real files. A failed listing or read prints the shared safe
+    The file listing and the chosen file's values are printed before the prompts that select them,
+    so the operator answers against the real files. A failed listing or read prints the shared safe
     error and guidance and returns without a further prompt. The save forwards exactly one listed
-    file, one key of that report and one JSON literal to its owner. A cancel, an end of input and an
-    interrupt end the entry after writing nothing, and no stage is started or stopped.
+    file, one key of that report and one JSON literal to its owner. A cancel, an end of input and
+    an interrupt end the entry after writing nothing, and no stage is started or stopped.
     """
     operation: Literal["configuration"] = "configuration"
     try:
@@ -1012,11 +1380,12 @@ def _tool_menu(
         if stage == "inference" and choice == "6":
             _dispose_target_menu(read, write)
             continue
-        if stage == "inference" and choice == "7":
-            _cleanup_menu(read, write, kind="datasets")
-            continue
         if stage == "embedding" and choice == "6":
-            _perform(write, "hubs", run_administrative_hubs)
+            _perform(
+                write,
+                "serving-artifacts",
+                lambda: run_administrative_serving_artifacts(),
+            )
             continue
         action = _TOOL_ACTIONS.get(choice)
         if action is None:
@@ -1034,11 +1403,12 @@ def _cleanup_menu(
 
     The listing is read and printed before the target prompt, as the disposition entry reads its
     target before the choice prompt, so the operator answers against the real inventory. The dataset
-    owner resolves the retained chain again under its own action lock, and the backup owner rechecks
-    its confined target, so the printed inventory labels the target and the owner's check decides the
-    deletion. A failed listing, an answer outside the displayed inventory, a selected dataset, a
-    confirmation other than the delete choice, an end of input and an interrupt each return after
-    deleting nothing. One invocation deletes at most the one target the confirmation names.
+    owner resolves the retained chain again under its own action lock, and the backup owner
+    rechecks its confined target, so the printed inventory labels the target and the owner's check
+    decides the deletion. A failed listing, an answer outside the displayed inventory, a selected
+    dataset, a confirmation other than the delete choice, an end of input and an interrupt each
+    return after deleting nothing. One invocation deletes at most the one target the confirmation
+    names.
     """
     operation: Literal["dataset-cleanup", "backup-cleanup"] = (
         "dataset-cleanup" if kind == "datasets" else "backup-cleanup"
@@ -1049,15 +1419,25 @@ def _cleanup_menu(
         except Exception as exc:
             write(format_operator_error(exc))
             write(
-                operator_guidance(operation, configuration_error=isinstance(exc, ValidationError))
+                operator_guidance(
+                    "dataset-list", configuration_error=isinstance(exc, ValidationError)
+                )
             )
             return
         write(listing.model_dump_json())
         eligible = {
-            entry.dataset_id: f"Delete dataset {entry.dataset_id} ({entry.database_name})?"
+            entry.dataset_id: (
+                (
+                    f"Delete Working dataset {entry.dataset_id} ({entry.database_name})? "
+                    "Working becomes absent."
+                )
+                if entry.working
+                else f"Delete dataset {entry.dataset_id} ({entry.database_name})?"
+            )
             for entry in listing.datasets
             if not entry.selected
         }
+        working_targets = {entry.dataset_id for entry in listing.datasets if entry.working}
         target_prompt = "Dataset id: "
     else:
         try:
@@ -1065,7 +1445,9 @@ def _cleanup_menu(
         except Exception as exc:
             write(format_operator_error(exc))
             write(
-                operator_guidance(operation, configuration_error=isinstance(exc, ValidationError))
+                operator_guidance(
+                    "backup-list", configuration_error=isinstance(exc, ValidationError)
+                )
             )
             return
         write(backup_listing.model_dump_json())
@@ -1085,7 +1467,13 @@ def _cleanup_menu(
     if _prompt(read, write, title, _CLEANUP_OPTIONS) != "1":
         return
     if kind == "datasets":
-        _perform(write, operation, lambda: run_administrative_dataset_delete(answer))
+        _perform(
+            write,
+            operation,
+            lambda: run_administrative_dataset_delete(
+                answer, confirm_working=answer in working_targets
+            ),
+        )
     else:
         _perform(write, operation, lambda: run_administrative_backup_delete(answer))
 
@@ -1094,10 +1482,10 @@ def _dispose_target_menu(read: Callable[[str], str], write: Callable[[str], None
     """Run the identity-first disposition flow for one supplied canonical target.
 
     The target's canonical identity, official code/name and current durable decision are read and
-    printed BEFORE the choice prompt, so the operator decides against the real identity rather than an
-    assumed one. A read failure follows the shared safe-error presentation and returns without ever
-    prompting or writing. Cancel, an invalid selection, EOF or an interrupt mutates nothing and never
-    stops a job.
+    printed before the choice prompt, so the operator decides against the real identity rather
+    than an assumed one. A read failure follows the shared safe-error presentation and returns
+    without ever prompting or writing. Cancel, an invalid selection, EOF or an interrupt mutates
+    nothing and never stops a job.
     """
     target_group_id = read("Target canonical group id: ").strip()
     try:
@@ -1135,14 +1523,26 @@ def _reports_menu(
         choice = _prompt(read, write, "Coverage/summaries", _REPORT_OPTIONS)
         if choice == "0":
             return
+        if choice in {"1", "2", "3", "4"}:
+            role = _role(read, write)
+            if role is None:
+                continue
         if choice == "1":
-            _perform(write, "report", lambda: run_administrative_summary("catalogue"))
+            _perform(write, "report", lambda: run_administrative_summary("catalogue", role=role))
         elif choice == "2":
-            _perform(write, "report", lambda: run_administrative_coverage("teaching-text"))
+            _perform(
+                write,
+                "report",
+                lambda: run_administrative_coverage("teaching-text", role=role),
+            )
         elif choice == "3":
-            _perform(write, "report", lambda: run_administrative_coverage("embedding"))
+            _perform(
+                write,
+                "report",
+                lambda: run_administrative_coverage("embedding", role=role),
+            )
         elif choice == "4":
-            _perform(write, "report", lambda: run_summary("inference"))
+            _perform(write, "report", lambda: run_summary("inference", role=role))
 
 
 def run_operator_menu(
@@ -1200,16 +1600,21 @@ __all__ = [
     "ConfigurationWriteReport",
     "ControllerAction",
     "DatasetDeletionReport",
+    "DatasetEnrollmentReport",
     "DatasetListReport",
+    "DatasetReceipt",
+    "ExampleSetupInput",
     "InferenceAdministrativeSummary",
     "InferenceTargetDisposition",
     "LogReadReport",
     "LogSessionsReport",
     "LogSource",
     "PasswordSetReport",
+    "RealDatabaseSetupInput",
     "REPORT_SCOPE",
     "RebuildReport",
     "ServerStatusReport",
+    "SelfHostReport",
     "StageName",
     "UsageReport",
     "format_operator_error",
@@ -1224,14 +1629,22 @@ __all__ = [
     "run_administrative_config_read",
     "run_administrative_config_set",
     "run_administrative_coverage",
+    "run_administrative_dataset_copy",
     "run_administrative_dataset_delete",
+    "run_administrative_dataset_ensure",
     "run_administrative_dataset_list",
+    "run_administrative_dataset_promotion",
     "run_administrative_embedding_log",
-    "run_administrative_hubs",
+    "run_administrative_example_setup",
+    "run_administrative_feedback_attachment",
+    "run_administrative_feedback_delete",
+    "run_administrative_feedback_list",
+    "run_administrative_serving_artifacts",
     "run_administrative_log_sessions",
     "run_administrative_migration",
     "run_administrative_password",
     "run_administrative_preflight",
+    "run_administrative_real_database_setup",
     "run_administrative_rebuild",
     "run_administrative_restart_admin",
     "run_administrative_server_status",

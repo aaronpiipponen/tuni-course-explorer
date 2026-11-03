@@ -21,7 +21,7 @@
 .help-tip[aria-expanded="true"] {
   border-color: #b07be8;
   color: #fff;
-  background: rgb(78 0 142 / 25%);
+  background: rgb(90 30 156 / 25%);
 }
 .help-drawer {
   position: fixed;
@@ -49,7 +49,8 @@
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 8px 20px 28px;
+  padding: 8px 2px 28px 20px;
+  scrollbar-gutter: stable;
 }
 .help-body h3 {
   margin: 22px 0 4px;
@@ -92,18 +93,15 @@
   font-size: 13px;
   line-height: 1.5;
 }
-.help-body .help-guide {
-  display: inline-block;
-  margin-top: 18px;
+.help-body .help-link {
   color: #b07be8;
-  font-size: 13px;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
-.help-body .help-guide:hover {
+.help-body .help-link:hover {
   color: #d9c6f5;
 }
-.help-body .help-guide:focus-visible {
+.help-body .help-link:focus-visible {
   outline: 2px solid #b07be8;
   outline-offset: 3px;
 }

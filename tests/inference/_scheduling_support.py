@@ -88,7 +88,6 @@ WINDOW = 3
 STARTED_AT = datetime(2026, 9, 30, 12, 0, tzinfo=UTC)
 HASH_A = "a" * 64
 HASH_B = "b" * 64
-HASH_C = "c" * 64
 HASH_D = "d" * 64
 HASH_E = "e" * 64
 MODEL_IDENTITY = "Qwen/Qwen3.8-27B-FP8@rev;artifact=x@rev/f.gguf;quant=IQ3_MIX;sha256=" + "9" * 64

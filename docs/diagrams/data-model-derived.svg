@@ -1,11 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 640" role="img"
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 700" role="img"
      aria-labelledby="t d" font-family="system-ui, sans-serif">
   <title id="t">Derived data model</title>
   <desc id="d">A canonical course holds one inferred prerequisite set, one equivalence membership
-  among the members of an inferred equivalence group, and one processing marker. The marker and the
-  per-target checkpoint of a processing cycle each hold a proposal pointer, drawn dashed. The
+  among the members of an inferred equivalence group, one processing marker, and the checkpoints of
+  a processing cycle. The marker and each checkpoint hold a proposal pointer, drawn dashed. The
   generation chain runs from a pipeline run through target work and a model attempt to a proposal,
-  and a checkpoint holds one failure summary per failed episode.</desc>
+  and a checkpoint holds one failure summary per failed episode. Each entity lists its identity and
+  key columns.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
             markerWidth="8" markerHeight="8" orient="auto-start-reverse">
@@ -16,117 +17,139 @@
       <path d="M0 0 L10 5 L0 10 z" fill="#a98ae0"/>
     </marker>
   </defs>
-  <rect width="960" height="640" rx="12" fill="#232434"/>
+  <rect width="960" height="700" rx="12" fill="#232434"/>
 
-  <rect x="40" y="264" width="140" height="112" rx="8" fill="#2e3045" stroke="#4a4c6b"
+  <rect x="48" y="300" width="136" height="116" rx="8" fill="#2e3045" stroke="#4a4c6b"
         stroke-width="1.5"/>
-  <text x="110" y="326" text-anchor="middle" font-size="15" fill="#ececf2">Course</text>
+  <text x="116" y="324" text-anchor="middle" font-size="16" fill="#ececf2">Course</text>
+  <text x="116" y="351" text-anchor="middle" font-size="15" fill="#a3a4b8">id</text>
+  <text x="116" y="375" text-anchor="middle" font-size="15" fill="#a3a4b8">group_id</text>
 
-  <rect x="300" y="40" width="280" height="52" rx="8" fill="#2e3045" stroke="#4a4c6b"
+  <rect x="288" y="48" width="264" height="84" rx="8" fill="#2e3045" stroke="#4a4c6b"
         stroke-width="1.5"/>
-  <text x="440" y="71" text-anchor="middle" font-size="15" fill="#ececf2">InferredPrerequisiteSet</text>
+  <text x="420" y="72" text-anchor="middle" font-size="16" fill="#ececf2">InferredPrerequisiteSet</text>
+  <text x="420" y="99" text-anchor="middle" font-size="15" fill="#a3a4b8">id</text>
+  <text x="420" y="123" text-anchor="middle" font-size="15" fill="#a3a4b8">target_course_id</text>
 
-  <rect x="300" y="150" width="280" height="52" rx="8" fill="#2e3045" stroke="#4a4c6b"
+  <rect x="288" y="164" width="264" height="60" rx="8" fill="#2e3045" stroke="#4a4c6b"
         stroke-width="1.5"/>
-  <text x="440" y="181" text-anchor="middle" font-size="15" fill="#ececf2">InferredEquivalenceGroup</text>
+  <text x="420" y="188" text-anchor="middle" font-size="16" fill="#ececf2">InferredEquivalenceGroup</text>
+  <text x="420" y="215" text-anchor="middle" font-size="15" fill="#a3a4b8">id</text>
 
-  <rect x="300" y="256" width="280" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b"
+  <rect x="288" y="256" width="264" height="108" rx="8" fill="#2e3045" stroke="#4a4c6b"
         stroke-width="1.5"/>
-  <text x="440" y="282" text-anchor="middle" font-size="15" fill="#ececf2">InferredEquivalence</text>
-  <text x="440" y="304" text-anchor="middle" font-size="15" fill="#ececf2">GroupMember</text>
+  <text x="420" y="280" text-anchor="middle" font-size="16" fill="#ececf2">InferredEquivalence</text>
+  <text x="420" y="304" text-anchor="middle" font-size="16" fill="#ececf2">GroupMember</text>
+  <text x="420" y="331" text-anchor="middle" font-size="15" fill="#a3a4b8">equivalence_group_id</text>
+  <text x="420" y="355" text-anchor="middle" font-size="15" fill="#a3a4b8">course_id</text>
 
-  <rect x="300" y="380" width="280" height="52" rx="8" fill="#2e3045" stroke="#4a4c6b"
+  <rect x="288" y="396" width="264" height="60" rx="8" fill="#2e3045" stroke="#4a4c6b"
         stroke-width="1.5"/>
-  <text x="440" y="411" text-anchor="middle" font-size="15" fill="#ececf2">InferenceCourseProcessing</text>
+  <text x="420" y="420" text-anchor="middle" font-size="16" fill="#ececf2">InferenceCourseProcessing</text>
+  <text x="420" y="447" text-anchor="middle" font-size="15" fill="#a3a4b8">course_id</text>
 
-  <rect x="300" y="500" width="280" height="52" rx="8" fill="#2e3045" stroke="#4a4c6b"
+  <rect x="288" y="488" width="264" height="60" rx="8" fill="#2e3045" stroke="#4a4c6b"
         stroke-width="1.5"/>
-  <text x="440" y="531" text-anchor="middle" font-size="15" fill="#ececf2">InferenceProcessingCycle</text>
+  <text x="420" y="512" text-anchor="middle" font-size="16" fill="#ececf2">InferenceProcessingCycle</text>
+  <text x="420" y="539" text-anchor="middle" font-size="15" fill="#a3a4b8">id</text>
 
-  <rect x="676" y="40" width="260" height="52" rx="8" fill="#2e3045" stroke="#4a4c6b"
+  <rect x="288" y="580" width="264" height="84" rx="8" fill="#2e3045" stroke="#4a4c6b"
         stroke-width="1.5"/>
-  <text x="806" y="71" text-anchor="middle" font-size="15" fill="#ececf2">InferencePipelineRun</text>
+  <text x="420" y="604" text-anchor="middle" font-size="16" fill="#ececf2">InferenceProcessingTarget</text>
+  <text x="420" y="631" text-anchor="middle" font-size="15" fill="#a3a4b8">cycle_id</text>
+  <text x="420" y="655" text-anchor="middle" font-size="15" fill="#a3a4b8">target_course_id</text>
 
-  <rect x="676" y="136" width="260" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b"
+  <rect x="640" y="48" width="272" height="84" rx="8" fill="#2e3045" stroke="#4a4c6b"
         stroke-width="1.5"/>
-  <text x="806" y="162" text-anchor="middle" font-size="15" fill="#ececf2">InferenceTargetWork</text>
-  <text x="806" y="184" text-anchor="middle" font-size="14" fill="#a3a4b8">per target and work key</text>
+  <text x="776" y="72" text-anchor="middle" font-size="16" fill="#ececf2">InferencePipelineRun</text>
+  <text x="776" y="99" text-anchor="middle" font-size="15" fill="#a3a4b8">id</text>
+  <text x="776" y="123" text-anchor="middle" font-size="15" fill="#a3a4b8">run_identity_sha256</text>
 
-  <rect x="676" y="244" width="260" height="52" rx="8" fill="#2e3045" stroke="#4a4c6b"
+  <rect x="640" y="164" width="272" height="108" rx="8" fill="#2e3045" stroke="#4a4c6b"
         stroke-width="1.5"/>
-  <text x="806" y="275" text-anchor="middle" font-size="15" fill="#ececf2">InferenceModelAttempt</text>
+  <text x="776" y="188" text-anchor="middle" font-size="16" fill="#ececf2">InferenceTargetWork</text>
+  <text x="776" y="215" text-anchor="middle" font-size="15" fill="#a3a4b8">id</text>
+  <text x="776" y="239" text-anchor="middle" font-size="15" fill="#a3a4b8">target_course_id</text>
+  <text x="776" y="263" text-anchor="middle" font-size="15" fill="#a3a4b8">work_key_sha256</text>
 
-  <rect x="676" y="340" width="260" height="52" rx="8" fill="#2e3045" stroke="#4a4c6b"
+  <rect x="640" y="304" width="272" height="84" rx="8" fill="#2e3045" stroke="#4a4c6b"
         stroke-width="1.5"/>
-  <text x="806" y="371" text-anchor="middle" font-size="15" fill="#ececf2">InferenceProposal</text>
+  <text x="776" y="328" text-anchor="middle" font-size="16" fill="#ececf2">InferenceModelAttempt</text>
+  <text x="776" y="355" text-anchor="middle" font-size="15" fill="#a3a4b8">id</text>
+  <text x="776" y="379" text-anchor="middle" font-size="15" fill="#a3a4b8">target_work_id</text>
 
-  <rect x="676" y="436" width="260" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b"
+  <rect x="640" y="420" width="272" height="108" rx="8" fill="#2e3045" stroke="#4a4c6b"
         stroke-width="1.5"/>
-  <text x="806" y="462" text-anchor="middle" font-size="15" fill="#ececf2">InferenceProcessingTarget</text>
-  <text x="806" y="484" text-anchor="middle" font-size="14" fill="#a3a4b8">checkpoint per target</text>
+  <text x="776" y="444" text-anchor="middle" font-size="16" fill="#ececf2">InferenceProposal</text>
+  <text x="776" y="471" text-anchor="middle" font-size="15" fill="#a3a4b8">id</text>
+  <text x="776" y="495" text-anchor="middle" font-size="15" fill="#a3a4b8">target_course_id</text>
+  <text x="776" y="519" text-anchor="middle" font-size="15" fill="#a3a4b8">identity_sha256</text>
 
-  <rect x="676" y="544" width="260" height="52" rx="8" fill="#2e3045" stroke="#4a4c6b"
+  <rect x="640" y="560" width="272" height="108" rx="8" fill="#2e3045" stroke="#4a4c6b"
         stroke-width="1.5"/>
-  <text x="806" y="575" text-anchor="middle" font-size="15" fill="#ececf2">InferenceTargetFailure</text>
+  <text x="776" y="584" text-anchor="middle" font-size="16" fill="#ececf2">InferenceTargetFailure</text>
+  <text x="776" y="611" text-anchor="middle" font-size="15" fill="#a3a4b8">id</text>
+  <text x="776" y="635" text-anchor="middle" font-size="15" fill="#a3a4b8">cycle_id</text>
+  <text x="776" y="659" text-anchor="middle" font-size="15" fill="#a3a4b8">target_course_id</text>
 
-  <polyline points="180,288 220,288 220,66 300,66" fill="none" stroke="#a3a4b8"
+  <polyline points="184,316 200,316 200,90 288,90" fill="none" stroke="#a3a4b8"
             stroke-width="1.5" marker-end="url(#arrow)"/>
-  <text x="186" y="280" font-size="14" fill="#a3a4b8">1</text>
-  <text x="294" y="58" text-anchor="end" font-size="14" fill="#a3a4b8">1</text>
+  <text x="190" y="310" font-size="14" fill="#a3a4b8">1</text>
+  <text x="282" y="84" text-anchor="end" font-size="14" fill="#a3a4b8">1</text>
 
-  <polyline points="180,320 240,320 240,288 300,288" fill="none" stroke="#a3a4b8"
+  <polyline points="184,348 224,348 224,310 288,310" fill="none" stroke="#a3a4b8"
             stroke-width="1.5" marker-end="url(#arrow)"/>
-  <text x="186" y="312" font-size="14" fill="#a3a4b8">1</text>
-  <text x="294" y="280" text-anchor="end" font-size="14" fill="#a3a4b8">N</text>
+  <text x="190" y="342" font-size="14" fill="#a3a4b8">1</text>
+  <text x="282" y="304" text-anchor="end" font-size="14" fill="#a3a4b8">N</text>
 
-  <polyline points="180,352 260,352 260,406 300,406" fill="none" stroke="#a3a4b8"
+  <polyline points="184,380 248,380 248,426 288,426" fill="none" stroke="#a3a4b8"
             stroke-width="1.5" marker-end="url(#arrow)"/>
-  <text x="186" y="344" font-size="14" fill="#a3a4b8">1</text>
-  <text x="294" y="398" text-anchor="end" font-size="14" fill="#a3a4b8">1</text>
+  <text x="190" y="374" font-size="14" fill="#a3a4b8">1</text>
+  <text x="282" y="420" text-anchor="end" font-size="14" fill="#a3a4b8">1</text>
 
-  <line x1="440" y1="202" x2="440" y2="256" stroke="#a3a4b8" stroke-width="1.5"
+  <line x1="420" y1="224" x2="420" y2="256" stroke="#a3a4b8" stroke-width="1.5"
         marker-end="url(#arrow)"/>
-  <text x="450" y="220" font-size="14" fill="#a3a4b8">1</text>
-  <text x="450" y="246" font-size="14" fill="#a3a4b8">N</text>
+  <text x="414" y="238" text-anchor="end" font-size="14" fill="#a3a4b8">1</text>
+  <text x="428" y="250" font-size="14" fill="#a3a4b8">N</text>
 
-  <polyline points="580,406 630,406 630,366 676,366" fill="none" stroke="#a98ae0"
-            stroke-width="1.5" stroke-dasharray="6 4" marker-end="url(#arrow-accent)"/>
-  <text x="586" y="398" font-size="14" fill="#a3a4b8">N</text>
-  <text x="670" y="358" text-anchor="end" font-size="14" fill="#a3a4b8">1</text>
+  <polyline points="552,426 610,426 610,442 640,442" fill="none" stroke="#a98ae0"
+            stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrow-accent)"/>
+  <text x="558" y="420" font-size="14" fill="#a3a4b8">1</text>
+  <text x="632" y="436" text-anchor="end" font-size="14" fill="#a3a4b8">1</text>
 
-  <polyline points="580,526 640,526 640,468 676,468" fill="none" stroke="#a3a4b8"
+  <line x1="420" y1="548" x2="420" y2="580" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <text x="414" y="562" text-anchor="end" font-size="14" fill="#a3a4b8">1</text>
+  <text x="428" y="574" font-size="14" fill="#a3a4b8">N</text>
+
+  <polyline points="552,606 570,606 570,474 640,474" fill="none" stroke="#a98ae0"
+            stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrow-accent)"/>
+  <text x="558" y="600" font-size="14" fill="#a3a4b8">N</text>
+  <text x="632" y="468" text-anchor="end" font-size="14" fill="#a3a4b8">1</text>
+
+  <polyline points="552,638 590,638 590,614 640,614" fill="none" stroke="#a3a4b8"
             stroke-width="1.5" marker-end="url(#arrow)"/>
-  <text x="586" y="518" font-size="14" fill="#a3a4b8">1</text>
-  <text x="670" y="460" text-anchor="end" font-size="14" fill="#a3a4b8">N</text>
+  <text x="558" y="632" font-size="14" fill="#a3a4b8">1</text>
+  <text x="632" y="608" text-anchor="end" font-size="14" fill="#a3a4b8">N</text>
 
-  <line x1="806" y1="92" x2="806" y2="136" stroke="#a3a4b8" stroke-width="1.5"
+  <line x1="776" y1="132" x2="776" y2="164" stroke="#a3a4b8" stroke-width="1.5"
         marker-end="url(#arrow)"/>
-  <text x="816" y="110" font-size="14" fill="#a3a4b8">1</text>
-  <text x="816" y="130" font-size="14" fill="#a3a4b8">N</text>
+  <text x="770" y="146" text-anchor="end" font-size="14" fill="#a3a4b8">1</text>
+  <text x="784" y="158" font-size="14" fill="#a3a4b8">N</text>
 
-  <line x1="806" y1="200" x2="806" y2="244" stroke="#a3a4b8" stroke-width="1.5"
+  <line x1="776" y1="272" x2="776" y2="304" stroke="#a3a4b8" stroke-width="1.5"
         marker-end="url(#arrow)"/>
-  <text x="816" y="218" font-size="14" fill="#a3a4b8">1</text>
-  <text x="816" y="238" font-size="14" fill="#a3a4b8">N</text>
+  <text x="770" y="286" text-anchor="end" font-size="14" fill="#a3a4b8">1</text>
+  <text x="784" y="298" font-size="14" fill="#a3a4b8">N</text>
 
-  <line x1="806" y1="296" x2="806" y2="340" stroke="#a3a4b8" stroke-width="1.5"
+  <line x1="776" y1="388" x2="776" y2="420" stroke="#a3a4b8" stroke-width="1.5"
         marker-end="url(#arrow)"/>
-  <text x="816" y="314" font-size="14" fill="#a3a4b8">1</text>
-  <text x="816" y="334" font-size="14" fill="#a3a4b8">N</text>
+  <text x="770" y="402" text-anchor="end" font-size="14" fill="#a3a4b8">1</text>
+  <text x="784" y="414" font-size="14" fill="#a3a4b8">N</text>
 
-  <line x1="806" y1="436" x2="806" y2="392" stroke="#a98ae0" stroke-width="1.5"
-        stroke-dasharray="6 4" marker-end="url(#arrow-accent)"/>
-  <text x="816" y="406" font-size="14" fill="#a3a4b8">1</text>
-  <text x="816" y="428" font-size="14" fill="#a3a4b8">N</text>
-
-  <line x1="806" y1="500" x2="806" y2="544" stroke="#a3a4b8" stroke-width="1.5"
-        marker-end="url(#arrow)"/>
-  <text x="816" y="518" font-size="14" fill="#a3a4b8">1</text>
-  <text x="816" y="538" font-size="14" fill="#a3a4b8">N</text>
-
-  <rect x="40" y="560" width="220" height="48" rx="8" fill="none" stroke="#4a4c6b"
+  <rect x="48" y="600" width="220" height="48" rx="8" fill="none" stroke="#4a4c6b"
         stroke-width="1.5"/>
-  <line x1="56" y1="584" x2="96" y2="584" stroke="#a98ae0" stroke-width="1.5"
-        stroke-dasharray="6 4" marker-end="url(#arrow-accent)"/>
-  <text x="108" y="589" font-size="14" fill="#a3a4b8">Proposal pointer</text>
+  <line x1="64" y1="624" x2="104" y2="624" stroke="#a98ae0" stroke-width="1.5"
+        stroke-dasharray="5 4" marker-end="url(#arrow-accent)"/>
+  <text x="116" y="629" font-size="14" fill="#a3a4b8">Proposal pointer</text>
 </svg>

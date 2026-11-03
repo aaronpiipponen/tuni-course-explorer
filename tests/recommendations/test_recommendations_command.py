@@ -17,11 +17,13 @@ def test_recommendations_command_preserves_validation_and_empty_basis(monkeypatc
         pytest.fail("recommendation settings/database I/O reached")
 
     monkeypatch.setattr(command_module, "load_search_settings", fail)
-    monkeypatch.setattr(command_module, "load_embedding_settings", fail)
+    monkeypatch.setattr(command_module, "load_embedding_runtime_settings", fail)
     monkeypatch.setattr(command_module, "load_database_settings", fail)
     monkeypatch.setattr(command_module, "database_context", fail)
     with pytest.raises(ValueError):
-        command_module.run_recommendations_command(selected_courses=(" ",), display_language="en")
+        command_module.run_recommendations_command(
+            selected_courses=(" ",), display_language="en", shared_store=object()
+        )
 
     class NoIoContext:
         def __enter__(self):
@@ -30,10 +32,13 @@ def test_recommendations_command_preserves_validation_and_empty_basis(monkeypatc
         def __exit__(self, *_exc):
             return False
 
-    monkeypatch.setattr(next_courses_commands, "load_search_settings", lambda: object())
     monkeypatch.setattr(next_courses_commands, "load_database_settings", fail)
-    monkeypatch.setattr(next_courses_commands, "_database_context", lambda _settings: NoIoContext())
+    monkeypatch.setattr(
+        next_courses_commands, "_database_context", lambda _settings, **_kwargs: NoIoContext()
+    )
     report = command_module.run_recommendations_command(
-        display_language="en", database_settings=settings_factory(DatabaseSettings)
+        display_language="en",
+        database_settings=settings_factory(DatabaseSettings),
+        shared_store=object(),
     )
     assert report.similarity_results == ()

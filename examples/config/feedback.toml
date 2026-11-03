@@ -1,0 +1,33 @@
+# Feedback application database connection, attachment storage and intake policy.
+#
+# The feedback store is a separate database, so curriculum dataset replacement and rotation never
+# reach its records.
+FEEDBACK_POSTGRES_HOST = "127.0.0.1"
+FEEDBACK_POSTGRES_PORT = 5433
+FEEDBACK_POSTGRES_DB = "course_explorer_feedback"
+FEEDBACK_POSTGRES_USER = "course_explorer_feedback"
+
+# A relative path resolves against the checkout root, an absolute path is used as written, and a
+# path beginning with `~/` expands against the home directory. Validated uploads are written beneath
+# this directory.
+FEEDBACK_ATTACHMENTS_ROOT = "data/attachments"
+
+# The destination that intake reports and the sender publishes to. The value names one owner and
+# repository without a URL, and the visibility is `public` or `private`. No token is read from this
+# file.
+FEEDBACK_GITHUB_REPOSITORY = "example-owner/example-repository"
+FEEDBACK_GITHUB_VISIBILITY = "public"
+
+# Bound of one GitHub issue creation attempt in seconds. The value is positive and finite, and a
+# command that reaches it leaves the creation outcome unconfirmed.
+FEEDBACK_GITHUB_TIMEOUT_SECONDS = 120
+
+# Admitted submission attempts per rolling hour for one browser and for the whole site. Both are
+# positive counts.
+FEEDBACK_BROWSER_SUBMISSIONS_PER_HOUR = 5
+FEEDBACK_SITE_SUBMISSIONS_PER_HOUR = 30
+
+# Bound of one submission request body in bytes, covering a declared and a streamed body. 25165824
+# bytes is 24 MiB, which carries the three configured 5 MiB images as standard base64 with the JSON
+# framing.
+FEEDBACK_MAX_REQUEST_BYTES = 25165824

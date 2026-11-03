@@ -3,7 +3,7 @@ import type { GraphModel } from "./model";
 import { layoutWithElk } from "./elk";
 
 /** Node and edge spacing of the ELK layered layout, in pixels. */
-export const SPACING = {
+const SPACING = {
   nodeNode: 40,
   layerNode: 80,
   edgeNode: 24,

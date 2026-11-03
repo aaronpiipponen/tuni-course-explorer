@@ -15,11 +15,14 @@ export function ComparisonReplaceDialog({
   course,
   open,
   onClose,
+  onReplaced,
   returnFocus,
 }: {
   course: CourseSummary;
   open: boolean;
   onClose: () => void;
+  /** Report that a chosen slot takes this course. */
+  onReplaced: () => void;
   returnFocus: () => void;
 }) {
   const { store, value: slots } = useProfileSelector(
@@ -38,6 +41,7 @@ export function ComparisonReplaceDialog({
     runAction(() => {
       replaceComparisonSlot(store, course.group_id, slot);
       onClose();
+      onReplaced();
     });
   return (
     <Dialog.Root

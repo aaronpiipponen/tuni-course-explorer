@@ -9,7 +9,7 @@ import type { PublicationDiagnostics as Diagnostics } from "../../api/types";
 import { AutoMarker } from "../../shared/AutoMarker";
 import { count } from "../../shared/format";
 import { Panel, Row, Rows } from "../../shared/Panel";
-import type { SummaryView } from "./Inference";
+import { SummaryStateNote, type SummaryView } from "./summaryView";
 import { wording } from "../../shared/wording";
 
 function otherRouteTargets(diagnostics: Diagnostics): number | null {
@@ -93,9 +93,9 @@ export function PublicationDiagnostics({ view }: { view: SummaryView }) {
             </Rows>
           )}
         </>
-      ) : view.selectionEnabled === false ? (
-        <p className="note">{wording.selectionDisabled}</p>
-      ) : null}
+      ) : (
+        <SummaryStateNote view={view} />
+      )}
     </Panel>
   );
 }

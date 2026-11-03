@@ -1,10 +1,10 @@
 # Endpoint load profiling and bottleneck attribution
 
-This report records whole-service endpoint profiles from October 2026, their per-stage costs, and the CPU attribution that located the bottlenecks.
+This report records whole-service endpoint profiles from October 2026, their per-stage costs and the CPU attribution that located the bottlenecks.
 
 **Evidence status:** Exploratory. **Run dates:** 19 October 2026 and 22 October 2026.
 
-The [Experiments section](/docs/experiments/README.md) states the catalogue and the evidence labels. The [glossary](/docs/reference/glossary.md) defines the request path, the front router, the worker process and admission control. The shared measurement method is described in [Serving load measurement method](/docs/experiments/runtime-storage-and-serving/serving-load-method.md), and this report states the conditions its own numbers need. The serving shape of the profiled build differs from the shape a site serves, and the difference bounds what every number here can support.
+The [Experiments section](/docs/experiments/README.md) states the catalogue and the evidence labels. The [glossary](/docs/reference/glossary.md) defines the request path, the front router, the worker process and admission control. The [folder overview](/docs/experiments/runtime-storage-and-serving/README.md#the-shared-measurement-method) states the cost metric, the component boundaries and the memory measures that the serving measurements share. This report states the method each of its own profiles used: the 19 October profile timed HTTP requests and read process CPU per request, and the 22 October attribution summed whole-run process and container counters. The serving shape of the profiled build differs from the shape a site serves, and the difference bounds what every number here can support.
 
 ## The question
 
@@ -21,11 +21,15 @@ A separate graph and route profile asked a narrower question. Within one prerequ
 
 ## The serving shape the profiles measured
 
-The whole-service profile ran on 19 October 2026 against a site served by two uvicorn worker processes with synchronous request handlers. The profile excluded prerequisites from its request set because the graph was being redesigned, so its 59 requests cover the other dataset reads, the shell and the assets.
+The whole-service profile ran on 19 October 2026 against a site served by two uvicorn worker processes with synchronous request handlers. The profile excluded prerequisites from its request set, so its 59 requests cover the other dataset reads, the shell and the assets.
 
 The graph and route profile ran on the same day. Its route calculation ran on the server, its server sent no compression middleware, and it split the work of the same command functions in process. Its gzip column is `gzip -9` of the response body rather than a transfer size.
 
-A served site runs differently. One [front router](/docs/backend/interfaces/web-server.md) listens on the configured address, [admission control](/docs/backend/interfaces/admission-control.md) classifies and limits each API read, `WEB_WORKERS` worker processes serve the dataset behind the router, responses of at least 500 bytes pass through gzip, and the browser calculates the route from the graph report as [Prerequisite graph](/docs/backend/prerequisites/prerequisite-graph.md) describes. A four-worker site is the setting for the attribution described below.
+A served site runs differently. One [front router](/docs/backend/interfaces/front-router.md) listens on the configured loopback port, [admission control](/docs/backend/interfaces/admission-control.md) classifies and limits each API read when `ADMISSION_ENABLED` is true, `WEB_WORKERS` worker processes serve the dataset behind the router, responses of at least 500 bytes pass through gzip, and the browser calculates the route from the graph report as [Prerequisite graph](/docs/backend/prerequisites/prerequisite-graph.md) describes. A dataset read runs one command in a worker process and returns one JSON report. The attribution below ran with four worker processes.
+
+The diagram contrasts the two shapes for one read.
+
+![One read in the profiled build passes from the browser to two synchronous worker processes and returns an uncompressed body, while on a served site it passes the front router to the configured worker processes and returns a gzip body, and the browser calculates the route.](/docs/diagrams/endpoint-profile-serving-shapes.svg)
 
 Those differences matter. The profiled build had no front router, no admission control, no response compression and no browser solver. Its absolute wall times, CPU times and response sizes describe that build. They are not a measurement of a read on a site that runs the present serving shape, and they do not become one by comparison across the two shapes. A browser solver performs the route work on the client, so the server route seconds in the graph profile include work that a served site does not run on the server.
 
@@ -33,7 +37,7 @@ Those differences matter. The profiled build had no front router, no admission c
 
 ### The request set and repetitions
 
-The profile made 59 HTTP requests against the served site. The set covered the four [search methods](/docs/backend/search-and-discovery/search.md#the-four-search-methods) (exact code, substring, fuzzy and semantic), a comparison pair, next-courses at a basis of three and 50, recommendations at a basis of three and 50, one study structure, one module lookup, 50 course summaries, and the shell and asset reads. Every request shape except the concurrency check ran one at a time.
+The profile made 59 HTTP requests against the site it measured. The set covered the four [search methods](/docs/backend/search-and-discovery/search.md#the-four-search-methods) (exact code, substring, fuzzy and semantic), a comparison pair, next-courses at a basis of three and 50, recommendations at a basis of three and 50, one study structure, one module lookup, 50 course summaries, and the shell and asset reads. Every request shape except the concurrency check ran one at a time.
 
 Each shape ran warm with three repetitions. The wall column gives the range over those repetitions. Python CPU is the process CPU of the request, and the response column gives the response size.
 
@@ -82,7 +86,7 @@ The single read and the three simultaneous reads are plotted below.
 
 ![Wall time of one basis-50 recommendation read alone and of three reads issued at once. The three concurrent reads take 9.69, 14.70 and 14.90 seconds against 8.3 seconds alone, so concurrency raises the total throughput by about 1.7 times rather than by three.](/docs/charts/runtime-endpoint-recommendation-concurrency.svg)
 
-The throughput gain is about 1.7 times, not three times. Two synchronous worker processes and work bounded by CPU and the Python interpreter lock explain the gain, which is an interpretation of the measured walls. The first concurrent read takes 9.69 seconds, and the other two complete later.
+The throughput gain is about 1.7 times, not three times. Two synchronous worker processes and work bounded by CPU and the Python interpreter lock explain the gain, which is an interpretation of the measured walls. The first concurrent read takes 9.69 seconds, and the other two complete after it.
 
 The worker resident set started at about 85 to 89 MB and reached 328 MB and 504 MB during the check, and it was not returned to the operating system. That is a process-wide resident-set observation across the whole check. It is not a per-request measurement, and it does not show how much memory one request allocates or releases.
 
@@ -100,7 +104,19 @@ The profile ranked nine ideas by expected saving. Every saving in this list is t
 8. Large JSON reports were sent uncompressed. Trimming or compressing them was the candidate, with fuzzy search at 0.204 MB and study structure at 0.124 MB.
 9. The worker model was to be revisited after the first three candidates, because more processes were expected to help only once vector work left Python.
 
-The list points at the recommendation path, the lexical full-catalogue scans and the semantic vector scan as the largest plausible levers. That is an interpretation of the measured costs. No candidate was implemented or measured in this profile, so no saving is established.
+The list points at the recommendation path, the lexical full-catalogue scans and the semantic vector scan as the largest plausible levers. That is an interpretation of the measured costs.
+
+The work that followed implemented and measured most of the list on its own builds. Seven reports carry the results.
+
+- The stored centred vectors and the packed exact semantic read, on [Packed exact semantic search](/docs/experiments/search-and-translation/packed-exact-semantic-search.md).
+- The normalized lexical projection and the native fuzzy scorer, on [Lexical lookup projection and native fuzzy matching](/docs/experiments/search-and-translation/lexical-lookup-projection-and-native-fuzzy.md).
+- Recommendation scoring in native code, on [Native recommendation scoring](/docs/experiments/recommendations/native-recommendation-scoring.md).
+- The native prerequisite compiler, its fact loader and the drawing projection, on [Native prerequisite compilation and identity](/docs/experiments/graph-and-route-algorithms/native-prerequisite-compilation.md).
+- The serving artifact build and the shared stores it prepares, on [Serving artifact build and shared stores](/docs/experiments/runtime-storage-and-serving/serving-artifact-build-and-shared-stores.md).
+- The cost of one request and the admission curves that price it, on [Serving request cost and admission](/docs/experiments/runtime-storage-and-serving/serving-request-cost-and-admission.md).
+- The compression level of a response body, on [Response compression levels](/docs/experiments/runtime-storage-and-serving/response-compression.md).
+
+Each report states its own measured outcome. None of the estimates above is a realized gain.
 
 ## The graph and route profile
 
@@ -122,30 +138,16 @@ In process, that target's graph compiled in 18.5 seconds with active only on and
 
 | Course | Setting | Graph (s) | Raw (MB) | gzip (MB) | Route (s) | Route CPU (s) | Route state |
 |---|---|---:|---:|---:|---:|---:|---|
-| MATH.MA.880 | Active only | 3.89 | 6.76 | 0.47 | 8.24 | 7.3 | Approximate |
-| MATH.MA.880 | All courses | 13.10 | 28.02 | 1.70 | 15.47 | 14.4 | Approximation failed |
-| MATH.MA.725 | Active only | 12.47 | 65.76 | 1.66 | 17.84 | 16.4 | Approximate |
 | MATH.MA.725 | All courses | 28.40 | 92.98 | 3.55 | 30.34 | 28.9 | Approximate |
-| PSY.324 | Active only | 1.97 | 0.92 | 0.09 | 5.92 | 5.2 | Approximate |
-| PSY.324 | All courses | 2.30 | 2.27 | 0.19 | 5.65 | 4.9 | Approximate |
-| KAT.MARK.399 | Active only | 2.51 | 2.16 | 0.20 | 3.14 | 2.3 | Unresolved |
-| KAT.MARK.399 | All courses | 2.90 | 3.67 | 0.33 | 6.14 | 5.3 | Unresolved |
-| KAT.MARK.310 | Active only | 1.25 | 0.52 | 0.05 | 1.37 | 0.8 | Unresolved |
-| KAT.MARK.310 | All courses | 1.35 | 0.76 | 0.07 | 1.95 | 1.3 | Unresolved |
-| KAT.MARK.304 | Active only | 1.27 | 0.50 | 0.05 | 1.30 | 0.8 | Unresolved |
-| KAT.MARK.304 | All courses | 1.99 | 0.74 | 0.08 | 1.67 | 1.1 | Unresolved |
-| KIE.SUY.420 | Active only | 0.83 | 0.32 | 0.03 | 0.76 | 0.4 | Exact |
-| KIE.SUY.420 | All courses | 0.83 | 0.49 | 0.04 | 0.79 | 0.5 | Exact |
-| COMP.CS.500 | Active only | 0.36 | 0.02 | 0.002 | 0.26 | 0.1 | Exact |
-| COMP.CS.500 | All courses | 0.26 | 0.09 | 0.007 | 0.34 | 0.2 | Exact |
-| COMP.CS.110 | Active only | 0.31 | 0.004 | 0.001 | 0.28 | 0.2 | Exact |
+| MATH.MA.725 | Active only | 12.47 | 65.76 | 1.66 | 17.84 | 16.4 | Approximate |
+| MATH.MA.880 | All courses | 13.10 | 28.02 | 1.70 | 15.47 | 14.4 | Approximation failed |
+| MATH.MA.880 | Active only | 3.89 | 6.76 | 0.47 | 8.24 | 7.3 | Approximate |
 | COMP.CS.110 | All courses | 0.25 | 0.024 | 0.002 | 0.24 | 0.1 | Exact |
-| COMP.CS.200 | Active only | 0.23 | 0.004 | 0.001 | 0.56 | 0.2 | Exact |
-| COMP.CS.200 | All courses | 0.23 | 0.022 | 0.002 | 0.23 | 0.1 | Exact |
+| COMP.CS.110 | Active only | 0.31 | 0.004 | 0.001 | 0.28 | 0.2 | Exact |
 
-The largest graph read is MATH.MA.725 all courses at 28.40 seconds and a 92.98 MB body, compressed to 3.55 MB. The largest route read is the same course-setting at 30.34 seconds and 28.9 seconds of route CPU. MATH.MA.880 all courses is next at 13.10 seconds for the graph and 15.47 seconds for the route.
+The largest graph read is MATH.MA.725 all courses at 28.40 seconds and a 92.98 MB body, compressed to 3.55 MB. The largest route read is the same course-setting at 30.34 seconds and 28.9 seconds of route CPU. MATH.MA.880 all courses is next at 13.10 seconds for the graph and 15.47 seconds for the route. The smallest target, COMP.CS.110, takes 0.25 to 0.31 seconds for the graph and 0.24 to 0.28 seconds for the route.
 
-The six larger targets take 1.25 to 28.40 seconds for the graph and 1.30 to 30.34 seconds for the route. The four smallest take 0.23 to 0.83 seconds for the graph and 0.23 to 0.79 seconds for the route. All-courses scope raises the graph time on the six larger targets. The route time rises on five of them and falls from 5.92 to 5.65 seconds on PSY.324. On the four smallest the scope changes the graph time by at most 0.10 seconds and the route time by at most 0.33 seconds, in either direction.
+The six larger targets take 1.25 to 28.40 seconds for the graph and 1.30 to 30.34 seconds for the route. The four smallest take 0.23 to 0.83 seconds for the graph and 0.23 to 0.79 seconds for the route. All-courses scope raises the graph time on all six larger targets. The route time rises on five of them and falls from 5.92 to 5.65 seconds on PSY.324. On the four smallest the scope changes the graph time by at most 0.10 seconds and the route time by at most 0.33 seconds, in either direction.
 
 The route outcomes differ by target. The four small targets return exact routes. MATH.MA.880 returns an approximate route with active only and an approximation failure with all courses. MATH.MA.725 and PSY.324 return approximate routes in both scopes. The three KAT targets return unresolved routes in both scopes.
 
@@ -153,32 +155,16 @@ The route outcomes differ by target. The four small targets return exact routes.
 
 | Course | Setting | Compile (ms) | Project and prepare (ms) | Satisfaction (ms) | Serialize (ms) |
 |---|---|---:|---:|---:|---:|
-| MATH.MA.880 | Active only | 2915 | 502 | 239 | 81 |
-| MATH.MA.880 | All courses | 4395 | 5664 | 1996 | 339 |
-| MATH.MA.725 | Active only | 6188 | 5103 | 771 | 518 |
 | MATH.MA.725 | All courses | 7609 | 15578 | 3414 | 875 |
-| PSY.324 | Active only | 1621 | 59 | 32 | 13 |
-| PSY.324 | All courses | 1649 | 219 | 117 | 29 |
-| KAT.MARK.399 | Active only | 1939 | 167 | 109 | 32 |
-| KAT.MARK.399 | All courses | 2386 | 399 | 225 | 90 |
-| KAT.MARK.310 | Active only | 1128 | 40 | 20 | 7 |
-| KAT.MARK.310 | All courses | 1100 | 63 | 27 | 11 |
-| KAT.MARK.304 | Active only | 1072 | 40 | 17 | 7 |
-| KAT.MARK.304 | All courses | 1015 | 67 | 29 | 10 |
-| KIE.SUY.420 | Active only | 562 | 24 | 7 | 4 |
-| KIE.SUY.420 | All courses | 613 | 39 | 14 | 7 |
-| COMP.CS.500 | Active only | 135 | 1.7 | 0.6 | 0.4 |
-| COMP.CS.500 | All courses | 137 | 7.2 | 2.6 | 1.0 |
-| COMP.CS.110 | Active only | 108 | 0.4 | 0.1 | 0.1 |
-| COMP.CS.110 | All courses | 104 | 1.7 | 0.7 | 0.4 |
-| COMP.CS.200 | Active only | 97 | 0.4 | 0.1 | 0.1 |
-| COMP.CS.200 | All courses | 99 | 1.7 | 0.6 | 0.3 |
+| MATH.MA.725 | Active only | 6188 | 5103 | 771 | 518 |
+| MATH.MA.880 | All courses | 4395 | 5664 | 1996 | 339 |
+| MATH.MA.880 | Active only | 2915 | 502 | 239 | 81 |
 
 The four stage times of the four largest graph reads are plotted below.
 
 ![Server stages of the four largest graph reads in milliseconds. MATH.MA.725 all courses spends 15,578 milliseconds in drawing projection and preparation, 7,609 in compilation, 3,414 in satisfaction states and 875 in serialization, and MATH.MA.725 active only spends 6,188, 5,103, 771 and 518 milliseconds in the same stages.](/docs/charts/runtime-endpoint-graph-stages.svg)
 
-Drawing projection and preparation is the largest stage on the two large all-courses reads: 15,578 milliseconds for MATH.MA.725 and 5,664 milliseconds for MATH.MA.880. Compilation is the largest stage on all remaining rows, and it stays below 620 milliseconds on the four smallest targets. Satisfaction states reach 3,414 milliseconds on MATH.MA.725 all courses, and serialization stays below one second on every target.
+Drawing projection and preparation is the largest stage on the two large all-courses reads: 15,578 milliseconds for MATH.MA.725 and 5,664 milliseconds for MATH.MA.880. Compilation is the largest stage on the other rows in the table, and it is below 620 milliseconds on the four smallest targets. Satisfaction states reach 3,414 milliseconds on MATH.MA.725 all courses, and serialization is below one second on every target.
 
 The four stage costs are not additive to the HTTP graph time. Compilation, projection, satisfaction and serialization ran in process on the same functions, while the graph seconds came from the HTTP request. The 15,578 millisecond projection on MATH.MA.725 all courses is 15.578 seconds, more than half of that target's 28.40 second graph read, but the two figures are not parts of one sum.
 
@@ -186,31 +172,27 @@ The profile ranked its costs in this order. Payload volume comes first, at 6.8 t
 
 ### Payload size and the drawing limit
 
-The graph bodies range from 0.004 MB to 92.98 MB. The largest bodies are 6.76 to 92.98 MB on the two mathematics targets, and they compress with `gzip -9` to 0.47 to 3.55 MB. Ratios calculated from the table run from about 14 to 40 times. The 65.76 MB body becomes 1.66 MB, a 39.6-fold reduction, so the earlier 14 to 26 times summary understated the range.
+The graph bodies range from 0.004 MB to 92.98 MB. The largest bodies are 6.76 to 92.98 MB on the two mathematics targets, and they compress with `gzip -9` to 0.47 to 3.55 MB. Ratios calculated from the table run from about 14 times for the 6.76 MB body to about 40 times for the 65.76 MB body.
 
 The MATH.MA.880 all-courses body of 28.02 MB divides into two large parts. The calculation tree is 12.73 MB, including requirements 5.76 MB, node occurrences 4.96 MB, issues 1.66 MB, module occurrences 0.14 MB and courses 0.12 MB. The listed parts sum to 12.64 MB, leaving 0.09 MB unattributed. The drawing is 15.30 MB. Edges are 6.31 MB, including relationship members of 4.73 MB (of which occurrence and condition evidence is 2.23 MB) and endpoints of 1.02 MB. Node states are 3.43 MB, course nodes 2.98 MB, connector nodes 2.15 MB, mark groups 0.32 MB and module nodes 0.11 MB.
 
-The drawing is refused by the 500-element [drawing limit](/docs/backend/prerequisites/prerequisite-graph.md#the-drawing-limit) on most large targets. The element counts are 1,805 for MATH.MA.880 active only, 14,217 for MATH.MA.880 all courses and 9,105 for MATH.MA.725 all courses. In the profiled build a refused drawing was still fully built, serialized and sent, so it costs build time and bytes even though the browser is told not to draw it. The product's projection builds and counts every node and edge before the drawing allowance refuses the drawing, and the report then carries no drawing (`display` is null) with the solver structure, the counts and the located reasons.
+The drawing is refused by the 500-element [drawing limit](/docs/backend/prerequisites/prerequisite-graph.md#the-drawing-limit) on most large targets. The element counts are 1,805 for MATH.MA.880 active only, 14,217 for MATH.MA.880 all courses and 9,105 for MATH.MA.725 all courses. In the profiled build a refused drawing was fully built, serialized and sent, so it costs build time and bytes even though the browser is told not to draw it. The product's projection computes the counts first and produces a display graph only when the allowance permits it, so a refused report carries the solver structure and the counts with `display` set to null.
 
 ## CPU attribution of recorded loads
 
-The 22 October 2026 attribution answered a different question from the request profile. It measured where CPU went across whole runs rather than inside one request. It ran a disposable copy of the site with four worker processes on a 4-core aarch64 server with 23.6 GB of RAM, and it read the database and embedding container CPU counters once a second. Requests passed through a relay process. Three heavy runs issued basis-50 recommendations at one, two and three concurrent virtual users. A light ladder issued a fixed mixed workload at 20, 50 and 100 users.
+The 22 October 2026 attribution answered a different question from the request profile. It measured where CPU went across whole runs rather than inside one request. It ran a disposable copy of the site with four worker processes on a 4-core aarch64 server with 24.1 GB of RAM, and it read the database and embedding container CPU counters once a second. Requests passed through a relay process. Three heavy runs issued basis-50 recommendations at one, two and three concurrent virtual users.
 
 | Run | Web (s) | Database (s) | Embedding (s) | Relay (s) | Total (s) | Web, database, embedding, relay share |
 |---|---:|---:|---:|---:|---:|---|
 | Heavy, 1 user | 132.63 | 57.01 | 0.41 | 0.03 | 190.08 | 69.8/30.0/0.2/0.02 percent |
 | Heavy, 2 users | 296.18 | 51.13 | 0.41 | 0.03 | 347.75 | 85.2/14.7/0.1/0.01 percent |
 | Heavy, 3 users | 267.12 | 76.45 | 0.39 | 0.04 | 344.00 | 77.7/22.2/0.1/0.01 percent |
-| Light, 20 users | 82.80 | 91.34 | 7.32 | 0.21 | 181.67 | 45.6/50.3/4.0/0.12 percent |
-| Light, 50 users | 135.62 | 150.90 | 26.08 | 0.31 | 312.90 | 43.3/48.2/8.3/0.10 percent |
-| Light, 100 users, first attempt (invalid) | 198.03 | 179.14 | 29.36 | 0.29 | 406.82 | 48.7/44.0/7.2/0.07 percent |
-| Light, 100 users, corrected cap | 225.65 | 216.86 | 39.40 | 0.28 | 482.19 | 46.8/45.0/8.2/0.06 percent |
 
-The CPU shares of the six valid runs are plotted below.
+The CPU shares of the three heavy runs are plotted below.
 
-![Web, database and embedding shares of total CPU in six valid recorded runs. The heavy basis-50 runs are web-dominant at 69.8 to 85.2 percent, while the light mixed runs split almost evenly between web at 43.3 to 46.8 percent and the database at 45.0 to 50.3 percent, with embedding at 4.0 to 8.3 percent.](/docs/charts/runtime-endpoint-cpu-shares.svg)
+![Web, database and embedding shares of total CPU in the three heavy basis-50 runs. Web carries 69.8 to 85.2 percent, the database 14.7 to 30.0 percent and embedding 0.1 to 0.2 percent, so the heavy profile is web-dominant.](/docs/charts/runtime-endpoint-cpu-shares.svg)
 
-The heavy profile is web-dominant. Web carries 69.8 to 85.2 percent of total CPU, the database 14.7 to 30.0 percent, and embedding 0.1 to 0.2 percent. The three valid light runs split almost evenly between web at 43.3 to 46.8 percent and the database at 45.0 to 50.3 percent, with embedding at 4.0 to 8.3 percent. The invalid first light-100 attempt carries 48.7 percent web and 44.0 percent database, and it is not a capacity point. The relay stays below 0.15 percent in every run. Across its seven runs, including the invalid attempt, the totals are 1,338.03 web, 822.83 database, 103.36 embedding and 1.19 relay core-seconds out of 2,265.40, or 59.1, 36.3, 4.6 and 0.05 percent. Each total is rounded independently of the per-run rows, so adding the displayed rows can differ from the totals by 0.01 or 0.02 core-seconds.
+The heavy profile is web-dominant. Web carries 69.8 to 85.2 percent of total CPU, the database 14.7 to 30.0 percent, and embedding 0.1 to 0.2 percent. The relay is below 0.15 percent in every run.
 
 The per-class split comes from the in-process pass and is separate from the run totals.
 
@@ -226,33 +208,17 @@ The per-class split comes from the in-process pass and is separate from the run 
 
 The database is the largest non-web component for study structure at 60.3 percent, course summaries at 50.0 percent, short exact search with inactive courses at 52.7 percent and long semantic search at 42.2 percent. Long semantic search is the only class with a material embedding share at 10.2 percent. The largest graph read carries the smallest database share in this list at 15.4 percent, so its cost is mostly web work rather than a database wait.
 
-The attribution measures a four-worker build with a relay, not the two-worker build of the 19 October profile. It does not revise any per-request value above, and its costs are not backdated to the earlier profile.
+The attribution measures a four-worker build with a relay, not the two-worker build of the 19 October profile. It does not revise any per-request value above.
 
-## What stands
+## Limitations
 
-The whole-service profile stands as a description of the profiled build. Search reads cost 1.75 to 1.98 seconds, with 0.86 to 0.93 seconds of Python work and a database estimate of about 1.1 seconds for the lexical modes. A warm recommendation at a basis of 50 costs 8.22 to 8.49 seconds, with 5.41 seconds of Python work and 2.96 seconds of database CPU. Three simultaneous recommendation reads complete in 9.69, 14.70 and 14.90 seconds against 8.3 seconds alone, which is about 1.7 times the throughput, and the worker resident set grows from about 85 to 89 MB to 328 MB and 504 MB.
+The database and embedding cells marked inferred carry no per-query precision, and the lexical searches have no database sample at all. The wall figures are ranges over three warm repetitions with no percentile, so the profile has no tail statistic.
 
-The graph profile stands as 20 valid rows over 10 courses. The largest graph read costs 28.40 seconds and 92.98 MB, and its projection and preparation stage costs 15,578 milliseconds. The largest route read costs 30.34 seconds and 28.9 seconds of route CPU. Gzip reduces the large bodies by about 14 to 40 times, and the drawing limit refuses a fully built drawing on most large targets. YKT.SOA.303 has no valid row.
+The whole-service profile used one client, one server and one dataset, and it ran requests one at a time except for the single three-way check. The concurrency result describes three requests against two worker processes, not a sustained load. The cold recommendation values are single observations, and they vary with page cache state.
 
-The 22 October attribution stands as a measurement of total CPU on a four-worker build. It shows that the database and embedding containers carry a material share of total CPU, that the share depends on the load class, and that the whole-container counters bound its precision.
-
-The nine optimization candidates remain hypotheses. None was implemented or measured in this profile, and no estimated saving is a realized gain.
-
-## Limitations and corrections
-
-The database and embedding estimates in the whole-service table carry no per-query precision for the cells marked inferred. The lexical searches have no database sample, and the comparison, next-courses, study-structure and summaries values are inferred. The wall figures are ranges over three warm repetitions with no percentile, so the profile has no tail statistic.
-
-The whole-service profile used one client, one server and one dataset, and it ran requests one at a time except for the single three-way check. The concurrency result describes three requests against two worker processes, not a sustained load. The cold recommendation values are single observations, and the profile notes that cold numbers vary with page cache state.
-
-The graph profile ran one repetition, and its raw per-combination records were not retained. Its stage split and its HTTP times are separate measurements and cannot be added. The 240-second timeout is a client bound, and the abandoned target shows that closing the client does not cancel the server work. No repeat measured how long that target would have taken to finish or how much memory it would have reached.
-
-The graph profile's server sent no compression. The gzip figures are a compression of the body with `gzip -9`, not a transfer size, and they do not describe a site that compresses responses of at least 500 bytes at the middleware.
+The graph profile ran one repetition, and its stage split and its HTTP times are separate measurements that cannot be added. The 240-second timeout is a client bound, and the abandoned target shows that closing the client does not cancel the server work. The gzip figures compress the body with `gzip -9` and are not transfer sizes.
 
 The concurrency check measured the resident set of the worker processes, not per-request allocation. It records growth and no return to the operating system, and it does not establish a per-request leak or a reuse pattern.
-
-Two corrections belong to the 22 October attribution. The first light-100 attempt is invalid on 17 `MemoryError` lines under its 2.684 GB per-process address-space cap, while the cgroup peak was 3.36355328 GB of the 6.442 GB bound. It is marked invalid in the table and is not a valid capacity point. The corrected run raised only the light per-process cap to 3.758 GB and is the valid row above. The run is non-graceful, so the ladder stops between 50 and 100 users and light 200 is unmeasured.
-
-The counter read used for the runs would have recorded a zero for an unreadable counter. Its corrected form raises instead. No measured run took that path, and no measured value changes. A clock offset of about 54 seconds between the load client and the server made the saved per-step and per-class apportionment fields in the run records unusable, so the attribution uses the overall counters and the completion counts.
 
 The database and embedding counters cover whole containers, so they can include reads outside the measured copy in the same window. The web and relay figures belong to the disposable copy of the site. The attribution therefore bounds the database and embedding share rather than isolating the measured copy's work.
 
@@ -260,14 +226,17 @@ The database and embedding counters cover whole containers, so they can include 
 
 The catalogue is a captured snapshot of the Tampere University curriculum for the academic years 2006-2007 to 2026-2027 with a three-year activity window set by `ACTIVE_ACADEMIC_YEAR_WINDOW`. The snapshot holds 11,086 courses, of which 4,543 are active, 9,901 eligible module versions and 58,962 teaching-text chunks, each with a BGE-M3 vector.
 
-The whole-service profile ran on a 4-core 2 GHz aarch64 server. The site had two uvicorn worker processes and synchronous handlers. The graph profile ran its route on the server and its server sent no compression. The whole-service request shapes ran warm with three repetitions, and the cold recommendation values are marked in the table.
+The whole-service profile ran on a 4-core 2 GHz aarch64 server. The site had two uvicorn worker processes and synchronous handlers. The request shapes ran warm with three repetitions, and the cold recommendation values are marked in the table.
 
-The graph profile used 10 courses: MATH.MA.880, MATH.MA.725, PSY.324, KAT.MARK.399, KAT.MARK.310, KAT.MARK.304, KIE.SUY.420, COMP.CS.500, COMP.CS.110 and COMP.CS.200. Each ran with active only on and off, Recommended and Inferred on, and an empty course state. The drawing limit was 500 elements.
+The graph profile used 10 courses: MATH.MA.880, MATH.MA.725, PSY.324, KAT.MARK.399, KAT.MARK.310, KAT.MARK.304, KIE.SUY.420, COMP.CS.500, COMP.CS.110 and COMP.CS.200. Each ran with active only on and off, Recommended and Inferred on, an empty course state, a 500-element drawing limit and a 240-second client timeout.
 
-The attribution ran on a 4-core aarch64 server with 23.6 GB of RAM, with `WEB_WORKERS = 4`. A separate client generated the load with k6 v2.3.0. The heavy runs issued one basis-50 recommendation per user iteration with no think time and one summaries probe every 2 seconds.
+The attribution ran on a 4-core aarch64 server with 24.1 GB of RAM, with `WEB_WORKERS = 4`. A separate client generated the load with k6 v2.3.0. The heavy runs issued one basis-50 recommendation per user iteration with no think time and one summaries probe every 2 seconds.
 
 ## Untested questions
 
-1. Whether any estimated optimization saving would survive an implementation. The profile measured costs and estimates, never a changed path.
-2. Whether moving the route calculation to the browser changes the server stage split, and how much of the 4.4 to 6.5 second solver cost becomes client time. The graph profile measured the server calculation only.
-3. Whether the concurrency throughput ratio and the resident-set growth hold beyond three simultaneous recommendation reads or with a mixed request set. Only three reads against two workers were measured.
+Each question below is untested.
+
+1. Whether moving the route calculation to the browser changes the server stage split, and how much of the 4.4 to 6.5 second solver cost becomes client time. The graph profile measured the server calculation only.
+2. Whether the concurrency throughput ratio and the resident-set growth hold beyond three simultaneous recommendation reads or with a mixed request set. Only three reads against two workers were measured.
+3. How long YKT.SOA.303 would have taken to complete a graph read and a route read, and how much resident memory the two workers would have reached. The run stopped at the client timeout.
+4. Whether a repeated graph profile reproduces the 20 rows and the stage split. One repetition was taken.

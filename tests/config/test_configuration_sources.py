@@ -12,20 +12,23 @@ from types import SimpleNamespace
 import pytest
 from pydantic import SecretStr, ValidationError
 
-from course_explorer import configuration
+from course_explorer import administration, configuration
 from course_explorer.config import (
     SETTINGS_SOURCE_MARKER,
     AdminWebSettings,
     DatabaseSettings,
     EmbeddingRuntimeSettings,
-    EmbeddingSettings,
+    FeedbackIntakeSettings,
+    FeedbackSenderSettings,
+    FeedbackSettings,
     SearchSettings,
     UsageSettings,
     WebSettings,
+    WorkerConnectionSettings,
     load_administrative_site_settings,
 )
 from course_explorer_admin import compose
-from tests.config._support import FIXTURE_VALUES, MACHINE_TEMPLATE_VALUES
+from tests.config._support import FIXTURE_VALUES
 from tests.support import write_example_config_tree
 
 
@@ -34,7 +37,7 @@ def _bind_checkout(monkeypatch: pytest.MonkeyPatch, root: Path) -> None:
     monkeypatch.delenv(SETTINGS_SOURCE_MARKER, raising=False)
     for alias in FIXTURE_VALUES:
         monkeypatch.delenv(alias, raising=False)
-    monkeypatch.setattr(configuration, "repository_root", lambda: root)
+    monkeypatch.setattr(administration, "repository_root", lambda: root)
     configuration.clear_configuration_caches()
 
 
@@ -48,23 +51,55 @@ def test_loads_automatic_configuration_and_applies_override_precedence(
     write_example_config_tree(root)
     (root / ".env").write_text(
         "POSTGRES_PASSWORD=synthetic-secret\n"
-        "UNRELATED_SECRET=synthetic-unrelated-secret\n"
-        "WEB_PORT=18026\n"
-        + "".join(f"{key}={value}\n" for key, value in MACHINE_TEMPLATE_VALUES.items()),
+        "FEEDBACK_POSTGRES_PASSWORD=synthetic-feedback-secret\n"
+        "UNRELATED_SECRET=synthetic-unrelated-secret\n",
         encoding="utf-8",
     )
     (root / ".env").chmod(0o600)
     _bind_checkout(monkeypatch, root)
 
-    # Example TOML values load with no sourcing, and the local .env supplies the secret and
-    # overrides the example web port.
+    # Example TOML values load with no sourcing, and the local .env supplies the secrets.
     database = DatabaseSettings()
     assert database.postgres_db == "course_explorer"
     assert database.postgres_password.get_secret_value() == "synthetic-secret"
-    assert database.selected_dataset_enabled is False
-    assert WebSettings().web_port == 18026
+    assert database.example_postgres_db == "course_explorer"
+    assert WebSettings().web_port == 8037
     assert WebSettings().embeddings_enabled is True
     assert WebSettings().inference_enabled is True
+    # The six site and worker identities load from their owning subsystem files.
+    worker = WorkerConnectionSettings()
+    assert worker.ssh_target == "replace-with-ssh-target"
+    assert worker.wsl_distribution == "replace-with-wsl-distribution"
+    assert worker.worker_project_root == Path("/home/replace-with-user/tuni-course-explorer")
+    site = load_administrative_site_settings()
+    assert site.web_service_unit == "replace-with-web.service"
+    assert site.admin_service_unit == "replace-with-admin.service"
+    assert site.web_service_scope == "user"
+    # One app address supplies both consumers, and the feedback origin drops its root slash.
+    assert WebSettings().web_app_url == "http://localhost:8037/"
+    assert AdminWebSettings().web_app_url == "http://localhost:8037/"
+    feedback = FeedbackSettings()
+    assert feedback.feedback_postgres_db == "course_explorer_feedback"
+    assert feedback.feedback_postgres_port == 5433
+    assert feedback.feedback_attachments_root == Path("data/attachments")
+    assert feedback.feedback_postgres_password.get_secret_value() == "synthetic-feedback-secret"
+    intake = FeedbackIntakeSettings()
+    assert intake.web_app_url == "http://localhost:8037/"
+    assert intake.web_app_origin == "http://localhost:8037"
+    assert intake.feedback_github_repository == "example-owner/example-repository"
+    assert intake.feedback_github_visibility == "public"
+    assert intake.feedback_browser_submissions_per_hour == 5
+    assert intake.feedback_site_submissions_per_hour == 30
+    assert intake.feedback_max_request_bytes == 25165824
+    # The intake family reads the destination without a sender credential, while the full sender
+    # refuses its absence.
+    with pytest.raises(ValidationError):
+        FeedbackSenderSettings()
+    monkeypatch.setenv("FEEDBACK_GITHUB_TOKEN", "synthetic-sender-token")
+    sender = FeedbackSenderSettings()
+    assert sender.feedback_github_repository == "example-owner/example-repository"
+    assert sender.feedback_github_visibility == "public"
+    assert sender.feedback_github_timeout_seconds == 120.0
 
     # An explicit process override wins over both files.
     monkeypatch.setenv("EMBEDDING_PORT", "18080")
@@ -72,23 +107,33 @@ def test_loads_automatic_configuration_and_applies_override_precedence(
     monkeypatch.setenv("SEARCH_EMBEDDING_REQUEST_TIMEOUT_SECONDS", "7")
     monkeypatch.setenv("SEARCH_EMBEDDING_MAX_ATTEMPTS", "2")
     monkeypatch.setenv("WEB_PORT", "18028")
+    monkeypatch.setenv("WEB_APP_URL", "http://localhost:18037/")
     monkeypatch.setenv("WEB_EMBEDDINGS_ENABLED", "0")
     monkeypatch.setenv("WEB_INFERENCE_ENABLED", "0")
     monkeypatch.setenv("USAGE_RETENTION_DAYS", "7")
+    monkeypatch.setenv("FEEDBACK_POSTGRES_PORT", "15432")
+    monkeypatch.setenv("FEEDBACK_BROWSER_SUBMISSIONS_PER_HOUR", "9")
+    monkeypatch.setenv("FEEDBACK_GITHUB_TIMEOUT_SECONDS", "45")
     monkeypatch.setenv("ADMIN_SITE_WEB_SERVICE_UNIT", "synthetic-site-web.service")
     monkeypatch.setenv("ADMIN_SITE_ADMIN_SERVICE_UNIT", "synthetic-site-admin.service")
     monkeypatch.setenv("ADMIN_SITE_WEB_SERVICE_SCOPE", "system")
     monkeypatch.setenv("ADMIN_WEB_PORT", "18027")
     monkeypatch.setenv("ADMIN_WEB_SESSION_IDLE_MINUTES", "5")
     monkeypatch.setenv("ADMIN_WEB_POLL_SECONDS", "3")
-    assert EmbeddingSettings().embedding_port == 18080
+    assert EmbeddingRuntimeSettings().embedding_port == 18080
     assert SearchSettings().comparison_overlap_ceiling == 0.5
     assert SearchSettings().search_embedding_request_timeout_seconds == 7
     assert SearchSettings().search_embedding_max_attempts == 2
     assert WebSettings().web_port == 18028
+    assert WebSettings().web_app_url == "http://localhost:18037/"
+    assert AdminWebSettings().web_app_url == "http://localhost:18037/"
+    assert FeedbackIntakeSettings().web_app_origin == "http://localhost:18037"
     assert WebSettings().embeddings_enabled is False
     assert WebSettings().inference_enabled is False
     assert UsageSettings().usage_retention_days == 7
+    assert FeedbackSettings().feedback_postgres_port == 15432
+    assert FeedbackIntakeSettings().feedback_browser_submissions_per_hour == 9
+    assert FeedbackSenderSettings().feedback_github_timeout_seconds == 45.0
     assert AdminWebSettings().admin_web_port == 18027
     assert AdminWebSettings().admin_web_session_idle_minutes == 5
     assert AdminWebSettings().admin_web_poll_seconds == 3
@@ -103,7 +148,7 @@ def test_loads_automatic_configuration_and_applies_override_precedence(
     documents = configuration.read_configuration_documents(
         root, replacements={"config/web.toml": candidate}
     )
-    with configuration.configuration_candidate(root, documents=documents, local={}):
+    with configuration.configuration_candidate(documents=documents, local={}):
         assert WebSettings().web_port == 18099
     # Leaving the candidate restores the ordinary source precedence.
     assert WebSettings().web_port == 18028
@@ -112,45 +157,12 @@ def test_loads_automatic_configuration_and_applies_override_precedence(
     invalid = web_toml.replace("WEB_PORT = 8037", "WEB_PORT = 70000")
     with pytest.raises(ValidationError):
         with configuration.configuration_candidate(
-            root,
             documents=configuration.read_configuration_documents(
                 root, replacements={"config/web.toml": invalid}
             ),
             local={},
         ):
             WebSettings()
-
-
-def test_runtime_configuration_does_not_require_similarity_hubs(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    """An example configuration without derived hub artifacts loads the runtime and Compose inputs
-    and refuses a similarity settings read.
-    """
-    root = tmp_path / "checkout"
-    write_example_config_tree(root, include_derived=False)
-    assert not (root / "config" / "derived").exists()
-    _bind_checkout(monkeypatch, root)
-    monkeypatch.setenv("POSTGRES_PASSWORD", "synthetic-password")
-
-    runtime = EmbeddingRuntimeSettings()
-    assert runtime.embedding_port == 8081
-    assert runtime.embedding_model == "BAAI/bge-m3"
-    environment = compose.compose_environment()
-    assert environment["EMBEDDING_PORT"] == "8081"
-    assert environment["POSTGRES_DB"] == "course_explorer"
-
-    with pytest.raises(ValueError):
-        EmbeddingSettings()
-    # The hub writer resolves its target paths without the artifacts.
-    assert configuration.hub_reference_path(root, "EMBEDDING_HUB_VECTOR") == Path(
-        "config/derived/embedding-hub.json"
-    )
-    assert configuration.hub_reference_path(root, "EMBEDDING_OUTCOMES_HUB_VECTOR") == Path(
-        "config/derived/embedding-outcomes-hub.json"
-    )
-    with pytest.raises(ValueError, match="not an embedding hub alias"):
-        configuration.hub_reference_path(root, "EMBEDDING_PORT")
 
 
 def test_public_configuration_rejects_duplicate_alias(tmp_path: Path) -> None:
@@ -196,7 +208,7 @@ def test_compose_bridge_carries_interpolation_aliases_and_cleans_up(
     )
     monkeypatch.setattr(compose, "load_raw_database_settings", lambda: database)
     monkeypatch.setattr(compose, "load_embedding_runtime_settings", lambda: embedding)
-    monkeypatch.setattr(compose, "repository_root", lambda: tmp_path)
+    monkeypatch.setattr(administration, "repository_root", lambda: tmp_path)
     monkeypatch.delenv(compose.COMPOSE_PROJECT_NAME_ALIAS, raising=False)
 
     captures: list[dict[str, object]] = []
@@ -241,8 +253,8 @@ def test_compose_bridge_carries_interpolation_aliases_and_cleans_up(
 
 
 def test_unsourced_cli_loads_policy(tmp_path: Path) -> None:
-    """The shell action exports the composed example portable values, and the environment-file
-    aliases do not appear in the exports.
+    """The shell action exports the composed example non-secret values, and credential aliases do
+    not appear in the exports.
     """
     root = tmp_path / "checkout"
     write_example_config_tree(root)
@@ -250,8 +262,9 @@ def test_unsourced_cli_loads_policy(tmp_path: Path) -> None:
         [
             sys.executable,
             "-c",
-            "import sys; from pathlib import Path; from course_explorer import configuration; "
-            "configuration.repository_root = lambda: Path(sys.argv[1]); "
+            "import sys; from pathlib import Path; "
+            "from course_explorer import administration, configuration; "
+            "administration.repository_root = lambda: Path(sys.argv[1]); "
             "raise SystemExit(configuration.main(['shell']))",
             str(root),
         ],
@@ -270,14 +283,24 @@ def test_unsourced_cli_loads_policy(tmp_path: Path) -> None:
     assert exported["EMBEDDING_PORT"] == "8081"
     assert exported["SEARCH_TIER_PRIORITY"] == '["exact_code","substring","fuzzy_name","semantic"]'
     assert exported["WORKER_GPU_REBOOT_INTERVAL_MINUTES"] == "120"
-    assert exported["SELECTED_DATASET_ENABLED"] == "0"
+    assert exported["EXAMPLE_POSTGRES_DB"] == "course_explorer"
+    assert exported["WEB_APP_URL"] == "http://localhost:8037/"
+    # The worker and site identities are non-secret subsystem values, so the shell exports them.
+    assert exported["TRANSLATION_CONTROLLER_SSH_TARGET"] == "replace-with-ssh-target"
+    assert exported["TRANSLATION_CONTROLLER_WSL_DISTRIBUTION"] == "replace-with-wsl-distribution"
+    assert (
+        exported["TRANSLATION_CONTROLLER_WORKER_PROJECT_ROOT"]
+        == "/home/replace-with-user/tuni-course-explorer"
+    )
+    assert exported["ADMIN_SITE_WEB_SERVICE_UNIT"] == "replace-with-web.service"
+    assert exported["ADMIN_SITE_ADMIN_SERVICE_UNIT"] == "replace-with-admin.service"
+    assert exported["ADMIN_SITE_WEB_SERVICE_SCOPE"] == "user"
     assert (
         not {
             "POSTGRES_PASSWORD",
+            "FEEDBACK_POSTGRES_PASSWORD",
+            "FEEDBACK_GITHUB_TOKEN",
             "UNRELATED_SECRET",
-            "TRANSLATION_CONTROLLER_SSH_TARGET",
-            "TRANSLATION_CONTROLLER_WSL_DISTRIBUTION",
-            "TRANSLATION_CONTROLLER_WORKER_PROJECT_ROOT",
         }
         & exported.keys()
     )

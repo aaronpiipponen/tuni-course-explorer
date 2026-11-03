@@ -1,0 +1,44 @@
+/**
+ * One rounded accent scrollbar for the app's scrolling panels.
+ *
+ * Blink and WebKit draw the custom thumb from the scrollbar pseudo-elements. The standard
+ * properties are given only to engines without those pseudo-elements, because Blink prefers them
+ * and then draws its platform scrollbar with end buttons.
+ *
+ * The track is wide and the thumb is inset inside it, so the visible thumb keeps an even gap from
+ * the panel border and from the scrolling content without any wrapper element. A panel can set
+ * `--scrollbar-size` and `--scrollbar-inset` to fit its own padding.
+ */
+.thin-scrollbar {
+  --scrollbar-size: 18px;
+  --scrollbar-inset: 5px;
+}
+.thin-scrollbar::-webkit-scrollbar {
+  width: var(--scrollbar-size);
+  height: var(--scrollbar-size);
+}
+.thin-scrollbar::-webkit-scrollbar-button {
+  display: none;
+}
+.thin-scrollbar::-webkit-scrollbar-track,
+.thin-scrollbar::-webkit-scrollbar-corner {
+  background: transparent;
+}
+.thin-scrollbar::-webkit-scrollbar-thumb {
+  min-height: 40px;
+  min-width: 40px;
+  border: var(--scrollbar-inset) solid transparent;
+  border-radius: 999px;
+  background: var(--color-scrollbar-thumb);
+  background-clip: padding-box;
+}
+.thin-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-scrollbar-thumb-hover);
+  background-clip: padding-box;
+}
+@supports not selector(::-webkit-scrollbar) {
+  .thin-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-scrollbar-thumb) transparent;
+  }
+}

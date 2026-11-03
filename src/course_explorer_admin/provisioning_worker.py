@@ -5,9 +5,8 @@ This module runs on the already-provisioned worker host (invoked as
 readiness read plus the one mutation of missing pinned worker resources: the configured Ubuntu
 packages, the Docker Compose ``db`` image, the pinned GGUFs, and the pinned llama.cpp runtimes.
 ``check`` performs only the readiness read. The ``prepare`` action owns the installs, downloads,
-builds, and service start. ``_inspect_worker_resources``
-loads the translation, inference and rerank settings to inspect the pinned resources. Both actions run
-Compose through the shared
+builds, and service start. ``_inspect_worker_resources`` loads the translation, inference and rerank
+settings to inspect the pinned resources. Both actions run Compose through the shared
 ``course_explorer_admin.compose`` bridge, which consumes the validated database credentials into a
 mode-0600 temporary file removed on exit. Its report carries fixed component names alone.
 """
@@ -19,13 +18,11 @@ import os
 import shlex
 import subprocess
 import sys
-import tempfile
 from collections.abc import Sequence
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
-from course_explorer.administration import sha256_file
 from course_explorer.config import (
     load_inference_rerank_settings,
     load_inference_settings,
@@ -33,6 +30,7 @@ from course_explorer.config import (
     load_worker_setup_settings,
 )
 from course_explorer_admin import mechanics
+from course_explorer_admin.artifacts import artifact_present, download_artifact
 
 # One fixed ordered package-name list for the already-provisioned worker. The versioned ROCm apt
 # source owns its pin, so this list holds package names only.
@@ -59,6 +57,10 @@ _TRANSLATION_GUIDANCE = (
     "missing translation artifact: reproduce it with the worker setup runbook; "
     "no automated converter is provided"
 )
+# The database image carries the serving extension only when the final image stage declares this
+# capability. The stock pgvector image can share the tag, so presence by tag alone is not readiness.
+_DB_EXTENSION_LABEL = "org.tuni-course-explorer.db-extension"
+_DB_EXTENSION_VERSION = "1.0"
 
 
 class WorkerResourcesReport(BaseModel):
@@ -102,7 +104,9 @@ def _inspect_worker_resources(
         if not _db_image_present(runner, worker_root, image):
             if prepare:
                 runner.run_interactive(
-                    ("sudo", "docker", "pull", image), cwd=worker_root, timeout=timeout
+                    (*_sudo_compose_prefix(), "build", "db"),
+                    cwd=worker_root,
+                    timeout=timeout,
                 )
             if not _db_image_present(runner, worker_root, image):
                 missing.append("db-image")
@@ -128,12 +132,11 @@ def _inspect_worker_resources(
         ),
     )
     for path, digest, token, url in artifacts:
-        if _artifact_present(path, digest):
+        if artifact_present(path, digest):
             continue
         if prepare and url is not None:
-            _download_artifact(runner, worker_root, path, digest, url, timeout)
-            if _artifact_present(path, digest):
-                continue
+            download_artifact(runner, worker_root, path, digest, url, timeout)
+            continue
         missing.append(token)
 
     runtimes: dict[str, list[str]] = {}
@@ -200,64 +203,29 @@ def _db_image_name(runner: mechanics.ProcessRunner, worker_root: Path) -> str:
 
 
 def _db_image_present(runner: mechanics.ProcessRunner, worker_root: Path, image: str) -> bool:
+    """Report whether the image carries the prepared serving-extension capability.
+
+    The stock base image can share the configured tag, so the tag alone is not readiness. The
+    read-only inspection reads the final image's extension label and compares it with the internal
+    capability version. A missing image or label is not ready.
+    """
     try:
-        runner.run(("sudo", "-n", "docker", "image", "inspect", image), cwd=worker_root)
-    except subprocess.CalledProcessError:
-        return False
-    return True
-
-
-def _artifact_present(path: Path, digest: str) -> bool:
-    if path.is_symlink():
-        raise ValueError("configured artifact must not be a symlink")
-    if not path.exists():
-        return False
-    if not path.is_file():
-        raise ValueError("configured artifact must be a regular file")
-    if sha256_file(path) != digest:
-        raise ValueError("installed artifact checksum does not match configuration")
-    return True
-
-
-def _download_artifact(
-    runner: mechanics.ProcessRunner,
-    worker_root: Path,
-    path: Path,
-    digest: str,
-    url: str,
-    timeout: float,
-) -> None:
-    """Download one missing public artifact to a fresh invocation-owned temporary and verify it."""
-    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-    descriptor, temporary_name = tempfile.mkstemp(
-        dir=path.parent, prefix=f".{path.name}-", suffix=".download"
-    )
-    os.close(descriptor)
-    temporary = Path(temporary_name)
-    try:
-        runner.run_interactive(
+        output = runner.run(
             (
-                "curl",
-                "--disable",
-                "--fail",
-                "--location",
-                "--proto",
-                "=https",
-                "--tlsv1.2",
-                "--output",
-                str(temporary),
-                url,
+                "sudo",
+                "-n",
+                "docker",
+                "image",
+                "inspect",
+                "--format",
+                f'{{{{ index .Config.Labels "{_DB_EXTENSION_LABEL}" }}}}',
+                image,
             ),
             cwd=worker_root,
-            timeout=timeout,
-        )
-        if sha256_file(temporary) != digest:
-            raise ValueError("downloaded artifact checksum does not match configuration")
-        os.chmod(temporary, 0o600)
-        os.replace(temporary, path)
-    except Exception:
-        temporary.unlink(missing_ok=True)
-        raise
+        ).stdout.decode("utf-8")
+    except subprocess.CalledProcessError:
+        return False
+    return output.strip() == _DB_EXTENSION_VERSION
 
 
 def _runtime_executable_ready(executable: Path) -> bool:
@@ -334,8 +302,8 @@ def require_prepared_runtime(
     executable and pinned artifact-SHA-256 checks, so every fresh launch verifies the
     authoritative checkout revision, executable, and artifact hash. A live same-spec reuse in
     ``OwnedWorkerRuntime.start`` reuses the running process. The explicit setup/update path owns
-    every download, clone, build, and install. A missing component raises fixed setup/update guidance.
-    A present but mismatching component fails through the checkout/checksum errors.
+    every download, clone, build, and install. A missing component raises fixed setup/update
+    guidance. A present but mismatching component fails through the checkout/checksum errors.
     """
     directory = mechanics.runtime_checkout_directory(revision)
     if not directory.exists():
@@ -343,7 +311,7 @@ def require_prepared_runtime(
     require_runtime_checkout(runner, directory, revision, timeout)
     if not _runtime_executable_ready(directory / "build" / "bin" / "llama-server"):
         raise ValueError("worker runtime executable is not ready; run explicit setup/update")
-    if not _artifact_present(artifact, artifact_sha256):
+    if not artifact_present(artifact, artifact_sha256):
         raise ValueError("worker model artifact is not prepared; run explicit setup/update")
 
 

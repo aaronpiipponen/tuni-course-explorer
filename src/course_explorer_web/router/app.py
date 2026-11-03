@@ -1,9 +1,11 @@
 """The front router: one loopback listener that admits each request and forwards it to one worker.
 
-The router owns the anonymous cookie, the request classification, the light and heavy limits, the
-heavy queue and placement, the load score meter, the graph elapsed cost and the one usage
-record. It has one forwarding path with no retry and no fallback: a worker connection failure raises
-and answers a server error. The supervisor replaces an exited router or worker on its own socket.
+The router applies the anonymous cookie and the admission class of each request, and it enforces
+the light and heavy limits, the heavy queue and placement and the load score meter. It owns the
+transient rolling-hour allowance of the two fixed feedback paths, records each measured graph cost
+and writes the one request record. It has one forwarding path with no retry and no fallback: a
+worker connection failure raises and answers a server error. The supervisor replaces an exited
+router or worker on its own socket.
 """
 
 from __future__ import annotations
@@ -13,19 +15,33 @@ import contextlib
 import json
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import httpx
 from fastapi.responses import JSONResponse
-from starlette.types import Message, Receive, Scope, Send
+from starlette.types import Receive, Scope, Send
 
-from course_explorer.config import AdmissionSettings, load_admission_settings
+from course_explorer.config import (
+    AdmissionSettings,
+    FeedbackIntakeSettings,
+    load_admission_settings,
+    load_feedback_intake_settings,
+    load_web_settings,
+)
 from course_explorer_web.admission import host_cpu
 from course_explorer_web.admission.classify import AdmissionClass, Classification, classify
-from course_explorer_web.admission.graph_cost import graph_cost_field
-from course_explorer_web.admission.identity import identify, set_cookie_value
+from course_explorer_web.admission.graph_cost import GraphCostCache, graph_cost_field
+from course_explorer_web.admission.identity import cookie_send, identify, set_cookie_value
 from course_explorer_web.admission.state import AdmissionRefused, AdmissionState
 from course_explorer_web.dataset import ServingDataset, resolve_serving_dataset
+from course_explorer_web.feedback_intake import (
+    FEEDBACK_DEFINITION_PATH,
+    FEEDBACK_SUBMISSION_PATH,
+    FeedbackIntake,
+)
+from course_explorer_web.request_body import RequestRefused, read_body
+from course_explorer_web.router.feedback import read_submission
 from course_explorer_web.router.usage import UsageMiddleware
 from course_explorer_web.router.workers import WorkerPool
 from course_explorer_web.serving import MEASURE_GRAPH_HEADER, Route, route_of
@@ -74,22 +90,36 @@ class RouterApplication:
         workers: tuple[tuple[str, int], ...],
         settings: AdmissionSettings | None = None,
         client: httpx.AsyncClient | None = None,
+        feedback_settings: FeedbackIntakeSettings | None = None,
+        feedback_clock: Callable[[], float] = time.monotonic,
     ) -> None:
         self._workers = WorkerPool(workers)
         self._settings = settings
         self._client = client
+        self._feedback_settings = feedback_settings
+        self._feedback_clock = feedback_clock
+        self._feedback_intake: FeedbackIntake | None = None
         self._sampler: asyncio.Task[None] | None = None
         self._usage = UsageMiddleware(self._handle_http)
+        self._serving: ServingDataset | None = None
+        self._graph_costs = GraphCostCache()
+        self._request_body_limit = 0
         self.state: AdmissionState | None = None
 
     async def startup(self) -> None:
         """Load the policy, build the admission state and start the load sampler.
 
         Admission off reads no core count and starts no sampler. A host that reports no core count
-        raises, so a site cannot admit requests against an unknown capacity.
+        raises, so a site cannot admit requests against an unknown capacity. The feedback intake
+        allowance is built independently of the admission switch, and startup opens no feedback
+        database and reads no feedback definition.
         """
         settings = self._settings or load_admission_settings()
         self._settings = settings
+        self._request_body_limit = load_web_settings().web_request_body_max_bytes
+        self._serving = resolve_serving_dataset()
+        self._feedback_settings = self._feedback_settings or load_feedback_intake_settings()
+        self._feedback_intake = FeedbackIntake(self._feedback_settings, clock=self._feedback_clock)
         if settings.admission_enabled:
             self.state = AdmissionState(settings, host_cpu.core_count())
             self._sampler = asyncio.create_task(self._sample_loop())
@@ -169,16 +199,74 @@ class RouterApplication:
                 next_expiry = now + self._settings.admission_identity_ttl_seconds
 
     async def _handle_http(self, scope: Scope, receive: Receive, send: Send) -> None:
-        """Read one request body, admit the request and forward it to one worker."""
+        """Serve one feedback path or read, admit and forward any other request to one worker."""
         if self._settings is None:
             raise RuntimeError("the front router is not started")
         if self._client is None:
             raise RuntimeError("the front router is not started")
-        body = await _read_body(receive)
+        if scope["method"] == "GET" and scope["path"] == FEEDBACK_DEFINITION_PATH:
+            await self._forward_definition(scope, send)
+            return
+        if scope["method"] == "POST" and scope["path"] == FEEDBACK_SUBMISSION_PATH:
+            await self._forward_submission(scope, receive, send)
+            return
+        try:
+            body = await read_body(receive, max_bytes=self._request_body_limit)
+        except RequestRefused as refusal:
+            await _body_refusal(refusal)(scope, receive, send)
+            return
         admission = await self._admit(scope, receive, body, send)
         if admission is None:
             return
         await self._forward(scope, body, admission)
+
+    async def _forward_definition(self, scope: Scope, send: Send) -> None:
+        """Forward the definition read with an anonymous cookie and no feedback allowance."""
+        settings = self._feedback_settings
+        if settings is None:
+            raise RuntimeError("the front router is not started")
+        cookie = identify(scope)
+        admission = _Admission(
+            cookie=cookie,
+            heavy=False,
+            ticket=None,
+            serving=None,
+            field=None,
+            response_send=cookie_send(
+                send, set_cookie_value(cookie, self._settings.admission_cookie_max_age_seconds)
+            ),
+        )
+        await self._forward(scope, b"", admission)
+
+    async def _forward_submission(self, scope: Scope, receive: Receive, send: Send) -> None:
+        """Read one admitted feedback submission and forward its body under its cookie channel."""
+        settings = self._feedback_settings
+        intake = self._feedback_intake
+        if settings is None or intake is None:
+            raise RuntimeError("the front router is not started")
+        admitted = await read_submission(
+            scope,
+            receive,
+            send,
+            settings=settings,
+            intake=intake,
+            cookie_max_age_seconds=self._settings.admission_cookie_max_age_seconds,
+        )
+        if admitted is None:
+            return
+        cookie, body, response_send = admitted
+        await self._forward(
+            scope,
+            body,
+            _Admission(
+                cookie=cookie,
+                heavy=False,
+                ticket=None,
+                serving=None,
+                field=None,
+                response_send=response_send,
+            ),
+        )
 
     async def _admit(
         self, scope: Scope, receive: Receive, body: bytes, send: Send
@@ -194,7 +282,7 @@ class RouterApplication:
         response_send = send
         if enabled and scope["path"].startswith("/api/"):
             cookie = identify(scope)
-            response_send = _cookie_send(
+            response_send = cookie_send(
                 send, set_cookie_value(cookie, settings.admission_cookie_max_age_seconds)
             )
         classification: Classification | None = None
@@ -204,13 +292,13 @@ class RouterApplication:
         if enabled and route is not None:
             parsed = _request_body(body)
             if route is Route.PREREQUISITES:
-                serving = await asyncio.to_thread(resolve_serving_dataset)
+                serving = self._serving
                 field = graph_cost_field(parsed)
                 classification = classify(
                     route,
                     parsed,
                     settings,
-                    graph_cost=self.state.graph_cost(serving.identity, field),
+                    graph_cost=self._graph_costs.get(serving.identity, field),
                 )
             else:
                 classification = classify(route, parsed, settings)
@@ -265,7 +353,7 @@ class RouterApplication:
                 finally:
                     await response.aclose()
                 if measured:
-                    self.state.record_graph_cost(
+                    self._graph_costs.record(
                         admission.serving.identity,
                         admission.field,
                         time.monotonic() - started,
@@ -283,9 +371,17 @@ def create_router(
     workers: tuple[tuple[str, int], ...],
     settings: AdmissionSettings | None = None,
     client: httpx.AsyncClient | None = None,
+    feedback_settings: FeedbackIntakeSettings | None = None,
+    feedback_clock: Callable[[], float] = time.monotonic,
 ) -> RouterApplication:
     """Build the one front router over the given loopback worker addresses."""
-    return RouterApplication(workers=workers, settings=settings, client=client)
+    return RouterApplication(
+        workers=workers,
+        settings=settings,
+        client=client,
+        feedback_settings=feedback_settings,
+        feedback_clock=feedback_clock,
+    )
 
 
 def _worker_request(address: tuple[str, int], scope: Scope, body: bytes) -> httpx.Request:
@@ -310,14 +406,9 @@ def _response_headers(response: httpx.Response) -> list[tuple[bytes, bytes]]:
     ]
 
 
-async def _read_body(receive: Receive) -> bytes:
-    """Read the whole buffered request body from the receive channel."""
-    chunks: list[bytes] = []
-    while True:
-        message = await receive()
-        chunks.append(message.get("body", b""))
-        if not message.get("more_body", False):
-            return b"".join(chunks)
+def _body_refusal(refusal: RequestRefused) -> JSONResponse:
+    """Return the fixed refusal for an over-bound body or a disconnect inside a bounded read."""
+    return JSONResponse({"detail": "Request body refused"}, status_code=refusal.status_code)
 
 
 def _request_body(raw: bytes) -> dict[str, object]:
@@ -331,20 +422,6 @@ def _request_body(raw: bytes) -> dict[str, object]:
     except UnicodeDecodeError, json.JSONDecodeError:
         return {}
     return parsed if isinstance(parsed, dict) else {}
-
-
-def _cookie_send(send: Send, cookie: bytes) -> Send:
-    """Return a send channel that adds one ``set-cookie`` header to every response start."""
-
-    async def send_with_cookie(message: Message) -> None:
-        if message["type"] == "http.response.start":
-            message = {
-                **message,
-                "headers": [*message.get("headers", []), (b"set-cookie", cookie)],
-            }
-        await send(message)
-
-    return send_with_cookie
 
 
 def _too_much_traffic(settings: AdmissionSettings) -> JSONResponse:

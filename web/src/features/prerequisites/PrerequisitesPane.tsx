@@ -1,15 +1,18 @@
 /** Prerequisite graph controls, explicit route session and root/member overlays. */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useIsPresent } from "framer-motion";
 import { useProfileSelector } from "../../state/useProfileSelector";
 import { useCourseSummaries } from "../../shared/course/useCourseSummaries";
 import { courseName } from "../../shared/course/presentation";
 import { ActivitySwitch } from "../../shared/ActivitySwitch";
 import { TwoOptionSwitch } from "../../shared/TwoOptionSwitch";
 import { ToggleChip } from "../../shared/ToggleChip";
-import { HelpTip, type HelpSection } from "../../shared/HelpTip";
+import { HelpLink, HelpTip, type HelpSection } from "../../shared/HelpTip";
 import { ErrorNotice } from "../../shared/ErrorNotice";
 import { useAction } from "../../shared/useAction";
+import { useNotice } from "../../shared/useNotice";
 import { useWording } from "../../shared/useWording";
+import { uiText, type UiTextKey } from "../../shared/wording";
 import { useMediaQuery } from "../../shared/useMediaQuery";
 import { PHONE_CONTENT_QUERY } from "../../shared/viewport";
 import { SLIDERS_ICON, SWAP_ICON } from "../../shared/icons";
@@ -30,6 +33,20 @@ import { buildRouteSummary } from "./route/route";
 import { useMinimumRoute } from "./route/useMinimumRoute";
 import { RefusedGraph } from "./route/RefusedGraph";
 import "./prerequisites.css";
+
+/** The empty-graph notice text, indexed by three bits: bit 0 is set when Recommended is off, bit 2
+ * when Active only is on, and bit 4 when Inferred is off on a site that serves the inference
+ * feature. */
+const EMPTY_GRAPH_TEXT: readonly UiTextKey[] = [
+  "No prerequisites with these options.",
+  "No prerequisites with these options. Consider turning Recommended on.",
+  "No prerequisites with these options. Consider turning Active only off.",
+  "No prerequisites with these options. Consider turning Recommended on or Active only off.",
+  "No prerequisites with these options. Consider turning Inferred on.",
+  "No prerequisites with these options. Consider turning Recommended on or Inferred on.",
+  "No prerequisites with these options. Consider turning Active only off or Inferred on.",
+  "No prerequisites with these options. Consider turning Recommended on, Active only off or Inferred on.",
+];
 
 /** Render the Prerequisites tab controls, its root picker and its graph. */
 export function PrerequisitesPane() {
@@ -53,13 +70,44 @@ export function PrerequisitesPane() {
   const { courses: roots, error: rootError } = useCourseSummaries(
     rootId ? [rootId] : [],
   );
-  const inputs = usePrerequisiteInputs();
+  const isPresent = useIsPresent();
+  // The drawing and the route stay open while the pane slides out.
+  const inputs = usePrerequisiteInputs(isPresent);
   const {
     report,
     loading: graphLoading,
     error,
     ready,
   } = usePrerequisiteReport(inputs);
+  const notice = useNotice();
+  // A drawing with only its root has no prerequisite paths, which reads as a failed load. The
+  // notice stays until the drawing changes and does not read a previous root while the next loads.
+  const emptyGraph =
+    ready &&
+    report?.drawing.allowed === true &&
+    report.drawing.edge_count === 0;
+  // One notice sentence per combination of the settings that could keep a prerequisite out of the
+  // drawing, so the hint only suggests a change that is available and not already made.
+  const emptyGraphText =
+    EMPTY_GRAPH_TEXT[
+      (includeRecommended ? 0 : 1) |
+        (activeOnly ? 2 : 0) |
+        (inference_enabled && !includeInferred ? 4 : 0)
+    ];
+  useEffect(() => {
+    // A missing report means the drawing is loading or the pane is leaving. The notice stays with
+    // its tab through that gap instead of vanishing before the pane slides out.
+    if (report === null) return;
+    if (!emptyGraph) {
+      notice.dismiss("prerequisite graph empty");
+      return;
+    }
+    notice.show(
+      (displayLanguage) => uiText(displayLanguage, emptyGraphText),
+      undefined,
+      { key: "prerequisite graph empty", persistent: true },
+    );
+  }, [emptyGraph, emptyGraphText, notice, ready, report]);
   const route = useMinimumRoute(inputs, report, ready);
   const nodeStates = useMemo(
     () =>
@@ -95,9 +143,13 @@ export function PrerequisitesPane() {
       heading: t("options"),
       items: [
         {
-          term: t("Completed / Selected"),
+          term: (
+            <HelpLink href="/docs#guide-prerequisites/graph-options">
+              {t("Completed / Selected")}
+            </HelpLink>
+          ),
           text: t(
-            "Which of your courses count as covered when the route is worked out: only the ones you marked completed, or everything you have selected.",
+            "Choose which courses count as covered: only completed courses, or every selected course, including completed ones. Covered courses add no new credits to the route.",
           ),
         },
         {
@@ -109,15 +161,27 @@ export function PrerequisitesPane() {
         {
           term: t("Active only"),
           text: t(
-            "Leaves inactive courses out of the graph and the route. Selected or completed inactive courses and the opened root are shown. Turn it off to include them.",
+            "Leaves inactive courses out of the graph and the route. Selected or completed inactive courses and the opened root are shown. Turn it off to include other inactive courses. The course picker uses this same setting.",
           ),
         },
         ...(inference_enabled
           ? [
               {
-                term: t("Inferred"),
-                text: t(
-                  "Also shows prerequisites found by analysis rather than listed in the official data. They are marked as inferred, and a connection is dashed only when all its relationships are inferred.",
+                term: (
+                  <HelpLink href="/docs#guide-prerequisites/official-and-inferred-prerequisites">
+                    {t("Inferred")}
+                  </HelpLink>
+                ),
+                text: (
+                  <>
+                    {t(
+                      "Adds prerequisites found by analysis of teaching text, separately from the university's official requirements. A course is marked inferred only when no official occurrence reaches it. A connection is dashed only when all its relationships are inferred.",
+                    )}{" "}
+                    <HelpLink href="/docs#inference-experiments/limitations">
+                      {t("inference experiments")}
+                    </HelpLink>{" "}
+                    {t("describe the evidence and its limits.")}
+                  </>
                 ),
               },
             ]
@@ -128,9 +192,28 @@ export function PrerequisitesPane() {
       heading: t("minimum route"),
       items: [
         {
-          term: t("Find minimum route"),
+          term: (
+            <HelpLink href="/docs#guide-prerequisites/find-the-minimum-route">
+              {t("Find minimum route")}
+            </HelpLink>
+          ),
           text: t(
-            "Click to calculate one temporary cheapest route through your completed or selected courses. It is not saved anywhere, changing the selected course, the basis, the scope or your course sets clears it back to the normal graph, and clicking it again clears it.",
+            "Calculates a temporary route with the fewest new credits beyond your basis. A shared course counts once. The result states whether it is exact, approximate or unresolved, or whether a route cannot be found. Changing the root, options, courses or graph marks, or leaving this tab, clears the shown route. Use Clear minimum route to return to the plain graph.",
+          ),
+        },
+      ],
+    },
+    {
+      heading: t("graph"),
+      items: [
+        {
+          term: (
+            <HelpLink href="/docs#guide-prerequisites/read-the-drawing">
+              {t("Exploring prerequisites")}
+            </HelpLink>
+          ),
+          text: t(
+            "AND requires every branch. OR requires one alternative. Other requirement boxes state how many courses or credits are needed. Complete marks a course completed across the app. A completion mark on a module or requirement box applies to that graph requirement instead. Exclude blocks routes through the marked course or requirement.",
           ),
         },
       ],
@@ -194,13 +277,7 @@ export function PrerequisitesPane() {
       {phone && inferredToggle}
       {activityToggle}
       {!phone && inferredToggle}
-      <HelpTip
-        sections={help}
-        guide={{
-          href: "/docs#guide-prerequisites",
-          label: t("Exploring prerequisites"),
-        }}
-      />
+      <HelpTip sections={help} />
       {!phone && (
         <div className="root-chip">
           {root && (

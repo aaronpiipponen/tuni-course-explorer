@@ -20,7 +20,7 @@ The academic year is the configured current academic year, `CURRENT_ACADEMIC_YEA
 
 A projected root carries exactly one version for that year. A version is a candidate when it is a member of that exact academic year's curriculum periods, or, when the module has no such membership, when it carries no period membership and its own validity bounds contain the year. No nearest-year fallback applies, so a root whose versions are all tied to other years is unavailable. [Prerequisite graph](/docs/backend/prerequisites/prerequisite-graph.md) is the reader that accepts a single nearest dated version for a module reference and discloses the fallback. [Representative versions and activity](/docs/backend/catalogue/representative-versions.md) states the shared candidate rule.
 
-A request may carry one explicit version identity per canonical group. It is authoritative for the groups it names and must belong to that group's eligible set. The read refuses any other identity and never substitutes a version, and a refusal fails the whole batch even when unavailable roots are collected. A group without an entry keeps the ordinary unique-candidate resolution. The map is request-local, and an unrelated entry is never loaded or validated because a profile can hold selections outside the requested closure.
+A request may carry one explicit version identity per canonical group. It is authoritative for the groups it names and must belong to that group's eligible set. The read refuses any other identity and never substitutes a version, and a refusal fails the whole batch even when unavailable roots are collected. A group without an entry keeps the ordinary unique-candidate resolution. The map is request-local, and an entry outside the requested closure joins the batch read but is never projected.
 
 ## The seven rule kinds
 
@@ -71,6 +71,6 @@ An unresolved node below a root never fails the read.
 
 The projection applies no activity filter. A course the tree names is projected with its shared summary, including its activity state, so an inactive course appears in the structure of studies and is marked inactive.
 
-Placement, moves, resets, and the **Unplaced studies** part of the tab belong to the browser, and [Structure editor](/docs/frontend/structure-editor.md) describes them.
+Placement, moves, resets, and the **Unplaced studies** part of the tab belong to the browser, and [Course placement and dragging](/docs/frontend/course-placement.md) describes placing and moving a course.
 
 The read seam, the service contract, the serialization, the traversal, and the tests that cover them are described in [Structure projection](/docs/backend/catalogue/structure-projection.md).

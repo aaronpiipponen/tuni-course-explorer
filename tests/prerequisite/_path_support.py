@@ -21,16 +21,16 @@ from course_explorer.prerequisite.domain import (
     PrerequisiteExpression,
     PrerequisiteOrigin,
 )
-from course_explorer.prerequisite.projection import (
-    PrerequisiteGraphCompilation,
-    project_prerequisite_graph,
-)
+from course_explorer.prerequisite.projection import PrerequisiteGraphCompilation
 from course_explorer.prerequisite.structure import (
     InferredCoverageRecord,
     PrerequisiteSolverStructure,
 )
 from tests.prerequisite._expression_support import (
     course_summary as course_summary,
+)
+from tests.prerequisite._expression_support import (
+    fixture_compilation as _fixture_compilation,
 )
 from tests.prerequisite._expression_support import (
     fixture_structure as _fixture_structure,
@@ -93,7 +93,7 @@ def make_compilation(
     cycle_group_ids: tuple[str, ...] = (),
 ) -> PrerequisiteGraphCompilation:
     """Build one valid native compilation through the real projector."""
-    structure = _fixture_structure(
+    return _fixture_compilation(
         requirements,
         root=root,
         courses=courses,
@@ -106,7 +106,6 @@ def make_compilation(
         cycle_group_ids=cycle_group_ids,
         coverage=coverage,
     )
-    return project_prerequisite_graph(structure)
 
 
 def selected_group_ids(result: dict[str, Any]) -> tuple[str, ...]:

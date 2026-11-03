@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 320" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">One recommendation request and its native call</title>
+  <desc id="d">The path runs from the prepared basis and the candidate pool through one native call to
+  the ranked report. The native call centres and normalizes the candidate rows, computes the
+  relatedness and coverage dots, applies the near-duplicate cut and orders the kept candidates.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="320" rx="12" fill="#232434"/>
+
+  <rect x="48" y="120" width="192" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="144" y="146" text-anchor="middle" font-size="16" fill="#ececf2">Prepared basis</text>
+  <text x="144" y="168" text-anchor="middle" font-size="14" fill="#a3a4b8">unit rows, profile</text>
+
+  <rect x="272" y="120" width="192" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="368" y="146" text-anchor="middle" font-size="16" fill="#ececf2">Candidate pool</text>
+  <text x="368" y="168" text-anchor="middle" font-size="14" fill="#a3a4b8">stored neighbours</text>
+
+  <text x="480" y="100" font-size="16" fill="#a3a4b8">One native call</text>
+  <rect x="480" y="108" width="224" height="100" rx="8" fill="none"
+        stroke="#a98ae0" stroke-width="1.5" stroke-dasharray="5 4"/>
+
+  <rect x="496" y="120" width="192" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="592" y="146" text-anchor="middle" font-size="16" fill="#ececf2">Native scorer</text>
+  <text x="592" y="168" text-anchor="middle" font-size="14" fill="#a3a4b8">dots and coverage</text>
+
+  <rect x="720" y="120" width="192" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="816" y="146" text-anchor="middle" font-size="16" fill="#ececf2">Ranked report</text>
+  <text x="816" y="168" text-anchor="middle" font-size="14" fill="#a3a4b8">meters and flags</text>
+
+  <line x1="240" y1="152" x2="272" y2="152" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="464" y1="152" x2="496" y2="152" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="688" y1="152" x2="720" y2="152" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+
+  <rect x="48" y="256" width="280" height="40" rx="8" fill="none"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <line x1="64" y1="276" x2="104" y2="276" stroke="#a98ae0" stroke-width="1.5"
+        stroke-dasharray="5 4"/>
+  <text x="116" y="281" font-size="14" fill="#a3a4b8">One native call</text>
+</svg>

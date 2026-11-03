@@ -7,14 +7,12 @@ from decimal import Decimal
 import pytest
 
 from course_explorer.curriculum import RepresentedCourseSummary, course_summary
-from course_explorer.embeddings.generation import embedding_configuration_sha256
 from course_explorer.search.service import SemanticCourseScore
 from tests.search._service_support import (
     DIMENSION,
     HASH_A,
     HASH_B,
     course,
-    embedding_settings,
     service,
     summary,
     version,
@@ -92,16 +90,17 @@ def test_search_uses_config_threshold_current_vectors_and_active_first_order() -
             score=0.9,
         ),
     )
-    composed, _, repository, provider = service((active, inactive, obsolete), scores)
+    composed, records, repository, provider = service((active, inactive, obsolete), scores)
 
-    results = composed.search_courses("tensorit")
+    results = composed.search_courses(
+        "tensorit", represented={record.summary.group_id: record for record in records}
+    )
 
     assert provider.calls == [("tensorit",)]
     assert len(repository.calls) == 1
-    vector, threshold, configuration_hash, include_inactive, hub = repository.calls[0]
+    vector, threshold, include_inactive, hub = repository.calls[0]
     assert len(vector) == DIMENSION
     assert threshold == 0.4
-    assert configuration_hash == embedding_configuration_sha256(embedding_settings())
     assert include_inactive is True
     assert [result.course.group_id for result in results] == ["group-active", "group-inactive"]
     assert [result.score for result in results] == [0.55, 0.95]
@@ -124,18 +123,22 @@ def test_search_override_and_active_only_are_forwarded_without_result_cap() -> N
         )
         for index in range(5)
     )
-    composed, curriculum, repository, _ = service(courses, scores, active_courses=courses)
+    composed, records, repository, _ = service(courses, scores)
 
-    results = composed.search_courses("query", min_score=0.2, include_inactive=False)
+    results = composed.search_courses(
+        "query",
+        represented={record.summary.group_id: record for record in records},
+        min_score=0.2,
+        include_inactive=False,
+    )
 
-    assert curriculum.calls == [True]
     assert repository.calls[0][1] == 0.2
-    assert repository.calls[0][3] is False
+    assert repository.calls[0][2] is False
     assert len(results) == 5
 
 
-def test_search_accepts_supplied_represented_summaries_without_reading() -> None:
-    """A supplied represented sequence is matched by exact identity and performs no read."""
+def test_search_pairs_supplied_represented_summaries_by_exact_identity() -> None:
+    """A supplied represented sequence is matched by exact identity."""
     active = course("group-active", version("source-active", code="A.1"))
     supplied = (
         RepresentedCourseSummary(
@@ -151,10 +154,18 @@ def test_search_accepts_supplied_represented_summaries_without_reading() -> None
             representative_source_hash=HASH_A,
             score=0.7,
         ),
+        SemanticCourseScore(
+            group_id="group-active",
+            sisu_course_unit_id="source-stale",
+            representative_source_hash=HASH_B,
+            score=0.99,
+        ),
     )
-    composed, curriculum, _, _ = service((active,), scores)
+    composed, _, _, _ = service((active,), scores)
 
-    results = composed.search_courses("query", represented=supplied)
+    results = composed.search_courses(
+        "query", represented={record.summary.group_id: record for record in supplied}
+    )
 
     assert [result.course.group_id for result in results] == ["group-active"]
-    assert curriculum.calls == []
+    assert [result.score for result in results] == [0.7]

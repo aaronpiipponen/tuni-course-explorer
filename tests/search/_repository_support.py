@@ -13,7 +13,7 @@ from uuid import UUID
 
 from sqlalchemy import Engine
 
-from course_explorer.config import EmbeddingSettings, SearchSettings
+from course_explorer.config import SearchSettings
 from course_explorer.constants import COURSE_EMBEDDING_DIMENSION
 from course_explorer.db.models import (
     Course,
@@ -26,6 +26,7 @@ from course_explorer.db.models import (
     SourceSnapshot,
 )
 from course_explorer.db.session import session_scope
+from course_explorer.embeddings import neighbors
 from course_explorer.embeddings.generation import embedding_configuration_sha256
 from course_explorer.enums import (
     CourseEmbeddingStatus,
@@ -36,28 +37,12 @@ from course_explorer.enums import (
     TeachingTextOrigin,
     TranslationMethod,
 )
-from tests.support import settings_factory
+from tests.support import embedding_settings, settings_factory
 
 GENERATED_AT = datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
 OTHER_CONFIGURATION_HASH = "f" * 64
 CURRENT_YEAR = 2026
 WINDOW_YEARS = 3
-
-
-def embedding_settings() -> EmbeddingSettings:
-    """Build the full required embedding configuration used to derive the compatible hash."""
-    return settings_factory(
-        EmbeddingSettings,
-        EMBEDDING_CONTEXT_SIZE=1024,
-        EMBEDDING_REQUEST_TIMEOUT_SECONDS=30,
-        EMBEDDING_GENERATION_BATCH_SIZE=16,
-        EMBEDDING_ARTIFACT_URL="https://example.test/model.gguf",
-        EMBEDDING_ARTIFACT_PATH="models/model.gguf",
-        EMBEDDING_ARTIFACT_SHA256="a" * 64,
-        EMBEDDING_SERVER_IMAGE="ghcr.io/ggml-org/llama.cpp:server@sha256:" + "b" * 64,
-        EMBEDDING_RUNTIME_REVISION="c" * 40,
-        EMBEDDING_HUB_VECTOR=[0.0] * COURSE_EMBEDDING_DIMENSION,
-    )
 
 
 def search_settings(min_score: float) -> SearchSettings:
@@ -206,6 +191,18 @@ def _add_chunk(
             embedding=(list(cosine_vector(cosine)) if is_completed else None),
         )
     )
+
+
+def seed_neighbors(factory: object, *, rows_per_chunk: int = 10) -> None:
+    """Replace the stored neighbour rows of the fixture chunk graph."""
+    with session_scope(factory) as session:
+        neighbors.replace_all(
+            session,
+            embedding_configuration_hash=embedding_configuration_sha256(embedding_settings()),
+            rows_per_chunk=rows_per_chunk,
+            hnsw_iterative_scan="relaxed_order",
+            hnsw_max_scan_tuples=20000,
+        )
 
 
 def _seed_semantic_courses(database: tuple[Engine, object]) -> dict[str, UUID]:

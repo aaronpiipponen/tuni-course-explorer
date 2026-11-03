@@ -1,16 +1,18 @@
 # Planning a structure of studies
 
-The Structure of studies tab shows the official structure of each of its programmes and lets you place, complete, replace and remove courses inside them.
+The Structure of studies tab shows the official structure of each of its ordered programmes and the exact version of every module inside them.
+
+A **?** control at the top right of the tree opens the help drawer for the tree and its editing actions. [Editing a structure of studies](/docs/guides/editing-structure-of-studies.md) describes the drawer, dragging, moving, removing and resetting.
 
 ## Adding a programme
 
 The tab holds an ordered list of programmes, and each one is a degree programme or a module. The list starts empty, and **Add programme** sits between the last programme and **Unplaced studies**.
 
-While the list is empty, the same area also shows an **Import** control that takes a profile file, the whole saved data or a Sisu capture, through the same **Choose file** control, drop target and confirmations as the profile menu. The area also carries **Copy Sisu import script** and a **?** help drawer for the import and the Sisu plan. A grey rule separates it from **Unplaced studies**. The export list stays in the profile menu.
+While the list is empty, the same area also shows an **Import** control that takes a profile file, the whole saved data, a Sisu capture or a supported Sisu plan PDF, through its own **Choose** prompt, drop target and the same confirmations as the profile menu. The area also carries **Copy Sisu import script** and a **?** help drawer for the import and the Sisu plan. A PDF that leaves a module without a version because several are eligible uses the same **Choose module version** list as any other structure read, and the import places the module after you choose. A grey rule separates it from **Unplaced studies**. The export list stays in the profile menu.
 
 Select **Add programme** to open the picker. The filter narrows programmes and modules by name or by code, and each matching module or programme shows as one row with its official code and name.
 
-A group with one eligible version is added when you choose its row. When it has several, the results give way to **Choose module version** with **Cancel**, and every eligible version of that module is listed with its validity bounds, its curriculum periods, its full version identity and **Select**. Choose one to add it, or **Cancel** to return to your search. The app never picks a version for you. On a phone the version list has its own scroll area, so the ordinary search list keeps the tab height.
+A group with one eligible version is added when you choose its row. When it has several, the dialog **Choose module version** opens over the results with **Cancel**, and every eligible version of that module is listed with its validity bounds, its curriculum periods, its full version identity and **+ add**. Choose one to add it, or **Cancel** to return to your search. The app never picks a version for you. The version list scrolls inside the dialog.
 
 Choosing a row adds it at the end of the list and reads its tree. The list holds every match and scrolls to the last one, and the keyboard reaches a match that is out of view: Tab and Shift+Tab step through the results, the arrow keys move one row, Home and End go to the first and last result, and Enter or Space activates the focused row.
 
@@ -22,27 +24,25 @@ Each programme row carries a **⋯** control, which opens its menu:
 - **Reset programme** restores that programme's official content.
 - **Delete programme** removes it from the list and always asks first, whether or not the programme holds a change or a completed course. Deleting the last programme returns the tab to its empty list with **Add programme** and **Unplaced studies**.
 
-![A top-level programme row with its ⋯ control, and the menu it opens below the row listing Replace programme, Reset programme and Delete programme, the last in red.](/docs/screenshots/structure-programme-menu.png)
+![A top-level programme row with its ⋯ control, and the menu it opens below the row listing Replace programme, Reset programme, and Delete programme, the last in red.](/docs/screenshots/structure-programme-menu.png)
 
-**Replace programme** names the programme that leaves and the programme that takes its place, and it lists the courses that the replacement pulls out of another programme or module. When it lists a course, the answer is **Keep**, which replaces the programme and leaves each listed course where it is shown, or **Pull**, which replaces it and moves them in.
+**Replace programme** names the programme that leaves and the programme that takes its place, and it lists the courses that the replacement pulls out of another programme or module. When it lists a course, the answer is **Keep** or **Pull**, explained in [One place for a course](/docs/guides/editing-structure-of-studies.md#one-place-for-a-course). When it lists nothing, its only action beside **Cancel** is **Replace**. Only the replaced programme's own displayed contents leave the structure. A course you placed in another programme stays there, and the replacement lists it only when the replacement's own official content includes it.
 
 When the replacement already sits somewhere in your structure, the dialog also names that place, because the replacement moves from there with everything inside it and pulls no course.
 
 Choosing the programme and version that already fill the place you are replacing closes the picker, returns focus to the control that opened it, and changes nothing. If that place has no content to compare, the picker reports that the programme is unavailable and stays open.
 
-**Reset programme** always asks, with **Cancel** at the left edge and **Reset** beside it, and **Reset all** joins them at the right only when the programme holds completed courses. **Reset** restores the programme's official content and preserves its completed courses, and **Reset all** also clears the completions the programme holds immediately before the reset.
-
-**Delete programme** asks with **Cancel** at the left, then **Delete**, and it adds **Delete all** beside **Delete** when the programme holds completed courses.
+**Delete programme** asks with **Cancel** at the left, then **Delete**, and it adds **Delete all** beside **Delete** when the programme holds completed courses. Only the deleted programme's own displayed contents leave the structure. A course placed in another programme stays there, even when its official home is in the deleted programme.
 
 **Cancel**, Escape, and a click outside the dialog change nothing, and no other programme and no loose course is affected.
 
-A completed course of the affected programme keeps its completion and takes its official place in the new content, and with no official place left it is listed under **Unplaced studies**. An uncompleted course of the affected programme leaves your selection. **Delete all** drops the programme's completed courses and their completions as well. A course that the official structure requires comes back from **Reset all** selected and uncompleted when the programme held it before the reset. A course returned from another place by **Pull** was not held there, so it keeps its completion.
+A completed course of the affected programme keeps its completion and takes its place in the replacement content, and one that would otherwise leave the affected part is listed under **Unplaced studies**. An uncompleted course of the affected programme leaves your selection. **Delete all** drops the programme's completed courses and their completions as well.
 
-![The Structure of studies tab with one programme row and one top-level module row, each carrying a ⋯ menu before its credit counters, completed course cards under them, the Add programme row between the last row and Unplaced studies, and the Unplaced studies row last.](/docs/screenshots/structure-of-studies.png)
+![The Structure of studies tab with one programme row and one top-level module row, each carrying a ⋯ menu before its credit counters, course cards under them, two of them completed, the Add programme row between the last row and Unplaced studies, and the Unplaced studies row last with Nothing here yet.](/docs/screenshots/structure-of-studies.png)
 
 ## Choosing an exact module version
 
-A structure keeps one exact official version of each module. When the official read finds several eligible versions of a programme or a module and you have not chosen one, the tab shows a **Choose module version** list above the tree with every candidate of that group, its validity bounds, its curriculum periods, its full version identity and a **Select** action. The same list opens from a search row whose module group has several eligible versions.
+A structure keeps one exact official version of each module. When the official read finds several eligible versions of a programme or a module and you have not chosen one, the tab shows a **Choose module version** list above the tree with every candidate of that group, its validity bounds, its curriculum periods, its full version identity and a **Select** action. A search row whose module group has several eligible versions opens the dialog **Choose module version**, described under [Adding a programme](#adding-a-programme).
 
 The saved structure, choices and courses stay as they are while you choose. Select one to record that exact version and read its content. A root and a module reached inside a structure ask the same way.
 
@@ -60,7 +60,7 @@ A course is drawn as a card with its code, its name, its credits, and whether it
 
 On a phone each card has a minimum height, keeps the same balanced one-line spacing, and grows when a longer name wraps. The code, credits and **Complete** control sit inside the card.
 
-Each card opens the [course menu](/docs/guides/README.md#shared-course-state), with **Add to Unplaced studies**, **Mark completed**, and the other shared actions. Each card also carries **Complete**, which marks that course completed in place without the **Mark completed?** dialog. A module box or a requirement box is marked only in the prerequisite graph. A completed card shows **Completed** and reads as completed in every other tab. A row name in the tree and in the drawer wraps in the same way, and the kind, code and credits sit inside the row.
+Each card opens the [course menu](/docs/guides/README.md#shared-course-state). Each card also carries **Complete**, which marks that course completed in place without the **Mark completed?** dialog. A module box or a requirement box is marked only in the prerequisite graph. A completed card shows **Completed** and reads as completed in every other tab. A row name in the tree and in the drawer wraps in the same way, and the kind, code and credits sit inside the row.
 
 Where a rule offers a choice between alternatives, the tree shows the alternatives you chose, and you pick among them in the drawer. A rule that only groups other rules adds no row of its own, so the tree shows the content it wraps.
 
@@ -68,11 +68,9 @@ An official reference that cannot be resolved is shown as a note in place of its
 
 ## Reading the rules
 
-The drawer of a module lists its content under the rule that applies to it, and the app labels that rule.
+A module or a programme with target credits states that credit extent as its rule, such as `180 cr`. A rule that pairs a credit target with a choice shows both parts, joined by a middle dot, such as **min 20 cr · choose 1**. A rule whose every part is required reads **all required**.
 
-A rule that pairs a credit target with a choice shows both parts, joined by a middle dot, such as **min 20 cr · choose 1**.
-
-The drawer of a module leads with the rule of that module. For a module or a programme with target credits the rule is that credit extent, such as `180 cr`. The credits on a row count the courses placed under it, and the same two totals appear in the drawer with the words **selected** and **completed**.
+[Editing a structure of studies](/docs/guides/editing-structure-of-studies.md#placing-courses-from-the-drawer) describes the drawer, which places a module's content under these rules and states the selected and completed credits.
 
 ## Unplaced studies
 
@@ -80,96 +78,17 @@ Unplaced studies is the last row of the tree. It holds the courses in your selec
 
 A course arrives there in one of these ways:
 
-- The course menu item **Add to Unplaced studies** adds it from any card in the app.
-- The dialog **Mark completed?** for a course that is not selected offers **Cancel** and **Add and complete**. **Add and complete** adds the course to Unplaced studies and completes it, and **Cancel** changes nothing. This is described in [shared course state](/docs/guides/README.md#shared-course-state).
+- The course menu item **Add to Unplaced studies** adds a course that is not selected yet, from any card in the app. A course that a programme or module holds offers **Move to Unplaced studies**, and **Remove from** with the name of that programme or module. A selected course that no programme or module holds offers **Remove from Unplaced studies**, and one that already sits in Unplaced studies offers **Move to Unplaced studies**.
+- The **Mark completed?** dialog for a course that is not selected offers **Add and complete**, which adds the course to Unplaced studies and completes it. [Shared course state](/docs/guides/README.md#shared-course-state) describes the dialog and its notices.
 - A completed course that is moved out of a module is listed under Unplaced studies with its completion.
-- A selected course that no programme holds is listed there.
+- A selected course that no programme or module holds is listed there.
 
-**Add to Unplaced studies** adds the course at once, whether or not the programme list holds a programme. A course added while the programme list is empty appears in this list. The action shows a bottom notice with the number of courses it added, or that the courses were already selected, and the notice carries a **Structure of studies** link back to this tab.
+**Add to Unplaced studies** adds the course at once, whether or not the programme list holds a programme, and a course added while the programme list is empty appears in this list. The route panel and a member list add all their missing courses at once, and their notice states the number they added, or that the courses were already selected. [Shared course state](/docs/guides/README.md#shared-course-state) describes the bottom notices of these actions and their **Unplaced studies** link.
 
-Select a course row in the Unplaced studies drawer to take that course out of the selection. A completed course in that drawer opens the **Completed course** dialog instead, which offers **Cancel** and **Remove** alone and states that the removal takes the course out of your selection together with its completion.
-
-## Placing courses from the drawer
-
-Select the name of a module row to open its drawer. The drawer leads with the rule of that module and its credit totals, then lists its content and a search. A drawer with no content reads **This module is empty.**, **This programme is empty.** when the row is a programme, or **No option selected yet.** for a choice where nothing is picked. On a phone the drawer is a sheet above the tab bar with a **Close** control at its head and one scroll for all its content. Each row places its code and its credit or kind first and its full name below them, the search results open inside the sheet, and **Reset this module** ends the same scroll. Escape closes the search first while it is open. With the search closed and no dialog or picker open, Escape closes the drawer and returns focus to the row that opened it. [Using the app on a phone](/docs/guides/phone.md) describes the phone shell and this sheet.
-
-The search field reads **Add a course, module or programme**. The buttons **All**, **Courses**, **Modules** and **Programmes** narrow the results to one kind. A course result shows its code, its name and its credits, and a module or programme result shows its official code and its name. Each result section holds every match and scrolls inside the sheet.
-
-Tab moves from the last course result to the first module result and back, the arrow keys move one row, Home and End go to the first and last result, and a result that is out of view can be reached from the keyboard. Pick a course result to place it in the module that you opened, which closes the search. A module or a programme with one eligible version is placed the same way. One with several replaces the results with **Cancel** and the list of its versions, where you choose the exact one to place it. The version list has its own scroll area at phone widths, so the ordinary search results keep the drawer height. **Cancel** brings the results, the search text and the category back with the cursor in the search field, and a version is placed only when you choose one.
-
-A course is placed there as a card with a dashed outline. A module arrives with its own content, its row carries the **added** mark, the courses that its official structure proves required are placed in it and selected, and the app reports that it was added, together with how many of your courses moved with it when any did.
-
-Adding a module reads its structure before it is placed, and the row shows as busy until the read finishes. If the course or the module is already in that module, the app reports **Already in this module**, or **Already in this programme** when the row is a programme.
-
-A rule that offers alternatives is decided in the drawer too. The section heading is the rule label, and its rows are the options. Select a row to choose it and select it again to drop it. The first selection reports **Selection made**, and a change to a selection that already exists reports **Selection changed: completed courses kept, other courses dropped**. A course that loses its place leaves the selection unless it is completed, and a completed course is held in the selection under Unplaced studies.
-
-![The drawer of a module, leading with the module's credit rule and its selected and completed credit totals, then the search field that adds courses, modules and programmes, an all required section and a choose 1 section with their course rows and Complete controls, and Reset this module at the foot.](/docs/screenshots/structure-drawer.png)
-
-## One place for a course
-
-A course shows on one card at a time. Adding or replacing a programme, or adding a module, that officially holds a course shown elsewhere moves the course into that programme or module, and keeps its completion and its selection.
-
-Before that addition writes anything, one dialog lists every course that moves and the place each one is in, and **Move** applies the whole addition when it lists nothing. When it lists courses, the answer is **Keep**, which applies the addition and leaves each listed course where it is shown, or **Pull**, which applies it and moves them in.
-
-When the addition moves the module itself, the dialog reads **Move here?** and names the module and the containing programme or module that holds it, or **the programme list** when the list of programmes holds the module, and it lists the courses the addition pulls out of another programme or module when it pulls any.
-
-**Cancel**, Escape, and a click outside the dialog change nothing, and the **Add programme** picker stays open so you can pick again. There is no dialog when nothing moves.
-
-A course that the added programme or module officially holds and that sits directly in **Unplaced studies** moves without being listed, while a programme or module that already has a place keeps everything it holds, the courses in Unplaced studies included. **Replace programme** shows the same list inside its own confirmation, which also names the place that already holds the replacement programme when a place does.
-
-## Moving a course that already has a place
-
-Every course and module appears in one place at a time. Placing one that already has a place opens **Move here?**, which names the course or module and the containing programme or module that shows it, such as a module, Unplaced studies, or **the programme list** when the ordered list of programmes holds it. A choice's own title is never used as a place name. Select **Move** to place it there, or **Cancel** to leave the structure as it is.
-
-A move of a module takes the whole of it along, so the alternatives you chose inside it, the courses and modules you added or took out there, and the completions all arrive with it, the place it leaves disappears, and nothing inside it returns to the official structure. A module that the programme list holds leaves that list when it is placed in a node, so it appears only in the place you put it. A module that an addition or a replacement promotes to the top level of the list moves the same way, so a programme that you replace with a programme it contains keeps that programme and everything inside it. The move pulls no course out of another programme or a module, so a course that another programme or module shows stays there and nothing is added inside the moved item.
-
-A course or a module that sits directly in **Unplaced studies** moves into a programme or a module without a prompt of its own, because that list holds unplaced items by definition. A course that an addition pulls out of a programme or a module is listed for confirmation, and a move from a programme or a module asks first.
-
-## Removing a course
-
-Courses are taken out in the drawer of the module that holds them. Select a course row in the drawer content to remove it from that module.
-
-An uncompleted course leaves the selection with it. A completed course opens **Completed course**, which offers these outcomes:
-
-- **Move** places the course under Unplaced studies and preserves its completion.
-- **Remove** takes it out of the selection and removes its completion, so the course leaves both course sets in every tab.
-
-A completed course that already sits under Unplaced studies carries **Cancel** and **Remove** alone, and the dialog states that the removal takes the course out of your selection together with its completion, because keeping a course loose there changes nothing.
-
-**Cancel**, or Escape, closes the dialog and leaves everything as it is.
-
-> [!WARNING]
-> **Remove** in the **Completed course** dialog removes the completion itself. The course is then neither selected nor completed anywhere in the app.
-
-![The Completed course dialog over the Structure of studies tab, naming the course code and offering Move, Remove, and Cancel.](/docs/screenshots/structure-completed-course-dialog.png)
-
-Select a module row in the drawer content to remove that module and the courses that it contributes from the displayed structure. A completed course among them preserves its completion and appears under Unplaced studies, and an uncompleted course among them leaves the selection. A module that holds completed courses, or whose contents differ from its official structure, asks first: **Delete** keeps that outcome, and **Delete all** drops those courses and their completions with the module. **Delete all** appears only when the module holds completed courses. **Cancel** sits alone at the left of the question, and the delete controls sit together at the right.
-
-A module at its official structure with no completed course leaves at once without a question, and a saved choice or place that changes no content is not a difference. A degree programme nested inside another programme or a module follows the same rule as a module, with the word programme in its question.
-
-## Resetting a part
-
-The drawer of a module ends with **Reset this module**, and the drawer of a top-level programme ends with **Reset programme**, which is the same operation as the row menu's **Reset programme** and asks with the same question. A degree programme nested inside another programme or a module reads **Reset programme** as well, and its operation stays a module's.
-
-A module or a programme resets through one compact question with **Cancel** at the left and **Reset** beside it, and **Reset all** joins them at the right only when the part holds completed courses. **Reset programme** asks from the row menu and from the drawer, and **Reset this module** asks from the drawer, at every press, whatever the part's contents and completions are.
-
-When the reset returns a course to the part from another programme or module, a second question follows with **Cancel** at the left and **Keep** and **Pull** at the right. It lists every returned course with the place it is in. **Pull** returns those courses to the part, **Keep** leaves each of them where it is, and **Cancel** cancels the whole reset and changes nothing. A part that holds no completed course and returns a course asks only that second question. **Cancel**, Escape and a click outside a question change nothing.
-
-**Reset** returns the choices and the places inside that part to the official ones, and a course inside the part goes back to its official place. A course whose official place is inside the part and which another programme or module shows returns there only when the second question is answered **Pull**, and **Keep** leaves it in that other programme or module.
-
-A completed course inside the part keeps its completion, and when the restored content gives it no place it is listed under **Unplaced studies**.
-
-**Reset all** applies the same restoration and also clears the completions that the part holds: a course that the part held before the reset comes back selected and uncompleted, a course returned from another place by **Pull** keeps its completion, and a completed course that leaves the restored content leaves your selection together with its completion. A completed course that another programme or **Unplaced studies** holds is not affected.
-
-A reset reports **Programme reset to its official contents** or **Module reset to its official contents**, for the word its part carries.
-
-A reset of Unplaced studies clears the places held there and asks nothing. A course with an official place goes back to it, an uncompleted course that was placed there leaves the selection, and a completed course preserves its completion. The app reports **Unplaced studies reset**.
-
-> [!CAUTION]
-> A reset discards the choices and the places of the part that it resets. Replacing or deleting a programme discards them for that programme alone.
+Select a course row in the Unplaced studies drawer to take that course out of the selection, as [Removing a course](/docs/guides/editing-structure-of-studies.md#removing-a-course) describes.
 
 ## Your edits and the official structure
 
-The programmes, the choices, and the places belong to the open [profile](/docs/guides/profiles-and-language.md), so the tab opens with them again the next time you visit it. The official structure that the server sends is the published structure, shared by every profile. Another profile holds its own structure, and **Reset programme** on a row is how one programme of the open profile returns to the official content.
+The programmes, the choices, the places and the card order belong to the open [profile](/docs/guides/profiles-and-language.md), so the tab opens with them again the next time you visit it. The official structure that the server sends is the published structure, shared by every profile. Another profile holds its own structure, and **Reset programme** on a row is how one programme of the open profile returns to the official content.
 
 How the tab projects the official rules, resolves your choices and places, and stores them in the profile is described in [Structure editor](/docs/frontend/structure-editor.md).

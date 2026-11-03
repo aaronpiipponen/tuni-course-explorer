@@ -1,17 +1,17 @@
-"""Shared pytest fixtures for ordinary-test settings isolation, a temporary usage root, the
+"""Shared pytest fixtures for ordinary-test settings isolation, a temporary repository root, the
 disposable PostgreSQL test database and the Node solver bundle.
 
 The session fixture migrates the dedicated ``*_test`` database once at head and truncates it
-between tests through the ``database`` fixture. It forces ``SELECTED_DATASET_ENABLED=0`` and asserts
-the ``_test`` suffix around the whole fixture lifetime, so the opt-out controls engine creation,
-Alembic migration, yielded tests and cleanup.
+between tests through the ``database`` fixture. It reads raw database settings and asserts the
+``_test`` suffix around the whole fixture lifetime, so the explicit test target controls engine
+creation, Alembic migration, yielded tests and cleanup.
 """
 
 from __future__ import annotations
 
 import os
 import subprocess
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 import pytest
@@ -19,16 +19,22 @@ from alembic import command
 from alembic.config import Config
 from sqlalchemy import Connection, Engine
 
-from course_explorer import usage
 from course_explorer.config import (
     ENVIRONMENT_ONLY_SETTINGS_SOURCE,
     SETTINGS_SOURCE_MARKER,
     DatabaseSettings,
-    load_database_settings,
+    load_raw_database_settings,
 )
 from course_explorer.db.models import Base
 from course_explorer.db.session import create_database_engine, create_session_factory
+from course_explorer.prerequisite.graph import PrerequisiteGraphCompiler
+from tests.prerequisite._native_support import (
+    close_native_compiler,
+    native_compiler_for,
+    reset_worker_handle,
+)
 from tests.support import _SYNTHETIC_VALUES, public_environment
+from tests.support.repository import bind_repository_root
 
 _DATABASE_SETTINGS_ALIASES = frozenset(
     field.validation_alias
@@ -47,13 +53,12 @@ def _file_free_settings_environment(
     the template placeholders through the process environment, including the placeholder database
     password. The environment-only marker stops the settings layer from reopening any file. A
     database integration test leaves the ``DatabaseSettings`` aliases and the environment-only
-    marker untouched except that it forces ``SELECTED_DATASET_ENABLED=0``, so the database settings
-    owner composes its normal local configuration for the fixture, snapshot, Compose and local
-    subprocess boundaries alike. That credential is consumed only by the owning database operations
-    and is never extracted, inspected or copied. Both kinds keep an already-set process value,
-    except that both force the selected-dataset opt-out and the ordinary kind also forces the
-    environment-only marker. The ordinary kind injects every absent example alias, and the
-    integration kind injects the absent example aliases outside ``DatabaseSettings``.
+    marker untouched, so the database settings owner composes its normal local configuration for the
+    fixture, snapshot, Compose and local subprocess boundaries alike. That credential is consumed
+    only by the owning database operations and is never extracted, inspected or copied. Both kinds
+    keep an already-set process value, and the ordinary kind forces the environment-only marker.
+    The ordinary kind injects every absent example alias, and the integration kind injects the
+    absent example aliases outside ``DatabaseSettings``.
     """
     integration = request.node.get_closest_marker("integration") is not None
     for alias, value in public_environment().items():
@@ -65,27 +70,42 @@ def _file_free_settings_environment(
         if "POSTGRES_PASSWORD" not in os.environ:
             monkeypatch.setenv("POSTGRES_PASSWORD", _SYNTHETIC_VALUES["POSTGRES_PASSWORD"])
         monkeypatch.setenv(SETTINGS_SOURCE_MARKER, ENVIRONMENT_ONLY_SETTINGS_SOURCE)
-    monkeypatch.setenv("SELECTED_DATASET_ENABLED", "0")
 
 
 @pytest.fixture(autouse=True)
-def _temporary_usage_root(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    """Point the shared usage owner at the calling test's temporary directory.
+def _fresh_native_fact_handle(request: pytest.FixtureRequest) -> Iterator[None]:
+    """Close the per-worker native fact handle around every integration test.
 
-    The front router's usage middleware appends one record per HTTP request it handles, including a
-    forwarded response, a refusal and a failure. It resolves this owner's root when it runs. Binding
-    the root to the temporary directory keeps those writes out of the checkout's own usage file, and
-    the real writer stays enabled.
+    Each integration test truncates and reseeds the disposable database, so a cached handle from an
+    earlier test would serve another test's facts. The serving process opens one handle per worker
+    lifetime. This reset reproduces one process start per test.
     """
-    monkeypatch.setattr(usage, "repository_root", lambda: tmp_path)
+    if request.node.get_closest_marker("integration") is None:
+        yield
+        return
+    reset_worker_handle()
+    yield
+    reset_worker_handle()
+
+
+@pytest.fixture(autouse=True)
+def _temporary_repository_root(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Point the repository-root owner at the calling test's temporary repository.
+
+    Every state, usage and serving write resolves under the temporary root, so no test writes the
+    checkout's own state, usage or serving files. The product entries the reads need are linked from
+    the checkout by the shared repository helper, and a write through a linked entry reaches the
+    checkout.
+    """
+    bind_repository_root(monkeypatch, tmp_path)
 
 
 def alembic_config(connection: Connection | None = None) -> Config:
     """Load the repository migration configuration, optionally bound to a caller-owned connection.
 
     When a connection is supplied it is published on the Alembic config so ``migrations/env.py``
-    reuses that exact connection (and its already-resolved credential) instead of loading settings and
-    opening its own engine.
+    reuses that exact connection (and its already-resolved credential) instead of loading settings
+    and opening its own engine.
     """
     config = Config("alembic.ini")
     if connection is not None:
@@ -116,13 +136,28 @@ def solver_bundle() -> None:
 
 
 @pytest.fixture(scope="session")
+def native_serving_libraries() -> None:
+    """Fail with the build guidance when a required native serving library is absent."""
+    native = Path(__file__).parents[1] / "native"
+    libraries = (
+        "libcourse_recommendation.so",
+        "libcourse_prerequisite.so",
+        "libcourse_lookup.so",
+    )
+    missing = [name for name in libraries if not (native / name).is_file()]
+    if missing:
+        pytest.fail(
+            "native libraries are missing under "
+            f"{native}: {', '.join(missing)}; run `./.venv/bin/python scripts/build_native.py`"
+        )
+
+
+@pytest.fixture(scope="session")
 def _database_session() -> Iterator[tuple[Engine, object]]:
     """Migrate the disposable test database once and yield its engine/factory pair."""
-    # Integration tests always target the raw ``*_test`` database, so the opt-out is forced through
-    # migration, yielded tests and cleanup.
-    with pytest.MonkeyPatch.context() as monkeypatch:
-        monkeypatch.setenv("SELECTED_DATASET_ENABLED", "0")
-        settings = load_database_settings()
+    # Integration tests always target the raw ``*_test`` database through the explicit raw reader.
+    with pytest.MonkeyPatch.context():
+        settings = load_raw_database_settings()
         assert settings.postgres_db.endswith("_test")
         engine = create_database_engine(settings)
         try:
@@ -152,3 +187,27 @@ def migration_config(database: tuple[Engine, object]) -> Iterator[Config]:
     engine, _ = database
     with engine.connect() as connection:
         yield alembic_config(connection)
+
+
+@pytest.fixture()
+def native_graph(
+    database: tuple[Engine, object],
+    native_serving_libraries: None,
+) -> Iterator[Callable[..., PrerequisiteGraphCompiler]]:
+    """Seed fixture DTOs into the disposable database and open native compiler handles."""
+    _, factory = database
+    compilers: list[PrerequisiteGraphCompiler] = []
+
+    def compile_native(
+        curriculum,
+        inferred=None,
+        equivalence=None,
+    ) -> PrerequisiteGraphCompiler:
+        """Seed one fixture catalogue and return a compiler over the native fact loader."""
+        compiler = native_compiler_for(factory, curriculum, inferred, equivalence)
+        compilers.append(compiler)
+        return compiler
+
+    yield compile_native
+    for compiler in compilers:
+        close_native_compiler(compiler)

@@ -2,8 +2,10 @@
  * The Dashboard tab: the one server status report as five panels.
  *
  * Each fact states what kind it is, measured, configured, checkout identity, serving receipt or file
- * time, and a fact the owner reports as absent renders as unknown. The restart hint appears only for
- * a hub file the report measures as written after the served process started.
+ * time, and a fact the owner reports as absent renders as unknown. The hub rows appear only on a
+ * site that serves the embedding features, and a site with them off states that instead. The
+ * restart hint appears only for a hub file the report measures as written after the served process
+ * started.
  */
 import type { HubStatus, ServerStatusReport } from "../../api/types";
 import { AutoMarker } from "../../shared/AutoMarker";
@@ -18,8 +20,8 @@ import { FailureNotice, Panel, Row, Rows } from "../../shared/Panel";
 import type { PanelRead } from "../../shared/usePanelRead";
 import { wording } from "../../shared/wording";
 
-function hubText(hubs: HubStatus[], alias: string): string {
-  const hub = hubs.find((entry) => entry.alias === alias);
+function hubText(hubs: HubStatus[], name: HubStatus["name"]): string {
+  const hub = hubs.find((entry) => entry.name === name);
   if (hub === undefined) {
     return wording.unknown;
   }
@@ -82,19 +84,29 @@ function ServingPanel({
                 </code>
               }
             />
-            <Row
-              label={detail.embeddingHub}
-              value={hubText(report.hubs, "EMBEDDING_HUB_VECTOR")}
-            />
-            <Row
-              label={detail.outcomesHub}
-              value={hubText(report.hubs, "EMBEDDING_OUTCOMES_HUB_VECTOR")}
-            />
-            <Row
-              label={detail.webServerHubs}
-              value={detail.hubsAtProcessStart}
-            />
+            {report.serving.embeddings_enabled ? (
+              <>
+                <Row
+                  label={detail.embeddingHub}
+                  value={hubText(report.hubs, "catalogue")}
+                />
+                <Row
+                  label={detail.outcomesHub}
+                  value={hubText(report.hubs, "outcomes")}
+                />
+                <Row
+                  label={detail.webServerHubs}
+                  value={detail.hubsAtProcessStart}
+                />
+              </>
+            ) : null}
           </Rows>
+          {report.serving.selection_enabled === null ? (
+            <p className="warn-note">{wording.stateUnavailable}</p>
+          ) : null}
+          {report.serving.embeddings_enabled ? null : (
+            <p className="note">{detail.embeddingsOff}</p>
+          )}
           {hint === null ? null : <p className="warn-note">{hint}</p>}
         </>
       )}

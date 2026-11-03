@@ -1,7 +1,6 @@
 """Official structure of studies: one programme/module's typed rule tree as one JSON report.
 
 Usage:
-    uv run python scripts/catalogue.py
     uv run python scripts/study_structure.py <group_id-from-the-catalogue>
     uv run python scripts/study_structure.py <group_id> --module-version <group_id>=<version_id>
 
@@ -14,7 +13,7 @@ report.
 import argparse
 from collections.abc import Sequence
 
-from course_explorer.study_structure.commands import run_study_structure_command
+from _checkout_source import install
 
 
 def _module_version(value: str) -> tuple[str, str]:
@@ -27,6 +26,9 @@ def _module_version(value: str) -> tuple[str, str]:
 
 def main(argv: Sequence[str] | None = None) -> int:
     """Parse one canonical root identity and its selections, delegate once, and print one report."""
+    install()
+    from course_explorer.study_structure.commands import run_study_structure_command
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("root_group_id")
     parser.add_argument(

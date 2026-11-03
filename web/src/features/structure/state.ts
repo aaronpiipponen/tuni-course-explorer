@@ -10,13 +10,23 @@ export type StructureEdits = {
   coursePlacements: Record<string, string | null>;
   modulePlacements: Record<string, string | null>;
 };
-/** The edits plus the programme order, exact module versions and placed courses. */
+/** One placed course's holder: the module or programme that renders it. */
+export type CourseHolder = {
+  group_id: string;
+  name_fi: string | null;
+  name_en: string | null;
+};
+/** The edits plus the programme order, exact module versions, placed courses and card order. */
 export type StructureState = StructureEdits & {
   /** Top-level programme group ids in the order the interface shows them. */
   programmeGroupIds: string[];
   /** One exact official version per canonical module group that needed an explicit selection. */
   moduleVersions: Record<string, string>;
   placedCourseIds: string[];
+  /** Each placed course's holder, kept so every surface can name it without the tree. */
+  courseHolders?: Record<string, CourseHolder>;
+  /** Canonical course ids in the order the visible grids show them across holders. */
+  courseOrder: string[];
 };
 /** Return the edits with no choices and no placements. */
 export const emptyEdits = (): StructureEdits => ({
@@ -30,4 +40,5 @@ export const initialStructureState = (): StructureState => ({
   ...emptyEdits(),
   moduleVersions: {},
   placedCourseIds: [],
+  courseOrder: [],
 });

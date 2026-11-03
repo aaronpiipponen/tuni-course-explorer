@@ -15,6 +15,7 @@ import math
 import os
 import signal
 import subprocess
+import sys
 import threading
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
@@ -37,10 +38,11 @@ def model_request_scope(seconds: float) -> Iterator[None]:
 
     A scalar HTTP read timeout is an inactivity timeout, so a slow keepalive/body trickle can
     outlive the configured request ceiling. This wraps only the request's HTTP I/O with a real-time
-    alarm that raises the same safe transport error the client already handles on expiry. It must run
-    on the process main thread, refuses to overlap an active real-time alarm, and always disarms
-    and restores the handler before leaving the request so no subsequent database checkpoint, evidence
-    write, model process launch or verified return ever runs under an armed timer.
+    alarm that raises the same safe transport error the client already handles on expiry. It must
+    run on the process main thread, refuses to overlap an active real-time alarm, and always
+    disarms and restores the handler before leaving the request, so no subsequent database
+    checkpoint, evidence write, model process launch or verified return ever runs under an armed
+    timer.
     """
     if threading.current_thread() is not threading.main_thread():
         raise RuntimeError("model request scope must run on the main thread")
@@ -119,8 +121,8 @@ def owned_process_is_alive(record: OwnedProcessRecord) -> bool:
     """Report whether a recorded process is the exact owned process.
 
     A record from a previous boot, a dead PID, or an absent/empty command line means the process
-    has exited and is not live. A live process whose nonempty argv differs from the recorded argv has
-    been reused: it fails loudly rather than being signalled. Only an exact argv match is live.
+    has exited and is not live. A live process whose nonempty argv differs from the recorded argv
+    has been reused: it fails loudly rather than being signalled. Only an exact argv match is live.
     This call observes liveness only. Signalling the process is a separate operation.
     """
     if record.boot_id != current_boot_id():
@@ -133,24 +135,26 @@ def owned_process_is_alive(record: OwnedProcessRecord) -> bool:
     return True
 
 
-def compose_prefix(*, non_interactive: bool = False) -> tuple[str, ...]:
+def compose_prefix(*, non_interactive: bool = False, interpreter: bool = False) -> tuple[str, ...]:
     """Return the exact Compose bridge prefix shared by both hosts.
 
     Every local and remote caller generates its own temporary environment-file bridge through
     ``course_explorer_admin.compose``. With ``non_interactive=True`` the bridge runs ``sudo -n``,
     which a passwordless host accepts and an interactive prompt cannot be answered from a fixed
     administrative command. Every forwarded Compose argument follows the trailing ``--``.
+
+    ``interpreter=True`` runs the bridge in the calling process's interpreter, which holds the
+    package and its dependencies. The rule for choosing the form: a command that runs on this host
+    uses ``interpreter=True``, so a copy without a synced virtual environment works. The default
+    ``uv run`` form belongs to a command that another host runs, whose executable path and
+    environment are its own.
     """
-    bridge = (
-        "uv",
-        "run",
-        "--no-sync",
-        "--offline",
-        "--no-python-downloads",
-        "python",
-        "-m",
-        "course_explorer_admin.compose",
+    launcher = (
+        (sys.executable,)
+        if interpreter
+        else ("uv", "run", "--no-sync", "--offline", "--no-python-downloads", "python")
     )
+    bridge = (*launcher, "-m", "course_explorer_admin.compose")
     if non_interactive:
         return (*bridge, "--non-interactive", "--")
     return (*bridge, "--")
@@ -167,11 +171,11 @@ def exclusive_action_lock(
     the same lock only when an initialized controller already published it: an absent root or lock
     yields immediately, leaving the filesystem untouched, and a regular lock file is opened and
     flocked directly.
-    ``blocking=True`` waits for the lock. ``blocking=False`` fails loudly. Short server-state writers
-    (lifecycle read-modify-writes, spawn publication) use it to serialize the one state file. The
-    same flag also lets a reconnect retry wait behind an already-running idempotent worker helper
-    at the worker export and named worker-action locks, so a temporary busy lock is not mistaken
-    for a completed-helper failure.
+    ``blocking=True`` waits for the lock. ``blocking=False`` fails loudly. Short server-state
+    writers (lifecycle read-modify-writes, spawn publication) use it to serialize the one state
+    file. The same flag also lets a reconnect retry wait behind an already-running idempotent worker
+    helper at the worker export and named worker-action locks, so a temporary busy lock is not
+    mistaken for a completed-helper failure.
     """
     lock_path = root / "controller.lock"
     if not create:
@@ -225,8 +229,8 @@ class ProcessRunner(Protocol):
         cwd: Path | None = None,
         env: Mapping[str, str] | None = None,
         stdin_path: Path | None = None,
-        stdout_path: Path,
-        stderr_path: Path,
+        stdout_path: Path | None = None,
+        stderr_path: Path | None = None,
         start_new_session: bool = False,
         inherit_environment: bool = True,
     ) -> subprocess.Popen[bytes]: ...
@@ -302,29 +306,34 @@ class SubprocessRunner:
         cwd: Path | None = None,
         env: Mapping[str, str] | None = None,
         stdin_path: Path | None = None,
-        stdout_path: Path,
-        stderr_path: Path,
+        stdout_path: Path | None = None,
+        stderr_path: Path | None = None,
         start_new_session: bool = False,
         inherit_environment: bool = True,
     ) -> subprocess.Popen[bytes]:
-        """Start one argv command detached from terminal streams when requested.
+        """Start one argv command with the requested terminal attachment.
 
         With ``start_new_session=True`` the child becomes its own session leader so closing
         the invoking shell cannot deliver a hangup to long-running background work. Without
-        an input path stdin is ``DEVNULL``. Stdout and stderr are appended to mode-0600
-        files. ``inherit_environment=True`` (the default) merges the process
-        environment. ``False`` passes exactly the supplied mapping, so a model child launches
-        with a closed allowlist.
+        an input path stdin is ``DEVNULL``. A supplied stdout or stderr path is opened in
+        append mode at 0600. A null path inherits that stream from this process, so a
+        foreground child keeps the operator's terminal. ``inherit_environment=True`` (the
+        default) merges the process environment. ``False`` passes exactly the supplied
+        mapping, so a model child launches with a closed allowlist.
         """
         merged = os.environ if env is None else {**os.environ, **env}
         if not inherit_environment:
             merged = dict(env or {})
         stdin_handle = stdin_path.open("rb") if stdin_path is not None else subprocess.DEVNULL
-        stdout_handle = os.fdopen(
-            os.open(stdout_path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600), "wb"
+        stdout_handle = (
+            os.fdopen(os.open(stdout_path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600), "wb")
+            if stdout_path is not None
+            else None
         )
-        stderr_handle = os.fdopen(
-            os.open(stderr_path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600), "wb"
+        stderr_handle = (
+            os.fdopen(os.open(stderr_path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600), "wb")
+            if stderr_path is not None
+            else None
         )
         try:
             return subprocess.Popen(
@@ -339,8 +348,10 @@ class SubprocessRunner:
         finally:
             if stdin_path is not None:
                 stdin_handle.close()
-            stdout_handle.close()
-            stderr_handle.close()
+            if stdout_handle is not None:
+                stdout_handle.close()
+            if stderr_handle is not None:
+                stderr_handle.close()
 
 
 # A bytes-returning Compose execution callback: local stages bind a subprocess runner, the remote
@@ -374,9 +385,15 @@ def runtime_checkout_directory(revision: str) -> Path:
     return Path.home() / ".local" / "src" / f"llama.cpp-{revision}"
 
 
-def running_compose_services(run: ComposeCommand) -> set[str]:
-    """Return the Compose services reported running."""
-    output = run((*compose_prefix(), "ps", "--services", "--status", "running"))
+def running_compose_services(run: ComposeCommand, *, interpreter: bool = False) -> set[str]:
+    """Return the Compose services reported running.
+
+    ``interpreter`` selects the bridge form ``compose_prefix`` documents: the calling process's
+    interpreter for a server-local probe, and the portable ``uv run`` form otherwise.
+    """
+    output = run(
+        (*compose_prefix(interpreter=interpreter), "ps", "--services", "--status", "running")
+    )
     return {line.strip() for line in output.decode().splitlines() if line.strip()}
 
 
@@ -384,24 +401,27 @@ def ensure_prepared_services(
     run: ComposeCommand,
     services: Sequence[str],
     *,
+    interpreter: bool = False,
     on_starting: Callable[[set[str]], None] | None = None,
 ) -> set[str]:
     """Start already-built Compose services and return the requested ones this call started.
 
-    Services that are already running are left untouched. The start uses no build and no pull, so
-    it can only reuse an already-provisioned image, and every requested service must be running
-    afterwards or the caller fails loudly rather than continuing against a partial stack. When
-    supplied, ``on_starting`` is notified once with the requested services absent before startup,
-    before ``up`` runs, so a caller can record ownership even if startup then fails.
+    ``interpreter`` selects the ``compose_prefix`` form of the caller's host: true for a command
+    that runs on this server, false for one sent to the worker. Services that are already running
+    are left untouched. The start uses no build and no pull, so it can only reuse an
+    already-provisioned image, and every requested service must be running afterwards or the caller
+    fails loudly rather than continuing against a partial stack. When supplied, ``on_starting`` is
+    notified once with the requested services absent before startup, before ``up`` runs, so a caller
+    can record ownership even if startup then fails.
     """
     requested = set(services)
-    before = running_compose_services(run)
+    before = running_compose_services(run, interpreter=interpreter)
     if not requested <= before:
         if on_starting is not None:
             on_starting(requested - before)
         run(
             (
-                *compose_prefix(),
+                *compose_prefix(interpreter=interpreter),
                 "up",
                 "-d",
                 "--wait",
@@ -411,7 +431,7 @@ def ensure_prepared_services(
                 *services,
             )
         )
-    after = running_compose_services(run)
+    after = running_compose_services(run, interpreter=interpreter)
     missing = requested - after
     if missing:
         raise RuntimeError("prepared Compose services did not become healthy")

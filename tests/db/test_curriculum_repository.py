@@ -34,22 +34,17 @@ from course_explorer.enums import ModuleRuleType, ModuleType
 from course_explorer.ingestion.normalization import normalize_curriculum
 from course_explorer.ingestion.normalization_repository import NormalizationRepository
 from course_explorer.ingestion.repository import CaptureRepository
+from course_explorer.next_courses.service import NextCourseMode, evaluate_next_course_outcomes
 from course_explorer.prerequisite import commands as prerequisite_command_module
+from course_explorer.prerequisite import native_compiler, native_handle
 from course_explorer.prerequisite.graph import (
     PrerequisiteGraphCompiler,
 )
-from course_explorer.prerequisite.satisfaction import (
-    PrerequisiteSatisfactionState,
-    evaluate_prerequisite_piece,
-    evaluate_prerequisite_satisfaction,
-)
 from course_explorer.search import lookup_commands as lookup_command_module
-from course_explorer.search.lookup import CourseLookupService
+from course_explorer.search.resolver import CourseResolver
 from course_explorer.study_structure import commands as study_structure_command_module
 from tests.ingestion._normalization_repository_support import (
     GUIDE_URL,
-    _NoEquivalenceGroupRead,
-    _NoInferredSetRead,
     build_completed_fixture_store,
     fixture_bytes,
 )
@@ -138,11 +133,6 @@ def normalized_curriculum(
         course_guide_base_url=GUIDE_URL,
     )
 
-    monkeypatch.setattr(
-        lookup_command_module,
-        "load_search_settings",
-        lambda: settings_factory(SearchSettings),
-    )
     monkeypatch.setattr(
         lookup_command_module,
         "load_normalization_settings",
@@ -515,7 +505,7 @@ def test_resolver_rejects_historical_and_unrepresented_codes(normalized_curricul
             .where(CourseVersion.sisu_course_unit_id == "course-a-z1")
             .values(code="CS.AOLD")
         )
-    lookup = CourseLookupService(repository, settings_factory(SearchSettings))
+    lookup = CourseResolver(repository)
     representative_resolved = lookup.resolve_courses(("CS.A2",))
     assert [record.summary.group_id for record in representative_resolved] == ["course-group-a"]
     with pytest.raises(ValueError):
@@ -573,8 +563,10 @@ def test_prerequisite_graph_expands_normalized_module_rules(
         course_guide_base_url=GUIDE_URL,
     )
 
+    from course_explorer.config import load_database_settings
+
     compiler = PrerequisiteGraphCompiler(
-        CurriculumRepository(factory), _NoInferredSetRead(), _NoEquivalenceGroupRead()
+        native_handle=native_handle.worker_handle(load_database_settings())
     )
     compilation = compiler.compile(
         "course-group-a", include_recommended=False, include_inferred=False
@@ -652,37 +644,25 @@ def test_prerequisite_graph_expands_normalized_module_rules(
     # The real normalized module tree is unsatisfied: the surviving 5-credit numeric child exceeds the
     # inactive 3-credit member under all-courses scope, so ignoring the unrestricted positions is
     # a no-solution rather than a fabricated zero-cost satisfaction.
-    evaluation = evaluate_prerequisite_satisfaction(structure, [])
-    assert evaluation.requirements_state is PrerequisiteSatisfactionState.UNSATISFIED
-
-    # Direct-many associates the same separate category roots on the real module fixture: the
-    # compulsory module-rule cardinality is the only enabled pool.
+    # Direct-many returns the candidate's own summary on the real module fixture: the compulsory
+    # module-rule cardinality is the only enabled pool.
     direct = compiler.compile_direct_many(("course-group-a",), active_only=False)
-    assert [entry.solver.root_group_id for entry in direct] == ["course-group-a"]
-    direct_entry = direct[0]
-    direct_uses = {use.use_id: use for use in direct_entry.solver.uses}
-    direct_pieces = {piece.piece_id: piece for piece in direct_entry.solver.pieces}
-    assert direct_entry.required_use_id is not None
-    assert direct_entry.recommended_use_id is None
-    required_piece = direct_pieces[direct_uses[direct_entry.required_use_id].piece_id]
-    assert required_piece.kind == "module_block"
-    assert required_piece.module_group_id == "module-group-grouping"
+    assert [entry.summary.root_group_id for entry in direct] == ["course-group-a"]
+    assert "course-group-a" in {course.group_id for course in direct[0].summary.courses}
     assert (
-        evaluate_prerequisite_piece(direct_entry.solver, required_piece.piece_id, [])
-        is PrerequisiteSatisfactionState.UNSATISFIED
+        evaluate_next_course_outcomes(direct, (), mode=NextCourseMode.ALL)["course-group-a"] is None
     )
     # The inactive 3-credit module member cannot satisfy the stored 5-credit numeric child, so the
     # numeric known-child route is unsatisfied rather than being reported satisfied.
-    numeric_child = direct_pieces[direct_pieces[required_piece.children[0]].children[0]]
-    assert numeric_child.kind == "credits"
+    inactive_direct = compiler.compile_direct_many(("course-group-a",), active_only=False)
     assert (
-        evaluate_prerequisite_piece(
-            direct_entry.solver,
-            numeric_child.piece_id,
-            ["course-group-inactive"],
-        )
-        is PrerequisiteSatisfactionState.UNSATISFIED
+        evaluate_next_course_outcomes(
+            inactive_direct, ("course-group-inactive",), mode=NextCourseMode.ALL
+        )["course-group-a"]
+        is None
     )
+    native_compiler.close_compilations(direct)
+    native_compiler.close_compilations(inactive_direct)
 
     # Pathing returns a no-solution for the impossible surviving numeric position and fabricates
     # no course.

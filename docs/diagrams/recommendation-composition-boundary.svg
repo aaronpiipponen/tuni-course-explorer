@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 688" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Fixed-pool recommendation composition boundary</title>
+  <desc id="d">One composition sample starts from a saved candidate pool and covers dataset and
+  settings resolution, engine creation and the first connection, the summary and chunk reads,
+  preparation and scoring, and report construction and serialization. Approximate retrieval, the
+  next-course read and compiler, capture observers and hashing, the serving identity wrapper,
+  response delivery and the HTTP request lie outside the measured boundary.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="688" rx="12" fill="#232434"/>
+
+  <rect x="140" y="32" width="368" height="40" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="324" y="57" text-anchor="middle" font-size="16" fill="#ececf2">Saved candidate pool for one basis</text>
+
+  <line x1="324" y1="72" x2="324" y2="104" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+
+  <text x="48" y="96" font-size="16" fill="#a3a4b8">Composition sample</text>
+  <rect x="48" y="104" width="552" height="448" rx="8" fill="none"
+        stroke="#a98ae0" stroke-width="1.5" stroke-dasharray="5 4"/>
+
+  <rect x="140" y="128" width="368" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="324" y="154" text-anchor="middle" font-size="16" fill="#ececf2">Resolve receipt and settings</text>
+  <text x="324" y="176" text-anchor="middle" font-size="14" fill="#a3a4b8">named dataset receipt</text>
+
+  <rect x="140" y="212" width="368" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="324" y="238" text-anchor="middle" font-size="16" fill="#ececf2">Create engine and connect</text>
+  <text x="324" y="260" text-anchor="middle" font-size="14" fill="#a3a4b8">first connect and schema head check</text>
+
+  <rect x="140" y="296" width="368" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="324" y="322" text-anchor="middle" font-size="16" fill="#ececf2">Read summaries and chunks</text>
+  <text x="324" y="344" text-anchor="middle" font-size="14" fill="#a3a4b8">basis and candidate chunk rows</text>
+
+  <rect x="140" y="380" width="368" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="324" y="406" text-anchor="middle" font-size="16" fill="#ececf2">Prepare and score</text>
+  <text x="324" y="428" text-anchor="middle" font-size="14" fill="#a3a4b8">scalar scorer of the measured build</text>
+
+  <rect x="140" y="464" width="368" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="324" y="490" text-anchor="middle" font-size="16" fill="#ececf2">Build and serialize report</text>
+  <text x="324" y="512" text-anchor="middle" font-size="14" fill="#a3a4b8">compact JSON, no identity wrapper</text>
+
+  <line x1="324" y1="192" x2="324" y2="212" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="324" y1="276" x2="324" y2="296" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="324" y1="360" x2="324" y2="380" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="324" y1="444" x2="324" y2="464" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+
+  <line x1="324" y1="528" x2="324" y2="576" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+
+  <rect x="140" y="576" width="368" height="40" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="324" y="601" text-anchor="middle" font-size="16" fill="#ececf2">Serialized recommendation report</text>
+
+  <text x="648" y="120" font-size="16" fill="#a3a4b8">Outside every timing</text>
+  <text x="648" y="148" font-size="14" fill="#a3a4b8">Approximate retrieval</text>
+  <text x="648" y="174" font-size="14" fill="#a3a4b8">Next-course read and compiler</text>
+  <text x="648" y="200" font-size="14" fill="#a3a4b8">Capture observers and hashing</text>
+  <text x="648" y="226" font-size="14" fill="#a3a4b8">Serving identity wrapper</text>
+  <text x="648" y="252" font-size="14" fill="#a3a4b8">Response delivery</text>
+  <text x="648" y="278" font-size="14" fill="#a3a4b8">HTTP request and response</text>
+
+  <rect x="48" y="624" width="340" height="40" rx="8" fill="none"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <line x1="64" y1="644" x2="104" y2="644" stroke="#a98ae0" stroke-width="1.5"
+        stroke-dasharray="5 4"/>
+  <text x="116" y="649" font-size="14" fill="#a3a4b8">Measured composition boundary</text>
+</svg>

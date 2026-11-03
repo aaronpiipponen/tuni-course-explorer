@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 484" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Blind judged support by category for three prompt runs</title>
+  <desc id="d">The share of emitted findings that the blind judge marked supported, by category, for frozen v7 on 49 targets, v8b on 49 targets and the exact v8 bytes on 14 format-subset targets. The overall shares are 0.60, 0.63 and 0.71.</desc>
+  <rect width="960" height="484" rx="12" fill="#232434"/>
+  <rect x="61" y="33" width="14" height="14" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="96" y="45" font-size="14" fill="#a3a4b8">Frozen v7</text>
+  <rect x="208.6" y="33" width="14" height="14" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="243.6" y="45" font-size="14" fill="#a3a4b8">v8b</text>
+  <rect x="305.8" y="33" width="14" height="14" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="340.8" y="45" font-size="14" fill="#a3a4b8">Exact v8 bytes</text>
+  <line x1="164.8" y1="72" x2="164.8" y2="408" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="164.8" y="430" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="304.3" y1="72" x2="304.3" y2="408" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="304.3" y="430" text-anchor="middle" font-size="14" fill="#a3a4b8">0.2</text>
+  <line x1="443.8" y1="72" x2="443.8" y2="408" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="443.8" y="430" text-anchor="middle" font-size="14" fill="#a3a4b8">0.4</text>
+  <line x1="583.4" y1="72" x2="583.4" y2="408" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="583.4" y="430" text-anchor="middle" font-size="14" fill="#a3a4b8">0.6</text>
+  <line x1="722.9" y1="72" x2="722.9" y2="408" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="722.9" y="430" text-anchor="middle" font-size="14" fill="#a3a4b8">0.8</text>
+  <line x1="862.4" y1="72" x2="862.4" y2="408" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="862.4" y="430" text-anchor="middle" font-size="14" fill="#a3a4b8">1</text>
+  <text x="152.8" y="119" text-anchor="end" font-size="14" fill="#ececf2">Required</text>
+  <rect x="164.8" y="80" width="362.8" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="535.6" y="95" font-size="14" fill="#a3a4b8">0.52</text>
+  <rect x="164.8" y="104" width="306.9" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="479.7" y="119" font-size="14" fill="#a3a4b8">0.44</text>
+  <rect x="164.8" y="128" width="432.5" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="605.3" y="143" font-size="14" fill="#a3a4b8">0.62</text>
+  <text x="152.8" y="203" text-anchor="end" font-size="14" fill="#ececf2">Recommended</text>
+  <rect x="164.8" y="164" width="432.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="605.3" y="179" font-size="14" fill="#a3a4b8">0.62</text>
+  <rect x="164.8" y="188" width="523.2" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="696" y="203" font-size="14" fill="#a3a4b8">0.75</text>
+  <rect x="164.8" y="212" width="467.4" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="640.2" y="227" font-size="14" fill="#a3a4b8">0.67</text>
+  <text x="152.8" y="287" text-anchor="end" font-size="14" fill="#ececf2">Equivalence</text>
+  <rect x="164.8" y="248" width="502.3" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="675.1" y="263" font-size="14" fill="#a3a4b8">0.72</text>
+  <rect x="164.8" y="272" width="593" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="765.8" y="287" font-size="14" fill="#a3a4b8">0.85</text>
+  <rect x="164.8" y="296" width="579" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="751.8" y="311" font-size="14" fill="#a3a4b8">0.83</text>
+  <text x="152.8" y="371" text-anchor="end" font-size="14" fill="#ececf2">All findings</text>
+  <rect x="164.8" y="332" width="418.6" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="591.4" y="347" font-size="14" fill="#a3a4b8">0.6</text>
+  <rect x="164.8" y="356" width="439.5" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="612.3" y="371" font-size="14" fill="#a3a4b8">0.63</text>
+  <rect x="164.8" y="380" width="495.3" height="20" rx="2" fill="#ffb454" stroke="none" stroke-width="1.5"/>
+  <text x="668.1" y="395" font-size="14" fill="#a3a4b8">0.71</text>
+  <text x="513.6" y="460" text-anchor="middle" font-size="14" fill="#a3a4b8">Supported share of emitted findings</text>
+</svg>

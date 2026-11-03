@@ -14,7 +14,7 @@ Every feature route runs one fixed command shape. A request supplies values for 
 
 Every HTTP request passes one order of checks, and a refusal answers before any handler runs. The diagram shows the order and the outcome each check produces.
 
-![A request passes the administration lock, the exact site, the built shell or asset exception, the session requirement and the CSRF check. A shell or asset read is admitted without a session. The lock, a site mismatch, a sign-in without a live session and a missing or wrong CSRF token answer an empty 403, a protected address without an authenticated session answers an empty 401, and a request for a fresh anonymous session beyond the creation limit answers an empty 429.](/docs/diagrams/admin-admission-order.svg)
+![A request passes the administration lock, the exact site, the built shell or asset exception, the session requirement and the CSRF check. A shell or asset read is admitted without a session, and every method other than GET, HEAD or OPTIONS needs a matching CSRF token. The lock, a site mismatch, a sign-in without a live session and a missing or wrong CSRF token answer an empty 403, a protected address without an authenticated session answers an empty 401, and a request for a fresh anonymous session beyond the creation limit answers an empty 429.](/docs/diagrams/admin-admission-order.svg)
 
 ### The lock
 
@@ -63,7 +63,7 @@ An admitted request refreshes its own session's idle clock and carries that sess
 | The stored credential state is malformed | `500` | `{"error":"ExceptionClass"}` | No failed attempt recorded |
 | A request body fails validation after admission | `422` | `{"detail":"Invalid request"}` | No command |
 
-The authentication routes and the request-validation failure carry `Cache-Control: no-store`. A creation-limit refusal carries it as well, together with `Retry-After`. A command that ran and failed answers `200` with the command's own nonzero `exit_code`, a null `report` and its safe `failure_line`.
+The authentication routes and the request-validation failure carry `Cache-Control: no-store`. A creation-limit refusal carries it as well, together with `Retry-After`. A command that ran and failed answers `200` with the command's own nonzero `exit_code`, a null `report`, its safe `failure_line` and its owning `guidance_line`.
 
 ## Sessions
 
@@ -101,7 +101,7 @@ A sign-in verifies the stored argon2id hash before it compares the username. A w
 
 The diagram shows the session states beside the failed-attempt count and the lock.
 
-![An anonymous session becomes a signed-in session on a correct sign-in, and the signed-in session expires after its idle or total lifetime. Failed sign-ins accumulate in the failed-attempt count, and the third consecutive failure creates the administration lock. A correct sign-in resets the count and deleting the lock file ends the refusal.](/docs/diagrams/admin-sign-in-states.svg)
+![An anonymous session becomes a signed-in session on a correct sign-in, and the signed-in session expires after its idle or total lifetime. An expired session is dropped when its cookie is next resolved, and the next GET /auth/session creates an anonymous session. Failed sign-ins accumulate in the failed-attempt count, a correct sign-in after one or two failures signs in and resets it, the third consecutive failure creates the administration lock, and deleting the lock file lets a signed-in session within its lifetime work again.](/docs/diagrams/admin-sign-in-states.svg)
 
 The failed-attempt count is a JSON document at `data/admin-web/failed-logins` with one `count` member. The file is published at mode 0600 under the state directory, and a missing file means zero. The limit of three consecutive failures is fixed in code rather than configured.
 
@@ -126,27 +126,29 @@ The command log is the file `data/admin-web/command-log`. It holds the last `ADM
 
 A successful sign-in appends one `login` entry with exit code `0`. A failed sign-in appends `failed-login` with exit code `1`. The failure that creates the lock appends `lock` with exit code `403` and duration `0.0`. The three events use the same file and the same entry shape as a command outcome.
 
-Every fixed command that runs appends its entry, including a command that failed. A successful read that the console issues automatically appends no entry, while a failed automatic read appends one. The successful automatic reads are the dashboard, the preparation status and report reads, the inference status, summary and dataset listing, the five log reads, the configuration file listing and read, and the backup listing. The target read, the target decision, every stage and inference action, the hub write, a configuration save, a backup deletion and every maintenance action append an entry even when the request carries the automatic-read marker.
+Every fixed command that runs appends its entry, including a command that failed. A successful read that the console issues automatically appends no entry, while a failed automatic read appends one. The successful automatic reads are the dashboard, the preparation status and report reads, the inference status and summary, the Settings dataset inventory, the command log, the session inventory, the session and runtime log sources that read automatically, the usage report, the feedback listing, the configuration file listing and read, and the backup listing.
+
+The feedback attachment read and a worker log source are explicit reads, so each appends an entry even when the request carries the automatic-read marker. The feedback listing returns the stored answers, attachment metadata and the recorded publication state, issue link and safe failure. No sender credential or destination timeout is a feedback report value. The target read, the target decision, every stage and inference action, the serving-artifact build, a configuration save, a backup deletion, a feedback deletion and every maintenance action append an entry even when the request carries the automatic-read marker.
 
 An entry holds no captured command output beyond the one safe failure line. It holds no password, key value, session token or free-form command argument, and no target id, dataset id, file name or branch name.
 
-The [Command log panel](/docs/operations/admin-console/logs.md#command-log) reads the log in the console. The operator menu's Server and log reads choice five runs the same read and prints the entries oldest first. [The command-log read](/docs/backend/interfaces/command-line.md#the-command-log-read) states the machine command. An explicit read of the log appends its own `logs commands` entry, while an automatic console read appends none.
+The [Command log panel](/docs/operations/admin-console/logs.md#command-log) reads the log in the console. The operator menu's Server and log reads choice five runs the same read and prints the entries oldest first. [The command-log read](/docs/backend/interfaces/administration-commands.md#the-command-log-read) states the machine command. An explicit read of the log appends its own `logs commands` entry, while an automatic console read appends none.
 
 ## Request records and the usage report
 
-The course-exploration web server's front router appends one request record to `data/usage/requests` for every HTTP request it answers. The file is mode 0600, and one record is one JSON line. It holds the request-start UTC hour rounded down, a fixed route label, the response status and the elapsed seconds. The route label comes from the request path: `/` and `/docs` report themselves, one of the nine fixed API paths reports that path, `/assets` covers a served or a missing asset, and every other path reports `unmatched`. The record holds no requested path, query, header, user agent, network address or course data.
+The course-exploration web server's front router appends one request record to `data/usage/requests` for every HTTP request it answers. The file is mode 0600, and one record is one JSON line. It holds the request-start UTC hour rounded down, a fixed route label, the response status and the elapsed seconds. The route label comes from the request path: `/`, `/docs` and `/feedback` report themselves, one of the nine fixed catalogue API paths or the two fixed feedback API paths reports that path, `/assets` covers a served or a missing asset, and every other path reports `unmatched`. The record holds no requested path, query, header, user agent, network address or course data.
 
 The status is the response's own status, or `500` when a handler fails before it starts a response. The administration backend appends no request record. The usage file counts course-exploration requests alone.
 
 `USAGE_RETENTION_DAYS` in `config/web.toml` sets the retention, and the example file sets 30 days. The usage report retains the records from the current rounded UTC hour back that many days inclusive and prunes the older records each time it runs.
 
-The report takes a positive whole number of hours. Its window is the current rounded UTC hour and the preceding hours, inclusive. A count longer than the retention in hours is refused before the file is opened, and a nonpositive count is refused. The report returns the window bounds, the request count, the mean duration and one row per route sorted by route. A window with no recorded request reports zero requests, a null mean and no route rows. A missing file returns that report and creates nothing, and a malformed line fails the report without rewriting the file.
+The report takes a positive whole number of hours. Its window is the current rounded UTC hour and the preceding hours, inclusive. A count longer than the retention in hours is refused before the file is opened, and a nonpositive count is refused. The report returns the window bounds, the request count, the mean duration, the p95 and p99 durations, and one row per route sorted by route, and each route row carries its own count, mean, p95 and p99. The mean is the arithmetic mean of the recorded durations, and the two percentiles use the exact nearest-rank definition over their own set of durations. A window with no recorded request reports zero requests, null for the mean and both percentiles, and no route rows. A missing file returns that report and creates nothing, and a malformed line fails the report without rewriting the file.
 
-The [Usage panel](/docs/operations/admin-console/logs.md#usage) reads the report in the console. The operator menu's Server and log reads choice four runs the same report, and [The request usage report](/docs/backend/interfaces/command-line.md#the-request-usage-report) states the window and the pruning side effect.
+The [Usage panel](/docs/operations/admin-console/logs.md#usage) reads the report in the console. The operator menu's Server and log reads choice four runs the same report, and [The request usage report](/docs/backend/interfaces/administration-commands.md#the-request-usage-report) states the window and the pruning side effect.
 
 ## Settings
 
-`config/admin_web.toml` holds the 11 required keys of the administration backend. The example file sets these values.
+`config/admin_web.toml` holds the 10 required administration keys and the three site identity keys. The example file sets these values.
 
 | Key | Meaning | Unit | Example |
 |---|---|---|---|
@@ -159,12 +161,14 @@ The [Usage panel](/docs/operations/admin-console/logs.md#usage) reads the report
 | `ADMIN_WEB_ANONYMOUS_SESSION_WINDOW_SECONDS` | The length of the sliding window | Seconds | `60` |
 | `ADMIN_WEB_COMMAND_LOG_LIMIT` | The entries the command log retains | Entries | `200` |
 | `ADMIN_WEB_POLL_SECONDS` | The seconds between completed automatic reads of one enabled panel | Seconds | `60` |
-| `ADMIN_WEB_APP_URL` | The absolute address of the console's App link | URL | `http://localhost:8037/` |
 | `ADMIN_WEB_REPOSITORY_URL` | The HTTPS GitHub owner and repository address of the console's GitHub link | URL | `https://github.com/aaronpiipponen/tuni-course-explorer` |
+| `ADMIN_SITE_WEB_SERVICE_UNIT` | The systemd unit that runs this checkout's web process | Unit | `replace-with-web.service` |
+| `ADMIN_SITE_ADMIN_SERVICE_UNIT` | The systemd unit that runs this checkout's administration process | Unit | `replace-with-admin.service` |
+| `ADMIN_SITE_WEB_SERVICE_SCOPE` | The manager that owns the web unit | `user` or `system` | `user` |
 
-The host must be `127.0.0.1`, and the port must be a valid TCP port. The origin must be one exact HTTPS origin without credentials, a path, a query or a fragment. The app address must be an absolute HTTP or HTTPS address at the root. The repository address must name one owner and one repository on `github.com` over HTTPS. The two session lifetimes, the creation limit, its window, the command-log limit and the poll interval are positive integers.
+The host must be `127.0.0.1`, and the port must be a valid TCP port. The origin must be one exact HTTPS origin without credentials, a path, a query or a fragment. The repository address must name one owner and one repository on `github.com` over HTTPS. The two session lifetimes, the creation limit, its window, the command-log limit and the poll interval are positive integers. Each site unit value is one plain service basename, and the scope is `user` or `system`.
 
-The session report returns the values of `ADMIN_WEB_POLL_SECONDS`, `ADMIN_WEB_APP_URL` and `ADMIN_WEB_REPOSITORY_URL` as the console's presentation metadata. The lock path and the failed-attempt limit are fixed in code. [Configuration](/docs/backend/configuration.md) states how the settings owner reads and validates the file.
+The console's App link reads the inherited `WEB_APP_URL` from `config/web.toml`, which is one root HTTP or HTTPS address. The session report returns the values of `ADMIN_WEB_POLL_SECONDS`, `WEB_APP_URL` and `ADMIN_WEB_REPOSITORY_URL` as the console's presentation metadata. The administration origin stays independent in `config/admin_web.toml`. The lock path and the failed-attempt limit are fixed in code. [Configuration](/docs/backend/configuration.md) states how the settings owner reads and validates the file.
 
 ## Related pages
 

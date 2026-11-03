@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 616" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Serving load measurement setup</title>
+  <desc id="d">One load client reaches a disposable stack through one local forward. The web cgroup
+  holds the supervisor, the front router that the supervisor starts and the four worker processes it
+  forks. The database and the embedding provider are separate container cgroups, and a counter
+  sampler reads all three component counters.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="616" rx="12" fill="#232434"/>
+
+  <rect x="64" y="48" width="240" height="224" rx="8" fill="none"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="80" y="72" font-size="16" fill="#a3a4b8">Load client</text>
+
+  <rect x="80" y="80" width="208" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="184" y="106" text-anchor="middle" font-size="16" fill="#ececf2">k6 client</text>
+  <text x="184" y="128" text-anchor="middle" font-size="14" fill="#a3a4b8">constant user count</text>
+
+  <line x1="184" y1="144" x2="184" y2="176" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <rect x="80" y="176" width="208" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="184" y="202" text-anchor="middle" font-size="16" fill="#ececf2">SSH local forward</text>
+  <text x="184" y="224" text-anchor="middle" font-size="14" fill="#a3a4b8">to the loopback port</text>
+
+  <line x1="288" y1="208" x2="344" y2="208" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <rect x="344" y="48" width="464" height="256" rx="8" fill="none"
+        stroke="#a98ae0" stroke-width="1.5"/>
+  <text x="360" y="72" font-size="16" fill="#a98ae0">Web cgroup, 4.295 GB cap</text>
+
+  <rect x="368" y="80" width="160" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="448" y="106" text-anchor="middle" font-size="16" fill="#ececf2">Supervisor</text>
+  <text x="448" y="128" text-anchor="middle" font-size="14" fill="#a3a4b8">fresh per run</text>
+
+  <rect x="596" y="80" width="184" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="688" y="106" text-anchor="middle" font-size="16" fill="#ececf2">Front router</text>
+  <text x="688" y="128" text-anchor="middle" font-size="14" fill="#a3a4b8">admits requests</text>
+
+  <line x1="528" y1="112" x2="596" y2="112" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="562" y="104" text-anchor="middle" font-size="14" fill="#a3a4b8">starts</text>
+
+  <rect x="368" y="216" width="412" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="574" y="242" text-anchor="middle" font-size="16" fill="#ececf2">Worker processes</text>
+  <text x="574" y="264" text-anchor="middle" font-size="14" fill="#a3a4b8">four forked processes</text>
+
+  <line x1="448" y1="144" x2="448" y2="216" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="456" y="184" font-size="14" fill="#a3a4b8">forks</text>
+
+  <line x1="688" y1="144" x2="688" y2="216" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="696" y="184" font-size="14" fill="#a3a4b8">forwards</text>
+
+  <rect x="344" y="352" width="208" height="128" rx="8" fill="none"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="360" y="376" font-size="16" fill="#a3a4b8">Database cgroup</text>
+  <rect x="360" y="384" width="176" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="448" y="410" text-anchor="middle" font-size="16" fill="#ececf2">Database</text>
+  <text x="448" y="432" text-anchor="middle" font-size="14" fill="#a3a4b8">4.295 GB cap</text>
+
+  <rect x="568" y="352" width="240" height="128" rx="8" fill="none"
+        stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="584" y="376" font-size="16" fill="#a3a4b8">Embedding cgroup</text>
+  <rect x="584" y="384" width="208" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="688" y="410" text-anchor="middle" font-size="16" fill="#ececf2">Embedding provider</text>
+  <text x="688" y="432" text-anchor="middle" font-size="14" fill="#a3a4b8">1.573 GB cap</text>
+
+  <line x1="448" y1="280" x2="448" y2="352" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="456" y="324" font-size="14" fill="#a3a4b8">reads</text>
+
+  <line x1="688" y1="280" x2="688" y2="352" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="696" y="324" font-size="14" fill="#a3a4b8">query text</text>
+
+  <rect x="384" y="528" width="408" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="588" y="554" text-anchor="middle" font-size="16" fill="#ececf2">Counter sampler</text>
+  <text x="588" y="576" text-anchor="middle" font-size="14" fill="#a3a4b8">0.25 s CPU, 5 s memory</text>
+
+  <line x1="448" y1="528" x2="448" y2="480" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="456" y="508" font-size="14" fill="#a3a4b8">reads</text>
+
+  <line x1="688" y1="528" x2="688" y2="480" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="696" y="508" font-size="14" fill="#a3a4b8">reads</text>
+
+  <polyline points="792,560 840,560 840,152 808,152" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="848" y="356" font-size="14" fill="#a3a4b8">reads</text>
+</svg>

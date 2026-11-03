@@ -13,9 +13,9 @@ The structure of studies service projects selected official module versions into
 
 ## The service contract
 
-`StudyStructureService(curriculum, *, academic_year_start)` in `src/course_explorer/study_structure/service.py` holds the batch read and the single-root delegate.
+`StudyStructureService(curriculum, *, academic_year_start)` in `src/course_explorer/study_structure/service.py` holds the batch read.
 
-`read_many(root_group_ids, *, allow_unavailable=False, module_versions=None)`:
+`read_many(root_group_ids, *, allow_unavailable=False, module_versions=None, fragment_store=None)`:
 
 1. Deduplicates the roots in caller order and normalizes `module_versions` once to a mapping, returning an empty `StudyStructureBatch` before any repository read when the request is empty.
 2. Reads every requested module once through `get_modules(tuple_of_roots)`, seeding one `module_map` for the whole call.
@@ -24,7 +24,7 @@ The structure of studies service projects selected official module versions into
 
 `_project_root` selects the one version through `_select_version`, raises `StudyStructureVersionSelectionRequired` when that returns `ambiguous_version`, raises `StudyStructureRootUnavailable` when the identity is absent or the selected version carries no stored rule, and calls `_project_module` with `ancestor_group_ids=(module.group_id,)`.
 
-`read(root_group_id, *, module_versions=None)` delegates to `read_many`. It raises `StudyStructureVersionSelectionRequired` when the batch names a selection-required root before taking the sole root. Both maps are request-local and live for the one call, so the service holds no state between reads.
+A single root goes through `run_study_structure_command` in `src/course_explorer/study_structure/commands.py`, which delegates to the batch command. Both maps are request-local and live for the one call, so the service holds no state between reads.
 
 ## Models and serialization
 
@@ -42,14 +42,14 @@ A projected rule carries the official node identity, so `model_dump_json` of a r
 
 `_select_version(module, module_versions)` calls `module_version_candidates(module.versions, academic_year_start=...)` from `src/course_explorer/curriculum.py` with the default `allow_nearest=False`, so the strict candidate set applies: exact academic-year memberships win, and, only when none exists, membership-free versions whose validity bounds contain the requested year are considered. A supplied exact identity must belong to that candidate set, or the read raises `ValueError`. It is never replaced by another version. Without an entry, an empty set returns the reason `no_current_version`, and more than one candidate returns `ambiguous_version`. The service never falls back to a version tied to another year.
 
-The prerequisite graph compiler is the one caller that opts into `allow_nearest=True`, and it records a `MODULE_VERSION_FALLBACK` ignored part naming the requested year and the selected version when it does. `tests/study_structure/test_study_structure.py` covers the strict policy, and `tests/prerequisite/test_graph_module_rules.py` covers the fallback.
+The prerequisite graph compiler does not use this helper. The native compiler selects the module version in one call: an exact period membership first, then a validity-bound match, then the nearest dated version, and it records a `module_version_fallback` ignored part naming the requested year and the selected version when it falls back. `tests/study_structure/test_study_structure.py::test_structure_preserves_official_containers_rules_and_courses` covers the strict policy over its `exact_year`, `validity` and `ambiguous_year` scenarios.
 
 ## Traversal, course fetching, and cycle detection
 
 `_project_module(module, version, *, ancestor_group_ids, course_summaries, module_map, module_versions)` builds the container and walks the rule tree:
 
-- `_collect_course_refs(rule)` yields the `referenced_group_id` of each `COURSE_UNIT_RULE`, does not descend into a `MODULE_RULE`, and skips a null reference. It recurses through every other node, so the direct course references of one module are collected before the walk.
-- The module fetches the identities that are not already in `course_summaries` in one `get_course_summaries` call, deduplicated through `dict.fromkeys`, and stores each returned summary in the request-local map. A course the read omits is absent from the map, which the projection reports as `course_not_represented`.
+- `_iter_rule_nodes(rule)` yields the nodes of one rule tree in order, starting with its root. `_prefetch_modules` collects the `referenced_group_id` of every `COURSE_UNIT_RULE` it yields and skips a null reference, and it adds the reference of a `MODULE_RULE` to its pending set instead of walking into that module here.
+- `_prefetch_modules` follows module-rule references and version candidates to a fixed point, reads every reachable module in batches, and collects every direct course reference. It reads every collected course summary once through `get_course_summaries`, in batches of 1000 when needed, and passes the completed map into the projection. A course the read omits is absent from the map, which the projection reports as `course_not_represented`.
 - `_project_rule(rule, ...)` copies the official fields with `rule.model_dump(exclude={"children", "description"})` and then resolves the one reference the node carries. A `COURSE_UNIT_RULE` takes its summary from the map. A `MODULE_RULE` takes a nested module. Every other node rebuilds its `children` in order.
 
 `_resolve_nested_module(rule, *, ancestor_group_ids, course_summaries, module_map, module_versions)` classifies a module reference:
@@ -62,6 +62,17 @@ The prerequisite graph compiler is the one caller that opts into `allow_nearest=
 - Otherwise the module is projected with the reference appended to `ancestor_group_ids`.
 
 Cycle detection reads the ancestor path alone, so the same module referenced in two separate branches is projected in both, and a reference that closes a loop over its own ancestors is reported once at the closing node.
+
+## Study fragments
+
+The serving-artifact build writes one fragment file for the serving database and academic year. It
+holds one entry per canonical module root: the projected root payload, an unavailable marker or a
+version-selection marker. The build reads every root through the batched service with
+`allow_unavailable=True` and records the root count, the projectable count, the two marker counts, the
+file size and the build cost. A web read passes `cache.artifacts.study_fragments`, and the service
+answers a root the file holds unless the request supplies explicit module versions. A root absent from
+the file, or any explicit version selection, uses the batched read path. A missing fragment file
+raises at artifact open and names `scripts/admin.py serving-artifacts`.
 
 ## Failure boundaries
 
@@ -80,7 +91,9 @@ Every further failure is data, except an explicit identity outside its group's e
 
 ## The command and the CLI
 
-`run_study_structures_command(root_group_ids, *, allow_unavailable=False, module_versions=None, database_settings=None)` in `src/course_explorer/study_structure/commands.py` rejects a blank root with `ValueError` before any settings load, reads `load_normalization_settings().current_academic_year_start` once, resolves one database connection, constructs the service over `CurriculumRepository`, calls `read_many` once with the selection map, and returns the report including `version_selection_required`. `run_study_structure_command(root_group_id, *, module_versions=None)` delegates to the batch and raises `StudyStructureVersionSelectionRequired` when its sole root needs a selection instead of indexing an empty roots tuple.
+`run_study_structures_command(root_group_ids, *, allow_unavailable=False, module_versions=None, fragment_store=None, database_settings=None, academic_year_start=None, session_factory=None)` in `src/course_explorer/study_structure/commands.py` rejects a blank root with `ValueError` before any settings load. A supplied academic year is used as given, and otherwise the command reads `load_normalization_settings().current_academic_year_start` once. It resolves one database connection, constructs the service over `CurriculumRepository`, calls `read_many` once with the selection map and the supplied fragment store, and returns the report including `version_selection_required`.
+
+A supplied session factory is used as the session factory and is never disposed here, so its owner disposes the engine. `run_study_structure_command(root_group_id, *, module_versions=None)` delegates to the batch and raises `StudyStructureVersionSelectionRequired` when its sole root needs a selection instead of indexing an empty roots tuple.
 
 `scripts/study_structure.py` takes one positional `root_group_id`, repeatable `--module-version GROUP_ID=VERSION_ID` selections and prints `report.model_dump_json()` as one line. It rejects a duplicate group argument. `POST /api/study-structure` accepts `root_group_ids`, `module_versions` and `allow_unavailable` and returns the batch report with the serving dataset identity.
 
@@ -88,7 +101,7 @@ Every further failure is data, except an explicit identity outside its group's e
 
 | File | Covers |
 |---|---|
-| `tests/study_structure/test_study_structure.py` | The full structure over an in-memory read for the exact-year and validity selection, every inherited official field and the child order of the whole tree, the nested module and its inactive course, the choice bounds, the credits and count ranges, the unrestricted rules, the excluded `description`, fixed-point decimal serialization, and the report round-trip. The degree and study roots are read as one batch over shared maps. It also covers a missing nested course, a missing nested module, an ambiguous nested year, an ancestor cycle, an unknown root, and an ambiguous root in strict and allowed-unavailable modes. It proves an explicit root-and-nested pair selects the exact official content, and that a foreign or ineligible-year identity is refused even when unavailable roots are collected. |
+| `tests/study_structure/test_study_structure.py` | The full structure over an in-memory read for the exact-year and validity selection, every inherited official field and the child order of the whole tree, the nested module and its inactive course, the choice bounds, the credits and count ranges, the unrestricted rules, the excluded `description`, fixed-point decimal serialization, and the report round-trip. The degree and study roots are read as one batch over shared maps. It also covers a missing nested course, a missing nested module, an ambiguous nested year, an ancestor cycle, an unknown root, and an ambiguous root in strict and allowed-unavailable modes. It proves an explicit root-and-nested pair selects the exact official content, and that a foreign or ineligible-year identity is refused even when unavailable roots are collected. It also builds the fragment file and proves a fragment hit reads no module or summary, an explicit version selection bypasses the fragment, and unavailable and version-selection markers answer without a batch read. |
 | `tests/study_structure/test_study_structure_command.py` | The blank root refused before any settings load, the batch map forwarded to the service, the single-root CLI delegating one root, its repeatable selections and duplicate-group refusal, and a rejected unknown argument. |
 
 The behaviour as the app presents it is described in [Structure of studies in the catalogue](/docs/backend/catalogue/study-structure.md).

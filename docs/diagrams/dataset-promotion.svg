@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 640" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Promotion to Selected</title>
+  <desc id="d">Promotion copies one source dataset, builds the copy's serving artifacts, publishes the
+  Selected pointer, restarts the web unit and proves the served catalogue and a changed identity. A
+  failed restart or proof restores the previous Selected pointer, restarts the unit and proves the
+  previous catalogue.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+    <marker id="arrow-accent" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a98ae0"/>
+    </marker>
+  </defs>
+  <rect width="960" height="640" rx="12" fill="#232434"/>
+
+  <rect x="320" y="48" width="240" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="440" y="74" text-anchor="middle" font-size="16" fill="#ececf2">Copy</text>
+  <text x="440" y="96" text-anchor="middle" font-size="14" fill="#a3a4b8">one verified copy</text>
+
+  <rect x="320" y="152" width="240" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="440" y="178" text-anchor="middle" font-size="16" fill="#ececf2">Build</text>
+  <text x="440" y="200" text-anchor="middle" font-size="14" fill="#a3a4b8">serving artifacts</text>
+
+  <rect x="320" y="256" width="240" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="440" y="282" text-anchor="middle" font-size="16" fill="#ececf2">Publish Selected</text>
+  <text x="440" y="304" text-anchor="middle" font-size="14" fill="#a3a4b8">the Selected pointer</text>
+
+  <rect x="320" y="360" width="240" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="440" y="386" text-anchor="middle" font-size="16" fill="#ececf2">Restart</text>
+  <text x="440" y="408" text-anchor="middle" font-size="14" fill="#a3a4b8">the site's web unit</text>
+
+  <rect x="320" y="464" width="240" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="440" y="490" text-anchor="middle" font-size="16" fill="#ececf2">Prove</text>
+  <text x="440" y="512" text-anchor="middle" font-size="14" fill="#a3a4b8">catalogue and identity</text>
+
+  <rect x="648" y="392" width="264" height="64" rx="8" fill="#2e3045" stroke="#a98ae0"
+        stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="780" y="418" text-anchor="middle" font-size="16" fill="#ececf2">Restore selection</text>
+  <text x="780" y="440" text-anchor="middle" font-size="14" fill="#a3a4b8">restart and prove</text>
+
+  <line x1="440" y1="112" x2="440" y2="152" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="440" y1="216" x2="440" y2="256" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="440" y1="320" x2="440" y2="360" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+  <line x1="440" y1="424" x2="440" y2="464" stroke="#a3a4b8" stroke-width="1.5"
+        marker-end="url(#arrow)"/>
+
+  <polyline points="560,392 592,392 592,424 648,424" fill="none" stroke="#a98ae0"
+            stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrow-accent)"/>
+  <text x="600" y="380" font-size="14" fill="#a3a4b8">restart failed</text>
+
+  <polyline points="560,496 704,496 704,456" fill="none" stroke="#a98ae0"
+            stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrow-accent)"/>
+  <text x="712" y="480" font-size="14" fill="#a3a4b8">proof failed</text>
+
+  <rect x="48" y="560" width="260" height="48" rx="8" fill="none" stroke="#4a4c6b" stroke-width="1.5"/>
+  <line x1="64" y1="584" x2="104" y2="584" stroke="#a98ae0" stroke-width="1.5"
+        stroke-dasharray="5 4" marker-end="url(#arrow-accent)"/>
+  <text x="116" y="589" font-size="14" fill="#a3a4b8">Rollback on failure</text>
+</svg>

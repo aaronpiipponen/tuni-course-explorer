@@ -1,11 +1,18 @@
-"""Shared fixtures for selected-dataset settings, receipt, and verification tests."""
+"""Shared fixtures for dataset-role settings, receipt, and verification tests."""
 
 from __future__ import annotations
 
+from pathlib import Path
+from typing import Literal
+
+from course_explorer.administration import administrative_json, atomic_write_private_text
+from course_explorer.config import load_administrative_dataset_settings
 from course_explorer.curriculum import CatalogueSummary
 from course_explorer.datasets import (
+    DatasetPointer,
     DatasetReceipt,
     DatasetVerification,
+    clear_dataset_cache,
 )
 from course_explorer.embeddings.generation import (
     CourseEmbeddingCoverageCount,
@@ -21,9 +28,11 @@ from course_explorer.teaching_text.service import (
     TeachingTextCoverageCount,
     TeachingTextCoverageReport,
 )
+from course_explorer_admin.datasets import admin_state_root
 
 REVISION = "a" * 40
 INITIAL_ID = "0" * 32
+WORKING_ID = "1" * 32
 
 
 def sample_verification() -> DatasetVerification:
@@ -108,15 +117,51 @@ def sample_verification() -> DatasetVerification:
 
 
 def sample_receipt(
-    *, dataset_id: str = INITIAL_ID, database_name: str = "course_explorer"
+    *,
+    dataset_id: str = INITIAL_ID,
+    database_name: str = "course_explorer",
+    kind: Literal["initial", "returned", "copied"] = "initial",
+    predecessor_id: str | None = None,
+    dump_sha256: str | None = None,
 ) -> DatasetReceipt:
-    """Return one initial dataset receipt for the supplied identity."""
+    """Return one valid dataset receipt for the supplied identity and kind."""
     return DatasetReceipt(
         schema_version=1,
         dataset_id=dataset_id,
         database_name=database_name,
-        predecessor_id=None,
-        kind="initial",
-        dump_sha256=None,
+        predecessor_id=predecessor_id,
+        kind=kind,
+        dump_sha256=dump_sha256,
         verification=sample_verification(),
     )
+
+
+def write_dataset_roles() -> Path:
+    """Write one Selected and one Working receipt and pointer under the configured state root.
+
+    The stages resolve the Working role, and a Working receipt needs a distinct Selected one beside
+    it. Both roles name their own dataset and database, so the role guard accepts them. A proof that
+    replaces its own database context resolves the roles without connecting to these names.
+    """
+    state_root = admin_state_root(load_administrative_dataset_settings())
+    roles = (
+        ("selected", INITIAL_ID, "course_explorer_selected_proof", "initial", None, None),
+        ("working", WORKING_ID, "course_explorer_working_proof", "copied", INITIAL_ID, "b" * 64),
+    )
+    for role, dataset_id, database_name, kind, predecessor_id, dump_sha256 in roles:
+        receipt = sample_receipt(
+            dataset_id=dataset_id,
+            database_name=database_name,
+            kind=kind,  # type: ignore[arg-type]
+            predecessor_id=predecessor_id,
+            dump_sha256=dump_sha256,
+        )
+        directory = state_root / "datasets" / dataset_id
+        directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+        atomic_write_private_text(directory / "receipt.json", administrative_json(receipt))
+        atomic_write_private_text(
+            state_root / f"{role}-dataset.json",
+            administrative_json(DatasetPointer(schema_version=1, dataset_id=dataset_id)),
+        )
+    clear_dataset_cache()
+    return state_root

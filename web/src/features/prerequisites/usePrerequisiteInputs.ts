@@ -10,7 +10,13 @@ import type {
 } from "../../api/types";
 
 /** Return the live prerequisite input snapshot of the current profile. */
-export function usePrerequisiteInputs(): {
+export function usePrerequisiteInputs(
+  /**
+   * Whether the pane is still on screen. A pane that is leaving keeps its drawing, its route and
+   * its reads until it unmounts, so its content slides out instead of vanishing at the start.
+   */
+  present = true,
+): {
   request: PrerequisitesRequest | null;
   key: string;
   active: boolean;
@@ -142,7 +148,7 @@ export function usePrerequisiteInputs(): {
   return {
     request,
     key: JSON.stringify(request),
-    active: activeTab === "prerequisites",
+    active: activeTab === "prerequisites" || !present,
     graphRequest,
     graphKey,
     graphInputError,

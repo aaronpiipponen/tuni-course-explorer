@@ -25,7 +25,8 @@ from tomlkit.exceptions import TOMLKitError
 from tomlkit.items import Array, InlineTable, Item
 from tomlkit.toml_document import TOMLDocument
 
-from course_explorer.administration import atomic_write_private_text, repository_root
+from course_explorer import administration
+from course_explorer.administration import atomic_write_private_text
 from course_explorer.config import (
     CONFIGURATION_SETTINGS_FAMILIES,
     ConfiguredSettings,
@@ -295,16 +296,16 @@ def _append_environment_binding(payload: str, key: str, value: str) -> str:
 def _owned_environment_alias(
     key: str, settings_families: tuple[type[ConfiguredSettings], ...]
 ) -> str:
-    """Return the configured spelling of one owned environment key, or refuse an unowned key."""
+    """Return the configured spelling of one owned credential key, or refuse a non-credential key."""
     families = _owning_families(key, settings_families)
     if not families:
         raise ValueError(f"configuration key is not present in {_ENVIRONMENT_FILE}")
-    return next(
-        alias
-        for family in families
-        for alias in _settings_aliases(family)
-        if alias.lower() == key.lower()
-    )
+    normalized = key.lower()
+    for family in families:
+        for alias in _settings_aliases(family, credentials_only=True):
+            if alias.lower() == normalized:
+                return alias
+    raise ValueError("configuration key is not a credential; set it in its owning TOML file")
 
 
 def _owning_families(
@@ -325,7 +326,6 @@ def _owning_families(
 
 
 def _validate_candidate(
-    root: Path,
     *,
     file: str,
     key: str,
@@ -345,7 +345,7 @@ def _validate_candidate(
         if file != _ENVIRONMENT_FILE:
             raise ValueError("configuration key is not owned by a settings family")
         return
-    with configuration_candidate(root, documents=documents, local=local):
+    with configuration_candidate(documents=documents, local=local):
         for family in families:
             family()
 
@@ -358,12 +358,12 @@ def list_configuration_files() -> ConfigurationFilesReport:
 def read_configuration_file(file: str) -> ConfigurationFileReport:
     """Return every key of one listed configuration file as that file holds its value.
 
-    A subsystem file is parsed as TOML, so a hub reference is returned as its table rather than
-    resolved. The environment file is parsed into its assignments, and a bare key reports no value.
-    Every value is reported as the file spells it.
+    A subsystem file is parsed as TOML, so an inline table is returned as its parsed value. The
+    environment file is parsed into its assignments, and a bare key reports no value. Every value is
+    reported as the file spells it.
     """
     listed = _require_listed_file(file)
-    root = repository_root()
+    root = administration.repository_root()
     path = _confined_path(root, listed)
     _require_regular_file(path)
     payload = _read_text(path)
@@ -391,7 +391,7 @@ def set_configuration_value(
     the file and the key.
     """
     listed = _require_listed_file(file)
-    root = repository_root()
+    root = administration.repository_root()
     path = _confined_path(root, listed)
     _require_regular_file(path)
     _require_source_files(root)
@@ -428,7 +428,6 @@ def set_configuration_value(
         }
         documents = read_configuration_documents(root, replacements={listed: rendered})
     _validate_candidate(
-        root,
         file=listed,
         key=key,
         documents=documents,

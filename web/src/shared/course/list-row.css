@@ -16,7 +16,7 @@
 }
 .course-list-row:hover,
 .course-list-row.open {
-  background: rgb(78 0 142 / 35%);
+  background: rgb(90 30 156 / 35%);
 }
 .course-list-row.has-markers {
   grid-template-columns: 96px minmax(0, 1fr) auto auto;

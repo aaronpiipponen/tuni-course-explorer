@@ -7,8 +7,6 @@ import type {
   ConfigurationFileReport,
   ConfigurationFilesReport,
   ConfigurationWriteReport,
-  DatasetReceipt,
-  DatasetVerification,
   ProvisioningReport,
   RebuildReport,
 } from "./types";
@@ -104,30 +102,6 @@ export function rebuildAdminPanel(
   signal?: AbortSignal,
 ): Promise<AdminRebuildReport> {
   return runCommand<AdminRebuildReport>("/api/settings/rebuild-admin", {
-    body: {},
-    csrfToken,
-    signal,
-  });
-}
-
-/** Enroll or select the dataset through the fixed setup command. */
-export function setupDataset(
-  csrfToken: string,
-  signal?: AbortSignal,
-): Promise<DatasetReceipt> {
-  return runCommand<DatasetReceipt>("/api/settings/datasets/setup", {
-    body: {},
-    csrfToken,
-    signal,
-  });
-}
-
-/** Migrate the selected dataset to this checkout's migration head. */
-export function migrateDataset(
-  csrfToken: string,
-  signal?: AbortSignal,
-): Promise<DatasetVerification> {
-  return runCommand<DatasetVerification>("/api/settings/datasets/migrate", {
     body: {},
     csrfToken,
     signal,

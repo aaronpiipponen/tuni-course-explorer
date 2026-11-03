@@ -12,7 +12,7 @@ import os
 import re
 from collections.abc import Callable
 from pathlib import Path
-from typing import Literal, Self
+from typing import TYPE_CHECKING, Literal, Self
 from urllib.parse import urlsplit
 
 from pydantic import (
@@ -33,6 +33,7 @@ from pydantic_settings import (
 )
 from sqlalchemy.engine import URL
 
+from course_explorer import administration
 from course_explorer.constants import COURSE_EMBEDDING_DIMENSION
 from course_explorer.enums import TeachingTextField
 from course_explorer.validation import (
@@ -42,7 +43,11 @@ from course_explorer.validation import (
     require_sha256,
 )
 
+if TYPE_CHECKING:
+    from course_explorer.datasets import DatasetRole
+
 _ANY_HTTP_URL_ADAPTER = TypeAdapter(AnyHttpUrl)
+_GITHUB_REPOSITORY = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9_.-]*")
 
 
 def _academic_year_start(value: str) -> int:
@@ -74,6 +79,47 @@ def _require_loopback_host(value: str, *, setting_name: str) -> str:
     return value
 
 
+# The hostnames a plain-HTTP origin may name. Every other origin requires HTTPS.
+_LOOPBACK_ORIGIN_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
+
+
+def _require_exact_origin(
+    value: str, *, setting_name: str, allow_loopback_http: bool = False
+) -> str:
+    """Require one exact origin without credentials, path, query or fragment.
+
+    HTTPS is the only scheme unless ``allow_loopback_http`` admits plain HTTP for a loopback
+    hostname. The value is kept as it is spelled, so a request comparison reads one exact string. A
+    wildcard, whitespace, an empty host, user information, a port outside the TCP range and every
+    URL decoration each fail the read. An invalid port raises the parser's own failure, which
+    ``hide_input_in_errors`` keeps free of the value.
+    """
+    if not value or any(character.isspace() for character in value) or "*" in value:
+        raise ValueError(f"{setting_name} must be one exact origin without wildcards")
+    parts = urlsplit(value)
+    try:
+        port = parts.port
+    except ValueError as exc:
+        raise ValueError(f"{setting_name} must carry a valid TCP port") from exc
+    allowed_scheme = parts.scheme == "https" or (
+        allow_loopback_http and parts.scheme == "http" and parts.hostname in _LOOPBACK_ORIGIN_HOSTS
+    )
+    if (
+        not allowed_scheme
+        or not parts.hostname
+        or parts.username is not None
+        or parts.password is not None
+        or parts.path
+        or parts.query
+        or parts.fragment
+        or value != f"{parts.scheme}://{parts.netloc}"
+    ):
+        raise ValueError(f"{setting_name} must be one exact origin")
+    if port is not None:
+        _require_tcp_port(port, setting_name=f"{setting_name} port")
+    return value
+
+
 # Process-handoff marker. When a short-lived launcher hands a closed environment to a
 # long-lived child (or a test supplies synthetic input), this marker restricts the settings layer
 # to the constructor and process sources.
@@ -93,11 +139,18 @@ def _project_public_values(
     return values
 
 
-def _settings_aliases(settings_cls: type[BaseSettings]) -> tuple[str, ...]:
-    """Return every validation alias the requested class reads from merged subsystem-file values."""
+def _settings_aliases(
+    settings_cls: type[BaseSettings], *, credentials_only: bool = False
+) -> tuple[str, ...]:
+    """Return the validation aliases the requested class reads from merged subsystem-file values.
+
+    ``credentials_only`` keeps the secret fields alone, which are the values the ignored environment
+    file owns.
+    """
     return tuple(
         field.validation_alias if isinstance(field.validation_alias, str) else name
         for name, field in settings_cls.model_fields.items()
+        if not credentials_only or field.annotation is SecretStr
     )
 
 
@@ -143,7 +196,7 @@ class ConfiguredSettings(BaseSettings):
             return _project_public_values(
                 settings_cls,
                 configuration.read_public_configuration(
-                    configuration.repository_root(),
+                    administration.repository_root(),
                     aliases=_settings_aliases(settings_cls),
                 ),
             )
@@ -156,15 +209,47 @@ class ConfiguredSettings(BaseSettings):
         )
 
 
-class WebSettings(ConfiguredSettings):
-    """Validated loopback bind, process count, child respawn limits, drawing, served-feature and
-    retained-cache budget settings for HTTP serving."""
+class WebAppSettings(ConfiguredSettings):
+    """The one external web app address shared by the administration App link and the feedback
+    exact-site boundary.
+
+    ``web_app_url`` is the site's root address, at the root and without credentials, wildcard,
+    whitespace, query or fragment. It is kept as it is spelled, so the console renders the
+    configured address. ``web_app_origin`` is that address without its optional root slash, which is
+    the one exact origin a feedback submission's Host and Origin must equal. HTTPS is the only
+    scheme unless the hostname is ``localhost``, ``127.0.0.1`` or ``::1``.
+    """
+
+    model_config = SettingsConfigDict(extra="ignore", env_prefix="")
+
+    web_app_url: str = Field(validation_alias="WEB_APP_URL")
+
+    @field_validator("web_app_url")
+    @classmethod
+    def validate_web_app_url(cls, value: str) -> str:
+        """Require one root app address and validate the origin without its optional root slash."""
+        origin = value[:-1] if value.endswith("/") else value
+        _require_exact_origin(origin, setting_name="WEB_APP_URL", allow_loopback_http=True)
+        return value
+
+    @property
+    def web_app_origin(self) -> str:
+        """Return the exact origin, which is the address without its optional root slash."""
+        return self.web_app_url[:-1] if self.web_app_url.endswith("/") else self.web_app_url
+
+
+class WebSettings(WebAppSettings):
+    """Validated loopback bind, process count, malloc arena cap, child respawn limits, drawing,
+    served-feature and retained-cache region settings for HTTP serving.
+
+    The class inherits the one external app address from :class:`WebAppSettings`."""
 
     model_config = SettingsConfigDict(extra="ignore", env_prefix="")
 
     web_host: str = Field(validation_alias="WEB_HOST")
     web_port: int = Field(validation_alias="WEB_PORT")
     web_workers: int = Field(validation_alias="WEB_WORKERS", gt=0)
+    web_malloc_arena_max: int = Field(validation_alias="WEB_MALLOC_ARENA_MAX", gt=0)
     web_respawn_exit_limit: int = Field(validation_alias="WEB_RESPAWN_EXIT_LIMIT", gt=0)
     web_respawn_window_seconds: int = Field(validation_alias="WEB_RESPAWN_WINDOW_SECONDS", gt=0)
     prerequisite_graph_max_elements: int = Field(
@@ -172,20 +257,18 @@ class WebSettings(ConfiguredSettings):
     )
     embeddings_enabled: bool = Field(validation_alias="WEB_EMBEDDINGS_ENABLED")
     inference_enabled: bool = Field(validation_alias="WEB_INFERENCE_ENABLED")
-    web_retained_cache_aggregate_bytes: int = Field(
-        validation_alias="WEB_RETAINED_CACHE_AGGREGATE_BYTES", gt=0
+    web_next_course_report_cache_bytes: int = Field(
+        validation_alias="WEB_NEXT_COURSE_REPORT_CACHE_BYTES", gt=0
     )
-    web_lookup_projection_cache_bytes: int = Field(
-        validation_alias="WEB_LOOKUP_PROJECTION_CACHE_BYTES", gt=0
+    web_query_embedding_cache_bytes: int = Field(
+        validation_alias="WEB_QUERY_EMBEDDING_CACHE_BYTES", gt=0
     )
-    web_prerequisite_source_cache_entries: int = Field(
-        validation_alias="WEB_PREREQUISITE_SOURCE_CACHE_ENTRIES", gt=0
+    web_request_max_course_items: int = Field(validation_alias="WEB_REQUEST_MAX_COURSE_ITEMS", gt=0)
+    web_request_max_identifier_length: int = Field(
+        validation_alias="WEB_REQUEST_MAX_IDENTIFIER_LENGTH", gt=0
     )
-    web_prerequisite_source_cache_entry_bytes: int = Field(
-        validation_alias="WEB_PREREQUISITE_SOURCE_CACHE_ENTRY_BYTES", gt=0
-    )
-    web_chunk_cache_entries: int = Field(validation_alias="WEB_CHUNK_CACHE_ENTRIES", gt=0)
-    web_chunk_cache_entry_bytes: int = Field(validation_alias="WEB_CHUNK_CACHE_ENTRY_BYTES", gt=0)
+    web_request_max_query_length: int = Field(validation_alias="WEB_REQUEST_MAX_QUERY_LENGTH", gt=0)
+    web_request_body_max_bytes: int = Field(validation_alias="WEB_REQUEST_BODY_MAX_BYTES", gt=0)
 
     @field_validator("web_host")
     @classmethod
@@ -198,23 +281,6 @@ class WebSettings(ConfiguredSettings):
     def validate_web_port(cls, value: int) -> int:
         """Require a valid TCP port."""
         return _require_tcp_port(value, setting_name="WEB_PORT")
-
-    @model_validator(mode="after")
-    def require_retained_cache_shares_within_aggregate(self) -> Self:
-        """Refuse a retained share whose product with the process count exceeds the aggregate."""
-        share = (
-            self.web_lookup_projection_cache_bytes
-            + self.web_prerequisite_source_cache_entries
-            * self.web_prerequisite_source_cache_entry_bytes
-            + self.web_chunk_cache_entries * self.web_chunk_cache_entry_bytes
-        )
-        if self.web_workers * share > self.web_retained_cache_aggregate_bytes:
-            raise ValueError(
-                "WEB_WORKERS times the retained cache share "
-                f"{share} bytes exceeds WEB_RETAINED_CACHE_AGGREGATE_BYTES "
-                f"{self.web_retained_cache_aggregate_bytes}"
-            )
-        return self
 
 
 def load_web_settings() -> WebSettings:
@@ -320,8 +386,11 @@ class AdmissionSettings(ConfiguredSettings):
     admission_recommendation_origin_basis: int = Field(
         validation_alias="ADMISSION_RECOMMENDATION_ORIGIN_BASIS", ge=0
     )
-    admission_recommendation_knee_basis: int = Field(
-        validation_alias="ADMISSION_RECOMMENDATION_KNEE_BASIS", gt=0
+    admission_recommendation_active_knee_basis: int = Field(
+        validation_alias="ADMISSION_RECOMMENDATION_ACTIVE_KNEE_BASIS", gt=0
+    )
+    admission_recommendation_inactive_knee_basis: int = Field(
+        validation_alias="ADMISSION_RECOMMENDATION_INACTIVE_KNEE_BASIS", gt=0
     )
     admission_recommendation_active_origin_cost: float = Field(
         validation_alias="ADMISSION_RECOMMENDATION_ACTIVE_ORIGIN_COST", ge=0
@@ -350,8 +419,11 @@ class AdmissionSettings(ConfiguredSettings):
     admission_next_courses_origin_basis: int = Field(
         validation_alias="ADMISSION_NEXT_COURSES_ORIGIN_BASIS", ge=0
     )
-    admission_next_courses_knee_basis: int = Field(
-        validation_alias="ADMISSION_NEXT_COURSES_KNEE_BASIS", gt=0
+    admission_next_courses_active_knee_basis: int = Field(
+        validation_alias="ADMISSION_NEXT_COURSES_ACTIVE_KNEE_BASIS", gt=0
+    )
+    admission_next_courses_inactive_knee_basis: int = Field(
+        validation_alias="ADMISSION_NEXT_COURSES_INACTIVE_KNEE_BASIS", gt=0
     )
     admission_next_courses_active_origin_cost: float = Field(
         validation_alias="ADMISSION_NEXT_COURSES_ACTIVE_ORIGIN_COST", ge=0
@@ -397,11 +469,13 @@ class AdmissionSettings(ConfiguredSettings):
             )
         for curve in ("RECOMMENDATION", "NEXT_COURSES"):
             origin = getattr(self, f"admission_{curve.lower()}_origin_basis")
-            knee = getattr(self, f"admission_{curve.lower()}_knee_basis")
-            if knee <= origin:
-                raise ValueError(
-                    f"ADMISSION_{curve}_KNEE_BASIS must be above ADMISSION_{curve}_ORIGIN_BASIS"
-                )
+            for scope in ("ACTIVE", "INACTIVE"):
+                knee = getattr(self, f"admission_{curve.lower()}_{scope.lower()}_knee_basis")
+                if knee <= origin:
+                    raise ValueError(
+                        f"ADMISSION_{curve}_{scope}_KNEE_BASIS must be above "
+                        f"ADMISSION_{curve}_ORIGIN_BASIS"
+                    )
         return self
 
 
@@ -429,7 +503,7 @@ def load_usage_settings() -> UsageSettings:
     return UsageSettings()
 
 
-class AdminWebSettings(ConfiguredSettings):
+class AdminWebSettings(WebAppSettings):
     """Validated loopback bind, exact site origin and session and log bounds of the administration
     backend.
 
@@ -442,10 +516,9 @@ class AdminWebSettings(ConfiguredSettings):
     failed-attempt limit are code constants.
 
     ``admin_web_poll_seconds`` is the interval the console waits after one completed panel read
-    before the next read of that panel. ``admin_web_app_url`` is the address the console's App link
-    points at, stated by the site because the administration bind is loopback and the two sites need
-    not share a host. ``admin_web_repository_url`` is the repository address of the console's GitHub
-    link.
+    before the next read of that panel. The console's App link reads the inherited ``web_app_url``,
+    which the feature site owns. ``admin_web_repository_url`` is the repository address of the
+    console's GitHub link.
     """
 
     model_config = SettingsConfigDict(extra="ignore", env_prefix="")
@@ -465,7 +538,6 @@ class AdminWebSettings(ConfiguredSettings):
     )
     admin_web_command_log_limit: int = Field(validation_alias="ADMIN_WEB_COMMAND_LOG_LIMIT", gt=0)
     admin_web_poll_seconds: int = Field(validation_alias="ADMIN_WEB_POLL_SECONDS", gt=0)
-    admin_web_app_url: str = Field(validation_alias="ADMIN_WEB_APP_URL")
     admin_web_repository_url: str = Field(validation_alias="ADMIN_WEB_REPOSITORY_URL")
 
     @field_validator("admin_web_host")
@@ -490,65 +562,7 @@ class AdminWebSettings(ConfiguredSettings):
         information and every URL decoration each fail the read. An invalid port raises the parser's
         own failure, which ``hide_input_in_errors`` keeps free of the value.
         """
-        if not value or any(character.isspace() for character in value) or "*" in value:
-            raise ValueError("ADMIN_WEB_ORIGIN must be one exact origin without wildcards")
-        parts = urlsplit(value)
-        try:
-            port = parts.port
-        except ValueError as exc:
-            raise ValueError("ADMIN_WEB_ORIGIN must carry a valid TCP port") from exc
-        if (
-            parts.scheme != "https"
-            or not parts.hostname
-            or parts.username is not None
-            or parts.password is not None
-            or parts.path
-            or parts.query
-            or parts.fragment
-            or value != f"https://{parts.netloc}"
-        ):
-            raise ValueError("ADMIN_WEB_ORIGIN must be one exact HTTPS origin")
-        if port is not None:
-            _require_tcp_port(port, setting_name="ADMIN_WEB_ORIGIN port")
-        return value
-
-    @field_validator("admin_web_app_url")
-    @classmethod
-    def validate_admin_web_app_url(cls, value: str) -> str:
-        """Require one absolute HTTP or HTTPS address without credentials or URL decoration.
-
-        The value is kept as it is spelled, so the console renders the configured address. A
-        wildcard, whitespace, a relative address, another scheme, an empty host, user information,
-        a path other than the root, and any query or fragment marker each fail the read, including
-        an empty marker. An invalid port raises the parser's own failure, which
-        ``hide_input_in_errors`` keeps free of the value.
-        """
-        if (
-            not value
-            or any(character.isspace() for character in value)
-            or "*" in value
-            or "?" in value
-            or "#" in value
-        ):
-            raise ValueError("ADMIN_WEB_APP_URL must be one absolute address without wildcards")
-        parts = urlsplit(value)
-        try:
-            port = parts.port
-        except ValueError as exc:
-            raise ValueError("ADMIN_WEB_APP_URL must carry a valid TCP port") from exc
-        if (
-            parts.scheme not in {"http", "https"}
-            or not parts.hostname
-            or parts.username is not None
-            or parts.password is not None
-            or parts.path not in {"", "/"}
-            or parts.query
-            or parts.fragment
-        ):
-            raise ValueError("ADMIN_WEB_APP_URL must be one absolute HTTP or HTTPS address")
-        if port is not None:
-            _require_tcp_port(port, setting_name="ADMIN_WEB_APP_URL port")
-        return value
+        return _require_exact_origin(value, setting_name="ADMIN_WEB_ORIGIN")
 
     @field_validator("admin_web_repository_url")
     @classmethod
@@ -581,23 +595,23 @@ class AdminWebSettings(ConfiguredSettings):
 def load_admin_web_settings() -> AdminWebSettings:
     """Read administration bind, origin, session, anonymous-grant budget and log bounds.
 
-    The values compose automatically from ``config/admin_web.toml`` and the device-local ignored
-    ``.env``.
+    The administration keys compose automatically from ``config/admin_web.toml``, and the inherited
+    app address composes from ``config/web.toml``.
     """
     return AdminWebSettings()
 
 
 class DatabaseSettings(ConfiguredSettings):
-    """PostgreSQL connection components shared with the local Compose service."""
+    """Curriculum PostgreSQL connection components shared with the local Compose service."""
 
     model_config = SettingsConfigDict(extra="ignore", env_prefix="")
 
     postgres_host: str = Field(validation_alias="POSTGRES_HOST")
     postgres_port: int = Field(validation_alias="POSTGRES_PORT")
     postgres_db: str = Field(validation_alias="POSTGRES_DB")
+    example_postgres_db: str = Field(validation_alias="EXAMPLE_POSTGRES_DB")
     postgres_user: str = Field(validation_alias="POSTGRES_USER")
     postgres_password: SecretStr = Field(validation_alias="POSTGRES_PASSWORD")
-    selected_dataset_enabled: bool = Field(validation_alias="SELECTED_DATASET_ENABLED")
     admin_state_root: Path = Field(validation_alias="ADMIN_STATE_ROOT")
 
     @field_validator("postgres_host", "postgres_db", "postgres_user")
@@ -607,6 +621,16 @@ class DatabaseSettings(ConfiguredSettings):
         return _require_nonblank_text(
             value, message="database connection text values must not be blank"
         )
+
+    @field_validator("example_postgres_db")
+    @classmethod
+    def validate_example_postgres_db(cls, value: str) -> str:
+        """Require the configured example database to be one lowercase SQL identifier."""
+        from pydantic import TypeAdapter
+
+        from course_explorer.datasets import DatasetDatabaseName
+
+        return TypeAdapter(DatasetDatabaseName).validate_python(value)
 
     @field_validator("admin_state_root", mode="before")
     @classmethod
@@ -628,7 +652,7 @@ class DatabaseSettings(ConfiguredSettings):
 
     @property
     def sqlalchemy_url(self) -> URL:
-        """Build the sole application connection URL from shared components."""
+        """Build the curriculum database connection URL from shared components."""
         return URL.create(
             drivername="postgresql+psycopg",
             username=self.postgres_user,
@@ -640,34 +664,195 @@ class DatabaseSettings(ConfiguredSettings):
 
 
 def load_raw_database_settings() -> DatabaseSettings:
-    """Read the configured database fields before the selected dataset replaces the database
-    name."""
+    """Read the configured database fields without resolving a dataset role."""
     return DatabaseSettings()
 
 
-def load_database_settings_with_identity() -> tuple[DatabaseSettings, str | None]:
-    """Resolve one database connection together with the selected dataset identity.
+def load_database_settings_with_identity(
+    *, role: DatasetRole = "selected"
+) -> tuple[DatabaseSettings, str | None]:
+    """Resolve one dataset role's connection together with its dataset identity.
 
-    With ``SELECTED_DATASET_ENABLED=0`` the raw configured database is returned with no identity.
-    Otherwise the selected dataset is resolved once through its repository-relative admin state
-    root, and its database name replaces ``POSTGRES_DB``. The raw name alone never opts out, and no
-    dotenv or process-global value is mutated.
+    A Selected state root with neither pointer is bootstrap, so the raw configured database is
+    returned with no identity. Otherwise the named role's receipt is resolved once through its
+    repository-relative admin state root, and its database name replaces ``POSTGRES_DB``. Working
+    requires a pointer, while a missing or inconsistent Selected pointer raises its own guidance.
+    The raw database name never selects a role, and no dotenv or process-global value is mutated.
     """
-    settings = DatabaseSettings()
-    if not settings.selected_dataset_enabled:
-        return settings, None
-    from course_explorer.administration import repository_root
-    from course_explorer.datasets import resolve_selected_dataset
+    from course_explorer.datasets import read_dataset_role, resolve_dataset_role
 
-    receipt = resolve_selected_dataset(repository_root() / settings.admin_state_root)
+    settings = DatabaseSettings()
+    state_root = administration.repository_root() / settings.admin_state_root
+    if role == "selected":
+        receipt = read_dataset_role(state_root, "selected")
+        if receipt is None:
+            return settings, None
+    else:
+        receipt = resolve_dataset_role(state_root, role)
     resolved = settings.model_copy(update={"postgres_db": receipt.database_name})
     return resolved, receipt.dataset_id
 
 
-def load_database_settings() -> DatabaseSettings:
-    """Read the resolved database settings, discarding any selected dataset identity."""
-    settings, _ = load_database_settings_with_identity()
+def load_database_settings(*, role: DatasetRole = "selected") -> DatabaseSettings:
+    """Read the resolved database settings of one dataset role, discarding its identity."""
+    settings, _ = load_database_settings_with_identity(role=role)
     return settings
+
+
+class FeedbackSettings(ConfiguredSettings):
+    """Feedback application-store connection and attachment-root settings.
+
+    The connection names a separate application database, so the curriculum dataset and its
+    selected-dataset pointer never select the feedback store. The attachment root accepts a relative
+    path, an absolute path or one beginning with ``~/``. It is expanded and resolved when an
+    attachment store is built, not while settings load.
+    """
+
+    model_config = SettingsConfigDict(extra="ignore", env_prefix="")
+
+    feedback_postgres_host: str = Field(validation_alias="FEEDBACK_POSTGRES_HOST")
+    feedback_postgres_port: int = Field(validation_alias="FEEDBACK_POSTGRES_PORT")
+    feedback_postgres_db: str = Field(validation_alias="FEEDBACK_POSTGRES_DB")
+    feedback_postgres_user: str = Field(validation_alias="FEEDBACK_POSTGRES_USER")
+    feedback_postgres_password: SecretStr = Field(validation_alias="FEEDBACK_POSTGRES_PASSWORD")
+    feedback_attachments_root: Path = Field(validation_alias="FEEDBACK_ATTACHMENTS_ROOT")
+
+    @field_validator("feedback_postgres_host", "feedback_postgres_db", "feedback_postgres_user")
+    @classmethod
+    def reject_blank_text(cls, value: str) -> str:
+        """Reject missing meaningful connection components without normalizing them."""
+        return _require_nonblank_text(
+            value, message="feedback database connection text values must not be blank"
+        )
+
+    @field_validator("feedback_attachments_root", mode="before")
+    @classmethod
+    def validate_attachments_root(cls, value: object) -> object:
+        """Require one nonblank path string before it is read as a path."""
+        if not isinstance(value, str):
+            raise ValueError("FEEDBACK_ATTACHMENTS_ROOT must be a path string")
+        return _require_nonblank_text(value, message="FEEDBACK_ATTACHMENTS_ROOT must not be blank")
+
+    @field_validator("feedback_postgres_password")
+    @classmethod
+    def reject_blank_password(cls, value: SecretStr) -> SecretStr:
+        """Reject a blank password while keeping it wrapped."""
+        return _require_nonblank_secret(
+            value, message="feedback postgres password must not be blank"
+        )
+
+    @field_validator("feedback_postgres_port")
+    @classmethod
+    def validate_port(cls, value: int) -> int:
+        """Require a valid TCP port."""
+        return _require_tcp_port(value, setting_name="feedback postgres port")
+
+    @property
+    def sqlalchemy_url(self) -> URL:
+        """Build the feedback database connection URL from its own components."""
+        return URL.create(
+            drivername="postgresql+psycopg",
+            username=self.feedback_postgres_user,
+            password=self.feedback_postgres_password.get_secret_value(),
+            host=self.feedback_postgres_host,
+            port=self.feedback_postgres_port,
+            database=self.feedback_postgres_db,
+        )
+
+
+def load_feedback_settings() -> FeedbackSettings:
+    """Read the feedback application-store settings through the automatic composition."""
+    return FeedbackSettings()
+
+
+class FeedbackDestinationSettings(ConfiguredSettings):
+    """Non-secret feedback destination metadata shared by intake and the sender.
+
+    The repository names one owner and repository, never a URL, and the visibility states the
+    destination the operator configured. The values carry no credential, so a destination edit
+    validates from this base alone.
+    """
+
+    model_config = SettingsConfigDict(extra="ignore", env_prefix="")
+
+    feedback_github_repository: str = Field(validation_alias="FEEDBACK_GITHUB_REPOSITORY")
+    feedback_github_visibility: Literal["public", "private"] = Field(
+        validation_alias="FEEDBACK_GITHUB_VISIBILITY"
+    )
+
+    @field_validator("feedback_github_repository")
+    @classmethod
+    def validate_github_repository(cls, value: str) -> str:
+        """Require one GitHub owner and repository name in owner/repository form."""
+        if _GITHUB_REPOSITORY.fullmatch(value) is None:
+            raise ValueError("FEEDBACK_GITHUB_REPOSITORY must name one repository")
+        return value
+
+
+class FeedbackIntakeSettings(WebAppSettings, FeedbackDestinationSettings):
+    """Validated feedback intake policy and non-secret destination metadata.
+
+    The inherited ``web_app_url`` supplies the exact external app origin the feedback pages answer
+    for, through ``web_app_origin``. The other values are policy and destination metadata carried by
+    ``config/feedback.toml``. The two hourly values are positive submission counts per rolling hour,
+    and the body value is a positive byte count. The inherited destination values name the
+    configured repository and visibility. No credential belongs to this family.
+    """
+
+    model_config = SettingsConfigDict(extra="ignore", env_prefix="", hide_input_in_errors=True)
+
+    feedback_browser_submissions_per_hour: int = Field(
+        validation_alias="FEEDBACK_BROWSER_SUBMISSIONS_PER_HOUR", gt=0
+    )
+    feedback_site_submissions_per_hour: int = Field(
+        validation_alias="FEEDBACK_SITE_SUBMISSIONS_PER_HOUR", gt=0
+    )
+    feedback_max_request_bytes: int = Field(validation_alias="FEEDBACK_MAX_REQUEST_BYTES", gt=0)
+
+
+def load_feedback_intake_settings() -> FeedbackIntakeSettings:
+    """Read the feedback intake policy and destination metadata through the composed settings."""
+    return FeedbackIntakeSettings()
+
+
+class FeedbackSenderCredentialsSettings(ConfiguredSettings):
+    """The GitHub publication credential and the bound of one external creation attempt.
+
+    The token is a secret and never rendered. The timeout is a positive, finite number of seconds
+    that bounds one ``gh`` invocation.
+    """
+
+    model_config = SettingsConfigDict(extra="ignore", env_prefix="", hide_input_in_errors=True)
+
+    feedback_github_token: SecretStr = Field(validation_alias="FEEDBACK_GITHUB_TOKEN")
+    feedback_github_timeout_seconds: float = Field(
+        validation_alias="FEEDBACK_GITHUB_TIMEOUT_SECONDS", gt=0
+    )
+
+    @field_validator("feedback_github_token")
+    @classmethod
+    def reject_blank_token(cls, value: SecretStr) -> SecretStr:
+        """Reject a blank token while keeping it wrapped and never rendering it."""
+        return _require_nonblank_secret(value, message="feedback GitHub token must not be blank")
+
+    @field_validator("feedback_github_timeout_seconds")
+    @classmethod
+    def require_finite_timeout(cls, value: float) -> float:
+        """Require a finite second count."""
+        if not math.isfinite(value):
+            raise ValueError("FEEDBACK_GITHUB_TIMEOUT_SECONDS must be finite")
+        return value
+
+
+class FeedbackSenderSettings(FeedbackDestinationSettings, FeedbackSenderCredentialsSettings):
+    """The sender's configured destination, credential and attempt timeout."""
+
+    model_config = SettingsConfigDict(extra="ignore", env_prefix="", hide_input_in_errors=True)
+
+
+def load_feedback_sender_settings() -> FeedbackSenderSettings:
+    """Read the sender destination, credential and timeout through the automatic composition."""
+    return FeedbackSenderSettings()
 
 
 class CaptureSettings(ConfiguredSettings):
@@ -751,7 +936,8 @@ class LocalLifecycleSettings(ConfiguredSettings):
     @field_validator("ingestion_state_root", mode="before")
     @classmethod
     def validate_ingestion_state_root(cls, value: object) -> object:
-        """Require one nonblank repository-relative state root without dot or cmd-expand characters."""
+        """Require one nonblank repository-relative state root without dot or cmd-expand
+        characters."""
         return _require_relative_path(
             value, setting_name="INGESTION_CONTROLLER_STATE_ROOT", reject_percent=True
         )
@@ -759,7 +945,8 @@ class LocalLifecycleSettings(ConfiguredSettings):
     @field_validator("embedding_state_root", mode="before")
     @classmethod
     def validate_embedding_state_root(cls, value: object) -> object:
-        """Require one nonblank repository-relative state root without dot or cmd-expand characters."""
+        """Require one nonblank repository-relative state root without dot or cmd-expand
+        characters."""
         return _require_relative_path(
             value, setting_name="EMBEDDING_CONTROLLER_STATE_ROOT", reject_percent=True
         )
@@ -912,12 +1099,10 @@ def _require_artifact_sha256(value: str, *, setting_name: str) -> str:
 class EmbeddingRuntimeSettings(ConfiguredSettings):
     """Validated loopback contract for the one pinned CPU embedding runtime and its generation.
 
-    This is the runtime/generation projection of the embedding contract, so the one generation
-    lifecycle (and the Compose bridge) can run before a fresh dataset's similarity hubs exist. The
-    full similarity contract that search, comparison, recommendations and the web
-    process require is :class:`EmbeddingSettings`, which adds the two required hub fields. A
-    similarity read fails loudly when a hub is missing. Both classes read the same subsystem files
-    and environment file through one settings owner.
+    The one generation lifecycle, the Compose bridge, the similarity consumers and the web process
+    read this family. Every similarity read takes its hub pair from the opened serving artifact set,
+    which reads the family's configured embedding directory. Every consumer reads the same subsystem
+    files and environment file through one settings owner.
     """
 
     model_config = SettingsConfigDict(extra="ignore", env_prefix="")
@@ -1043,48 +1228,22 @@ class EmbeddingRuntimeSettings(ConfiguredSettings):
         return self
 
 
-class EmbeddingSettings(EmbeddingRuntimeSettings):
-    """Validated similarity contract: the embedding runtime plus both required hub vectors.
-
-    Request-time similarity consumers subtract these hubs before cosine, so they must resolve from
-    their derived hub files. A missing or malformed hub fails that read loudly.
-    """
-
-    model_config = SettingsConfigDict(extra="ignore", env_prefix="")
-
-    embedding_hub_vector: tuple[float, ...] = Field(validation_alias="EMBEDDING_HUB_VECTOR")
-    embedding_outcomes_hub_vector: tuple[float, ...] = Field(
-        validation_alias="EMBEDDING_OUTCOMES_HUB_VECTOR"
-    )
-
-    @field_validator("embedding_hub_vector", "embedding_outcomes_hub_vector")
-    @classmethod
-    def validate_hub_vector(
-        cls, value: tuple[float, ...], info: ValidationInfo
-    ) -> tuple[float, ...]:
-        """Require one finite hub vector at the fixed embedding dimension.
-
-        The failure message names the field under validation, so a malformed value reports the
-        setting it came from.
-        """
-        setting_name = (info.field_name or "").upper()
-        if len(value) != COURSE_EMBEDDING_DIMENSION:
-            raise ValueError(
-                f"{setting_name} must have exactly {COURSE_EMBEDDING_DIMENSION} components"
-            )
-        if any(not math.isfinite(component) for component in value):
-            raise ValueError(f"{setting_name} components must be finite")
-        return value
-
-
 def load_embedding_runtime_settings() -> EmbeddingRuntimeSettings:
     """Read the runtime and generation embedding fields from the configured sources."""
     return EmbeddingRuntimeSettings()
 
 
-def load_embedding_settings() -> EmbeddingSettings:
-    """Read the full similarity embedding settings through the automatic configuration composition."""
-    return EmbeddingSettings()
+def embedding_configuration_for_site(web: WebSettings) -> EmbeddingRuntimeSettings | None:
+    """Resolve the site's embedding configuration from its serving switch.
+
+    This is the one owner of the switch-to-configuration policy for the serving entry points: each
+    resolves the mode once through it. With the switch off it returns ``None`` and never loads or
+    validates the embedding family itself. An already resolved web settings object is passed in so
+    the switch is read once per entry point.
+    """
+    if not web.embeddings_enabled:
+        return None
+    return load_embedding_runtime_settings()
 
 
 _REVISION_PATTERN = re.compile(r"^[0-9a-f]{40}$")
@@ -1336,10 +1495,10 @@ class WorkerGpuRebootSettings(ConfiguredSettings):
 
     A worker GPU mode (translation generation and inference cross-encoder scoring/whole-target
     generation) reboots the Windows worker at a completed atomic unit or a committed failed
-    generation attempt once its loaded-GPU time reaches this interval. The value is device-independent
-    policy owned by ``config/worker.toml``, and every worker GPU mode uses that one value. Loading
-    composes the subsystem files under ``config/`` and the device-local ignored ``.env``
-    automatically. There is no code default.
+    generation attempt once its loaded-GPU time reaches this interval. The value is
+    device-independent policy owned by ``config/worker.toml``, and every worker GPU mode uses that
+    one value. Loading composes the subsystem files under ``config/`` and the device-local ignored
+    ``.env`` automatically. There is no code default.
     """
 
     model_config = SettingsConfigDict(extra="ignore", env_prefix="")
@@ -1580,9 +1739,10 @@ class InferenceSettings(WorkerRuntimeSettings):
         """Return the local sampling pair for one reserved generation-attempt ordinal.
 
         The cycle-target calculation's first attempt is greedy at the configured initial zero
-        temperature. Every subsequent attempt samples at the configured retry temperature. The seed is the
-        configured base advanced by the durable lifetime ordinal (one-based), so a consumed ordinal
-        never re-draws a seed. The reservation owner guarantees the positive ordinal and the boolean.
+        temperature. Every subsequent attempt samples at the configured retry temperature. The seed
+        is the configured base advanced by the durable lifetime ordinal (one-based), so a consumed
+        ordinal never re-draws a seed. The reservation owner guarantees the positive ordinal and the
+        boolean.
         """
         temperature = (
             self.inference_temperature if first_attempt else self.inference_retry_temperature
@@ -1954,7 +2114,8 @@ class InferenceRerankSettings(ConfiguredSettings):
 
     @model_validator(mode="after")
     def validate_artifact_path_matches_file(self) -> Self:
-        """Require the artifact path to name the artifact file and batch to fit the serving context."""
+        """Require the artifact path to name the artifact file and batch to fit the serving
+        context."""
         if self.inference_rerank_artifact_path.name != self.inference_rerank_artifact_file:
             raise ValueError(
                 "INFERENCE_RERANK_ARTIFACT_PATH basename must equal INFERENCE_RERANK_ARTIFACT_FILE"
@@ -2088,13 +2249,11 @@ class WorkerConnectionSettings(ConfiguredSettings):
     worker lifecycle is bounded. They are shared by the neutral SSH/WSL
     transport and any administrative worker stage that needs the connection boundary.
 
-    Ownership splits by what must change per setup. ``TRANSLATION_CONTROLLER_SSH_TARGET``,
-    ``TRANSLATION_CONTROLLER_WSL_DISTRIBUTION``, and
-    ``TRANSLATION_CONTROLLER_WORKER_PROJECT_ROOT`` are machine-local values read from the
-    device-local ignored ``.env``. The connect timeout comes from ``config/worker.toml``. The health
-    interval and stop timeout are shared wait values that are assigned once, in
-    ``config/translation.toml``. All reach this class through the automatic subsystem-file and
-    environment-file composition.
+    ``TRANSLATION_CONTROLLER_SSH_TARGET``, ``TRANSLATION_CONTROLLER_WSL_DISTRIBUTION`` and
+    ``TRANSLATION_CONTROLLER_WORKER_PROJECT_ROOT`` are non-secret worker machine identity read from
+    ``config/worker.toml``, together with the connect timeout. The health interval and stop timeout
+    are shared wait values that are assigned once, in ``config/translation.toml``. All reach this
+    class through the automatic subsystem-file and environment-file composition.
     """
 
     model_config = SettingsConfigDict(extra="ignore", env_prefix="")
@@ -2166,7 +2325,8 @@ class TranslationControllerSettings(WorkerConnectionSettings):
     @field_validator("translation_controller_state_root", mode="before")
     @classmethod
     def validate_state_root(cls, value: object) -> object:
-        """Require one nonblank repository-relative state root without dot or cmd-expand characters."""
+        """Require one nonblank repository-relative state root without dot or cmd-expand
+        characters."""
         return _require_relative_path(
             value, setting_name="TRANSLATION_CONTROLLER_STATE_ROOT", reject_percent=True
         )
@@ -2204,7 +2364,8 @@ class InferenceControllerSettings(WorkerConnectionSettings):
     @field_validator("inference_controller_state_root", mode="before")
     @classmethod
     def validate_state_root(cls, value: object) -> object:
-        """Require one nonblank repository-relative state root without dot or cmd-expand characters."""
+        """Require one nonblank repository-relative state root without dot or cmd-expand
+        characters."""
         return _require_relative_path(
             value, setting_name="INFERENCE_CONTROLLER_STATE_ROOT", reject_percent=True
         )
@@ -2275,8 +2436,8 @@ def load_administrative_dataset_settings() -> AdministrativeDatasetSettings:
     return AdministrativeDatasetSettings()
 
 
-# The systemd service basename a site's web or administration process runs as. Each name is site
-# identity rather than portable policy, so both come from the device-local ignored ``.env``.
+# The systemd service basename a site's web or administration process runs as. Each name is
+# non-secret site identity from ``config/admin_web.toml``.
 _ADMIN_SITE_UNIT_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.@-]*\.service$")
 
 
@@ -2285,12 +2446,12 @@ class AdministrativeSiteSettings(ConfiguredSettings):
 
     ``web_service_unit`` names the unit the site's course-exploration web process runs as, and
     ``admin_service_unit`` names the unit its administration process runs as. Each name belongs to
-    one site, so each device or site sets its own values. Only a plain service basename is
-    accepted: a path, an option, whitespace and a command are refused, so each value is one
-    syntactically valid unit name. ``web_service_scope`` selects the manager that owns the web
+    one site, so each site states its own values in ``config/admin_web.toml``. Only a plain service
+    basename is accepted: a path, an option, whitespace and a command are refused, so each value is
+    one syntactically valid unit name. ``web_service_scope`` selects the manager that owns the web
     unit, ``user`` or ``system``, and the administration unit always belongs to the user manager.
-    Loading composes the subsystem files under ``config/`` and the device-local ignored ``.env``
-    automatically.
+    The keys reach this class through the automatic subsystem-file and environment-file
+    composition.
     """
 
     model_config = SettingsConfigDict(extra="ignore", env_prefix="")
@@ -2311,7 +2472,8 @@ class AdministrativeSiteSettings(ConfiguredSettings):
 
 
 def load_administrative_site_settings() -> AdministrativeSiteSettings:
-    """Read both site unit identities and the web unit's manager scope through the automatic composition."""
+    """Read both site unit identities and the web unit's manager scope through the composed
+    settings."""
     return AdministrativeSiteSettings()
 
 
@@ -2377,6 +2539,9 @@ class SearchSettings(ConfiguredSettings):
     fuzzy_token_match_weight: float = Field(
         validation_alias="FUZZY_TOKEN_MATCH_WEIGHT", gt=0, le=1, allow_inf_nan=False
     )
+    fuzzy_score_tie_break_weight: float = Field(
+        validation_alias="FUZZY_SCORE_TIE_BREAK_WEIGHT", ge=0, le=1, allow_inf_nan=False
+    )
     search_embedding_request_timeout_seconds: float = Field(
         validation_alias="SEARCH_EMBEDDING_REQUEST_TIMEOUT_SECONDS",
         gt=0,
@@ -2423,6 +2588,12 @@ class SearchSettings(ConfiguredSettings):
         le=1,
         allow_inf_nan=False,
     )
+    recommendation_relatedness_ceiling: float = Field(
+        validation_alias="RECOMMENDATION_RELATEDNESS_CEILING",
+        gt=0,
+        le=1,
+        allow_inf_nan=False,
+    )
     recommendation_near_duplicate_percent: float = Field(
         validation_alias="RECOMMENDATION_NEAR_DUPLICATE_PERCENT",
         ge=0,
@@ -2434,6 +2605,13 @@ class SearchSettings(ConfiguredSettings):
         ge=0,
         le=1,
         allow_inf_nan=False,
+    )
+    search_hnsw_iterative_scan: Literal["relaxed_order", "strict_order"] = Field(
+        validation_alias="SEARCH_HNSW_ITERATIVE_SCAN"
+    )
+    search_hnsw_max_scan_tuples: int = Field(validation_alias="SEARCH_HNSW_MAX_SCAN_TUPLES", gt=0)
+    search_neighbor_table_rows_per_chunk: int = Field(
+        validation_alias="SEARCH_NEIGHBOR_TABLE_ROWS_PER_CHUNK", gt=0
     )
 
     @field_validator("search_tier_priority")
@@ -2448,6 +2626,15 @@ class SearchSettings(ConfiguredSettings):
                 "and semantic exactly once"
             )
         return value
+
+    @model_validator(mode="after")
+    def validate_recommendation_scale(self) -> Self:
+        """Require the displayed relatedness ceiling to sit above the recommendation floor."""
+        if self.recommendation_relatedness_ceiling <= self.recommendation_min_relatedness:
+            raise ValueError(
+                "RECOMMENDATION_RELATEDNESS_CEILING must exceed RECOMMENDATION_MIN_RELATEDNESS"
+            )
+        return self
 
     @model_validator(mode="after")
     def validate_comparison_threshold_order(self) -> Self:
@@ -2482,6 +2669,9 @@ CONFIGURATION_SETTINGS_FAMILIES: tuple[type[ConfiguredSettings], ...] = (
     AdmissionSettings,
     AdminWebSettings,
     DatabaseSettings,
+    FeedbackSettings,
+    FeedbackIntakeSettings,
+    FeedbackSenderCredentialsSettings,
     AdministrativeDatasetSettings,
     AdministrativeSiteSettings,
     CaptureSettings,
@@ -2489,7 +2679,6 @@ CONFIGURATION_SETTINGS_FAMILIES: tuple[type[ConfiguredSettings], ...] = (
     NormalizationSettings,
     LocalLifecycleSettings,
     EmbeddingRuntimeSettings,
-    EmbeddingSettings,
     SearchSettings,
     TranslationSettings,
     TranslationControllerSettings,

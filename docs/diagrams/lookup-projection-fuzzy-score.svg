@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 420" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Lookup projection and fuzzy score path</title>
+  <desc id="d">The supervisor builds one lookup projection and the four worker processes inherit it
+  without a per-worker rebuild. Inside a worker, RapidFuzz whole-title WRatio similarity fills a score array
+  and the native token coverage raises the entries it can lift. The scores are then cut and sorted
+  into the fuzzy results. Exact code and substring matching compare the same projection rows in
+  Python.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="420" rx="12" fill="#232434"/>
+
+  <text x="48" y="56" font-size="16" fill="#a3a4b8">Built once, by the supervisor</text>
+
+  <rect x="48" y="72" width="340" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="218" y="98" text-anchor="middle" font-size="16" fill="#ececf2">Lookup projection</text>
+  <text x="218" y="120" text-anchor="middle" font-size="14" fill="#a3a4b8">normalized rows and token tables</text>
+
+  <line x1="388" y1="104" x2="492" y2="104" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="396" y="96" font-size="14" fill="#a3a4b8">inherited</text>
+
+  <rect x="500" y="72" width="240" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="620" y="98" text-anchor="middle" font-size="16" fill="#ececf2">Four worker processes</text>
+  <text x="620" y="120" text-anchor="middle" font-size="14" fill="#a3a4b8">no per-worker rebuild</text>
+
+  <text x="48" y="188" font-size="16" fill="#a3a4b8">Fuzzy score, inside a worker</text>
+
+  <rect x="48" y="204" width="160" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="128" y="230" text-anchor="middle" font-size="16" fill="#ececf2">Query</text>
+  <text x="128" y="252" text-anchor="middle" font-size="14" fill="#a3a4b8">normalized</text>
+
+  <rect x="240" y="204" width="180" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="330" y="230" text-anchor="middle" font-size="16" fill="#ececf2">WRatio</text>
+  <text x="330" y="252" text-anchor="middle" font-size="14" fill="#a3a4b8">whole-title score</text>
+
+  <rect x="480" y="204" width="220" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="590" y="230" text-anchor="middle" font-size="16" fill="#ececf2">Score array</text>
+  <text x="590" y="252" text-anchor="middle" font-size="14" fill="#a3a4b8">0 to 100 per name</text>
+
+  <rect x="732" y="204" width="180" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="822" y="230" text-anchor="middle" font-size="16" fill="#ececf2">Cut and sort</text>
+  <text x="822" y="252" text-anchor="middle" font-size="14" fill="#a3a4b8">active first</text>
+
+  <rect x="480" y="300" width="220" height="64" rx="8"
+        fill="#2e3045" stroke="#a98ae0" stroke-width="1.5"/>
+  <text x="590" y="326" text-anchor="middle" font-size="16" fill="#ececf2">Token coverage</text>
+  <text x="590" y="348" text-anchor="middle" font-size="14" fill="#a3a4b8">native lookup library</text>
+
+  <line x1="208" y1="236" x2="232" y2="236" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="420" y1="236" x2="472" y2="236" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="430" y="228" font-size="14" fill="#a3a4b8">fills</text>
+  <line x1="700" y1="236" x2="724" y2="236" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="590" y1="300" x2="590" y2="276" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="602" y="292" font-size="14" fill="#a3a4b8">raises</text>
+
+  <text x="48" y="396" font-size="14" fill="#a3a4b8">Exact code and substring compare the same projection rows in Python.</text>
+</svg>

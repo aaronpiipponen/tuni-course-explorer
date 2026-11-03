@@ -34,6 +34,7 @@ from course_explorer_admin.lifecycle import (
 from course_explorer_admin.local_stages import IngestionStage
 from course_explorer_admin.worker import run_lifecycle_worker
 from tests.admin._lifecycle_support import LocalLifecycleRunner, configure_environment
+from tests.datasets._support import write_dataset_roles
 from tests.ingestion._normalization_repository_support import (
     build_completed_fixture_store,
     normalized_database_digest,
@@ -126,7 +127,9 @@ def test_import_boundary_callbacks_gate_capture_to_normalization_atomically(
     )
     normalization_settings = settings_factory(NormalizationSettings)
     monkeypatch.setattr(
-        ingestion_commands, "_database_context", lambda settings: contextlib.nullcontext(factory)
+        ingestion_commands,
+        "_database_context",
+        lambda settings, **_kwargs: contextlib.nullcontext(factory),
     )
     monkeypatch.setattr(ingestion_commands, "load_capture_settings", lambda: capture_settings)
     monkeypatch.setattr(
@@ -140,7 +143,8 @@ def test_import_boundary_callbacks_gate_capture_to_normalization_atomically(
     process = seeded_state.process
     assert process is not None
 
-    configure_environment(monkeypatch)
+    configure_environment(monkeypatch, repository_root=tmp_path / "repository")
+    write_dataset_roles()
     monkeypatch.setattr(local_stages, "stage_state_root", lambda stage: root)
     runner = LocalLifecycleRunner(root=root, running={"db"})
 
@@ -251,12 +255,15 @@ def test_import_verification_prefix_resumes_from_retained_evidence(
     )
     normalization_settings = settings_factory(NormalizationSettings)
     monkeypatch.setattr(
-        ingestion_commands, "_database_context", lambda settings: contextlib.nullcontext(factory)
+        ingestion_commands,
+        "_database_context",
+        lambda settings, **_kwargs: contextlib.nullcontext(factory),
     )
     monkeypatch.setattr(ingestion_commands, "load_capture_settings", lambda: capture_settings)
     monkeypatch.setattr(
         ingestion_commands, "load_normalization_settings", lambda: normalization_settings
     )
+    write_dataset_roles()
 
     # Corrupt an envelope in the retained prefix while leaving manifest hashes/bytes untouched.
     course_response = next(

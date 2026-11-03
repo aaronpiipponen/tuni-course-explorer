@@ -23,6 +23,7 @@ from course_explorer_admin.datasets import (
 )
 from course_explorer_admin.logs import LogReadReport, LogSessionEntry, LogSessionsReport
 from course_explorer_admin.rebuild import RebuildReport
+from tests.support import REPO_ROOT
 
 
 class _Sentinel:
@@ -55,33 +56,40 @@ class _ScriptedRead:
     ("scenario", "answers", "server_branch"),
     [
         ("ingestion-status", ["2", "4", "0", "0"], "main"),
-        ("catalogue-summary", ["6", "1", "0", "0"], "main"),
-        ("selected-migration", ["1", "4", "0", "0"], "main"),
-        ("worker-setup-main", ["1", "2", "0", "0"], "main"),
-        ("worker-setup-nonmain-default", ["1", "2", "", "0", "0"], "prerequisite-inference"),
+        ("catalogue-summary", ["6", "1", "1", "0", "0"], "main"),
+        ("selected-migration", ["1", "5", "1", "0", "0"], "main"),
+        ("working-migration", ["1", "5", "2", "0", "0"], "main"),
+        ("copy-to-working", ["1", "2", "a" * 32, "1", "0", "0"], "main"),
+        ("worker-setup-main", ["1", "3", "0", "0"], "main"),
+        ("worker-setup-nonmain-default", ["1", "3", "", "0", "0"], "prerequisite-inference"),
         (
             "worker-setup-explicit-branch",
-            ["1", "2", "other-origin-branch", "0", "0"],
+            ["1", "3", "other-origin-branch", "0", "0"],
             "prerequisite-inference",
         ),
         ("dispose-nothing", ["5", "6", "disp-target", "1", "0", "0"], "main"),
         ("dispose-done", ["5", "6", "disp-target", "2", "0", "0"], "main"),
         ("dispose-failed", ["5", "6", "disp-target", "3", "0", "0"], "main"),
-        ("dataset-cleanup-initial", ["1", "5", "0" * 32, "1", "0", "0"], "main"),
-        ("backup-cleanup-file", ["1", "6", "before-inference.dump", "1", "0", "0"], "main"),
-        ("inference-dataset-cleanup", ["5", "7", "0" * 32, "1", "0", "0"], "main"),
-        ("embedding-write-hubs", ["4", "6", "0", "0"], "main"),
+        ("dataset-cleanup-initial", ["1", "6", "0" * 32, "1", "0", "0"], "main"),
+        ("working-cleanup", ["1", "6", "0" * 32, "1", "0", "0"], "main"),
+        ("backup-cleanup-file", ["1", "7", "before-inference.dump", "1", "0", "0"], "main"),
+        # Choice 7 holds no inference entry, so it dispatches nothing and the menu re-prompts.
+        ("inference-absent-cleanup", ["5", "7", "0", "0"], "main"),
+        ("embedding-build-serving-artifacts", ["4", "6", "0", "0"], "main"),
         ("server-status", ["7", "1", "0", "0"], "main"),
         ("command-log", ["7", "5", "0", "0"], "main"),
         ("usage-report", ["7", "4", "24", "0", "0"], "main"),
         ("session-log", ["7", "2", "embedding", "a" * 32, "1", "2", "0", "0"], "main"),
         ("embedding-log", ["7", "3", "4", "0", "0"], "main"),
-        ("rebuild-app", ["1", "8", "1", "0", "0"], "main"),
-        ("rebuild-admin-panel", ["1", "10", "1", "0", "0"], "main"),
-        ("password-setup", ["1", "9", "synthetic-operator", "0", "0"], "main"),
+        ("rebuild-app", ["1", "9", "1", "0", "0"], "main"),
+        ("rebuild-admin-panel", ["1", "11", "1", "0", "0"], "main"),
+        ("password-setup", ["1", "10", "synthetic-operator", "0", "0"], "main"),
+        ("example-setup", ["1", "12", "", "synthetic-operator", "2", "1", "0", "0", "0"], "main"),
+        ("example-setup-cancel", ["1", "12", "", "synthetic-operator", "0", "0", "0"], "main"),
+        ("real-database-setup", ["1", "13", "", "1", "0", "0"], "main"),
         (
             "configuration-save",
-            ["1", "7", "config/web.toml", "WEB_PORT", "18026", "1", "0", "0"],
+            ["1", "8", "config/web.toml", "WEB_PORT", "18026", "1", "0", "0"],
             "main",
         ),
         (
@@ -92,9 +100,10 @@ class _ScriptedRead:
                 "0",
                 "6",
                 "4",
+                "2",
                 "0",
                 "1",
-                "7",
+                "8",
                 "config/web.toml",
                 "WEB_PORT",
                 "18026",
@@ -126,7 +135,8 @@ def test_operator_menu_routes_explicit_choices_and_uses_server_setup_branch(
     hub_calls: list[object] = []
     dataset_listings: list[object] = []
     backup_listings: list[object] = []
-    dataset_deletions: list[str] = []
+    dataset_deletions: list[tuple[str, bool]] = []
+    copy_calls: list[str] = []
     backup_deletions: list[str] = []
     configuration_listings: list[object] = []
     configuration_reads: list[str] = []
@@ -139,23 +149,42 @@ def test_operator_menu_routes_explicit_choices_and_uses_server_setup_branch(
     rebuild_calls: list[object] = []
     admin_maintenance_calls: list[str] = []
     usage_hours: list[int] = []
+    example_setup_calls: list[object] = []
+    real_setup_calls: list[object] = []
+    working_target = scenario == "working-cleanup"
     dataset_listing = DatasetListReport(
         datasets=(
             DatasetListEntry(
                 dataset_id="a" * 32,
                 kind="returned",
                 database_name="course_dataset_selected",
+                predecessor_id="0" * 32,
+                receipt_schema_revision="20261028_0022",
                 dump_path="data/admin/datasets/selected/database.dump",
                 selected=True,
+                working=False,
+                database_presence="present",
+                artifacts_present=True,
             ),
             DatasetListEntry(
                 dataset_id="0" * 32,
                 kind="initial",
                 database_name="course_explorer",
+                predecessor_id=None,
+                receipt_schema_revision="20261028_0022",
                 dump_path=None,
                 selected=False,
+                working=working_target,
+                database_presence="present",
+                artifacts_present=False,
             ),
-        )
+        ),
+        mode="enrolled",
+        database_probe="available",
+        bootstrap_database=None,
+        stage_busy={
+            stage: False for stage in ("ingestion", "embedding", "translation", "inference")
+        },
     )
     backup_listing = BackupListReport(
         backups=(
@@ -212,12 +241,12 @@ def test_operator_menu_routes_explicit_choices_and_uses_server_setup_branch(
     monkeypatch.setattr(
         commands,
         "run_administrative_summary",
-        lambda kind: report_calls.append(("summary", kind)) or sentinel,
+        lambda kind, *, role: report_calls.append(("summary", kind, role)) or sentinel,
     )
     monkeypatch.setattr(
         commands,
         "run_administrative_coverage",
-        lambda kind: report_calls.append(("coverage", kind)) or sentinel,
+        lambda kind, *, role: report_calls.append(("coverage", kind, role)) or sentinel,
     )
     monkeypatch.setattr(
         commands,
@@ -234,10 +263,12 @@ def test_operator_menu_routes_explicit_choices_and_uses_server_setup_branch(
     monkeypatch.setattr(
         commands,
         "run_administrative_migration",
-        lambda: migration_calls.append(sentinel) or sentinel,
+        lambda *, role: migration_calls.append(role) or sentinel,
     )
     monkeypatch.setattr(
-        commands, "run_administrative_hubs", lambda: hub_calls.append(sentinel) or sentinel
+        commands,
+        "run_administrative_serving_artifacts",
+        lambda **kwargs: hub_calls.append((sentinel, kwargs)) or sentinel,
     )
     monkeypatch.setattr(
         commands,
@@ -247,7 +278,14 @@ def test_operator_menu_routes_explicit_choices_and_uses_server_setup_branch(
     monkeypatch.setattr(
         commands,
         "run_administrative_dataset_delete",
-        lambda dataset_id: dataset_deletions.append(dataset_id) or dataset_deletion,
+        lambda dataset_id, *, confirm_working=False: (
+            dataset_deletions.append((dataset_id, confirm_working)) or dataset_deletion
+        ),
+    )
+    monkeypatch.setattr(
+        commands,
+        "run_administrative_dataset_copy",
+        lambda dataset_id: copy_calls.append(dataset_id) or sentinel,
     )
     monkeypatch.setattr(
         commands,
@@ -343,6 +381,22 @@ def test_operator_menu_routes_explicit_choices_and_uses_server_setup_branch(
             or sentinel
         ),
     )
+    monkeypatch.setattr(
+        commands,
+        "run_administrative_example_setup",
+        lambda options: example_setup_calls.append(options) or sentinel,
+    )
+    monkeypatch.setattr(
+        commands,
+        "run_administrative_real_database_setup",
+        lambda options: real_setup_calls.append(options) or sentinel,
+    )
+    hidden_answers = ["synthetic-password", "synthetic-password"]
+    monkeypatch.setattr(commands.getpass, "getpass", lambda prompt: hidden_answers.pop(0))
+    if scenario in {"example-setup", "example-setup-cancel"}:
+        # The terminal default comes from the tracked example file, which the shared repository
+        # fixture does not link into its temporary root.
+        monkeypatch.setattr(commands.administration, "repository_root", lambda: REPO_ROOT)
 
     reader = _ScriptedRead(answers)
     writes: list[str] = []
@@ -352,8 +406,8 @@ def test_operator_menu_routes_explicit_choices_and_uses_server_setup_branch(
         supplied_calls.append(("command", stage, action))
         return sentinel
 
-    def supplied_summary(kind):
-        supplied_calls.append(("summary", kind, ""))
+    def supplied_summary(kind, *, role):
+        supplied_calls.append(("summary", kind, role))
         return sentinel
 
     menu_arguments: dict[str, object] = {}
@@ -386,7 +440,10 @@ def test_operator_menu_routes_explicit_choices_and_uses_server_setup_branch(
     if scenario == "supplied-callbacks":
         # The supplied callbacks replace exactly the stage command and the inference summary, and
         # every unrelated owner, the configuration editor included, is reached.
-        assert supplied_calls == [("command", "ingestion", "status"), ("summary", "inference", "")]
+        assert supplied_calls == [
+            ("command", "ingestion", "status"),
+            ("summary", "inference", "working"),
+        ]
         assert tool_calls == [] and report_calls == []
         assert setup_calls == [] and migration_calls == []
         assert preflight_calls == [] and disposition_reads == [] and disposition_sets == []
@@ -402,8 +459,8 @@ def test_operator_menu_routes_explicit_choices_and_uses_server_setup_branch(
         assert preflight_calls == [] and disposition_reads == [] and disposition_sets == []
         assert checkout_calls == []
         return
-    if scenario == "embedding-write-hubs":
-        # Only the embedding tool offers the hub writer, and choosing it calls the writer once.
+    if scenario == "embedding-build-serving-artifacts":
+        # Only the embedding tool offers the artifact build, and choosing it calls the builder once.
         assert len(hub_calls) == 1
         assert tool_calls == [] and report_calls == [] and setup_calls == []
         assert disposition_reads == [] and disposition_sets == [] and checkout_calls == []
@@ -473,14 +530,29 @@ def test_operator_menu_routes_explicit_choices_and_uses_server_setup_branch(
         assert server_status_calls == [] and log_session_listings == [] and log_reads == []
         assert embedding_log_reads == [] and tool_calls == [] and setup_calls == []
         return
-    if scenario in {"dataset-cleanup-initial", "inference-dataset-cleanup"}:
+    if scenario == "inference-absent-cleanup":
+        # Choice 7 holds no inference cleanup action, so it reads no listing, deletes nothing and
+        # runs no command.
+        assert dataset_listings == [] and dataset_deletions == []
+        assert backup_listings == [] and backup_deletions == []
+        assert tool_calls == [] and report_calls == [] and setup_calls == []
+        assert migration_calls == [] and disposition_reads == [] and disposition_sets == []
+        # The menu prints no entry for choice 7, and no report line names it.
+        assert not [line for line in writes if "Dataset cleanup" in line]
+        assert "7 Dataset cleanup" not in writes
+        return
+    if scenario in {"dataset-cleanup-initial", "working-cleanup"}:
         # The dataset listing is printed before the confirmation, only the eligible row is named for
-        # deletion, and the matching delete delegate is the one call.
+        # deletion, and the matching delete delegate is the one call with its role confirmation.
         assert len(dataset_listings) == 1
-        assert dataset_deletions == ["0" * 32]
+        assert dataset_deletions == [("0" * 32, working_target)]
         assert backup_listings == [] and backup_deletions == []
         listing_line = dataset_listing.model_dump_json()
-        confirmation = f"Delete dataset {'0' * 32} (course_explorer)?"
+        confirmation = (
+            f"Delete Working dataset {'0' * 32} (course_explorer)? Working becomes absent."
+            if working_target
+            else f"Delete dataset {'0' * 32} (course_explorer)?"
+        )
         assert listing_line in writes
         assert confirmation in writes
         assert writes.index(listing_line) < writes.index(confirmation)
@@ -508,14 +580,30 @@ def test_operator_menu_routes_explicit_choices_and_uses_server_setup_branch(
         assert checkout_calls == [] and hub_calls == []
         return
     if scenario == "catalogue-summary":
-        assert report_calls == [("summary", "catalogue")]
+        assert report_calls == [("summary", "catalogue", "selected")]
         assert tool_calls == [] and setup_calls == [] and migration_calls == []
         assert disposition_reads == [] and disposition_sets == [] and checkout_calls == []
         return
-    if scenario == "selected-migration":
-        assert len(migration_calls) == 1
+    if scenario in {"selected-migration", "working-migration"}:
+        assert migration_calls == ["selected" if scenario == "selected-migration" else "working"]
         assert tool_calls == [] and report_calls == [] and setup_calls == []
         assert disposition_reads == [] and disposition_sets == [] and checkout_calls == []
+        return
+    if scenario == "copy-to-working":
+        # The listing is printed before the source prompt, the copy names the listed source, and its
+        # ordinary confirmation names the exact dataset.
+        assert len(dataset_listings) == 1
+        assert copy_calls == ["a" * 32]
+        assert dataset_deletions == []
+        listing_line = dataset_listing.model_dump_json()
+        confirmation = f"Copy dataset {'a' * 32} (course_dataset_selected) to Working?"
+        assert listing_line in writes
+        assert confirmation in writes
+        assert writes.index(listing_line) < writes.index(confirmation)
+        assert sentinel.model_dump_json() in writes
+        assert tool_calls == [] and report_calls == [] and setup_calls == []
+        assert migration_calls == [] and disposition_reads == [] and disposition_sets == []
+        assert checkout_calls == [] and hub_calls == []
         return
     if scenario.startswith("worker-setup"):
         expected_branch = {
@@ -544,6 +632,43 @@ def test_operator_menu_routes_explicit_choices_and_uses_server_setup_branch(
         assert sentinel.model_dump_json() in writes
         assert tool_calls == [] and report_calls == [] and setup_calls == []
         assert configuration_writes == [] and disposition_reads == [] and disposition_sets == []
+        return
+
+    if scenario == "example-setup":
+        # Choice 12 asks the device choices, reads both password entries hidden, and delegates once.
+        assert len(example_setup_calls) == 1
+        options = example_setup_calls[0]
+        assert isinstance(options, commands.ExampleSetupInput)
+        assert options.app_url is None
+        assert options.username == "synthetic-operator"
+        assert options.mode == "foreground"
+        assert options.confirm_download is True
+        assert options.publication_token is None
+        assert options.password.get_secret_value() == "synthetic-password"
+        assert not any("synthetic-password" in line for line in writes)
+        assert not any(prompt.startswith("Password") for prompt in reader.prompts)
+        assert sentinel.model_dump_json() in writes
+        assert real_setup_calls == []
+        assert tool_calls == [] and report_calls == [] and setup_calls == []
+        return
+
+    if scenario == "example-setup-cancel":
+        # Cancelling the startup choice runs neither self-host workflow and posts no action.
+        assert example_setup_calls == [] and real_setup_calls == []
+        assert sentinel.model_dump_json() not in writes
+        assert tool_calls == [] and report_calls == [] and setup_calls == []
+        return
+
+    if scenario == "real-database-setup":
+        # Choice 13 keeps the terminal default name and delegates the chosen startup mode once.
+        assert len(real_setup_calls) == 1
+        options = real_setup_calls[0]
+        assert isinstance(options, commands.RealDatabaseSetupInput)
+        assert options.database_name == "course_explorer_real"
+        assert options.mode == "user"
+        assert sentinel.model_dump_json() in writes
+        assert example_setup_calls == []
+        assert tool_calls == [] and report_calls == [] and setup_calls == []
         return
 
     # One nothing/done/failed disposition choice: the entry is present, the canonical identity is
@@ -606,7 +731,7 @@ def test_operator_menu_failure_and_eof_preserve_running_work(
     setup_calls: list[dict] = []
     disposition_sets: list[tuple[str, object]] = []
     writes: list[str] = []
-    dataset_deletions: list[str] = []
+    dataset_deletions: list[tuple[str, bool]] = []
     backup_deletions: list[str] = []
     configuration_writes: list[tuple] = []
     server_status_calls: list[object] = []
@@ -620,17 +745,33 @@ def test_operator_menu_failure_and_eof_preserve_running_work(
                 dataset_id="a" * 32,
                 kind="returned",
                 database_name="course_dataset_selected",
+                predecessor_id="0" * 32,
+                receipt_schema_revision="20261028_0022",
                 dump_path=None,
                 selected=True,
+                working=False,
+                database_presence="present",
+                artifacts_present=False,
             ),
             DatasetListEntry(
                 dataset_id="0" * 32,
                 kind="initial",
                 database_name="course_explorer",
+                predecessor_id=None,
+                receipt_schema_revision="20261028_0022",
                 dump_path=None,
                 selected=False,
+                working=False,
+                database_presence="present",
+                artifacts_present=False,
             ),
-        )
+        ),
+        mode="enrolled",
+        database_probe="available",
+        bootstrap_database=None,
+        stage_busy={
+            stage: False for stage in ("ingestion", "embedding", "translation", "inference")
+        },
     )
     backup_listing = BackupListReport(
         backups=(
@@ -662,7 +803,9 @@ def test_operator_menu_failure_and_eof_preserve_running_work(
     monkeypatch.setattr(
         commands,
         "run_administrative_dataset_delete",
-        lambda dataset_id: dataset_deletions.append(dataset_id) or sentinel,
+        lambda dataset_id, *, confirm_working=False: (
+            dataset_deletions.append((dataset_id, confirm_working)) or sentinel
+        ),
     )
     monkeypatch.setattr(commands, "run_administrative_backup_list", lambda: backup_listing)
     monkeypatch.setattr(
@@ -831,7 +974,7 @@ def test_operator_menu_failure_and_eof_preserve_running_work(
         monkeypatch.setattr(commands, "run_administrative_dataset_list", failing_listing)
         assert (
             commands.run_operator_menu(
-                read=_ScriptedRead(["1", "5", "0", "0"]), write=writes.append
+                read=_ScriptedRead(["1", "6", "0", "0"]), write=writes.append
             )
             == 0
         )
@@ -843,7 +986,7 @@ def test_operator_menu_failure_and_eof_preserve_running_work(
         # An answer outside the displayed inventory is refused and draws no confirmation.
         assert (
             commands.run_operator_menu(
-                read=_ScriptedRead(["1", "5", "d" * 32, "0", "0"]), write=writes.append
+                read=_ScriptedRead(["1", "6", "d" * 32, "0", "0"]), write=writes.append
             )
             == 0
         )
@@ -852,7 +995,7 @@ def test_operator_menu_failure_and_eof_preserve_running_work(
         # The selected dataset is displayed, refused as a target, and never confirmed.
         assert (
             commands.run_operator_menu(
-                read=_ScriptedRead(["1", "5", "a" * 32, "0", "0"]), write=writes.append
+                read=_ScriptedRead(["1", "6", "a" * 32, "0", "0"]), write=writes.append
             )
             == 0
         )
@@ -862,7 +1005,7 @@ def test_operator_menu_failure_and_eof_preserve_running_work(
         # The confirmation names the exact target, and a cancel answer deletes nothing.
         assert (
             commands.run_operator_menu(
-                read=_ScriptedRead(["1", "6", "before-inference.dump", "2", "0", "0"]),
+                read=_ScriptedRead(["1", "7", "before-inference.dump", "2", "0", "0"]),
                 write=writes.append,
             )
             == 0
@@ -870,7 +1013,7 @@ def test_operator_menu_failure_and_eof_preserve_running_work(
         assert "Delete backup before-inference.dump?" in writes
     elif scenario == "cleanup-choice-interrupt":
         # An interrupt at the confirmation prompt returns 130 and deletes nothing.
-        cleanup_answers = ["1", "5", "0" * 32]
+        cleanup_answers = ["1", "6", "0" * 32]
 
         def interrupting_cleanup_read(prompt: str) -> str:
             if not cleanup_answers:
@@ -889,7 +1032,7 @@ def test_operator_menu_failure_and_eof_preserve_running_work(
         )
         assert (
             commands.run_operator_menu(
-                read=_ScriptedRead(["1", "7", "0", "0"]), write=writes.append
+                read=_ScriptedRead(["1", "8", "0", "0"]), write=writes.append
             )
             == 0
         )
@@ -903,29 +1046,29 @@ def test_operator_menu_failure_and_eof_preserve_running_work(
             raise RuntimeError("configuration-read-payload")
 
         monkeypatch.setattr(commands, "run_administrative_config_read", failing_configuration_read)
-        reader = _ScriptedRead(["1", "7", "config/web.toml", "0", "0"])
+        reader = _ScriptedRead(["1", "8", "config/web.toml", "0", "0"])
         assert commands.run_operator_menu(read=reader, write=writes.append) == 0
         assert not any("configuration-read-payload" in line for line in writes)
         assert not any("Configuration key (0 to cancel)" in prompt for prompt in reader.prompts)
     elif scenario == "configuration-unlisted-file":
         # An answer outside the listed files is refused before the read, and no key is asked for.
-        reader = _ScriptedRead(["1", "7", "config/not-listed.toml", "0", "0"])
+        reader = _ScriptedRead(["1", "8", "config/not-listed.toml", "0", "0"])
         assert commands.run_operator_menu(read=reader, write=writes.append) == 0
         assert "Configuration key (0 to cancel): " not in reader.prompts
     elif scenario == "configuration-unlisted-key":
         # An answer outside the chosen file's keys is refused and no confirmation is drawn.
-        reader = _ScriptedRead(["1", "7", "config/web.toml", "NOT_A_KEY", "0", "0"])
+        reader = _ScriptedRead(["1", "8", "config/web.toml", "NOT_A_KEY", "0", "0"])
         assert commands.run_operator_menu(read=reader, write=writes.append) == 0
         assert "JSON value: " not in reader.prompts
         assert not any(line.startswith("Save configuration ") for line in writes)
     elif scenario == "configuration-cancel":
         # Cancelling at the file prompt writes nothing and asks for no key.
-        reader = _ScriptedRead(["1", "7", "0", "0", "0"])
+        reader = _ScriptedRead(["1", "8", "0", "0", "0"])
         assert commands.run_operator_menu(read=reader, write=writes.append) == 0
         assert "Configuration key (0 to cancel): " not in reader.prompts
     elif scenario == "configuration-save-interrupt":
         # An interrupt at the confirmation prompt returns 130 and saves nothing.
-        configuration_answers = ["1", "7", "config/web.toml", "WEB_PORT", "18026"]
+        configuration_answers = ["1", "8", "config/web.toml", "WEB_PORT", "18026"]
 
         def interrupting_configuration_read(prompt: str) -> str:
             if not configuration_answers:
@@ -989,14 +1132,14 @@ def test_operator_menu_failure_and_eof_preserve_running_work(
         # Any confirmation other than the rebuild choice runs nothing.
         assert (
             commands.run_operator_menu(
-                read=_ScriptedRead(["1", "8", "2", "0", "0"]), write=writes.append
+                read=_ScriptedRead(["1", "9", "2", "0", "0"]), write=writes.append
             )
             == 0
         )
         assert "Rebuild this site's frontend, containers and web server?" in writes
     elif scenario == "rebuild-interrupt":
         # An interrupt at the confirmation prompt returns 130 and runs nothing.
-        rebuild_answers = ["1", "8"]
+        rebuild_answers = ["1", "9"]
 
         def interrupting_rebuild_read(prompt: str) -> str:
             if not rebuild_answers:
@@ -1008,7 +1151,7 @@ def test_operator_menu_failure_and_eof_preserve_running_work(
         # Any confirmation other than the administration rebuild choice builds and restarts nothing.
         assert (
             commands.run_operator_menu(
-                read=_ScriptedRead(["1", "10", "2", "0", "0"]), write=writes.append
+                read=_ScriptedRead(["1", "11", "2", "0", "0"]), write=writes.append
             )
             == 0
         )
@@ -1021,7 +1164,7 @@ def test_operator_menu_failure_and_eof_preserve_running_work(
         monkeypatch.setattr(commands, "run_administrative_admin_rebuild", failing_admin_build)
         assert (
             commands.run_operator_menu(
-                read=_ScriptedRead(["1", "10", "1", "0", "0"]), write=writes.append
+                read=_ScriptedRead(["1", "11", "1", "0", "0"]), write=writes.append
             )
             == 0
         )
@@ -1037,7 +1180,7 @@ def test_operator_menu_failure_and_eof_preserve_running_work(
         assert commands.run_operator_menu(read=reader, write=writes.append) == 0
     elif scenario == "password-interrupt":
         # An interrupt at the username prompt returns 130 and stores nothing.
-        password_answers = ["1", "9"]
+        password_answers = ["1", "10"]
 
         def interrupting_password_read(prompt: str) -> str:
             if not password_answers:
@@ -1059,7 +1202,7 @@ def test_operator_menu_failure_and_eof_preserve_running_work(
             lambda *, username, password: stored.append(username),
         )
         monkeypatch.setattr(commands.getpass, "getpass", eof_password)
-        reader = _ScriptedRead(["1", "9", "synthetic-operator", "0", "0"])
+        reader = _ScriptedRead(["1", "10", "synthetic-operator", "0", "0"])
         assert commands.run_operator_menu(read=reader, write=writes.append) == 0
         assert stored == []
         assert not any('"error"' in line for line in writes)

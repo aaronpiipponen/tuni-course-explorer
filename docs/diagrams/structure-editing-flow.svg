@@ -3,9 +3,10 @@
   <title id="t">Structure editing flow</title>
   <desc id="d">The ordered official programme reports and the saved profile edits together produce the
   displayed programmes, which hold one place for each module and course. A user action adds, replaces,
-  chooses, moves or resets a programme, module, course or option, which saves the profile edits and
-  updates the shared selection. A selected course that has no place is listed under Unplaced studies,
-  and a completed course left without a place keeps its completion and stays there.</desc>
+  chooses, moves, drags or resets a programme, module, course or option, which saves the profile edits
+  and the card order and updates the shared selection. A selected course that has no place is listed
+  under Unplaced studies, and a completed course left without a place keeps its completion and stays
+  there.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
             markerWidth="8" markerHeight="8" orient="auto-start-reverse">
@@ -14,64 +15,75 @@
   </defs>
   <rect width="960" height="632" rx="12" fill="#232434"/>
 
-  <rect x="110" y="56" width="300" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
-  <text x="260" y="82" text-anchor="middle" font-size="16" fill="#ececf2">Official programme reports</text>
-  <text x="260" y="104" text-anchor="middle" font-size="14" fill="#a3a4b8">official rules</text>
+  <rect x="64" y="56" width="380" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="254" y="82" text-anchor="middle" font-size="16" fill="#ececf2">Official programme reports</text>
+  <text x="254" y="104" text-anchor="middle" font-size="14" fill="#a3a4b8">official rules</text>
 
-  <rect x="550" y="56" width="300" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
-  <text x="700" y="82" text-anchor="middle" font-size="16" fill="#ececf2">Saved profile edits</text>
-  <text x="700" y="104" text-anchor="middle" font-size="14" fill="#a3a4b8">read from the profile</text>
+  <rect x="516" y="56" width="380" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="706" y="82" text-anchor="middle" font-size="16" fill="#ececf2">Saved profile edits</text>
+  <text x="706" y="104" text-anchor="middle" font-size="14" fill="#a3a4b8">read from the profile</text>
 
-  <rect x="330" y="176" width="300" height="64" rx="8" fill="#2e3045" stroke="#a98ae0" stroke-width="1.5"/>
+  <rect x="290" y="176" width="380" height="64" rx="8" fill="#2e3045" stroke="#a98ae0" stroke-width="1.5"/>
   <text x="480" y="202" text-anchor="middle" font-size="16" fill="#ececf2">Displayed programmes</text>
   <text x="480" y="224" text-anchor="middle" font-size="14" fill="#a3a4b8">modules and courses</text>
 
-  <rect x="330" y="296" width="300" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <rect x="290" y="296" width="380" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
   <text x="480" y="322" text-anchor="middle" font-size="16" fill="#ececf2">User action</text>
-  <text x="480" y="344" text-anchor="middle" font-size="14" fill="#a3a4b8">add, replace, choose, move, reset</text>
+  <text x="480" y="344" text-anchor="middle" font-size="14" fill="#a3a4b8">add, replace, choose, move, drag, reset</text>
 
-  <rect x="110" y="416" width="270" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
-  <text x="245" y="442" text-anchor="middle" font-size="16" fill="#ececf2">Stored profile edits</text>
-  <text x="245" y="464" text-anchor="middle" font-size="14" fill="#a3a4b8">saved before publish</text>
+  <rect x="48" y="416" width="248" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="172" y="442" text-anchor="middle" font-size="16" fill="#ececf2">Stored profile edits</text>
+  <text x="172" y="464" text-anchor="middle" font-size="14" fill="#a3a4b8">saved before publish</text>
 
-  <rect x="420" y="416" width="280" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
-  <text x="560" y="442" text-anchor="middle" font-size="16" fill="#ececf2">Canonical selection</text>
-  <text x="560" y="464" text-anchor="middle" font-size="14" fill="#a3a4b8">selected, completed</text>
+  <rect x="344" y="416" width="248" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="468" y="442" text-anchor="middle" font-size="16" fill="#ececf2">Saved card order</text>
+  <text x="468" y="464" text-anchor="middle" font-size="14" fill="#a3a4b8">ranked course identities</text>
 
-  <rect x="420" y="536" width="280" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
-  <text x="560" y="562" text-anchor="middle" font-size="16" fill="#ececf2">Unplaced studies</text>
-  <text x="560" y="584" text-anchor="middle" font-size="14" fill="#a3a4b8">no official place</text>
+  <rect x="640" y="416" width="272" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="776" y="442" text-anchor="middle" font-size="16" fill="#ececf2">Shared selection</text>
+  <text x="776" y="464" text-anchor="middle" font-size="14" fill="#a3a4b8">selected and completed</text>
 
-  <line x1="360" y1="120" x2="360" y2="176" stroke="#a3a4b8" stroke-width="1.5"
-        marker-end="url(#arrow)"/>
-  <text x="350" y="152" text-anchor="end" font-size="14" fill="#a3a4b8">official rules and courses</text>
+  <rect x="640" y="536" width="272" height="64" rx="8" fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="776" y="562" text-anchor="middle" font-size="16" fill="#ececf2">Unplaced studies</text>
+  <text x="776" y="584" text-anchor="middle" font-size="14" fill="#a3a4b8">no official place</text>
 
-  <line x1="600" y1="120" x2="600" y2="176" stroke="#a3a4b8" stroke-width="1.5"
-        marker-end="url(#arrow)"/>
-  <text x="610" y="152" font-size="14" fill="#a3a4b8">choices and places</text>
+  <polyline points="254,120 254,144 420,144 420,176" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="246" y="136" text-anchor="end" font-size="14" fill="#a3a4b8">official structure</text>
+
+  <polyline points="706,120 706,160 540,160 540,176" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="700" y="152" text-anchor="end" font-size="14" fill="#a3a4b8">choices and places</text>
 
   <line x1="480" y1="240" x2="480" y2="296" stroke="#a3a4b8" stroke-width="1.5"
         marker-end="url(#arrow)"/>
   <text x="490" y="272" font-size="14" fill="#a3a4b8">the reader acts</text>
 
-  <line x1="360" y1="360" x2="360" y2="416" stroke="#a3a4b8" stroke-width="1.5"
-        marker-end="url(#arrow)"/>
-  <text x="326" y="392" text-anchor="end" font-size="14" fill="#a3a4b8">saved</text>
+  <polyline points="368,360 368,388 172,388 172,416" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="164" y="408" text-anchor="end" font-size="14" fill="#a3a4b8">saved</text>
 
-  <line x1="560" y1="360" x2="560" y2="416" stroke="#a3a4b8" stroke-width="1.5"
+  <line x1="468" y1="360" x2="468" y2="416" stroke="#a3a4b8" stroke-width="1.5"
         marker-end="url(#arrow)"/>
-  <text x="570" y="392" font-size="14" fill="#a3a4b8">selection and completion</text>
+  <text x="480" y="380" font-size="14" fill="#a3a4b8">saved order</text>
 
-  <line x1="500" y1="480" x2="500" y2="536" stroke="#a3a4b8" stroke-width="1.5"
+  <polyline points="584,360 584,396 776,396 776,416" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="596" y="380" font-size="14" fill="#a3a4b8">selection and completion</text>
+
+  <line x1="700" y1="480" x2="700" y2="536" stroke="#a3a4b8" stroke-width="1.5"
         marker-end="url(#arrow)"/>
-  <text x="490" y="512" text-anchor="end" font-size="14" fill="#a3a4b8">courses with no place</text>
+  <text x="690" y="500" text-anchor="end" font-size="14" fill="#a3a4b8">courses with no place</text>
 
-  <line x1="620" y1="480" x2="620" y2="536" stroke="#a3a4b8" stroke-width="1.5"
+  <line x1="776" y1="480" x2="776" y2="536" stroke="#a3a4b8" stroke-width="1.5"
         stroke-dasharray="5 4" marker-end="url(#arrow)"/>
-  <text x="630" y="512" font-size="14" fill="#a3a4b8">completion kept</text>
 
-  <rect x="48" y="536" width="260" height="48" rx="8" fill="none" stroke="#4a4c6b" stroke-width="1.5"/>
+  <polyline points="670,328 720,328 720,120" fill="none" stroke="#a3a4b8"
+            stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="730" y="270" font-size="14" fill="#a3a4b8">written back</text>
+
+  <rect x="48" y="536" width="280" height="48" rx="8" fill="none" stroke="#4a4c6b" stroke-width="1.5"/>
   <line x1="64" y1="560" x2="104" y2="560" stroke="#a3a4b8" stroke-width="1.5"
         stroke-dasharray="5 4" marker-end="url(#arrow)"/>
-  <text x="116" y="565" font-size="14" fill="#a3a4b8">Depends on the action</text>
+  <text x="116" y="565" font-size="14" fill="#a3a4b8">Completion kept</text>
 </svg>

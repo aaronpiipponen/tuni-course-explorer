@@ -29,11 +29,11 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from course_explorer import administration
 from course_explorer.administration import (
     administrative_json,
     atomic_write_private_text,
     load_private_model,
-    repository_root,
     session_directory,
     sha256_file,
     utc_now,
@@ -385,7 +385,7 @@ class Stage(Protocol):
 
 def stage_state_root(stage: StageName, *, base: Path | None = None) -> Path:
     """Return the configured stage root's ``current`` directory, the one supported layout."""
-    root = repository_root() if base is None else base
+    root = administration.repository_root() if base is None else base
     if stage == "ingestion":
         configured = load_local_lifecycle_settings().ingestion_state_root
     elif stage == "embedding":
@@ -707,9 +707,12 @@ def _prepare(
 
     mechanics.ensure_prepared_services(
         lambda argv: (
-            runner.run(argv, cwd=repository_root(), timeout=settings.stop_timeout_seconds).stdout
+            runner.run(
+                argv, cwd=administration.repository_root(), timeout=settings.stop_timeout_seconds
+            ).stdout
         ),
         stage.services,
+        interpreter=True,
         on_starting=on_starting,
     )
     stage.require_database()
@@ -815,7 +818,7 @@ def _launch_and_wait(
             stderr_path = directory / "runner.err"
         process = runner.popen(
             argv,
-            cwd=repository_root(),
+            cwd=administration.repository_root(),
             stdout_path=stdout_path,
             stderr_path=stderr_path,
             start_new_session=True,
@@ -888,7 +891,7 @@ def _create_fresh_session(
 ) -> LifecycleStatus:
     options = stage.select_options()
     identity = stage.identity_sha256(options)
-    revision = mechanics.current_revision(runner, repository_root())
+    revision = mechanics.current_revision(runner, administration.repository_root())
     session = LifecycleSession(
         schema_version=1,
         session_id=session_id_factory(),
@@ -1014,13 +1017,13 @@ def _release_owned_services(
     """Stop and remove exactly the recorded session-owned temporary Compose services."""
     for service in services:
         runner.run(
-            (*mechanics.compose_prefix(), "stop", service),
-            cwd=repository_root(),
+            (*mechanics.compose_prefix(interpreter=True), "stop", service),
+            cwd=administration.repository_root(),
             timeout=timeout,
         )
         runner.run(
-            (*mechanics.compose_prefix(), "rm", "-f", service),
-            cwd=repository_root(),
+            (*mechanics.compose_prefix(interpreter=True), "rm", "-f", service),
+            cwd=administration.repository_root(),
             timeout=timeout,
         )
 

@@ -1,7 +1,7 @@
 /** Shared modal panel presentation for compare replacement and root selection. */
 .dialog-scrim {
   position: fixed;
-  z-index: 40;
+  z-index: 39;
   inset: 0;
   background: rgb(0 0 0 / 70%);
   backdrop-filter: blur(3px);
@@ -22,7 +22,7 @@
   box-shadow:
     0 0 0 4px rgb(176 123 232 / 10%),
     0 40px 120px rgb(0 0 0 / 90%),
-    0 0 80px -10px rgb(78 0 142 / 50%);
+    0 0 80px -10px rgb(90 30 156 / 50%);
 }
 .dialog-panel-compact {
   width: min(440px, calc(100vw - 2rem));
@@ -101,7 +101,7 @@
 }
 .dialog-option:hover {
   border-color: #b07be8;
-  background: rgb(78 0 142 / 25%);
+  background: rgb(90 30 156 / 25%);
 }
 .dialog-code {
   color: #b07be8;
@@ -170,7 +170,7 @@
 }
 .dialog-cancel:hover {
   border-color: #b07be8;
-  background: rgb(78 0 142 / 25%);
+  background: rgb(90 30 156 / 25%);
 }
 .dialog-confirm {
   flex: none;
@@ -179,7 +179,7 @@
   border: 1px solid #b07be8;
   border-radius: 999px;
   color: #fff;
-  background: #4e008e;
+  background: var(--color-accent-strong);
   font:
     12px "JetBrains Mono",
     ui-monospace,

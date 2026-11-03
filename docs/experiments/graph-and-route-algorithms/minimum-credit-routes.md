@@ -1,25 +1,27 @@
 # Minimum-credit routes
 
-This report records the exact minimum-credit route calculation, its size limit and restart, and the comparison of its two implementations.
+This report records what the bounded minimum-credit route calculation returns, how its size limit and greedy restart behave, and whether ordinary route output changed.
 
-**Evidence status:** Corrected. **Run dates:** 9 to 10 October and 20 October 2026.
+**Evidence status:** Corrected. **Run dates:** 9 to 10 October 2026.
 
-A claimed improvement in the unresolved rate was rejected as an unpaired comparison, and the first passing route totals were superseded after a solver correction.
+The standing result is a bounded exact search with one greedy restart at 700,000 compact nodes. The three approximate routes charge 204.00, 211.00 and 194.00 new credits, one all-courses case returns a marked `search_too_large` failure, the four ordinary route reports preserved their course, module and credit fields, two of them byte-identical to baselines captured before the change, and no unresolved-rate effect is established.
 
-The [Experiments section](/docs/experiments/README.md) states the catalogue and the evidence labels. The [glossary](/docs/reference/glossary.md) defines new credits, route outcome and allocation limit. The [Minimum route](/docs/backend/prerequisites/minimum-route.md) page states every outcome, what a route charges and the preference order. The [Minimum route solver](/docs/backend/prerequisites/minimum-route-solver.md) page describes the calculation as it stands. This report states what the experiments measured and where each measurement stopped.
+The [Experiments section](/docs/experiments/README.md) states the catalogue and the evidence labels. The [glossary](/docs/reference/glossary.md) defines new credits, route outcome and allocation limit. The [Minimum route](/docs/backend/prerequisites/minimum-route.md) page states every outcome, what a route charges and the preference order. The [Minimum route solver](/docs/backend/prerequisites/minimum-route-solver.md) page describes the calculation as it is built. The route solver the product runs is TypeScript, in `web/src/solver/route.ts`, and the measurements below ran on the Python implementation that served routes at the time.
 
 ## The question
 
-A route calculation answers which courses meet a course's prerequisites with the fewest new credits. The calculation minimizes new credits, so two cheap courses can cost less than one expensive course. Every answer must also be explainable: which courses it charges, which requirements stay unresolved, which course or node mark blocked a branch, and whether the answer is a proven minimum, an approximation or a refusal.
+A route calculation answers which courses meet a course's prerequisites with the fewest new credits. The calculation minimizes new credits, so two cheap courses can cost less than one expensive course. Every answer must also be explainable: which courses it charges, which requirements are unresolved, which course or node mark blocked a branch, and whether the answer is a proven minimum, an approximation or a refusal.
 
 Four questions shaped the work:
 
 1. Could the exact calculation be trusted on the captured catalogue, including where it must refuse to answer?
 2. What happens when an exact attempt grows too large to finish, and what may the calculation claim then?
-3. Does the size limit and the added report fields leave an ordinary route's output the same?
-4. Do the two implementations that then existed return the same route from the same prepared structure?
+3. Does the size limit leave an ordinary route's output the same?
+4. Did the unresolved rate of the calculation improve?
 
 Two failure modes motivated the second question. An exact search that never finishes returns nothing, and an approximation that presents itself as a minimum is wrong. The work therefore separated three things that one timeout hides: the size of the exact search, the external wall clock of the command, and the outcome the calculation returns.
+
+The comparison of the TypeScript route solver with the Python calculation that then existed is reported in [Route solver parity](/docs/experiments/graph-and-route-algorithms/route-solver-parity.md).
 
 ## What the calculation minimizes
 
@@ -31,17 +33,15 @@ The logical and numeric rules are solved over those sets together, not branch by
 
 Two rules about unresolved structure follow from that. A known zero-cost candidate is exact even when an unresolved alternative went unused, because the known route already costs nothing. A positive known cost is unresolved when unknown structure could be cheaper. Incomplete inference coverage does not itself prevent an exact result for the published expression.
 
-## The initial exact calculation
+## The exact calculation
 
-The initial exact calculation was one pure optimizer over the compiled requirement tree. It took the caller's canonical completion set and no visibility, repository, configuration or persistence input. It returned selected-course occurrence evidence, the satisfaction evaluation, copied inferred coverage and one of three outcomes: exact, unresolved or no solution. The later calculation also supported an active-only shortfall, carrying the maximum achievable under the activity scope and each deficient module rule. An unresolved or no-solution result carried no course list or credit total.
-
-On the selected dataset the calculation returned an unresolved result with no courses and no total for one target. Solver work measured 0.38 to 0.48 seconds on that graph, and two other targets solved exactly below 0.01 seconds. A 10-second whole-command assertion from that work was rejected as mis-scoped. The bulk compiler reads consumed roughly 10 to 15 seconds before the route calculation began, so the assertion measured compilation rather than routing. End-to-end acceptance was left to the sizing work described below.
+The calculation is one pure optimizer over the compiled requirement tree. It takes the caller's canonical completion set and no visibility, repository, configuration or persistence input. It returns selected-course occurrence evidence, the satisfaction evaluation, copied inferred coverage and one of the exact attempt's three outcomes: exact, unresolved or no solution. It also supports an active-only shortfall, carrying the maximum achievable under the activity scope and each deficient module rule. An unresolved or no-solution result carries no course list or credit total.
 
 ## The size limit and the restart
 
-The exact attempt is bounded by an allocation size, not by elapsed time. The check counts the compact nodes and traces the exact attempt builds and raises when that count first exceeds `PREREQUISITE_PATH_MAX_COMPACT_NODES`. The calculation then abandons the exact attempt once and runs a single greedy pass with no allocation cap.
+The exact attempt is bounded by an allocation size, not by elapsed time. The check counts the compact nodes, the interned family nodes and provenance trace nodes the exact attempt builds, and raises when that count first exceeds `PREREQUISITE_PATH_MAX_COMPACT_NODES`. The calculation then abandons the exact attempt once and runs a single greedy pass with no allocation cap.
 
-The greedy pass builds one valid route from the ranking it can see. Its route satisfies the source rules but is not a global minimum, and an activity shortfall it reports lists actual witnesses rather than a proved maximum. When no valid route is found, the result is `approximation_failed`, with no route, no total, and one root problem whose reason is `search_too_large`. That reason is an application size limit, not a wall-clock event. The app presents an approximate result as **Approximate route** and a failed restart as **No route found**.
+The greedy pass builds one valid route from the ranking it can see. Its route satisfies the source rules but is not a global minimum, and an activity shortfall it reports lists actual witnesses rather than a proved maximum. When no valid route is found, the result is `approximation_failed`, with no route, no total, and one root problem whose reason is `search_too_large`. That reason is an application size limit, not a wall-clock event. The app presents an approximate result as **Approximate route**. A failed restart presents the message **The exact search was too large and the approximation gave up.** and the tag **timeout**.
 
 ```text
 exact_attempt(structure, maxCompactNodes):
@@ -60,8 +60,8 @@ solve(structure):
 
 The limit was calibrated by counting the compact nodes and traces allocated during the exact attempt, starting the clock when the exact attempt begins and giving the exact attempt a high temporary ceiling. Each command was capped externally at 10 seconds.
 
-| Input | Flags | Sampled compact count | Solver seconds | Outcome under the external cap |
-|---|---|---:|---:|---|
+| Input | Flags | Sampled compact count | Solver seconds | Outcome under the cap |
+|---|---|---|---:|---|
 | MATH.MA.880 | recommended | 790,000 | 3.043 | unfinished at the cap |
 | MATH.MA.880 | recommended, active only | 800,000 | 3.089 | unfinished at the cap |
 | MATH.MA.725 | recommended | 320,000 | 1.338 | unfinished at the cap |
@@ -70,122 +70,64 @@ The limit was calibrated by counting the compact nodes and traces allocated duri
 | KAT.MARK.304 | recommended, active only | under 20,000 | 0.136 | shortfall, total 0 |
 | KAT.MARK.399 | recommended, active only | about 60,000 | 1.533 | exact, total 180.00 |
 
-A guarded profile of the largest structure reached 700,000 compact nodes and traces at 2.672 seconds, and the final calibration sampled 700,000 at 2.8841 seconds and 740,000 at 3.0379 seconds. The selected value is 700000 for `PREREQUISITE_PATH_MAX_COMPACT_NODES`, which keeps the trigger near three solver seconds. The instrumentation sampled every 10,000 entries and added small overhead, so the calibration is approximate.
+A guarded profile of the largest structure reached 700,000 compact nodes and traces at 2.672 seconds, and the calibration sampled 700,000 at 2.8841 seconds and 740,000 at 3.0379 seconds. The selected value is 700000 for `PREREQUISITE_PATH_MAX_COMPACT_NODES`, so the trigger sits near three solver seconds. The instrumentation sampled every 10,000 entries and added small overhead, so the calibration is approximate.
 
-Every command in the timing and acceptance tables ran under an external wall cap: 30 seconds in the first timings and 10 seconds for the later ones. The cap covers process startup, the database read, request compilation, the calculation and serialization. A capped row means that no complete report was produced. It is not a route outcome, and no state or credit is inferred for it.
+## The seven cases
 
-## The attempt sequence
+Seven cases ran with recommended prerequisites on, inferred prerequisites off, an empty basis, and no exclusion or node mark. Each command ran under a 10-second external cap that covered process start, the database read, compilation, the calculation and serialization. The table gives the standing result.
 
-The same seven cases ran at every attempt: MATH.MA.880 and MATH.MA.725, each with and without active only, and KAT.MARK.310, KAT.MARK.304 and KAT.MARK.399. Recommended prerequisites were on, inferred prerequisites were off, the basis was empty, and no exclusion or node mark was set. The first timings measured the command body alone, not the whole subprocess. The later seven-case acceptance values cover complete commands, so the first times are not compared with the later ones.
+| Case | Outcome | New credits | Compilation (s) | Exact attempt (s) | Greedy pass (s) | Other (s) | Total (s) |
+|---|---|---|---:|---:|---:|---:|---:|
+| MATH.MA.880 active only | approximate | 204.00 | 1.565 | 2.382 | 1.432 | 1.912 | 7.291 |
+| MATH.MA.880 all courses | `approximation_failed` (`search_too_large`) | none | 1.542 | 2.349 | 0.531 | 1.835 | 6.256 |
+| MATH.MA.725 active only | approximate | 211.00 | 2.066 | 2.261 | 1.148 | 2.357 | 7.832 |
+| MATH.MA.725 all courses | approximate | 194.00 | 1.998 | 2.342 | 0.828 | 2.337 | 7.505 |
+| KAT.MARK.310 active only | shortfall | 0.00 | 0.289 | 0.069 | 0.000 | 0.531 | 0.889 |
+| KAT.MARK.304 active only | shortfall | 0.00 | 0.301 | 0.068 | 0.000 | 0.527 | 0.896 |
+| KAT.MARK.399 active only | exact | 180.00 | 0.746 | 0.559 | 0.000 | 0.773 | 2.078 |
 
-The four mathematics cases:
+Three cases return an approximate route. MATH.MA.880 all courses returns `approximation_failed` with no route and no total, and that is a marked failure returned under the cap rather than a latency miss. The two KAT shortfalls follow the activity-only semantics: the module rule is below its bound because only active courses are allowed. KAT.MARK.399 returns an exact route.
 
-| Attempt | Cap | MATH.MA.880 active only | MATH.MA.880 all courses | MATH.MA.725 active only | MATH.MA.725 all courses |
-|---|---|---|---|---|---|
-| Exact search, first timings | 30 s | no report | no report | no report | no report |
-| Exact search | 10 s | no report | no report | no report | no report |
-| Fallback, gate failed | 10 s | no report | no report | no report | no report |
-| Bounded remediation, gate failed | 10 s | no report | no report | no report | no report |
-| Passing attempt | 10 s | approximate, 218.00 cr, 8.255 s | marked failure, 7.743 s | approximate, 198.00 cr, 9.321 s | approximate, 194.00 cr, 9.119 s |
-| Corrected re-run | 10 s | approximate, 204.00 cr, 7.291 s | marked failure, 6.256 s | approximate, 211.00 cr, 7.832 s | approximate, 194.00 cr, 7.505 s |
+The three approximate routes charge the new credits below.
 
-The three KAT cases:
-
-| Attempt | Cap | KAT.MARK.310 | KAT.MARK.304 | KAT.MARK.399 |
-|---|---|---|---|---|
-| Exact search, first timings | 30 s | shortfall, 0 cr | shortfall, 0 cr | exact, 180.00 cr |
-| Exact search | 10 s | shortfall, 0 cr, 2.83 s | shortfall, 0 cr, 2.79 s | exact, 180.00 cr, 7.74 s |
-| Fallback, gate failed | 10 s | shortfall, 0 cr, 2.868 s | shortfall, 0 cr, 2.817 s | exact, 180.00 cr, 7.616 s |
-| Bounded remediation, gate failed | 10 s | shortfall, 0 cr, 2.326 s, deficit 65 | shortfall, 0 cr, 2.386 s, deficit 65 | exact, 180.00 cr, 5.081 s |
-| Passing attempt | 10 s | shortfall, 0 cr, 2.053 s | shortfall, 0 cr, 2.069 s | exact, 180.00 cr, 3.500 s |
-| Corrected re-run | 10 s | shortfall, 0 cr, 0.889 s | shortfall, 0 cr, 0.896 s | exact, 180.00 cr, 2.078 s |
-
-### The first two gates failed
-
-The size-bounded fallback returned no complete report for the four mathematics cases under the 10-second cap, and the required seven-case gate was not passed. The three KAT cases completed: two shortfalls at zero credits and one exact route at 180.00 credits.
-
-The bounded remediation that followed measured the exact allocation again and confirmed the 700,000 trigger near three solver seconds. It left the four mathematics cases at the cap, between 10.005 and 10.012 seconds, so it did not bring every case under the target. Those four rows are latency misses, not approximation failures, and the trigger and failure contract were not changed.
-
-The whole-command ceiling was not reached by compiling the request alone. A bounded diagnostic, not an acceptance retry, measured MATH.MA.880 active only in two parts: 5.5 seconds of compilation and 59.0 seconds of exact PATH search that returned an exact route. The 30-second acceptance cap was reached inside that exact PATH fold, not during compilation. Those two component times exceed 30 seconds, so the diagnostic did not establish that the complete command fits the external 30-second command budget, and no whole-command time is inferred from it. A later profiled run of the compilation with a forced approximate pass spent 7.136 seconds compiling under profiler overhead and was filtering inside the greedy pass at the cap. No state or credit was inferred from either capped run.
-
-### The passing attempt
-
-The next attempt measured 1.541 seconds for the unprofiled compilation of the MATH.MA.880 all-courses structure. Its seven-case run returned a complete report for all seven cases under the 10-second cap. An initial batch and a final confirmation batch both ran, and both returned the same states. The table gives the final batch.
-
-MATH.MA.880 active only returned an approximate route of 218.00 credits. MATH.MA.725 returned approximate routes of 198.00 credits active only and 194.00 credits all courses. MATH.MA.880 all courses returned `approximation_failed` with `search_too_large`, no route and no total. That is a marked failure returned under the cap, not a latency miss. The two KAT shortfalls stayed shortfalls at zero credits, and KAT.MARK.399 stayed exact at 180.00 credits.
-
-The three KAT times in that attempt were lower than in the preceding attempts, and the mathematics cases completed instead of reaching the cap. The KAT outcomes and the KAT credit totals did not change.
-
-### The scalar correction
-
-The correction addressed additive-cost accounting and attested-node accounting, and it changed the greedy ranking. An attested node is a module or numeric node that a node mark records as manually completed. The calculation counts it as one satisfied witness and charges the credit minimum the node carries. The seven cases therefore ran again on the corrected revision. The states did not change, and two approximate totals moved.
-
-| Case | Passing attempt (cr) | Corrected re-run (cr) |
-|---|---:|---:|
-| MATH.MA.880 active only | 218.00 | 204.00 |
-| MATH.MA.725 active only | 198.00 | 211.00 |
-| MATH.MA.725 all courses | 194.00 | 194.00 |
-
-The chart compares the three approximate totals between the passing attempt and the corrected re-run.
-
-![New credits of the three approximate large-case routes before and after the scalar correction. MATH.MA.880 active only falls from 218 to 204 credits, MATH.MA.725 active only rises from 198 to 211, and the all-courses MATH.MA.725 route is 194 credits in both.](/docs/charts/graph-route-minimum-approximate-credits.svg)
-
-The totals moved in opposite directions: MATH.MA.880 active only fell from 218.00 to 204.00 credits and MATH.MA.725 active only rose from 198.00 to 211.00. Interpretation: an approximate total is what one greedy pass built from the changed ranking. The movements follow a correction to accounting and ranking, rather than a controlled comparison of approximation quality against an exact minimum. The corrected totals are the ones that stand.
+![New credits of the three approximate routes: 204.00 credits for MATH.MA.880 active only, 211.00 for MATH.MA.725 active only and 194.00 for MATH.MA.725 all courses.](/docs/charts/graph-route-minimum-approximate-credits.svg)
 
 ### Where the time goes
 
-A whole-command time combines request compilation, the exact attempt, the greedy pass and the remaining service time. The component timings wrapped those calls separately, so the components do not overlap, and each command's JSON output was byte-identical to the result the service returned.
+A whole-command time combines request compilation, the exact attempt, the greedy pass and the rest of the service time. The component timings wrapped those calls separately, so the components do not overlap, and each command's JSON output was byte-identical to the result the service returned.
 
-| Case | Compilation (s) | Exact attempt (s) | Greedy pass (s) | Other (s) | Total (s) | Outcome |
-|---|---:|---:|---:|---:|---:|---|
-| MATH.MA.880 active only | 1.565 | 2.382 | 1.432 | 1.912 | 7.291 | approximate, 204.00 cr |
-| MATH.MA.880 all courses | 1.542 | 2.349 | 0.531 | 1.835 | 6.256 | marked failure |
-| MATH.MA.725 active only | 2.066 | 2.261 | 1.148 | 2.357 | 7.832 | approximate, 211.00 cr |
-| MATH.MA.725 all courses | 1.998 | 2.342 | 0.828 | 2.337 | 7.505 | approximate, 194.00 cr |
-| KAT.MARK.310 active only | 0.289 | 0.069 | 0.000 | 0.531 | 0.889 | shortfall, 0 cr |
-| KAT.MARK.304 active only | 0.301 | 0.068 | 0.000 | 0.527 | 0.896 | shortfall, 0 cr |
-| KAT.MARK.399 active only | 0.746 | 0.559 | 0.000 | 0.773 | 2.078 | exact, 180.00 cr |
+The four mathematics commands divide their time as follows.
 
-The chart plots the stage times of the four large-case commands.
+![Component times of the four mathematics calculations. Compilation takes 1.542 to 2.066 seconds, the exact attempt 2.261 to 2.382 seconds, and the greedy pass 0.531 to 1.432 seconds.](/docs/charts/graph-route-minimum-component-times.svg)
 
-![Component times of the four large-case calculations after the scalar correction. Compilation takes 1.542 to 2.066 seconds, the exact attempt 2.261 to 2.382 seconds, and the greedy pass 0.531 to 1.432 seconds.](/docs/charts/graph-route-minimum-component-times.svg)
+Compilation takes 1.542 to 2.066 seconds across the four mathematics cases, the exact attempt 2.261 to 2.382 seconds, and the greedy pass 0.531 to 1.432 seconds. An unprofiled compilation of the MATH.MA.880 all-courses structure took 1.541 seconds. A profiled attribution of the same kind of compilation took 6.883 seconds, of which 239 scoped course reads took 4.665 seconds. The profiled figure is an attribution, not normal elapsed time, and the two are not compared.
 
-Compilation takes 1.542 to 2.066 seconds across the four cases, the exact attempt 2.261 to 2.382 seconds, and the greedy pass 0.531 to 1.432 seconds. An unprofiled compilation of the MATH.MA.880 all-courses structure took 1.541 seconds, while a profiled attribution of the same kind of compilation took 6.883 seconds, of which 239 scoped course reads took 4.665 seconds. The profiled figure is an attribution, not normal elapsed time, and the two are not compared.
+## Ordinary route output
 
-## Ordinary route comparisons
+The ordinary comparison asked whether the added report fields and the size limit change a normal route. Four ordinary cases appear in the evidence, and they divide into two pairs.
 
-The ordinary comparisons asked whether the added report fields and the size limit change a normal route. Four ordinary cases appear in the evidence: COMP.CS.110, COMP.CS.200, COMP.CS.500 and KIE.SUY.420.
+COMP.CS.110 and COMP.CS.200 kept their course, module and credit fields. Both were exact with one new course and 5.00 credits each, and their root, course nodes, module nodes and selected course and credit result were identical. The reports gained empty fields, and the drawing added availability locations for hidden inactive prerequisites, so connector nodes rose from two to 15 for COMP.CS.110 and from one to nine for COMP.CS.200. The empty fields and the availability locations are additions, and no course or credit changed.
 
-COMP.CS.110 and COMP.CS.200 stayed exact with one new course and 5.00 credits each when the reports gained empty fields. Their course, module and credit fields were identical, and the drawing added availability locations for hidden inactive prerequisites: connector nodes rose from two to 15 for COMP.CS.110 and from one to nine for COMP.CS.200. That change is drawing only. A later retest of the same two returned exact again, one course (COMP.CS.100) and 5.00 credits each.
+COMP.CS.500 and KIE.SUY.420 were byte-identical to baselines captured before the change. The baselines and the reports ran with all courses, recommended prerequisites on, inferred prerequisites off and an empty basis. COMP.CS.500 returned 14 credits and three courses, and KIE.SUY.420 returned 35.00 credits and seven courses. Under active only, a capped report and an uncapped exact run of the same checkout were byte-identical. COMP.CS.500 returned 20.00 credits and KIE.SUY.420 returned 35.00 credits.
 
-The initial pre-edit baseline was not captured. The first command failed settings validation, and the next failed database credential loading. No baseline was recorded or synthesized.
+Only those two comparisons with baselines captured before the change were byte-identical. COMP.CS.110 and COMP.CS.200 are not byte-identical reports, because the empty fields and the availability locations are additions.
 
-The size-limited reports were therefore compared with an uncapped exact run of the same checkout. COMP.CS.500 and KIE.SUY.420 returned exact reports that were byte-identical under the cap and without it. The active-only comparison returned 20.00 credits for COMP.CS.500 and 35.00 for KIE.SUY.420. That establishes capped and uncapped equality, but it cannot replace a pre-edit baseline.
+## The unresolved-rate samples
 
-A pre-edit baseline was captured before the final remediation: complete reports for COMP.CS.500 and KIE.SUY.420 with all courses, recommended prerequisites on, inferred prerequisites off and an empty basis. After the remediation both reports were identical to those baselines byte for byte, and the corrected revision repeated the comparison with the same result. COMP.CS.500 returned 14.00 credits and three courses, and KIE.SUY.420 returned 35.00 credits and seven courses.
+The unresolved rate is the share of sampled courses whose calculation ends `unresolved`. Two 200-course samples measured it, and they do not measure one population.
 
-One earlier saved KIE.SUY.420 result differs in its drawn node-state list: 143 action-key states there and 151 in the final result, with all 143 present and eight structural keys added. The route, the credits and the path outcome are equal, and the final capped report equals its uncapped counterpart in full.
-
-## The unresolved-rate claim and its correction
-
-A 200-course sample measured how often the calculation ends unresolved. Two samples exist, and a claim that compared them was rejected.
-
-### The two samples
-
-| Record | Population | Sample | Cap | Outcomes | Unresolved share |
+| Sample | Population | Size | Cap | Outcomes | Unresolved share |
 |---|---|---|---|---|---|
-| Earlier sample | active courses with a nonempty official prerequisite option | 200, fixed seed | 20 s per route | 163 exact, 5 no solution, 28 unresolved, 4 timeouts | 28 of 196, 14.29% |
-| Later sample | active courses in a deterministic order derived from each identity | 200 | 10 s per whole command | 192 exact, 4 no solution, 3 unresolved, 1 timeout | 3 of 200, 1.5% |
+| Option-bearing sample | active courses with a nonempty official prerequisite option, drawn with a fixed seed | 200 | 20 s per route | 163 exact, 5 no solution, 28 unresolved, 4 timeouts | 28 of 196, 14.29% |
+| All-active sample | active courses in a deterministic order derived from each identity | 200 | 10 s per whole command | 192 exact, 4 no solution, 3 unresolved, 1 timeout | 3 of 200, 1.5% |
 
-The conservative reading of the earlier sample counts the timeouts with the unresolved cases and gives 32 of 200, or 16 percent. The conservative reading of the later sample gives four of 200, or 2.0 percent.
+The conservative reading of the option-bearing sample counts the four timeouts with the unresolved cases and gives 32 of 200, or 16%. The conservative reading of the all-active sample gives four of 200, or 2.0%.
 
-The two samples differ in three ways that matter. The earlier sample kept only active courses whose representative version had a nonempty official prerequisite option and drew 200 of them with a fixed seed. The later sample drew 200 active courses in a deterministic order derived from each identity with no option filter. The earlier cap was 20 seconds per route, and the later cap was 10 seconds for the whole command. The courses are not paired across the two samples.
-
-The claim that the rate fell from 14.29 percent to 1.5 percent is rejected as an effect-size claim. It is not evidence that a corrected calculation improved the unresolved rate. Each figure stands only as a description of its own sample and cap, and the same course is not followed from one sample to the other.
+An effect-size claim from 14.29% to 1.5% does not stand. The samples differ in population, draw method, denominator and cap, and no course is followed from one sample to the other. Each rate describes its own sample and cap.
 
 ### The source-bearing subset
 
-Within the later sample, 43 courses carry at least one official prerequisite option. Those are the courses whose result can be traced to an official prerequisite of their own rather than to an empty requirement set.
+The all-active sample has 43 courses whose representative version carries at least one official prerequisite option. Those are the courses whose result can be traced to an official prerequisite of their own rather than to an empty requirement set.
 
 | Metric | Count |
 |---|---:|
@@ -196,119 +138,62 @@ Within the later sample, 43 courses carry at least one official prerequisite opt
 | Completed | 42 |
 | Exact, no solution and unresolved among the completed | 35, 4 and 3 |
 | Timed out at the 10 s cap | 1 (MATH.MA.721) |
-| Errors or unattempted | 0 and 0 |
+| Errors and unattempted | 0 and 0 |
 
-The shares are three of 42, or 7.14 percent, three of 43, or 6.98 percent, and four of 43, or 9.30 percent when the timeout joins the unresolved cases. These are observations on the revision at which the sample was saved, before the calculation corrections. They describe that revision and are not compared for effect size with the corrected calculation.
+The shares are three of 42, or 7.14%, three of 43, or 6.98%, and four of 43, or 9.30% when the timeout joins the unresolved cases. These describe the build that was sampled and are not compared with the corrected calculation for effect size.
 
 ### The three unresolved cases
 
-The three unresolved courses of the later sample were KIE.SUY.420, PSY.324 and YKT.SOA.303. Re-runs after the calculation corrections resolved two of them exactly and left the third over the cap.
+The all-active sample left KIE.SUY.420, PSY.324 and YKT.SOA.303 unresolved. On the corrected calculation, KIE.SUY.420 returns an exact route at 35.00 credits with seven courses and no unexpandable charge, and YKT.SOA.303 returns an exact route at 45.00 credits with nine courses. PSY.324 exceeded the 10-second cap and has no route to report.
 
-KIE.SUY.420 first returned exact at 35.00 credits with zero courses and one 35-credit block of unexpandable content charged once. The final revision returned exact at 35.00 credits with seven courses and no unexpandable charge. An earlier explanation of that selection was incorrect. The selection follows the tie order: after equal new credits, the sorted new unexpandable-content identities decide, and the empty tuple of the seven-course route wins. The block appears in the graph with its source classification, and no course is invented for it.
+The seven-course KIE.SUY.420 route follows the tie order: after equal new credits, the sorted new unexpandable-content identities decide, and the empty tuple of the seven-course route wins. The 35-credit block is in the graph with its source classification, and no course is invented for it. YKT.SOA.303 draws two occurrences of a 25-credit module with no expandable members and one 20-credit nested constraint as obligations, and the chosen route charges neither.
 
-YKT.SOA.303 returned exact at 45.00 credits and nine courses with no unexpandable charge. Two occurrences of a 25-credit module with no expandable members and one 20-credit nested constraint draw as obligations, and the chosen route uses neither occurrence as a charge. PSY.324 exceeded the 10-second cap in each affected-case attempt, was capped, and was not retried.
+These are the three outcomes of the all-active sample, measured individually rather than resampled, so they give no corrected rate for the 200 courses.
 
-The two node marks changed only the calculated result. Completing the 35-credit block for KIE.SUY.420 returned exact at 0.00 credits without completing or adding any member course. Excluding it returned exact at 35.00 credits through another alternative, with the exclusion winning. Both results echoed the mark and left the shared selected and completed sets empty, so a module mark never entered shared course state.
+## Failed approaches
 
-## Route solver parity
+### A whole-command time limit measured compilation
 
-The route calculation is one TypeScript solver. The browser runs it in a background worker, and the machine route command runs the same solver through Node. The parity comparison asked whether that solver and the Python calculation then in use returned the same route from the same prepared structure: the same outcome, new credits, route course set, problems, blockers, satisfaction and drawn box states.
+An acceptance assertion required each route command to finish inside 10 seconds, with that time read as routing cost. The calculation itself was cheap on the selected dataset. It returned an unresolved result with no courses and no total for one target, its solver work measured 0.38 to 0.48 seconds, and two other targets solved exactly below 0.01 seconds. The bulk compiler reads that ran before the calculation consumed roughly 10 to 15 seconds. The assertion therefore measured compilation, not routing, and it could pass or fail on compilation alone.
 
-### Inputs and method
+A bounded diagnostic divided MATH.MA.880 active only into 5.5 seconds of compilation and 59.0 seconds of exact PATH search, and the search returned an exact route. The 30-second cap was reached inside the exact PATH fold, not during compilation. The two component times exceed 30 seconds, so the diagnostic did not establish that the complete command fits a 30-second command budget, and no whole-command time is inferred from it. A profiled run that forced only the approximate pass spent 7.136 seconds compiling under profiler overhead and was filtering inside the greedy pass at the cap.
 
-The comparison read the selected dataset and ran one scenario at a time with no HTTP connection. Its matrix held 11 targets: MATH.MA.880, MATH.MA.725, PSY.324, KAT.MARK.399, KAT.MARK.310, KAT.MARK.304, KIE.SUY.420, YKT.SOA.303, COMP.CS.500, COMP.CS.110 and COMP.CS.200. Each target ran with two bases and five toggle combinations, which gives 110 scenarios.
+The lesson is that a wall-clock limit on the whole command cannot attribute time to the route calculation. Stage timers can, and the exact search can exceed a short command budget on its own.
 
-The two bases were empty and nonempty. The empty basis had no completed courses. The nonempty basis held the first up to five distinct active official course leaves in compiled tree order, excluding the target, taken from the default required-only active-only structure and used for every combination. The five combinations were `required-only`, `recommended`, `inferred`, `recommended+inferred` and `recommended+inferred-active-off`. The first four apply Active only on, and the last applies Active only off.
+### The size-bounded restart left four commands over the cap
 
-The spot check drew 200 distinct canonical course identities from the sorted active catalogue with a fixed seed (20261020). Each sampled course ran two scenarios with the empty basis: required only active only, and recommended and inferred active only. That gives 400 scenarios.
+The size limit was expected to bring every measured command under a 10-second whole-command cap: bound the exact attempt at 700,000 compact nodes and run one greedy pass. Seven cases ran under that setting, and the four mathematics commands produced no complete report. They were stopped at 10.005 to 10.012 seconds. The three KAT commands completed: two shortfalls at zero credits in 2.326 and 2.386 seconds, and an exact route at 180.00 credits in 5.081 seconds.
 
-Each scenario was prepared once, with the drawing included, so both solvers read the same solver structure, the same basis and the same configured allocation limit. The Python side ran the calculation in process and evaluated the node states for the drawing. The Node side ran one subprocess per call over standard input and read one JSON result from standard output.
+The limit bounds the exact attempt only. Compilation, the greedy pass and the rest of the command sit outside it, so a bounded search does not bound the command. A bounded stage diagnostic measured MATH.MA.880 tree compilation at about 5.8 seconds on that build, before the exact attempt ran. The four rows are latency misses, not approximation failures, and the size trigger and the `search_too_large` failure contract were not changed. The standing results above come from a build whose compilation took 1.542 to 2.066 seconds for the four mathematics cases.
 
-Route results were compared field by field: state, total new credits, the new courses in order with their drawn nodes, new unexpandable work, selected nodes, lit members, shortfalls, blocked excluded courses and node keys, problems, facts by fact identity, covered courses by group identity, satisfaction, blockers and inferred coverage. Box states were compared by node identity on all four flags. Only the credit text rendering differed between the two wire forms, and it was compared by value after conversion to exact hundredths.
+## Interpretation
 
-The first spot-check process ran 96 courses and stopped when its resident set reached the 4.295 GB address-space cap. The comparison then returned freed memory to the operating system after each course and ran at most 20 courses per process. The remaining 104 courses ran in six processes of at most 20 courses, and the resident set measured 143 MB to 149 MB after every course. No comparison or solver code changed. A later change to the comparison names a route-side failure instead of claiming a box-state comparison, and neither run had a route-side failure, so no result row changes.
+The contract is bounded by allocation size, not by elapsed time. A calculation past the limit returns an approximate route that satisfies the source rules, or a marked failure, and it never presents an approximation as a minimum. The bounded attempt and the greedy pass together leave the whole-command time dependent on compilation and on the structure.
 
-### Results
+The approximate totals are what one greedy pass built from its ranking. They are not minima, and their values are not a measure of approximation quality against an exact route, because no exact route was computed for those three cases.
 
-| Run | Scenarios | Equal | Different | Uncompared | Box states compared |
-|---|---:|---:|---:|---:|---:|
-| Matrix, 11 targets | 110 | 110 | 0 | 0 | 110 |
-| Spot check, 200 courses | 400 | 396 | 0 | 4 | 396 |
-
-The matrix outcomes were identical in both solvers: 76 exact, 16 approximate, 14 unresolved, two `approximation_failed` and two no solution. The spot-check required-only scenarios were 200 exact. The spot-check recommended and inferred scenarios were 179 exact, 16 unresolved and one approximate, with four preparation outcomes instead of a comparison.
-
-No difference occurred in either run, so no difference had to be judged as a correct requirement-level difference between the implementations.
-
-### Timings and the Node boundary
-
-| Course | Python median (ms) | Node median (ms) | Python max (ms) | Node max (ms) | Python total (ms) | Node total (ms) |
-|---|---:|---:|---:|---:|---:|---:|
-| MATH.MA.880 | 3656.1 | 3359.3 | 6665.9 | 6804.8 | 30739.1 | 28204.4 |
-| MATH.MA.725 | 2665.7 | 1923.5 | 5132.3 | 3790.8 | 23148.5 | 17551.4 |
-| PSY.324 | 445.8 | 545.9 | 3961.7 | 3046.1 | 14698.7 | 12517.0 |
-| KAT.MARK.399 | 424.9 | 469.6 | 3807.6 | 2519.4 | 10608.3 | 8372.1 |
-| KAT.MARK.310 | 39.4 | 132.8 | 402.8 | 514.8 | 921.9 | 1796.0 |
-| KAT.MARK.304 | 39.2 | 143.0 | 402.4 | 484.3 | 960.0 | 1852.9 |
-| KIE.SUY.420 | 17.8 | 90.8 | 28.7 | 108.6 | 184.2 | 921.4 |
-| YKT.SOA.303 | 75.9 | 313.9 | 6424.6 | 6496.6 | 25388.6 | 24250.7 |
-| COMP.CS.500 | 1.1 | 53.7 | 5.8 | 66.9 | 17.3 | 532.5 |
-| COMP.CS.110 | 0.4 | 46.8 | 1.5 | 53.9 | 4.3 | 470.8 |
-| COMP.CS.200 | 0.4 | 46.2 | 1.4 | 63.4 | 5.2 | 482.3 |
-
-The Python column is the in-process solve call. The Node column is the whole subprocess wall time, including process startup of about 42 to 54 milliseconds. The totals sum the ten scenarios of one course, and the median is over those ten scenarios.
-
-COMP.CS.110 solves in a median 0.4 milliseconds in process and 46.8 milliseconds through Node, so its Node time is startup rather than solving. The large cases are dominated by the solve: MATH.MA.880 has a Python median of 3656.1 milliseconds and a Node median of 3359.3 milliseconds, and its Python maximum is 6665.9 milliseconds against a Node maximum of 6804.8 milliseconds.
-
-The spot check adds two subprocesses per scenario, one for the route and one for the box states. Its median Node time is 45 milliseconds and its maximum 5302 milliseconds, and its median Python time is 0.2 milliseconds and its maximum 5321 milliseconds. No scenario came near the 120-second side timeout.
-
-These are process wall times on one server, not browser latency. They say nothing about how quickly a route appears in the app, and the equality result is empirical on this cohort rather than a proof for every structure.
-
-### The four uncompared scenarios
-
-Four recommended and inferred spot-check scenarios have no comparison. One preparation ended in `MemoryError` under the 4.295 GB address-space cap, and three exceeded the 120-second preparation timeout.
-
-| Preparation outcome | Scenarios |
-|---|---:|
-| `MemoryError` under the 4.295 GB cap | 1 |
-| Preparation timeout at 120 s | 3 |
-
-The required-only scenario of each of the four courses is equal. Each uncompared scenario measures the Python structure build and drawing projection under the cap, before either solver runs, so it proves nothing about parity. The cap was not raised.
-
-> [!IMPORTANT]
-> The four uncompared scenarios are neither solver differences nor evidence of equality. They are preparation failures in one implementation, and the comparison records them separately from the 396 scenarios it compared.
-
-## What stands
-
-The unresolved-rate comparison does not stand. The two samples are unpaired in population, draw method, denominator and cap, so neither rate measures the effect of the calculation corrections. Each rate describes its own sample.
-
-The route totals that stand are the corrected ones. MATH.MA.880 active only returns an approximate route of 204.00 credits, MATH.MA.725 active only one of 211.00 credits, and MATH.MA.725 all courses one of 194.00 credits. The 218.00 and 198.00 totals of the passing attempt are superseded. MATH.MA.880 all courses returns a marked `search_too_large` failure under the cap, and that failure is a returned outcome rather than a latency miss.
-
-KIE.SUY.420 ends at seven courses and 35.00 credits with no unexpandable charge, and YKT.SOA.303 ends at nine courses and 45.00 credits. PSY.324 was never completed under the 10-second cap and has no route to report.
-
-The ordinary route output for COMP.CS.500 and KIE.SUY.420 was byte-identical in every comparison: capped against uncapped on one checkout, and after the remediation and the correction against their pre-edit reports. The comparison of two implementations found no difference on any compared field.
+The marked all-courses failure shows that a size-triggered restart can find no valid route for a structure that compiles. It is a returned outcome with no route and no total, not a timeout.
 
 ## Limitations
 
-The seven-case outcomes come from one dataset and one server, and the first timings have no repeat for confidence. The external caps are measurement limits, so a capped row proves only that the command did not finish in time. The allocation trigger bounds search size, not compilation time or total command time.
+The shared dataset and repetition limits are described in [Graph and route algorithm experiments](/docs/experiments/graph-and-route-algorithms/README.md). The external cap is a measurement limit, so a capped row proves only that the command did not finish in time.
 
-The approximate totals are not minima, and the greedy pass has no allocation cap of its own. The marked all-courses failure shows that a size-triggered restart can find no valid route for a structure that compiles.
+The allocation trigger bounds search size, not compilation time or total command time. The approximate totals are not minima, and the greedy pass has no allocation cap of its own.
 
-The unresolved-rate samples are small and unpaired. The source-bearing subset has 43 courses, and its shares carry no reported interval. The three unresolved cases were re-run individually, not sampled again, so the corrected states of those three do not give a corrected rate for the 200-course sample.
+The unresolved-rate samples are small and unpaired, and their shares carry no reported interval. The three unresolved cases were measured individually, so they give no corrected rate for the 200-course sample.
 
-The parity result covers one dataset, one server, one run and one seeded sample of 200 active courses. Its four uncompared scenarios are preparation failures, and its timings include Node process startup. Equality of two implementations on these scenarios is an empirical result, not a proof about every possible structure.
+## Baselines
 
-## Setup details
+A follow-up compares against the seven cases with recommended prerequisites on, inferred prerequisites off, an empty basis, no exclusion or node mark, `PREREQUISITE_PATH_MAX_COMPACT_NODES` at 700000 and a 10-second whole-command cap. The three approximate totals are 204.00, 211.00 and 194.00 credits, and MATH.MA.880 all courses is the marked `search_too_large` failure. The four ordinary results are COMP.CS.110 and COMP.CS.200 at 5.00 credits each, COMP.CS.500 at 14 credits and three courses, and KIE.SUY.420 at 35.00 credits and seven courses. The two unresolved shares are 28 of 196 (14.29%) and three of 200 (1.5%), each for its own sample.
 
-The measurements read one selected dataset of the captured Tampere University curriculum, for the academic years 2006-2007 to 2026-2027 with a three-year activity window. The catalogue held 11,086 courses, of which 4,543 were active, and 9,901 eligible module versions. The example dataset that an installation loads is not this data.
+## Setup
 
-For the seven-case acceptance, recommended prerequisites were on and inferred prerequisites were off. The basis was empty and no exclusion or node mark was set, except where the node-mark cases say otherwise. The parity matrix adds its own toggle combinations and its nonempty basis. The allocation limit was 700000 for `PREREQUISITE_PATH_MAX_COMPACT_NODES`.
-
-The whole-command times cover process startup, the database read, the request compilation, the calculation and serialization, and each case ran under its external cap. The component times were measured by wrapping the compilation, the exact attempt and the greedy pass separately, and the reported total is the service time.
-
-The work ran on a 4-core aarch64 server with 23.6 GB of RAM. The parity comparison ran one scenario at a time under a 4.295 GB address-space cap, with 9.45 to 9.66 GB available before every process.
+The dataset, the eleven-course matrix and the common cohort and basis rules are shared with the other reports in this folder and are described in [Graph and route algorithm experiments](/docs/experiments/graph-and-route-algorithms/README.md). The seven-case flags, basis and cap are stated under [The seven cases](#the-seven-cases). The whole-command times cover process startup, the database read, the request compilation, the calculation and serialization, and the component times wrapped the compilation, the exact attempt and the greedy pass separately.
 
 ## Untested questions
 
+Each question below is untested.
+
 1. Whether a course-count objective, or a course-count tie after credits, would select materially different requirement sets from the credit objective. The experiments measured credits only.
 2. Whether a lower or higher `PREREQUISITE_PATH_MAX_COMPACT_NODES` would keep the same ordinary output while moving more large structures from a capped miss to an approximate route. Only 700,000 was measured for acceptance.
-3. Whether the four uncompared parity scenarios would compare equal if the preparation memory or time limit were raised. The cap was not raised, so the question stayed open.
+3. How far the three approximate totals sit from an exact minimum for the same structures. No exact route was computed for them.

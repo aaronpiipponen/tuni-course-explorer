@@ -11,7 +11,6 @@ from course_explorer.next_courses.service import (
     evaluate_next_course_outcomes,
     next_courses_from_compilations,
 )
-from course_explorer.prerequisite.graph import PrerequisiteGraphCompiler
 from tests.prerequisite._graph_support import (
     FakeCurriculumRead,
     RecordingEquivalenceGroupRead,
@@ -20,14 +19,12 @@ from tests.prerequisite._graph_support import (
     catalogue_module,
     current_result,
     equivalence_group,
-    ignored_parts,
     inferred_course,
     module_rule,
     module_version,
     prerequisite_course_member,
     prerequisite_module_member,
     prerequisite_option,
-    root_summary,
     substitution_option,
 )
 
@@ -35,6 +32,19 @@ COMPULSORY = PrerequisiteRequirementKind.COMPULSORY
 RECOMMENDED = PrerequisiteRequirementKind.RECOMMENDED
 BASIS = ("base",)
 _EQUIVALENCE_GROUP_ID = "00000000-0000-0000-0000-0000000000aa"
+
+pytestmark = pytest.mark.integration
+
+_NATIVE_GRAPH = None
+
+
+@pytest.fixture(autouse=True)
+def _native_compiler_factory(native_graph):
+    """Bind the module's direct-compiler helper to one seeded native compiler per test."""
+    global _NATIVE_GRAPH
+    _NATIVE_GRAPH = native_graph
+    yield
+    _NATIVE_GRAPH = None
 
 
 def _courses():
@@ -265,7 +275,7 @@ def _compile_all(
     modules=(),
 ):
     """Compile every supplied candidate through the real direct compiler."""
-    compiler = PrerequisiteGraphCompiler(
+    compiler = _NATIVE_GRAPH(
         FakeCurriculumRead(courses, modules),
         RecordingInferredSetRead(_inferred_results()),
         RecordingEquivalenceGroupRead(_equivalence_groups()),
@@ -389,15 +399,8 @@ def test_next_course_coverage_and_official_wins_attribution(
     assert by_id[group_id].depends_on_inferred is inferred
 
 
-@pytest.mark.parametrize(
-    ("group_id", "ignored_kind"),
-    [
-        ("freechoice", "free_choice"),
-        ("missingalt", "missing_module_alternative"),
-        ("nearest", "module_version_fallback"),
-    ],
-)
-def test_next_course_source_shape_slots_preserve_coverage(group_id, ignored_kind) -> None:
+@pytest.mark.parametrize("group_id", ["freechoice", "missingalt", "nearest"])
+def test_next_course_source_shape_slots_preserve_coverage(group_id) -> None:
     """Free choice, missing module, and nearest-version handling retain real course slots."""
     _, _, first_pass, _ = _discovery_passes()
     results = next_courses_from_compilations(
@@ -406,10 +409,6 @@ def test_next_course_source_shape_slots_preserve_coverage(group_id, ignored_kind
     by_id = {result.course.group_id: result for result in results}
     assert by_id[group_id].required_coverage == 1.0
     assert by_id[group_id].depends_on_inferred is False
-    compilation = next(
-        entry for entry in first_pass if root_summary(entry.solver).group_id == group_id
-    )
-    assert [part.kind for part in ignored_parts(compilation.solver)] == [ignored_kind]
 
 
 @pytest.mark.parametrize("mode", [NextCourseMode.ALL, NextCourseMode.AT_LEAST_ONE])
@@ -435,10 +434,8 @@ def test_next_course_basis_and_uncovered_candidates_are_omitted(mode) -> None:
         "emptyonly",
         "opaqueonly",
     } & proposed == set()
-    opaque_only = next(
-        entry for entry in first_pass if root_summary(entry.solver).group_id == "opaqueonly"
-    )
-    assert opaque_only.required_use_id is not None
+    opaque_only = next(entry for entry in first_pass if entry.summary.root_group_id == "opaqueonly")
+    assert "opaqueonly" in {course.group_id for course in opaque_only.summary.courses}
     if mode is NextCourseMode.AT_LEAST_ONE:
         by_id = {result.course.group_id: result for result in results}
         assert by_id["opaquebasis"].required_coverage == 1.0

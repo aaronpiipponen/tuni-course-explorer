@@ -1,9 +1,10 @@
-/** The Data preparation tab's fixed stage, report and hub requests. */
+/** The Data preparation tab's fixed stage, report and serving-artifact requests. */
 import { runCommand } from "./http";
 import type {
   CatalogueSummary,
   CourseEmbeddingCoverageReport,
-  EmbeddingHubReport,
+  DatasetReport,
+  ServingArtifactsReport,
   LifecycleAction,
   LifecycleStatus,
   StageName,
@@ -49,26 +50,32 @@ export function runStageAction(
   });
 }
 
-/** Read one preparation report from its owning fixed command. */
+/** Read one preparation report from its owning fixed command for the role it resolves. */
 export function readPreparationReport(
   kind: PreparationReportKind,
   signal?: AbortSignal,
   automatic = false,
-): Promise<PreparationReport> {
-  return runCommand<PreparationReport>(`/api/preparation/report/${kind}`, {
-    signal,
-    automatic,
-  });
+): Promise<DatasetReport<PreparationReport>> {
+  return runCommand<DatasetReport<PreparationReport>>(
+    `/api/preparation/report/${kind}`,
+    {
+      signal,
+      automatic,
+    },
+  );
 }
 
-/** Write both embedding hub files from the selected dataset. */
-export function writeHubs(
+/** Build the selected dataset's serving artifacts. */
+export function buildServingArtifacts(
   csrfToken: string,
   signal?: AbortSignal,
-): Promise<EmbeddingHubReport> {
-  return runCommand<EmbeddingHubReport>("/api/preparation/hubs", {
-    body: {},
-    csrfToken,
-    signal,
-  });
+): Promise<ServingArtifactsReport> {
+  return runCommand<ServingArtifactsReport>(
+    "/api/preparation/serving-artifacts",
+    {
+      body: {},
+      csrfToken,
+      signal,
+    },
+  );
 }

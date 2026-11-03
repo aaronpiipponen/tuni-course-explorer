@@ -3,8 +3,9 @@
  * ordered module and course hierarchy, prepare an import profile, and resolve that pending
  * hierarchy into structure choices once the official programme reads have settled.
  *
- * The markup is read as data only and contributes names, codes, nesting and a completion marker.
- * Every identity comes from the capture's anonymous Kori lookup results, never from the page text.
+ * The markup is read as data only and contributes names, codes, nesting, a completion marker and
+ * the module version id of a status cell. Every group identity comes from the capture's anonymous
+ * Kori lookup results, never from the page text.
  */
 import { initialProfileState } from "../../state/defaults";
 import type { DisplayLanguage, Profile, ProfileState } from "../../state/types";
@@ -20,18 +21,25 @@ import {
   type StructureRuleOrigin,
 } from "./model";
 import { placeCourse, placeModule } from "./edits";
+import { sameOfficialName } from "./sisuNames";
 import { UNPLACED_KEY, type StructureEdits } from "./state";
 import type { StructureChange } from "./actions";
 
-/** One captured course unit: its catalogue group id, or null when the code matches no single course, and its attainment mark. */
-export type SisuCourse = {
+/**
+ * One captured course unit with its catalogue group id, null when the code matches no single
+ * course, and its attainment mark.
+ */
+type SisuCourse = {
   kind: "course";
   groupId: string | null;
   code: string;
   name: string;
   completed: boolean;
 };
-/** One captured module or programme with its catalogue group id, its exact version id, or nulls when unresolved, and its children in plan order. */
+/**
+ * One captured module or programme with its catalogue group id, its exact version id, null when
+ * unresolved, and its children in plan order.
+ */
 export type SisuModule = {
   kind: "module";
   groupId: string | null;
@@ -49,11 +57,26 @@ export type SisuPlan = { programmes: SisuModule[] };
 export type SisuCaptureFile = SisuPlan & {
   type: "tuni-course-explorer/sisu/1";
 };
+/** One distinct official candidate an ambiguous match named, for confirmation only. */
+export type SisuIssueCandidate = {
+  groupId: string;
+  code: string | null;
+  name: string;
+};
+
 /** One captured item the import could not place, named by its captured name and code. */
 export type SisuImportIssue = {
   name: string;
   code: string | null;
-  reason: "unresolved" | "module_not_placed" | "course_not_represented";
+  reason:
+    | "unresolved"
+    | "module_not_placed"
+    | "course_not_represented"
+    | "no_official_match"
+    | "ambiguous_official_match"
+    | "version_choice_pending";
+  /** The distinct official candidates one ambiguous match named, for confirmation only. */
+  candidates?: readonly SisuIssueCandidate[];
 };
 
 const CAPTURE_TYPE = "tuni-course-explorer/sisu/1";
@@ -361,7 +384,7 @@ export function prepareSisuProfile(
         ),
         moduleVersions,
       },
-      pendingSisuImport: structuredClone(capture),
+      pendingSisuImport: structuredClone({ programmes: capture.programmes }),
     },
   };
 }
@@ -383,11 +406,12 @@ export function sisuImportBlocked(
     Object.keys(state.structure.choices).length > 0 ||
     Object.keys(state.structure.coursePlacements).length > 0 ||
     Object.keys(state.structure.modulePlacements).length > 0 ||
-    state.structure.placedCourseIds.length > 0
+    state.structure.placedCourseIds.length > 0 ||
+    state.structure.courseOrder.length > 0
   );
 }
 
-/** Return every resolved module identity of one capture, in capture order, for the pending reads. */
+/** Return every resolved module identity of one capture in capture order, for the pending reads. */
 export function captureModuleIds(capture: SisuPlan): string[] {
   const ids: string[] = [];
   const visit = (items: readonly SisuItem[]) => {
@@ -505,8 +529,18 @@ export function resolveSisuImport(
   };
   const homesNow = () => officialHomes(forest, edits, content);
   let homes = homesNow();
-  const issue = (item: SisuItem, reason: SisuImportIssue["reason"]) =>
-    issues.push({ name: item.name, code: item.code, reason });
+  const issue = (
+    item: SisuItem,
+    reason: SisuImportIssue["reason"],
+    candidates?: SisuImportIssue["candidates"],
+  ) => {
+    issues.push({
+      name: item.name,
+      code: item.code,
+      reason,
+      ...(candidates?.length ? { candidates } : {}),
+    });
+  };
   /**
    * Select one matched entry's choice steps. A step that is already selected is left as it is, so a
    * repeated hit does not toggle a choice off, and a single-choice node that already holds another
@@ -574,6 +608,42 @@ export function resolveSisuImport(
         continue;
       }
       if (item.groupId === null) {
+        if (item.code === null) {
+          // Every scope entry that carries an official module summary, collected once for both the
+          // name equality and the candidate details an issue names.
+          const named = [...scope.modules.entries()].flatMap(
+            ([groupId, entry]) =>
+              entry.node.module === null
+                ? []
+                : [{ groupId, entry, module: entry.node.module }],
+          );
+          const matches = named.filter(({ module }) =>
+            sameOfficialName(module, item.name),
+          );
+          if (
+            matches.length === 1 &&
+            !scope.ambiguous.has(matches[0].groupId)
+          ) {
+            const [{ groupId, entry }] = matches;
+            choosePath(entry.origin.choicePath);
+            edits = placeModule(edits, homes, groupId, entry.origin.ownerKey);
+            walk(entry.node, item.children);
+            continue;
+          }
+          issue(
+            item,
+            matches.length === 0
+              ? "no_official_match"
+              : "ambiguous_official_match",
+            matches.map(({ groupId, module }) => ({
+              groupId,
+              code: module.code,
+              name: module.name_fi ?? module.name_en ?? "",
+            })),
+          );
+          keepLoose(item.children);
+          continue;
+        }
         issue(item, "unresolved");
         keepLoose(item.children);
         continue;
@@ -638,6 +708,7 @@ export function resolveSisuImport(
         ...edits,
         moduleVersions: { ...state.structure.moduleVersions },
         placedCourseIds: projection.subtree.map((course) => course.group_id),
+        courseOrder: [],
       },
       removedCourseIds: [...removed],
       pendingSisuImport: null,

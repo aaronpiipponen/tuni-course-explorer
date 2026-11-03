@@ -2,9 +2,9 @@
  * The Usage panel: the recorded course-exploration requests of one applied window.
  *
  * The applied window reads automatically through the fixed usage report, which prunes the records
- * past the configured retention. The panel shows the window bounds, the request total and the mean
- * duration, and one row per returned route. It reports no administration command count and no
- * invented mean for a window that holds no request.
+ * past the configured retention. The panel shows the window bounds, the request total, the mean and
+ * p95 and p99 durations, and one row per returned route. It reports no administration command count
+ * and no invented duration for a window that holds no request.
  */
 import { useEffect, useRef, useState } from "react";
 import { readUsage } from "../../api/logs";
@@ -108,18 +108,42 @@ export function Usage({
                   : shortDuration(report.mean_duration_seconds)
               }
             />
+            <Row
+              label={detail.p95}
+              value={
+                report.p95_duration_seconds === null
+                  ? wording.unknown
+                  : shortDuration(report.p95_duration_seconds)
+              }
+            />
+            <Row
+              label={detail.p99}
+              value={
+                report.p99_duration_seconds === null
+                  ? wording.unknown
+                  : shortDuration(report.p99_duration_seconds)
+              }
+            />
           </Rows>
           {report.routes.length === 0 ? (
             <p className="note">{detail.noWindow}</p>
           ) : (
             <DataTable
-              head={[detail.route, detail.requests, detail.mean]}
+              head={[
+                detail.route,
+                detail.requests,
+                detail.mean,
+                detail.p95,
+                detail.p99,
+              ]}
               rows={report.routes.map((route) => [
                 <code key="route">{route.route}</code>,
                 count(route.requests),
                 shortDuration(route.mean_duration_seconds),
+                shortDuration(route.p95_duration_seconds),
+                shortDuration(route.p99_duration_seconds),
               ])}
-              align={["", "r", "r"]}
+              align={["", "r", "r", "r", "r"]}
             />
           )}
         </>

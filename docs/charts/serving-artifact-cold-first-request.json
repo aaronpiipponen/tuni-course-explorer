@@ -1,0 +1,11 @@
+{
+  "type": "bar",
+  "title": "Cold first-request core-seconds",
+  "description": "First-request core-seconds in a fresh process with empty caches for five scenarios, final product against pre-port.",
+  "valueAxis": "Core-seconds",
+  "categories": ["Search", "Recommendations 50 active", "Next 50 official", "Catalogue gzip", "Study batched"],
+  "series": [
+    { "name": "Final product", "values": [0.4937, 1.3397, 0.9532, 0.0219, 0.1558] },
+    { "name": "Pre-port", "values": [2.4293, 3.9348, 1.5053, 2.1447, 0.5784] }
+  ]
+}

@@ -1,6 +1,6 @@
 # Teaching text store
 
-The store holds the derived translations of the selected dataset, and this page describes its table, text resolution, the selector and provider, resumable work, and its sole write path.
+The store holds the derived translations of the Working dataset.
 
 ## The derived table
 
@@ -84,6 +84,6 @@ The administrative half lives in `src/course_explorer_admin/translation/`. `Tran
 
 ## Commands and tests
 
-`scripts/admin.py translation <start|pause|resume|status|stop>` runs one session action through `course_explorer_admin.cli` and `run_translation_lifecycle_command`, and `scripts/admin.py coverage teaching-text` prints the `TeachingTextCoverageReport` of the selected dataset through `run_administrative_coverage`. The operator menu reaches the stage actions and the same report.
+`scripts/admin.py translation <start|pause|resume|status|stop>` runs one session action through `course_explorer_admin.cli` and `run_translation_lifecycle_command`, and `scripts/admin.py coverage teaching-text --role working` prints the `TeachingTextCoverageReport` of the named role through `run_administrative_coverage`. The operator menu reaches the stage actions and the same report.
 
 `tests/teaching_text/test_teaching_text.py` covers the resolution, the duplicate-key refusal, and the projected coverage read. `tests/teaching_text/test_teaching_text_command.py` covers the file loader. `tests/teaching_text/test_teaching_text_repository.py` is the opt-in PostgreSQL proof of the write path, its refusals, and the staleness report. `tests/translation/test_translation_service.py` covers the selector partition, the reuse rule, and the pending order. `tests/translation/test_translation_provider.py` covers the request shape, the retries, the response contract, and the content-free errors. `tests/translation/test_translation_recovery.py` covers retained-output validation, atomic publication, the failure record, and the lifecycle callbacks. `tests/admin/translation/` covers the prepared session, the shared control path, the one-time import, resumption from retained output, and the cleanup evidence.

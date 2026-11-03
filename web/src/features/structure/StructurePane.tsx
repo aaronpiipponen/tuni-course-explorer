@@ -1,4 +1,5 @@
 /** Ordered programme composition of the tree, picker, confirmations and drawer. */
+import { createPortal } from "react-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, LayoutGroup } from "framer-motion";
 import type {
@@ -7,6 +8,7 @@ import type {
   ModuleSummary,
 } from "../../api/types";
 import { useProfileSelector } from "../../state/useProfileSelector";
+import { useCurrentProfileId } from "../../state/useCurrentProfile";
 import { ErrorNotice } from "../../shared/ErrorNotice";
 import { PickerOverlay } from "../../shared/PickerOverlay";
 import { useWording } from "../../shared/useWording";
@@ -20,8 +22,19 @@ import { ModuleRemoveDialog } from "./ModuleRemoveDialog";
 import { ProgrammeConfirmDialog } from "./ProgrammeConfirmDialog";
 import { StructureDrawer } from "./StructureDrawer";
 import { StructureNodeRow } from "./StructureNodeRow";
+import { StructureCard } from "./StructureCard";
 import { ModuleVersionPicker } from "./ModuleVersionPicker";
-import { displayContents } from "./display";
+import {
+  displayedHolders,
+  displayContents,
+  holderCourses,
+  unplacedTarget,
+} from "./display";
+import {
+  COURSE_DRAG_LIFT_SCALE,
+  COURSE_DRAG_LIFT_Y,
+  useCourseDrag,
+} from "./useCourseDrag";
 import { moduleName } from "./presentation";
 import { moduleVersionKey } from "./moduleVersions";
 import {
@@ -32,6 +45,7 @@ import {
 } from "./actions";
 import {
   buildProgrammeForest,
+  courseHolders,
   indexResolved,
   programmeKey,
   resolveStructure,
@@ -46,13 +60,16 @@ import {
   type CourseMoveAnswer,
   type CourseMoveRequest,
 } from "./CourseMoveConfirmDialog";
-import type { PulledCourse } from "./edits";
+import type { PulledCourse, PulledModule } from "./edits";
+import { scopeHoldsCompletion } from "./edits";
 import { useAction } from "../../shared/useAction";
 import { usePlacedContent } from "./usePlacedContent";
 import { useStructureEditor } from "./useStructureEditor";
 import { useNotice } from "../../shared/useNotice";
 import { usePhoneTabsOnClose } from "../../shared/usePhoneTabsOnClose";
+import { HelpLink, HelpTip, type HelpSection } from "../../shared/HelpTip";
 import { SisuImportNotice } from "./SisuImportNotice";
+import { forgetUnplacedReveal, settleUnplacedReveal } from "./reveal";
 import { ProfileTransfer } from "../profiles/ProfileTransfer";
 import {
   resolveSisuImport,
@@ -70,9 +87,11 @@ type PendingConfirmation = {
   replacementGroupId: string | null;
   /** The exact selections the replacement's reports were read under. */
   moduleVersions: Readonly<Record<string, string>> | null;
-  /** The courses the replacement programme pulls out of the nodes they are in now. */
+  /** The courses the replacement programme pulls out of the nodes they are in. */
   moves: readonly PulledCourse[];
-  /** Localized node that displays the replacement programme now, when a visible node does. */
+  /** The highest-level official modules the replacement pulls with everything they hold. */
+  moduleMoves: readonly PulledModule[];
+  /** Localized node that displays the replacement programme, when a visible node does. */
   moduleFrom?: (language: DisplayLanguage) => string;
 };
 
@@ -82,6 +101,7 @@ type PendingResetPull = {
   removeCompletedCourses: boolean;
   holder: ModuleSummary;
   moves: readonly PulledCourse[];
+  moduleMoves: readonly PulledModule[];
 };
 
 function stringPlacements(placements: Record<string, string | null>): string[] {
@@ -119,6 +139,9 @@ export function StructurePane() {
   const { value: moduleVersions } = useProfileSelector(
     (state) => state.structure.moduleVersions,
   );
+  const { value: courseOrder } = useProfileSelector(
+    (state) => state.structure.courseOrder,
+  );
   const { value: selected } = useProfileSelector(
     (state) => state.selectedCourseIds,
   );
@@ -150,6 +173,7 @@ export function StructurePane() {
     null,
   );
   const addRowHost = useRef<HTMLDivElement>(null);
+  const treeRef = useRef<HTMLDivElement>(null);
   const confirmationOpener = useRef<HTMLElement | null>(null);
   const pickerOpener = useRef<HTMLElement | null>(null);
   const edits = useMemo(
@@ -178,7 +202,7 @@ export function StructurePane() {
     () => moduleVersionKey(moduleVersions),
     [moduleVersions],
   );
-  // One confirmation lists the courses an addition pulls out of the nodes they are in now.
+  // One confirmation lists the courses an addition pulls out of the nodes they are in.
   const moveConfirm = useCourseMoveConfirm();
   const moveOpener = useRef<HTMLElement | null>(null);
   const confirmMoves = (
@@ -208,6 +232,13 @@ export function StructurePane() {
   // Only the first load shows a skeleton tree. A pending capture holds the tree until placement.
   const contentLoading = pending || (!loadedOnce && placed.loading);
   const contentError = placed.error ?? resolutionError;
+  // A notice that links Unplaced studies can arrive before the tree or its content, so the
+  // request waits here until the row exists.
+  useEffect(() => {
+    if (contentLoading || contentError) return;
+    settleUnplacedReveal(treeRef.current);
+  }, [contentLoading, contentError]);
+  useEffect(() => () => forgetUnplacedReveal(), []);
   // One display input is complete when every programme report and every string placement it
   // references exists, except a root the server still needs an explicit version for. Completeness
   // is checked by identity before any forest is built.
@@ -235,7 +266,6 @@ export function StructurePane() {
       return null;
     return {
       datasetIdentity: placed.datasetIdentity,
-      selectionKey: contentSelectionKey,
       programmeGroupIds,
       edits,
       content: placed.content,
@@ -246,29 +276,37 @@ export function StructurePane() {
     placed.datasetIdentity,
     placed.content,
     placed.versionSelectionRequiredIds,
-    contentSelectionKey,
     programmeGroupIds,
     edits,
   ]);
-  // A complete input is held only for its own serving dataset and selection identity.
+  // A complete input is held across a changed selection, so a chosen module or version keeps the
+  // previous forest on screen while its reports load. Only a dataset or profile change drops it.
+  const currentProfileId = useCurrentProfileId();
   const [lastComplete, setLastComplete] = useState<{
+    profileId: string;
     datasetIdentity: string;
-    selectionKey: string;
     programmeGroupIds: readonly string[];
     edits: StructureEdits;
     content: PlacedContent;
   } | null>(null);
   useEffect(() => {
-    if (completeInput) setLastComplete(completeInput);
-  }, [completeInput]);
+    if (!completeInput) return;
+    setLastComplete({
+      profileId: currentProfileId,
+      datasetIdentity: completeInput.datasetIdentity,
+      programmeGroupIds: completeInput.programmeGroupIds,
+      edits: completeInput.edits,
+      content: completeInput.content,
+    });
+  }, [completeInput, currentProfileId]);
   const chosen =
     completeInput ??
     (lastComplete &&
-    lastComplete.datasetIdentity === placed.datasetIdentity &&
-    lastComplete.selectionKey === contentSelectionKey
+    lastComplete.profileId === currentProfileId &&
+    lastComplete.datasetIdentity === placed.datasetIdentity
       ? lastComplete
       : null);
-  // The language projects the chosen input, so held same-identity content follows the live language.
+  // The language projects the chosen input, so held content follows the live language.
   const chosenProjection = useMemo(
     () =>
       chosen
@@ -287,6 +325,22 @@ export function StructurePane() {
         : null,
     [chosen, language],
   );
+  const holders = useMemo(
+    () => (chosenProjection ? courseHolders(chosenProjection) : null),
+    [chosenProjection],
+  );
+  useEffect(() => {
+    if (!holders) return;
+    const snapshot = store.getSnapshot();
+    const current =
+      snapshot.profiles[snapshot.currentProfileId].state.structure
+        .courseHolders;
+    if (JSON.stringify(current ?? {}) === JSON.stringify(holders)) return;
+    store.updateCurrent((state) => ({
+      ...state,
+      structure: { ...state.structure, courseHolders: holders },
+    }));
+  }, [holders, store]);
   const base = chosenProjection ?? emptyProjection(language);
   // Root groups needing a version come from the server's own settlement, while nested groups come
   // from selected, unsuppressed references in the resolved projection. This one gate suspends
@@ -382,6 +436,72 @@ export function StructurePane() {
     contentSelectionKey,
     locked: selectionRequiredGroups.length > 0,
   });
+  // The displayed holders and their direct courses are read once for hit testing and for drawing,
+  // with the saved rank applied after the free Unplaced summaries merge in.
+  const dragHolders = useMemo(
+    () =>
+      displayedHolders(base).map((holder) => ({
+        key: holder.key,
+        courses: holderCourses(
+          holder.node,
+          holder.courses,
+          freeCourses,
+          courseOrder,
+        ),
+      })),
+    [base, courseOrder, freeCourses],
+  );
+  const holderCourseMap = useMemo(
+    () => new Map(dragHolders.map((holder) => [holder.key, holder.courses])),
+    [dragHolders],
+  );
+  const dragInputKey = useMemo(
+    () =>
+      JSON.stringify([
+        placed.datasetIdentity,
+        contentSelectionKey,
+        programmeGroupIds,
+        choices,
+        coursePlacements,
+        modulePlacements,
+        moduleVersions,
+        courseOrder,
+        selected,
+        pendingSisuImport,
+        selectionRequiredGroups,
+        programmes.pending,
+        editor.pendingModuleId,
+      ]),
+    [
+      placed.datasetIdentity,
+      contentSelectionKey,
+      programmeGroupIds,
+      choices,
+      coursePlacements,
+      modulePlacements,
+      moduleVersions,
+      courseOrder,
+      selected,
+      pendingSisuImport,
+      selectionRequiredGroups,
+      programmes.pending,
+      editor.pendingModuleId,
+    ],
+  );
+  const drag = useCourseDrag({
+    treeRef,
+    holders: dragHolders,
+    enabled:
+      completeInput !== null &&
+      !contentLoading &&
+      !contentError &&
+      !pending &&
+      !versionSelectionRequired &&
+      programmes.pending === null &&
+      editor.pendingModuleId === null,
+    inputKey: dragInputKey,
+    onDrop: editor.dropCourse,
+  });
   const renderedStructureKey = useMemo(
     () =>
       JSON.stringify([
@@ -428,6 +548,7 @@ export function StructurePane() {
           modulePlacements: structure.modulePlacements,
           moduleVersions: { ...structure.moduleVersions },
           placedCourseIds,
+          courseOrder: [...structure.courseOrder],
         },
       };
     });
@@ -439,41 +560,36 @@ export function StructurePane() {
     store,
   ]);
   const [activeKey, setActiveKey] = useState<string | null>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
   const drawerOpener = useRef<HTMLElement | null>(null);
+  // The last node the drawer showed under its own key, held across an unfinished projection.
+  const lastDrawer = useRef<{ key: string; resolved: ResolvedNode } | null>(
+    null,
+  );
   const active = activeKey
     ? (resolvedIndex.byKey.get(activeKey) ?? null)
     : null;
-  // A node the structure does not hold, for example one an action removed, closes its drawer.
+  // A selection write restarts hydration, so the projection is briefly unfinished. A node a
+  // complete projection no longer holds, for example one an action removed, closes its drawer.
   useEffect(() => {
-    if (activeKey !== null && !resolvedIndex.byKey.has(activeKey))
+    if (
+      activeKey !== null &&
+      chosen !== null &&
+      !resolvedIndex.byKey.has(activeKey)
+    )
       setActiveKey(null);
-  }, [activeKey, resolvedIndex]);
+  }, [activeKey, chosen, resolvedIndex]);
   const drawerResolved =
     active?.node.kind === "unplaced"
-      ? {
-          ...active,
-          courses: [
-            ...active.courses,
-            ...freeCourses
-              .filter(
-                (course) =>
-                  !active.courses.some(
-                    (item) => item.course.group_id === course.group_id,
-                  ),
-              )
-              .map((course) => ({ course, added: false })),
-          ],
-          subtree: [
-            ...active.subtree,
-            ...freeCourses.filter(
-              (course) =>
-                !active.subtree.some(
-                  (item) => item.group_id === course.group_id,
-                ),
-            ),
-          ],
-        }
+      ? unplacedTarget(active, freeCourses)
       : active;
+  if (activeKey && drawerResolved)
+    lastDrawer.current = { key: activeKey, resolved: drawerResolved };
+  const heldDrawer =
+    activeKey && lastDrawer.current?.key === activeKey
+      ? lastDrawer.current.resolved
+      : null;
+  const shownDrawerResolved = drawerResolved ?? heldDrawer;
   const programmeIdsByKey = useMemo(
     () => new Map(programmeGroupIds.map((id) => [programmeKey(id), id])),
     [programmeGroupIds],
@@ -495,8 +611,11 @@ export function StructurePane() {
   };
   /** Focus a connected opener, or the first Add programme button when it has left the document. */
   const focusOpener = (opener: HTMLElement | null) => {
-    if (opener?.isConnected) opener.focus();
-    else addRowHost.current?.querySelector("button")?.focus();
+    if (opener?.isConnected) opener.focus({ preventScroll: true });
+    else
+      addRowHost.current
+        ?.querySelector("button")
+        ?.focus({ preventScroll: true });
   };
   const closePicker = (restoreFocus = true) => {
     const opener = pickerOpener.current;
@@ -560,8 +679,8 @@ export function StructurePane() {
         const target = picker.groupId;
         const opener = pickerOpener.current;
         closePicker(false);
-        // The replacement reads its report first, so the confirmation can name every course it pulls
-        // and the place that holds it now.
+        // The replacement reads its report first, so the confirmation can name every course it
+        // pulls and the place that holds it.
         setAttempt("picker");
         void programmes
           .moves({
@@ -583,6 +702,7 @@ export function StructurePane() {
                 replacementGroupId: groupId,
                 moduleVersions: preview.moduleVersions,
                 moves: preview.moves,
+                moduleMoves: preview.moduleMoves,
                 moduleFrom: preview.moduleFrom,
               },
               opener,
@@ -647,6 +767,7 @@ export function StructurePane() {
       removeCompletedCourses,
       holder: preview.holder,
       moves: preview.moves,
+      moduleMoves: preview.moduleMoves,
     });
   };
   const answerResetPull = (answer: CourseMoveAnswer) => {
@@ -672,31 +793,39 @@ export function StructurePane() {
    * Open the confirmation of one programme reset.
    *
    * The reset always asks. A scope that holds a completion asks first, and one that holds none asks
-   * through the pull question alone when the reset returns courses to it. A pull list that cannot be
-   * read reports through the pane notice and opens nothing.
+   * through the pull question alone when the reset returns courses to it. A pull list that cannot
+   * be read reports through the pane notice and opens nothing.
    */
   const openReset = (groupId: string) => {
     if (versionSelectionRequired) return;
-    if (programmeHoldsCompletion(groupId)) {
+    if (
+      scopeHoldsCompletion(
+        resolvedIndex,
+        programmeKey(groupId),
+        completedCourseIds,
+      )
+    ) {
       openConfirmation({
         operation: "reset",
         groupId,
         replacementGroupId: null,
         moduleVersions: null,
         moves: [],
+        moduleMoves: [],
       });
       return;
     }
     setAttempt("reset");
     void programmes.moves({ kind: "reset", groupId }).then((preview) => {
       if (!preview) return;
-      if (preview.moves.length === 0) {
+      if (preview.moves.length === 0 && preview.moduleMoves.length === 0) {
         openConfirmation({
           operation: "reset",
           groupId,
           replacementGroupId: null,
           moduleVersions: null,
           moves: [],
+          moduleMoves: [],
         });
         return;
       }
@@ -713,7 +842,7 @@ export function StructurePane() {
       .moves({ kind: "reset", groupId: pending.groupId })
       .then((preview) => {
         if (!preview) return;
-        if (preview.moves.length === 0) {
+        if (preview.moves.length === 0 && preview.moduleMoves.length === 0) {
           confirm(removeCompletedCourses);
           return;
         }
@@ -725,16 +854,6 @@ export function StructurePane() {
     const module = placed.content.reports[groupId]?.root.module;
     return module ? moduleName(module, language) : groupId;
   };
-  /** Whether the programme holds a completed course in the displayed projection. */
-  const programmeHoldsCompletion = (groupId: string): boolean => {
-    const node = resolvedIndex.byKey.get(programmeKey(groupId));
-    return (
-      node !== undefined &&
-      node.subtree.some((course) =>
-        completedCourseIds.includes(course.group_id),
-      )
-    );
-  };
   const returnConfirmationFocus = () => {
     focusOpener(confirmationOpener.current);
   };
@@ -742,7 +861,8 @@ export function StructurePane() {
     setActiveKey(null);
     const opener = drawerOpener.current;
     drawerOpener.current = null;
-    if (opener?.isConnected) requestAnimationFrame(() => opener.focus());
+    if (opener?.isConnected)
+      requestAnimationFrame(() => opener.focus({ preventScroll: true }));
   };
   const toggleDrawer = (key: string) => {
     if (activeKey === key) {
@@ -766,16 +886,7 @@ export function StructurePane() {
     );
     if (node.node.transparent) return children;
     const isUnplaced = node.node.kind === "unplaced";
-    const rowCourses = isUnplaced
-      ? [
-          ...display.courses,
-          ...freeCourses.map((course) => ({
-            course,
-            added: false,
-            owner: node.node,
-          })),
-        ]
-      : display.courses;
+    const rowCourses = holderCourseMap.get(node.node.key) ?? display.courses;
     const groupId = isUnplaced ? null : (node.node.module?.group_id ?? null);
     return (
       <StructureNodeRow
@@ -786,6 +897,7 @@ export function StructurePane() {
         depth={depth}
         active={activeKey === node.node.key}
         onOpen={() => toggleDrawer(node.node.key)}
+        drag={drag}
         children={children.length ? children : undefined}
         programmeActions={
           directProgramme && groupId && !versionSelectionRequired
@@ -799,6 +911,7 @@ export function StructurePane() {
                     replacementGroupId: null,
                     moduleVersions: null,
                     moves: [],
+                    moduleMoves: [],
                   }),
               }
             : undefined
@@ -833,13 +946,89 @@ export function StructurePane() {
       )}
     </div>,
   );
+  const help: readonly HelpSection[] = [
+    {
+      heading: t("structure"),
+      items: [
+        {
+          term: (
+            <HelpLink href="/docs#guide-structure/adding-a-programme">
+              {t("Add programme")}
+            </HelpLink>
+          ),
+          text: t(
+            "Add a degree programme or module by name or code. Choose an exact version when several are offered. Open a module row to choose alternatives or add courses through its drawer.",
+          ),
+        },
+        {
+          term: (
+            <HelpLink href="/docs#guide-structure/unplaced-studies">
+              {t("Unplaced studies")}
+            </HelpLink>
+          ),
+          text: t(
+            "Holds selected courses with no place in a programme or module. Add a course here from its course menu, then place it where you want it. A course appears in one place and its completion is shared across tabs.",
+          ),
+        },
+      ],
+    },
+    {
+      heading: t("editing"),
+      items: [
+        {
+          term: (
+            <HelpLink href="/docs#guide-structure-edit/dragging-courses-and-card-order">
+              {t("Dragging courses")}
+            </HelpLink>
+          ),
+          text: t(
+            "On desktop, drag a course card to move or reorder it. On a touch screen, hold until the card lifts, then drag. The outline marks the drop position. Hold near the top or bottom to scroll. Dropping asks no confirmation, and a completed course keeps its completion.",
+          ),
+        },
+        {
+          term: (
+            <HelpLink href="/docs#guide-structure-edit/resetting-a-part">
+              {t("Reset programme")}
+            </HelpLink>
+          ),
+          text: t(
+            "The programme menu and the module drawer restore official content through a confirmation. Reset preserves completed courses. Reset all also clears completions held by the affected part. Read the confirmation before resetting, replacing or deleting a part.",
+          ),
+        },
+        {
+          term: (
+            <HelpLink href="/docs#guide-profiles">
+              {t("Profiles and import")}
+            </HelpLink>
+          ),
+          text: t(
+            "Your programmes, choices, placements and card order are saved in this browser's profile. Use the profile panel to export or import a plan. With no programme added, the import area is also shown below Add programme.",
+          ),
+        },
+      ],
+    },
+  ];
   return (
     <main
       className="pane-content structure-pane"
       role="tabpanel"
       aria-label={t("Structure of studies")}
     >
-      <div className={`structure-layout${open ? " with-drawer" : ""}`}>
+      <div
+        className={`structure-layout${open ? " with-drawer" : ""}${helpOpen ? " with-help" : ""}`}
+      >
+        <div className="structure-help-row">
+          <HelpTip
+            title={t("Structure of studies")}
+            explain="Explain structure of studies"
+            sections={help}
+            onOpenChange={setHelpOpen}
+            keepOpenOnOutside={(target) =>
+              target instanceof Element &&
+              target.closest(".structure-tree") !== null
+            }
+          />
+        </div>
         {contentError && (
           <ErrorNotice error={contentError} language={language} />
         )}
@@ -891,7 +1080,7 @@ export function StructurePane() {
           )
         ) : (
           !contentError && (
-            <div className="structure-tree">
+            <div className="structure-tree" ref={treeRef}>
               <LayoutGroup id="structure-items">
                 <AnimatePresence>{rows}</AnimatePresence>
               </LayoutGroup>
@@ -900,9 +1089,9 @@ export function StructurePane() {
         )}
         <StructureDrawer
           target={
-            !contentLoading && !contentError && activeKey
+            !contentLoading && !contentError && activeKey && shownDrawerResolved
               ? {
-                  resolved: drawerResolved ?? base,
+                  resolved: shownDrawerResolved,
                   programmeId: programmeIdsByKey.get(activeKey) ?? null,
                 }
               : null
@@ -924,9 +1113,14 @@ export function StructurePane() {
         }
         moduleFrom={confirmation?.moduleFrom}
         moves={confirmation?.moves ?? []}
+        moduleMoves={confirmation?.moduleMoves ?? []}
         hasCompletedCourses={
           confirmation !== null &&
-          programmeHoldsCompletion(confirmation.groupId)
+          scopeHoldsCompletion(
+            resolvedIndex,
+            programmeKey(confirmation.groupId),
+            completedCourseIds,
+          )
         }
         busy={programmes.pending !== null}
         error={attempt === "confirm" ? programmes.error : null}
@@ -939,9 +1133,14 @@ export function StructurePane() {
         operation="reset"
         holderKind="programme"
         name={confirmation ? confirmationName(confirmation.groupId) : ""}
+        hasEdits={false}
         hasCompletedCourses={
           confirmation !== null &&
-          programmeHoldsCompletion(confirmation.groupId)
+          scopeHoldsCompletion(
+            resolvedIndex,
+            programmeKey(confirmation.groupId),
+            completedCourseIds,
+          )
         }
         busy={programmes.pending !== null}
         error={attempt === "confirm" ? programmes.error : null}
@@ -955,9 +1154,14 @@ export function StructurePane() {
         operation="remove"
         holderKind="programme"
         name={confirmation ? confirmationName(confirmation.groupId) : ""}
+        hasEdits={false}
         hasCompletedCourses={
           confirmation !== null &&
-          programmeHoldsCompletion(confirmation.groupId)
+          scopeHoldsCompletion(
+            resolvedIndex,
+            programmeKey(confirmation.groupId),
+            completedCourseIds,
+          )
         }
         busy={programmes.pending !== null}
         error={attempt === "confirm" ? programmes.error : null}
@@ -974,7 +1178,11 @@ export function StructurePane() {
       <CourseMoveConfirmDialog
         request={
           resetPull
-            ? { holder: resetPull.holder, moves: resetPull.moves }
+            ? {
+                holder: resetPull.holder,
+                moves: resetPull.moves,
+                moduleMoves: resetPull.moduleMoves,
+              }
             : null
         }
         busy={programmes.pending !== null}
@@ -997,6 +1205,33 @@ export function StructurePane() {
           />
         </PickerOverlay>
       </div>
+      {drag.lifted &&
+        createPortal(
+          <div
+            className="structure-course-lifted structure-tree"
+            style={{
+              ...(drag.settleTarget ?? drag.lifted),
+              transform: drag.settleTarget
+                ? "none"
+                : `translateY(${COURSE_DRAG_LIFT_Y}px) scale(${COURSE_DRAG_LIFT_SCALE})`,
+              transformOrigin: "center",
+              transition: drag.settleTarget
+                ? "left 0.3s cubic-bezier(0.22, 0.8, 0.2, 1), top 0.3s cubic-bezier(0.22, 0.8, 0.2, 1), width 0.3s cubic-bezier(0.22, 0.8, 0.2, 1), height 0.3s cubic-bezier(0.22, 0.8, 0.2, 1), transform 0.3s cubic-bezier(0.22, 0.8, 0.2, 1)"
+                : undefined,
+            }}
+            aria-hidden="true"
+            inert
+          >
+            <StructureCard
+              course={drag.lifted.course.course}
+              completed={completedCourseIds.includes(
+                drag.lifted.course.course.group_id,
+              )}
+              added={drag.lifted.course.added}
+            />
+          </div>,
+          document.body,
+        )}
     </main>
   );
 }

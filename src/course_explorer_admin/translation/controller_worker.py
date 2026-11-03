@@ -346,6 +346,9 @@ class TranslationWorkerStage:
         settings = self.connection()
         worker_root = settings.worker_project_root
         translation_settings = load_translation_settings()
+        session_settings = load_raw_database_settings().model_copy(
+            update={"postgres_db": session.database_name}
+        )
         owner = OwnedWorkerRuntime(runner, root=worker_root, directory=directory, sleep=sleep)
         gpu_clock = WorkerGpuClock(
             directory,
@@ -436,6 +439,7 @@ class TranslationWorkerStage:
                 on_checkpoint=on_checkpoint,
                 before_request=before_request,
                 request_scope=mechanics.model_request_scope,
+                database_settings=session_settings,
             )
         except Exception as exc:
             accumulate_active()

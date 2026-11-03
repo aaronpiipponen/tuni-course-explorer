@@ -1,0 +1,13 @@
+# One bounded feedback publication attempt, scheduled by its paired timer.
+[Unit]
+Description=TUNI Course Explorer feedback publication sender
+
+[Service]
+Type=oneshot
+WorkingDirectory=@CHECKOUT@
+ExecStart=/usr/bin/bash @CHECKOUT@/scripts/run_feedback_sender.sh
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+UMask=0077
+NoNewPrivileges=true
+StandardOutput=null
+StandardError=journal

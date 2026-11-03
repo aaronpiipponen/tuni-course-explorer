@@ -48,7 +48,7 @@ A generation request starts only when its rendered prompt tokens plus `INFERENCE
 
 Every key is in `config/inference.toml`. A packet that fits neither key is never shortened. It fails as one capacity failure for that target course, with the reason `context_exceeded`, and no generation request is made for it. The rest of the run continues normally, and a following run retries the target course.
 
-The measured context each key holds is recorded with the sizing corrections in [Local model hardware and throughput](/docs/experiments/inference/local-model-hardware-and-throughput.md#sizing-corrections).
+The measured context each key holds is recorded with the sizing corrections in [Local model hardware and throughput](/docs/experiments/inference/local-model-hardware-and-throughput.md#the-context-estimate).
 
 ## The periodic reboot
 
@@ -73,7 +73,7 @@ A **failed** target retains the last accepted result the catalogue holds for it,
 
 Clearing a decision returns the target course to automatic scheduling. The marker becomes unprocessed, the inference stage reopens, and a completed upstream stage is preserved when a retained pool or shortlist can support it. Only the stages that genuinely cannot be recovered reopen, so clearing one target course does not repeat the work of the others.
 
-The decision is recorded on the selected dataset while the stages are idle. [Operator menu](/docs/operations/operator-menu.md) describes the entry that sets it.
+The decision is recorded on the Working dataset while the stages are idle. [Operator menu](/docs/operations/operator-menu.md) describes the entry that sets it.
 
 The diagram shows the three decisions of one target course, Automatic, Done, and Failed, and every transition an operator records between them. An operator sets done or sets failed from any decision, and clearing returns the target course to Automatic. A repeated decision is a no-op.
 

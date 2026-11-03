@@ -85,6 +85,7 @@ describe("Search semantic fallback notice", () => {
               report,
               loading: false,
               scrollElement: null,
+              activeOnly: false,
             }),
           ),
         ),

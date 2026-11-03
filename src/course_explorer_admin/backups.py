@@ -14,7 +14,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from course_explorer.administration import repository_root
+from course_explorer import administration
 
 
 class _BackupModel(BaseModel):
@@ -52,7 +52,7 @@ def _backup_root() -> Path:
     inspected before a listing or a deletion, so a symlinked directory cannot redirect a walk or a
     delete outside the root. Neither directory is created here.
     """
-    root = repository_root() / "data" / "backups"
+    root = administration.repository_root() / "data" / "backups"
     for candidate in (root.parent, root):
         if candidate.is_symlink() or (candidate.exists() and not candidate.is_dir()):
             raise ValueError("backup root must not traverse a symlink or non-directory")

@@ -1,7 +1,7 @@
 """Read-only repository for detached official curriculum catalogue DTOs.
 
 It owns the bulk catalogue reads, one projected represented-summary read, and the scoped
-identity getters graph compilation uses. Every read shares a private loader with the bulk
+identity getters graph compilation uses. Every read shares one loader with the bulk
 variant and differs only by projection or identity filter.
 """
 
@@ -788,6 +788,11 @@ class CurriculumRepository(CurriculumRead, CurriculumStructureRead, CurriculumDi
                 )
             )
         return representatives
+
+    def list_module_group_ids(self) -> tuple[str, ...]:
+        """Return every canonical module group identity ordered by group identity."""
+        with self._factory() as session:
+            return tuple(session.scalars(select(Module.group_id).order_by(Module.group_id)))
 
     def list_modules(self) -> tuple[CatalogueModule, ...]:
         """Return detached canonical modules with all exact versions and rule trees."""

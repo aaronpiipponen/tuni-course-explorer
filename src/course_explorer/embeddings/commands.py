@@ -32,7 +32,7 @@ def run_course_embedding_command(
     only composition path a controller worker can enter. ``before_request`` and ``request_scope``
     are passed to the provider.
     """
-    with _database_context(load_database_settings()) as factory:
+    with _database_context(load_database_settings(role="working")) as factory:
         repository = CourseEmbeddingRepository(factory)
         teaching_text = TeachingTextService(
             CurriculumRepository(factory), DerivedTranslationRepository(factory)

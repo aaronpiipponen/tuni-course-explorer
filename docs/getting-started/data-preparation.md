@@ -1,40 +1,40 @@
 # Preparing a dataset from the curriculum source
 
-The preparation path fills the selected dataset with official curriculum data through the administration command and its four stages.
+The preparation path fills the Working dataset with official curriculum data through the administration command's four stages while the site serves the Selected dataset.
 
 ## What the path needs
 
 - A copy set up by the [Installation](/docs/getting-started/installation.md) steps, with the Python dependencies installed, the configuration and environment files in place, and the database and embedding services built.
-- `SELECTED_DATASET_ENABLED` set to true in `config/database.toml`, so each process resolves the selected dataset through the pointer under `ADMIN_STATE_ROOT`. The settings table below lists this key with the others.
+- A Selected dataset enrolled under `ADMIN_STATE_ROOT`, and a copy of it assigned to Working. The real-database workflow enrolls the initial Selected dataset, so `POSTGRES_DB` names the example database and no second enrollment runs. A configured-database deployment that sets `POSTGRES_DB` to a real name enrolls it with `setup datasets`.
 - A prepared worker for translation and inference, which [Preparing the worker](/docs/getting-started/worker-stages.md#preparing-the-worker) describes.
 
 ## The commands in order
 
-The block runs the path once, from enrollment to the first coverage and summary read. Run the commands in this order.
+The block runs the path once, from the copy to the first coverage and summary read. Run the commands in this order after the real-database workflow enrolled Selected.
 
 ```bash
-uv run python scripts/admin.py setup datasets
+uv run python scripts/admin.py datasets list
+uv run python scripts/admin.py datasets copy-to-working SOURCE_DATASET_ID
 uv run python scripts/admin.py ingestion start
 uv run python scripts/admin.py ingestion status
 uv run python scripts/admin.py ingestion stop
 uv run python scripts/admin.py embedding start
 uv run python scripts/admin.py embedding status
 uv run python scripts/admin.py embedding stop
-uv run python scripts/admin.py hubs
-uv run python scripts/admin.py coverage teaching-text
-uv run python scripts/admin.py summary catalogue
+uv run python scripts/admin.py coverage teaching-text --role working
+uv run python scripts/admin.py summary catalogue --role working
 ```
 
 Every command on this page runs from the checkout root. Each command prints one JSON report, and a failure prints one JSON line holding the exception class name, plus one fixed line of guidance, and returns 1.
 
-A run can also be paused with `pause` and continued with `resume` in place of `stop`, as [Stage lifecycle](/docs/operations/stage-lifecycle.md) describes. After a stage has filled the selected dataset, an in-place change reaches a browser holding cached reads on its next uncached read or reload after the feature web server restarts. A dataset promotion changes the reported identity on the next uncached read without a restart. The same operations are entries of the numbered [operator menu](/docs/operations/operator-menu.md), which `uv run python scripts/admin.py` with no argument opens.
+A run can also be paused with `pause` and continued with `resume` in place of `stop`, as [Stage lifecycle](/docs/operations/stage-lifecycle.md) describes. The stages write Working, so the site's Selected dataset and its serving artifacts are untouched while the pipeline runs. A Selected pointer change follows the restart procedure that [Operations](/docs/operations/README.md#derived-files-served-data-and-the-web-restart) states. The same operations are entries of the numbered [operator menu](/docs/operations/operator-menu.md), which `uv run python scripts/admin.py` with no argument opens.
 
 ## The settings to change
 
 | Step | File | Key | Holds |
 |---|---|---|---|
-| Every step | `config/database.toml` | `SELECTED_DATASET_ENABLED` | Set it to true, so each process resolves the selected dataset through the pointer under `ADMIN_STATE_ROOT`. The reports refuse while it is false. |
-| Enrollment | `config/database.toml` | `ADMIN_STATE_ROOT` | The repository-relative root that holds the pointer, the dataset receipts, and the session evidence. The example sets `data/admin`. |
+| Enrollment and copy | `config/database.toml` | `ADMIN_STATE_ROOT` | The repository-relative root that holds both role pointers, the dataset receipts, and the session evidence. The example sets `data/admin`. |
+| Enrollment | `config/database.toml` | `EXAMPLE_POSTGRES_DB` | The configured database that the example workflow leaves unenrolled. The real-database workflow leaves `POSTGRES_DB` at this name and enrolls the named database through the Selected pointer. A configured-database deployment sets `POSTGRES_DB` to a different name and enrolls it with `setup datasets`. |
 | Ingestion | `config/curriculum.toml` | `RAW_DATA_ROOT` | The repository-relative root that holds one directory per capture run. The example sets `data/raw`. |
 | Ingestion | `config/curriculum.toml` | `KORI_BASE_URL` | The curriculum source base. The settings accept the anonymous canonical `https://sisu.tuni.fi/kori` alone. |
 | Ingestion | `config/curriculum.toml` | `TUNI_UNIVERSITY_ID` | The university root the capture starts from. The example file carries a placeholder value. |
@@ -42,24 +42,25 @@ A run can also be paused with `pause` and continued with `resume` in place of `s
 | Ingestion | `config/curriculum.toml` | `CURRENT_ACADEMIC_YEAR` | The reference academic year of the run. Normalization chooses the representative version against it, and the first year must not be after it. |
 | Ingestion | `config/curriculum.toml` | `ACTIVE_ACADEMIC_YEAR_WINDOW` | The number of academic years inside which a listed version makes a course active. The example sets 3. |
 | Embedding | `config/search.toml` | `EMBEDDING_ARTIFACT_PATH`, `EMBEDDING_ARTIFACT_SHA256` | The pinned embedding model file and its digest. An embedding start requires the file at that path to match the digest. |
-| Hubs | `config/search.toml` | `EMBEDDING_HUB_VECTOR`, `EMBEDDING_OUTCOMES_HUB_VECTOR` | The two hub files the hub write fills, by path. The example names them under `config/derived/`. |
 
 The same files hold the request pacing, the retry bounds, and the stage state roots, and their example values apply to the public source. [Configuration](/docs/backend/configuration.md) describes how the settings owner reads the subsystem files and the [environment file](/docs/reference/glossary.md#configuration).
 
 ## Enroll the dataset
 
-`setup datasets` selects a database as a dataset, once.
+The real-database workflow enrolls one named empty database as the initial Selected dataset. The database name comes from the workflow input, and `POSTGRES_DB` in `config/database.toml` names the example database. The report is one JSON line holding the site's external root address and the zero dataset id of the enrolled Selected dataset.
+
+A configured-database deployment enrolls its configured database with `setup datasets` instead.
 
 ```bash
 uv run python scripts/admin.py setup datasets
 ```
 
-It starts the server database service when it is not running, migrates the configured database to the checkout's migration head, verifies it, writes the receipt, and selects it. The report is one JSON line: the dataset receipt, holding the dataset id, the database name, the enrollment kind, and a verification with the migration head, the row count of every table, the catalogue summary, and the teaching-text, embedding, and inference coverage reads. The initial enrollment carries the zero dataset id, no predecessor, and no dump digest.
+It starts the server database service when it is not running, migrates the configured database to the checkout's migration head, verifies it, writes the receipt, and selects it. An already-selected dataset is reused and returned as it is, and nothing is written.
 
-An already-selected dataset is reused and returned as it is, and nothing is written. [Datasets](/docs/operations/datasets.md#enrolling-a-dataset) describes the receipt and the interrupted enrollment.
+`datasets list` prints the receipt id. `datasets copy-to-working SOURCE_DATASET_ID` creates a verified copy and publishes it as Working, which the stages then write. Every stage must be idle before the copy. [Datasets](/docs/operations/datasets.md#enrolling-a-dataset) describes the receipt, the named initial enrollment and the interrupted enrollment.
 
 > [!IMPORTANT]
-> Enroll before the first stage start. With `SELECTED_DATASET_ENABLED` true, a stage start, a worker session, and every dataset verification resolve the selected dataset through the pointer, and a missing pointer fails with setup guidance.
+> Enroll and copy before the first stage start. A stage start, a worker session and every pipeline verification resolve the Working pointer, and a missing Working dataset fails with copy guidance.
 
 ## Ingestion
 
@@ -95,7 +96,7 @@ Ingestion runs as one stage with two steps: the capture stores exactly what the 
 > A stop with partial coverage is a valid end of a run. The stage returns to idle with the pending rows marked, the completed capture is retained, and the next start continues that capture rather than beginning a fresh one. [Stage lifecycle](/docs/operations/stage-lifecycle.md#the-boundaries-of-a-run) lists the boundaries at which a stop takes effect.
 
 > [!WARNING]
-> An ingestion stop that reaches idle deletes every raw capture run under `RAW_DATA_ROOT` except the one the stage retains for an incomplete capture. After a completed capture, no raw capture run is retained. The rows of the selected dataset are not touched, and a failed stop deletes nothing.
+> An ingestion stop that reaches idle deletes every raw capture run under `RAW_DATA_ROOT` except the one the stage retains for an incomplete capture. After a completed capture, no raw capture run is retained. The rows of the Working dataset are not touched, and a failed stop deletes nothing.
 
 ## Embedding
 
@@ -113,59 +114,51 @@ Ingestion runs as one stage with two steps: the capture stores exactly what the 
    uv run python scripts/admin.py embedding stop
    ```
 
-   A stop takes effect after the vectors of one batch are stored, so a partial run leaves the pending chunks for the next start. The vectors commit when the run completes, so finalization writes nothing more. The report is the idle status.
+   A stop takes effect after the vectors of one batch are stored, so a partial run leaves the pending chunks for the next start. Each completed batch commits its own vectors, so a stopped run retains every batch it finished. The report is the idle status.
 
-## Hubs and the web restart
+## Serving artifacts and the web restart
 
 ```bash
-uv run python scripts/admin.py hubs
+uv run python scripts/admin.py serving-artifacts
 ```
 
-The command computes both embedding hub means from the stored chunk vectors of the selected dataset and writes the two files that the hub keys in `config/search.toml` name. Its report holds `catalogue_path`, `outcomes_path`, `chunk_count`, and `outcomes_chunk_count`. Both means are computed before the first write, so incomplete coverage writes neither file.
+The command builds the serving artifact set for the site's embedding switch. Its report holds the artifact paths and counts, on a site that serves the embedding features the embedding paths and counts including `search_group_count` and `search_block_count`, and in both modes the study-fragment values. On a site that serves the embedding features, an incomplete current embedding coverage fails the build. [Serving artifact build](/docs/backend/text-and-vectors/serving-artifact-build.md#the-embedding-switch) states what each mode writes, the artifact family and the build transaction, and [Administration commands](/docs/backend/interfaces/administration-commands.md#the-serving-artifact-command) states what a failed build restores and how `--prune` cleans up after it.
+
+The embedding menu and the console preparation action run the same build for the served dataset. This standalone build maintains a served dataset. It is not how pipeline work is published, because the stages write Working. Publish Working with `datasets copy-to-selected`, which builds the copy and then switches, restarts and proves it, as [Datasets](/docs/operations/datasets.md) states. `--dataset ID` builds an in-pipeline dataset. `--prune` is separate housekeeping after a successful restart. It builds nothing, changes no table or `current` target, and removes the obsolete builds, the other year families' builds and owned temporary outputs of the target database, while keeping the `current` build, unknown files and other dataset namespaces. [Serving artifact build](/docs/backend/text-and-vectors/serving-artifact-build.md#the-artifact-family-the-build-directory-and-the-embedding-directory) states which embedding directories it retains in each mode.
 
 > [!IMPORTANT]
-> Restart the web server after the hub write. A serving process of a site that serves embedding features reads both hub files when it starts and holds those values while it runs, so the written values reach the site at the next start. A web unit under the user manager restarts with `systemctl --user restart tuni-course-explorer-web.service`, one under the system manager with `sudo systemctl restart tuni-course-explorer-web.service`, and a foreground copy is stopped and started again. [The site web unit](/docs/getting-started/self-hosting.md#the-site-web-unit) gives both unit procedures.
+> A completed build reaches the site after the full supervisor restart that [Operations](/docs/operations/README.md#derived-files-served-data-and-the-web-restart) states, and `serving-artifacts --prune` runs after that restart succeeds. The artifact command replaces no running worker and restarts no unit.
 
 ## Coverage and summaries
 
-The read-only reports read the selected dataset, not the progress of a stage that has not returned.
+The read-only reports read the dataset role they name, not the progress of a stage that has not returned. The pipeline reports name Working.
 
 ```bash
-uv run python scripts/admin.py coverage teaching-text
-uv run python scripts/admin.py coverage embedding
-uv run python scripts/admin.py coverage inference
-uv run python scripts/admin.py summary catalogue
-uv run python scripts/admin.py summary inference
+uv run python scripts/admin.py coverage teaching-text --role working
+uv run python scripts/admin.py coverage embedding --role working
+uv run python scripts/admin.py coverage inference --role working
+uv run python scripts/admin.py summary catalogue --role working
+uv run python scripts/admin.py summary inference --role working
 ```
 
 Each command prints one JSON report and one fixed scope line to standard error. The teaching-text coverage counts the effective text of the represented courses per field and language and lists the stale translations. The embedding coverage counts the total, pending, completed, and failed chunks. The catalogue summary counts the periods, courses, active courses, course versions, modules, and module versions. The inference summary counts the eligible, retained, published, and uncovered target courses with the retained cycle and its failures. [The operator menu](/docs/operations/operator-menu.md#coverage-and-summaries) lists the same entries.
 
-## Migrating the selected dataset
+## Migrating a dataset role
 
 ```bash
-uv run python scripts/admin.py migrate datasets
+uv run python scripts/admin.py migrate selected
+uv run python scripts/admin.py migrate working
 ```
 
-The migration is explicit maintenance. It applies the checkout's migration head to the selected database and returns a fresh verification of that database.
+The migration is explicit maintenance. It applies the checkout's migration head to the named role's database and returns a fresh verification of that database.
 
 > [!IMPORTANT]
-> Every stage must be idle with no live recorded process before the migration, and the server database service must be running. The command refuses before it changes anything when a stage is not idle or holds a live process. [The schema head and migration](/docs/operations/datasets.md#the-schema-head-and-migration) describes the guard.
+> Every stage must be idle with no live recorded process before a Working migration, and the server database service must be running. A Working migration refuses before it changes anything when a stage is not idle or holds a live process. A Selected migration does not read the stage state. [The schema head and migration](/docs/operations/datasets.md#the-schema-head-and-migration) describes the guard.
 
 ## The administration command
 
-A failure of an administration command prints one JSON line holding the exception class name, such as `{"error":"DatabaseSchemaMismatchError"}`, plus the return code of a failed subprocess, and then one fixed line of guidance for the operation. The guidance names the next step.
+A failure prints one JSON line holding the exception class name, plus the return code of a failed subprocess, and then one fixed line of guidance for the operation. [Administration commands](/docs/backend/interfaces/administration-commands.md#the-administration-command) states the output and that each command prints its own fixed guidance, and [Operator menu](/docs/operations/operator-menu.md#failures-and-exit-status) states the exit statuses.
 
-| Operation | Guidance line |
-|---|---|
-| Any operation with a missing or invalid setting | `check config/*.toml and this device's ignored .env, then retry the same command` |
-| `setup datasets`, `setup worker`, `preflight` | `finish or stop retained stages before updates, then check the checkout branch and the configured origin` |
-| A stage action | `inspect this tool's status, then retry its ordinary stop or resume as appropriate` |
-| `migrate datasets` | `ordinary-stop all four stages, ensure the server db is running, then retry` |
-| `dispose inference` | `ordinary-stop all four stages, select the verified returned selected dataset and keep the server db running at the current schema, then retry` |
-| `target inference` | `select the dataset, ensure the server db is running at the current schema, then retry the target read` |
-| `hubs` | `complete the embedding stage on the selected dataset, ensure the server db is running, then retry and restart the web server` |
-| `coverage`, `summary` | `enroll the selected dataset and ensure the server PostgreSQL service is running` |
+`DatabaseSchemaMismatchError` means the named role's database is not at the checkout's migration head. [The schema head and migration](/docs/operations/datasets.md#the-schema-head-and-migration) states the migration commands and their guards.
 
-`DatabaseSchemaMismatchError` means the selected database is not at the checkout's migration head. Run `uv run python scripts/admin.py migrate datasets` once every stage is idle.
-
-[Installation](/docs/getting-started/installation.md) lists the failures of the dependency, copy, and serving steps, and the [operator menu](/docs/operations/operator-menu.md#failures-and-exit-status) states the exit statuses of the administration command.
+[Installation](/docs/getting-started/installation.md) lists the failures of the dependency, copy, and serving steps.

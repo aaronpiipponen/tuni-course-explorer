@@ -1,11 +1,11 @@
 """Reusable read-only composition for the official structure-of-studies commands.
 
 This module owns the process-level orchestration behind `scripts/study_structure.py` and the web
-batch read: it validates the canonical root identities before any settings load or I/O, reads the
-configured current academic year once, composes the repository-backed structure service inside one
-engine lifetime, reads the roots through one shared batch projection, and returns one transient
-JSON report. The single-root command delegates to that batch owner. The reports are request-local
-values consumed by the CLI adapter and the web backend.
+batch read: it validates the canonical root identities before any settings load or I/O, uses the
+supplied academic year or reads the configured one, composes the repository-backed structure service
+inside one engine lifetime, reads the roots through one shared batch projection, and returns one
+transient JSON report. The single-root command delegates to that batch owner. The reports are
+request-local values consumed by the CLI adapter and the web backend.
 """
 
 from __future__ import annotations
@@ -13,6 +13,7 @@ from __future__ import annotations
 from collections.abc import Collection, Mapping
 
 from pydantic import BaseModel, ConfigDict
+from sqlalchemy.orm import Session, sessionmaker
 
 from course_explorer.config import (
     DatabaseSettings,
@@ -22,6 +23,7 @@ from course_explorer.config import (
 from course_explorer.curriculum_repository import CurriculumRepository
 from course_explorer.db.session import database_context as _database_context
 from course_explorer.study_structure.service import (
+    FragmentBatchReader,
     StudyStructureModule,
     StudyStructureService,
     StudyStructureVersionSelectionRequired,
@@ -53,29 +55,40 @@ def run_study_structures_command(
     *,
     allow_unavailable: bool = False,
     module_versions: Mapping[str, str] | None = None,
+    fragment_store: FragmentBatchReader | None = None,
     database_settings: DatabaseSettings | None = None,
+    academic_year_start: int | None = None,
+    session_factory: sessionmaker[Session] | None = None,
 ) -> StudyStructuresReport:
     """Compose one official structure read for the supplied canonical roots.
 
     A root that is not a projectable official module or programme is collected in
     ``unavailable_root_group_ids`` when ``allow_unavailable`` is true, and an ambiguous root without
     an explicit selection is reported in ``version_selection_required``. Nested resolution failures
-    stay typed unresolved nodes, and every other failure propagates.
+    stay typed unresolved nodes, and every other failure propagates. A supplied fragment store
+    answers a root it holds unless the request supplies explicit module versions. A supplied
+    academic year is used as given, and otherwise the configured one is read here. A supplied
+    session factory carries the serving engine and is never disposed here.
     """
     materialized = tuple(root_group_ids)
     for root_group_id in materialized:
         if not root_group_id.strip():
             raise ValueError("root group identities must not be blank")
-    academic_year_start = load_normalization_settings().current_academic_year_start
+    academic_year_start = (
+        academic_year_start or load_normalization_settings().current_academic_year_start
+    )
     resolved_settings = (
         database_settings if database_settings is not None else load_database_settings()
     )
-    with _database_context(resolved_settings) as factory:
+    with _database_context(resolved_settings, factory=session_factory) as factory:
         service = StudyStructureService(
             CurriculumRepository(factory), academic_year_start=academic_year_start
         )
         batch = service.read_many(
-            materialized, allow_unavailable=allow_unavailable, module_versions=module_versions
+            materialized,
+            allow_unavailable=allow_unavailable,
+            module_versions=module_versions,
+            fragment_store=fragment_store,
         )
     return StudyStructuresReport(
         academic_year_start=academic_year_start,

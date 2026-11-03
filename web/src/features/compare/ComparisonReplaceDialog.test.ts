@@ -45,6 +45,7 @@ function Host({ initiallyOpen }: { initiallyOpen: boolean }) {
     course: summaries["course-c"],
     open,
     onClose: () => setOpen(false),
+    onReplaced: () => {},
     returnFocus: () => {},
   });
 }

@@ -24,6 +24,7 @@ from tests.admin._remote_support import (
     model_response_released,
     read_fake,
 )
+from tests.support.repository import redirect_repository_root
 
 
 class _Patcher:
@@ -42,32 +43,12 @@ class _Patcher:
         os.environ[name] = value
 
 
-def _redirect_repository_root(root: Path) -> None:
-    import course_explorer.administration as administration
-    import course_explorer_admin.datasets as datasets_module
-    import course_explorer_admin.lifecycle as lifecycle
-    import course_explorer_admin.local_stages as local_stages
-    import course_explorer_admin.remote as remote
-    from course_explorer import configuration
-
-    # Import the settings owner before any redirect so its file reads bind to the real prepared
-    # checkout. The subsystem files and the device-local ignored ``.env`` live there, not under this
-    # process's temporary worker/state root. The redirected owners below own only session state.
-    configuration.read_public_configuration(administration.repository_root())
-
-    administration.repository_root = lambda: root
-    datasets_module.repository_root = lambda: root
-    lifecycle.repository_root = lambda: root
-    local_stages.repository_root = lambda: root
-    remote.repository_root = lambda: root
-
-
 def _install_cwd_runner(patcher: _Patcher, checkout: Path) -> None:
     """Redirect only git and Compose command cwd to the real prepared checkout.
 
-    The worker and server data roots are temporary. The settings owner reads the subsystem files
-    from the real prepared checkout through its own root, and ``_redirect_repository_root`` points
-    the redirected owners at the temporary root.
+    The worker and server data roots are temporary and carry links to the tracked configuration,
+    migrations and libraries. ``redirect_repository_root`` points the one repository-root owner at
+    that temporary root.
     """
     real_run = mechanics.SubprocessRunner.run
 
@@ -155,7 +136,7 @@ def install_worker_boundaries(
 ) -> None:
     """Install the external boundary substitutions the bootstrap's modes use."""
     checkout = Path(os.environ["TRANSLATION_CONTROLLER_WORKER_PROJECT_ROOT"])
-    _redirect_repository_root(root)
+    redirect_repository_root(root)
     _install_cwd_runner(monkeypatch, checkout)
     _install_boot_identity(monkeypatch, boundary_path)
     import course_explorer_admin.remote_stages as remote_stages
@@ -252,7 +233,7 @@ def main(
     args = parser.parse_args(argv)
     root = Path(args.root)
     boundary_path = fake_state_path(root)
-    target_root = root if args.mode == "server" else Path(os.environ["S7D_WORKER_DATA_ROOT"])
+    target_root = root if args.mode == "server" else Path(os.environ["TEST_WORKER_DATA_ROOT"])
 
     patcher = _Patcher()
     install_worker_boundaries(

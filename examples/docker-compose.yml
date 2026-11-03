@@ -1,8 +1,12 @@
+# Example Compose stack for the database and embedding services.
 # Stable identity for the example containers and their database volume.
 name: tuni-course-explorer
 
 services:
   db:
+    build:
+      context: .
+      dockerfile: docker/db/Dockerfile
     image: pgvector/pgvector:0.8.6-pg18-trixie
     # Shared memory for the HNSW index build that an embedding-inclusive restore performs. Larger
     # than Docker's 64 MiB default /dev/shm.

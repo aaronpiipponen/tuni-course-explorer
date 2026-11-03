@@ -28,13 +28,13 @@ The setting is a positive integer.
 
 ## Route outcomes
 
-Every calculation ends in one [route outcome](/docs/reference/glossary.md#prerequisites-and-routes), and the app shows it as one label.
+Every calculation ends in one [route outcome](/docs/reference/glossary.md#prerequisites-and-routes). The panel states the outcome with a top line and a tag.
 
 The diagram follows one route calculation from the solver structure through the exact search, the configured size limit, and the greedy search to the six outcomes.
 
 ![One exact search reads the same solver structure and basis as the graph. When the size limit is not exceeded, the exact search yields the exact minimum route, a shortfall from a reduced route, an unresolved route, or no route under the rules. When the size limit is exceeded, one greedy restart yields an approximate route or no route found.](/docs/diagrams/minimum-route-outcomes.svg)
 
-| Interface label | Code state | Meaning | What it returns |
+| Outcome | Code state | Meaning | What it returns |
 |---|---|---|---|
 | **Exact minimum route** | `exact` | A known route is the global minimum new-credit set. | The route and its total new credits, together with the located problems of the requirements it denied while finding the route. |
 | **Approximate route** | `approximate` | The exact attempt exceeded the size limit and the greedy search found a valid route. | The route and its total new credits, with no claim that the route is the global minimum. |
@@ -42,6 +42,17 @@ The diagram follows one route calculation from the solver structure through the 
 | **Route unresolved** | `unresolved` | Unresolved structure could yield a cheaper route than any known one. | No route and no total, with the located problems and any blocking condition. |
 | **No route exists** | `no_solution` | No route meets the requirements under the rules. | No route and no total, with the located problems of the blocked requirements. |
 | **Shortfall** | `shortfall` | Only active courses are allowed, and a module rule falls below its own lower bound. | The largest route the active courses allow, its total new credits, and one record per deficient module rule. |
+
+The panel shows these top lines and tags.
+
+| Outcome | Top line | Tag |
+|---|---|---|
+| **Exact minimum route** | The two totals, `{new} new · {full} full route` | **exact** |
+| **Approximate route** | The two totals, `{new} new · {full} full route` | **approximate** |
+| **No route found** | **The exact search was too large and the approximation gave up.** | **timeout** |
+| **Route unresolved** | **Some requirements cannot be resolved:** | **unresolved** |
+| **No route exists** | **No route meets every requirement.** | **no solution** |
+| **Shortfall** | The two totals, `{new} new · {full} full route` | **shortfall** |
 
 ## What the route charges
 
@@ -53,7 +64,7 @@ Excluding a course blocks every route through it. The excluded course never coun
 
 ## The order of preference
 
-A calculation minimizes the new credits first. When several routes share the lowest total, it prefers the route with the fewest distinct inactive new courses. When those rules leave a tie, the deterministic canonical identities decide, compared in sorted order: the new unexpandable content identities, the new course identities, and the witness identities. The same inputs always return the same route.
+A calculation minimizes the new credits first. When several routes share the lowest total, it prefers the route with the fewest distinct inactive new courses. When those rules leave a tie, the deterministic canonical identities decide, compared in sorted order: the new unexpandable content identities, the new course identities, the witness identities, and the evidence labels. The same inputs always return the same route.
 
 ## What the result reports
 
@@ -61,7 +72,7 @@ Besides the route, a result carries the total new credits and the full route tot
 
 ## The panel and the graph
 
-The panel states both totals on one line, and it states the outcome label when the result carries no total. It adds a note for **Approximate route**, **No route found**, **No route exists**, **Route unresolved** and **Shortfall**. It lists the located problems for **No route exists**, **Route unresolved** and **No route found**, and the deficient module rules for **Shortfall**. The course rows and the unexpandable content rows appear for **Exact minimum route**, **Approximate route** and **Shortfall**, behind **Expand**, and **Add all missing courses to structure** adds the new courses to Unplaced studies. An exact route with no new credits reads **Nothing new**.
+The panel states both totals on one line for an outcome that carries a route. It adds a note for **Approximate route**, **No route found** (that no route or total is available), **No route exists** (the **Blocked requirements:** heading) and **Shortfall**. It lists the located problems for **No route exists**, **Route unresolved** and **No route found**, and the deficient module rules for **Shortfall**. The course rows and the unexpandable content rows appear for **Exact minimum route**, **Approximate route** and **Shortfall**, behind **Expand**, and **Add all missing courses to structure** adds the new courses to Unplaced studies. An exact route with no new credits reads **Nothing new**.
 
 The graph lights the drawn nodes and connections of the selected route and dims the rest. For **No route exists** and **Route unresolved** it lights the problem nodes and the blocked node keys instead, and a **No route found** result lights the graph root alone.
 

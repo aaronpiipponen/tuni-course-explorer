@@ -1,6 +1,6 @@
 # Glossary
 
-This glossary defines the terms the documentation uses for courses, search, comparison, prerequisites, discovery, the structure of studies, inference, and administration.
+This glossary defines the terms the documentation uses, in tables grouped by subject from courses and configuration to inference and administration.
 
 ## Courses and the catalogue
 
@@ -9,7 +9,7 @@ This glossary defines the terms the documentation uses for courses, search, comp
 | Course | One course as the app shows it, shared by all of its official versions. Each course has one canonical identity. |
 | Course version | One exact official version of a course, as published for one curriculum period. |
 | Representative version | The one course version chosen to stand for a course. The selection prefers the configured academic year, then a version inside the activity window. |
-| Curriculum period | One official academic period with a starting academic year. Every course version and module version belongs to curriculum periods. |
+| Curriculum period | One official academic period with a starting academic year. A course version and a module version each carry zero or more curriculum periods, and a version without a membership is selected by its validity bounds alone. |
 | Activity window | The number of academic years, set by `ACTIVE_ACADEMIC_YEAR_WINDOW`, inside which a listed version makes a course active. |
 | Active course | A course with a version listed inside the activity window. The app labels it **active**. |
 | Inactive course | A course with no version listed inside the activity window. The app labels it **inactive**. |
@@ -32,15 +32,15 @@ This glossary defines the terms the documentation uses for courses, search, comp
 
 | Term | Meaning |
 |---|---|
-| Subsystem file | One TOML file under `config/` that holds the portable settings of one subsystem, copied from a tracked template under `examples/config/`. |
-| Environment file | The `.env` file at the repository root, ignored by Git, that holds the values that must change per machine. |
+| Subsystem file | One TOML file under `config/` that holds the non-secret settings of one subsystem, including its machine and site identity, copied from a tracked template under `examples/config/`. |
+| Environment file | The `.env` file at the repository root, ignored by Git, that holds the credentials that must change per machine. |
 | Settings family | The group of settings that one settings class loads and validates. |
 | Settings owner | The configuration module that reads the subsystem files and the environment file for every settings family. |
 | Compose environment file | The temporary environment file that the administration command generates for each Docker Compose run and deletes afterwards. |
 | Feature read | The one `POST /api/features` read the browser app makes before its shell mounts. It reports the two feature switches and the serving dataset identity, and runs no command. |
-| Serving dataset identity | The opaque digest of the serving generation and the selected dataset id, or of the serving generation and a null selection when the site reads its configured database. Every cached web response reports it, and the browser's memory cache and derived structure store are scoped to it. |
+| Serving dataset identity | The opaque digest of the serving generation and the Selected dataset id, or of the serving generation and a null selection when the site has no Selected pointer and reads its configured database. Every cached web response reports it, and the browser's memory cache, discovery cache and derived structure store are scoped to it. |
 | Serving generation | The random value that the web server's supervisor creates once at startup and that every front router and worker process it starts inherits. A restart of the web server creates a new one. |
-| Feature switch | One of the two settings in `config/web.toml` that decide which features a site serves: `WEB_EMBEDDINGS_ENABLED` for comparison, recommendations and semantic search, and `WEB_INFERENCE_ENABLED` for inferred prerequisites. |
+| Feature switch | One of the two settings in `config/web.toml` that decide which features a site serves: `WEB_EMBEDDINGS_ENABLED` for comparison, recommendations and semantic search, and `WEB_INFERENCE_ENABLED` for inferred prerequisites. The embedding switch also decides whether the serving artifact build writes the embedding artifacts and whether the supervisor opens them. |
 
 ## Capture and data preparation
 
@@ -53,8 +53,31 @@ This glossary defines the terms the documentation uses for courses, search, comp
 | Normalization | The step that validates the current capture and converts it into official courses, modules, versions, and rules. |
 | Embedding | A vector that represents the meaning of a piece of teaching text. |
 | Chunk | One overlapping piece of the teaching text of a representative version, embedded and stored with its vector. |
-| Embedding hub | The mean of the catalogue's unit vectors. Search and comparison subtract it from every vector before measuring similarity, so unrelated courses score close to zero. |
+| Embedding hub | The mean of the catalogue's unit vectors. Search, comparison and recommendations subtract it from every vector before measuring similarity, so unrelated courses score close to zero. |
 | Outcomes hub | The embedding hub computed over learning outcomes text only, used when comparing learning outcomes. |
+
+## Serving data
+
+| Term | Meaning |
+|---|---|
+| Serving artifact | A derived file or database table prepared for serving one dataset. |
+| Serving database | The database whose data a site serves: the configured database on a bootstrap site, or the Selected dataset once one is enrolled. |
+| Lookup projection | The canonical identity, code and name projection of the serving dataset that the supervisor builds once and every worker process inherits when it answers a represented-course read. |
+| Catalogue artifact | The current build's prebuilt minimal catalogue, which the catalogue route serves without running a command. The serving process compresses it once. |
+| Hub pair | The embedding hub and outcomes hub of one embedding configuration, stored in that configuration's directory of the artifact family. |
+| Model artifact | The pinned model file a setup or worker workflow downloads, verifies against its digest and publishes for the embedding or generation service. |
+| Serving artifact build | A prepared version of a dataset's serving artifacts. Its catalogue and study fragments occupy one build directory, its embedding files occupy the family's embedding directory, and the family's `current` symlink names the active build. |
+| Artifact family | The serving artifact outputs of one serving database and academic year. A family holds a current build and one embedding directory per built embedding configuration. |
+| Artifact family key | The digest of the serving database name and the academic year that names one artifact family. |
+| Current build | The artifact build directory named by an artifact family's `current` symlink, which holds the catalogue and the study fragments. |
+| Opened set | The one set of serving artifacts a process opens from an artifact family: the current build's catalogue artifact and study fragments and, on a site that serves the embedding features, the configured embedding directory's hub pair, shared stores and packed search group count. The supervisor opens it once before it forks the worker processes, and every worker inherits it. |
+| Embedding directory | The `embedding-<configuration hash>` directory of an artifact family that holds one embedding configuration's hub pair and shared centroid and chunk stores. |
+| Shared serving store | The read-only mapped course centroid matrix and descriptive chunk file that worker processes share on a site that serves the embedding features. |
+| Study fragment | A precomputed study-structure root or a marker that the root is unavailable or needs a version selection. |
+| Neighbour row | One stored nearest descriptive-chunk hit of one query chunk, keyed by the query and target chunk ids and holding their cosine score. The serving artifact build replaces every neighbour row of a dataset. |
+| Packed search relation | The dataset's group, packed vector block and metadata tables used by exact semantic search. |
+| Native code | C++ compiled into machine instructions, loaded as a shared library by Python or as an extension by PostgreSQL. |
+| Native fact handle | A worker-owned native database connection and retained prerequisite facts reused across compilations. |
 
 ## Search and comparison
 
@@ -67,6 +90,7 @@ This glossary defines the terms the documentation uses for courses, search, comp
 | Semantic match | A course whose embedded teaching text is close in meaning to the query, kept above a configured minimum score. |
 | Unified search | The search that runs every search method the site serves for one query and merges their results into one entry per course. |
 | Match source | A search method that returned a given result. One result can have several match sources. |
+| Course resolver | The shared read that matches an exact canonical course identity first and an exact current official code second, and returns one represented course record per input in caller order. A blank, unknown or ambiguous input fails instead of resolving to a guess. |
 | Tier order | The configured order of the search methods that sorts merged results, with active courses before inactive ones. |
 | Comparison meter | One of the five percentages that compare two courses: **Overall relatedness**, **Content similarity**, **Learning-outcome similarity**, and **Overlap** in each direction. |
 | Overlap | The share of one course's teaching text that has a close match in the other course. |
@@ -100,7 +124,7 @@ This glossary defines the terms the documentation uses for courses, search, comp
 | Active only | The setting that leaves inactive courses out of search results, the prerequisite graph and route, and the Discover lists. |
 | Minimum route | The set of courses that meets a course's prerequisites with the fewest new credits. The app finds it with **Find minimum route**. |
 | New credits | The credits of every course in a route that is not in the basis, each course counted once. |
-| Route outcome | The result of a minimum route calculation: **Exact minimum route**, **Approximate route**, **No route found**, **Route unresolved**, **No route exists**, or **Shortfall**. |
+| Route outcome | The result of a minimum route calculation: Exact minimum route, Approximate route, No route found, Route unresolved, No route exists, or Shortfall. The route panel tags them **exact**, **approximate**, **timeout**, **unresolved**, **no solution** and **shortfall**. |
 | Shortfall | The route outcome in which a module rule is below its bound because only active courses are allowed. |
 | Substitution | A set of courses that the university accepts in place of one course. A substitution applies in one direction only. |
 | Unresolved requirement | An official requirement that cannot be resolved to courses, such as a reference to a missing course. |
@@ -117,6 +141,8 @@ This glossary defines the terms the documentation uses for courses, search, comp
 | Inferred dependence | The mark on a next course that is listed only because of inferred prerequisites. |
 | Recommendations | Courses with teaching text similar to the basis, ranked by similarity and listed in the **Discover** tab as **Recommended for you** on a site that serves the embedding features. |
 | Course point | The unit-length mean of a course's centred, unit-length content and learning-outcomes chunk vectors, used to compute recommendation relatedness. Each chunk has equal weight. |
+| Basis vector | The one profile vector a recommendation read builds from its basis, centred by the embedding hub before it is measured against candidate summaries and chunks. |
+| Course centroid | The stored course point of one represented course, kept with its representative identity and embedding configuration. The recommendation command applies the relatedness floor to it before reading candidate summaries and chunks. |
 | Near-duplicate | A candidate recommendation that overlaps a basis course above a configured share. Near-duplicates are left out of recommendations. |
 | Structure of studies | The official structure of each programme in the **Structure of studies** tab, shown as modules, courses, and rules. |
 | Programme | A degree programme or a bare module at the top level of the structure of studies. The app adds one with **Add programme** and orders them in the tab. The row's kind label follows the official type, so a top-level bare module reads **module** while its position gives it the programme menu and reset. |
@@ -127,19 +153,22 @@ This glossary defines the terms the documentation uses for courses, search, comp
 
 | Term | Meaning |
 |---|---|
-| Tab | One of the five views of the app: **Search**, **Compare**, **Prerequisites**, **Discover**, and **Structure of studies**. **Compare** appears only on a site that serves the embedding features. |
+| Tab | One of the five views of the app: **Search**, **Compare**, **Prerequisites**, **Discover**, and **Structure of studies**. **Compare** appears only on a site that serves the embedding features. **Feedback** opens its own page and is not a tab. |
 | Selected course | A course added to the current profile's selection. |
 | Completed course | A course marked with **Mark completed**. A completed course is always selected. |
-| Course menu | The menu of actions on a course: **Add to comparison** on a site that serves the embedding features, **Open prerequisite graph**, **Add to Unplaced studies**, **Mark completed**, and **Open in Sisu**. |
+| Shared selection | The selected and completed course identities that every tab reads and that a structure action updates in one place. |
+| Course menu | The menu of actions on a course: **Add to comparison** on a site that serves the embedding features, **Open prerequisite graph**, the Unplaced studies action the course's own state allows, **Mark completed** or **Remove completion**, and **Open in Sisu**. |
 | Sisu capture | The file the Sisu import script downloads from a plan in Sisu's structure of studies view, which the app imports as one profile. It is separate from a capture of the curriculum source. |
 | Profile | A named set of the app's state in the browser: language, selected and completed courses, and the state of each tab. |
 | Open tab | The tab a browser tab shows. It belongs to that browser tab's session storage rather than to a profile. |
 | App language | The language of the app's interface and course names in a profile, either Finnish or English. |
 | Browser state | The saved state of every profile, kept in the browser's local storage. |
 | Read cache | The bounded in-memory store of successful reads and calculations above the tab panes, scoped to the serving dataset identity and never part of a profile or of browser storage. Successful study structures also persist in a derived IndexedDB store under that identity, their root and their module-version selection. |
+| Discovery cache | The bounded persistent store of successful next-course and recommendation reports above the tab panes, scoped to the serving dataset identity, with four reports per list and a 30-day age per report. |
 | Bottom bar | The bar at the bottom of the app at a phone width, with one button for each served tab and **More**. |
-| Bottom notice | A temporary message at the bottom of the app that reports an action's result and can offer a button for a related action. |
+| Bottom notice | A temporary message at the bottom of the app that reports an action's result and can offer a button or link one phrase inside its words to a related surface. |
 | Docs | The documentation wiki inside the app, opened from **Docs**. |
+| Feedback page | The standalone page at `/feedback` that renders the configured feedback definition, its answers, its chosen images and one publication choice, and returns to the app without becoming a tab. |
 
 ## Inference
 
@@ -155,7 +184,7 @@ This glossary defines the terms the documentation uses for courses, search, comp
 | Cross-encoder | The reranking model that reads the target and a candidate together as a query and document pair and returns one score for that pair. |
 | Proposal | One validated inference result for one target course. |
 | Finding flag | A mark of uncertainty that the language model attaches to one proposed option or equivalence group. |
-| Publication | The step that writes the accepted proposals into the stored inferred prerequisites and equivalence groups, replacing the stored result as a whole. |
+| Publication | The inference step that writes the accepted proposals into the stored inferred prerequisites and equivalence groups, replacing the stored result as a whole. |
 | Inferred set | The stored inferred prerequisites of one course, with their coverage state. |
 | Inference coverage | The counts of eligible, retained complete, published, and uncovered target courses that the inference coverage report gives. |
 | Disposition | An operator decision recorded for one target course: done, failed, or automatic. |
@@ -170,9 +199,10 @@ This glossary defines the terms the documentation uses for courses, search, comp
 | Local stage | A stage that runs on the machine that runs the administration command: ingestion and embedding. |
 | Remote stage | A stage that runs on the worker: translation and inference. |
 | Lifecycle | The state of a stage: idle, starting, running, paused, stopped, completed, or failed. A status read reports a starting or running stage with no live process as interrupted. |
-| Worker | The separate machine that runs the remote stages on its own copy of the selected dataset. |
+| Worker | The separate machine that runs the remote stages on its own copy of the Working dataset. |
 | Request path | The route from the browser app through the web server to the database and the embedding service. |
 | Front router | The web server process that listens on the configured loopback port, admits each request, forwards it to one worker process and writes its request record. |
+| Supervisor | The web server process that resolves one settings bundle, validates the serving artifacts, builds the lookup projection and the shared cache regions, forks the worker processes and starts the front router. Every child inherits its serving generation, and it replaces an exited child on the same socket. |
 | Worker process | One of the `WEB_WORKERS` web server processes that serve dataset reads behind the front router. |
 | Admission control | The front router's limits on API requests when `ADMISSION_ENABLED` is true: the light rate and concurrency limits, the heavy budget, the heavy slots and the heavy queue, each scaled by the load regime. |
 | Admission class | The class the front router gives one API request: free, light or heavy. A heavy request carries an estimated cost in core-seconds and passes the heavy limits. |
@@ -180,20 +210,26 @@ This glossary defines the terms the documentation uses for courses, search, comp
 | Load score | The configured weighted sum of whole-host CPU utilisation and the front router's light and heavy request activity over the configured load window. |
 | Load regime | The admission state derived from the load score: headroom, middle or saturated. Saturation holds until the score falls below the configured release line. The regime controls the request limits, the heavy budget, the heavy slots and the queue capacity. |
 | Heavy budget | The core-seconds of heavy requests one user may spend in one window. It moves linearly from `ADMISSION_HEAVY_BUDGET_CORE_SECONDS` at the headroom position to `ADMISSION_HEAVY_BUDGET_SATURATED_CORE_SECONDS` at saturation. |
+| Graph cost cache | The front router's process-memory store of the measured elapsed cost of each prerequisite graph build, keyed by the serving dataset identity and the graph cache field of the request. A build recorded under another dataset identity clears it. |
 | Preparation path | The route from the administration command through the four stages to the database. |
 | Worker session | One run of a remote stage on the worker, from its prepared database copy to the return of the result. |
 | Checkout identity | The branch and the HEAD revision of one Git checkout, which setup and preflight read on the server and on the worker. |
 | Dataset | One complete database of courses, modules, and derived data. |
+| Dataset role | One of the two positions a dataset holds, Selected or Working, each named by one pointer file under the administration state root. |
 | Dataset receipt | The record kept for one dataset that names its dataset id, database name, enrollment kind, retained dump digest, and the verification read from the database. |
-| Selected dataset | The dataset that the web server and the stages read. |
+| Enrollment | The step that records a dataset with a receipt under the administration state root and publishes the role pointer that names it. The application and its loaders never enroll a dataset at startup. |
+| Dataset promotion | The copy of one enrolled dataset to Selected: the copy is built and verified, the Selected pointer names it, and the restarted site is proved to serve it, with the previous selection restored when a later step fails. |
+| Selected dataset | The enrolled dataset that the Selected pointer names and the web server serves. Its database name replaces the configured database name for that read. |
+| Working dataset | The enrolled dataset that the Working pointer names and the pipeline stages write. It is optional and never changes Selected. |
+| Bootstrap | A state root with neither pointer and no dataset or session records, which serves the configured database directly. |
 | Database snapshot | A verified dump of one dataset, taken when a worker session starts and when it returns. |
-| Dataset return | The step that brings the worker's finished database back and makes it the selected dataset. |
-| Dataset rotation | The step after a dataset return that keeps the selected dataset and the one before it, and deletes older datasets. |
+| Dataset return | The step that brings the worker's finished database back and publishes it as Working. |
+| Dataset rotation | The step after a dataset return that keeps each role's current dataset and its predecessor, and deletes older Working ancestors outside both pairs. |
 | Catalogue summary | A read-only report of the counts of curriculum periods, courses, active courses, course versions, modules, and module versions in a dataset. |
-| Coverage report | A read-only report on how much of the selected dataset has translations, embeddings, and inferred prerequisites. |
+| Coverage report | A read-only report on how much of the named dataset role has translations, embeddings, and inferred prerequisites. |
 | Periodic reboot | A restart of the worker after a configured amount of model run time. |
 | Administration surface | The administration console and the administration backend, with their own package, configuration and process beside the web server. |
-| Administration console | The separate signed-in browser application with the tabs **Dashboard**, **Data preparation**, **Inference**, **Logs** and **Settings**, which runs fixed administration commands. |
+| Administration console | The separate signed-in browser application with the tabs **Dashboard**, **Data preparation**, **Inference**, **Logs**, **Settings** and **Feedback**, which runs fixed administration commands. The **Datasets** panel of the Settings tab shows the Selected and Working datasets. |
 | Administration backend | The separate loopback process that signs an operator in, admits each console request and runs the fixed command behind it. |
 | Administration session | One signed-in grant of the administration backend, held in that process's memory until it reaches its configured idle or total lifetime, the operator signs out, the stored credential changes, or the backend restarts. |
 | Anonymous session | An in-memory grant of the administration backend that carries the CSRF token used to sign in and grants no administration access. |
@@ -201,7 +237,11 @@ This glossary defines the terms the documentation uses for courses, search, comp
 | Administration lock | The file `data/admin-web/lock` that three consecutive failed sign-ins create. While it exists, the administration backend refuses every request. |
 | Command log | The administration backend's bounded record of its explicit commands, its failed automatic reads, and its sign-in, failed sign-in and lock events. |
 | Request record | One line the web server appends for one HTTP request: its hour, route, status and duration. |
-| Usage report | The report of the request records in one window of hours, with the request count, the mean duration and one row per route. Each report prunes the records older than the configured retention. |
+| Next-course report cache | The byte-bounded region that the web server's supervisor creates before it forks the worker processes, so every worker process shares it. Its entries are keyed by the canonical selected and completed sets, the basis, the mode, the language, the inference flag and the activity flag, and the recommendation command reads it for its exclusion set. |
+| Usage report | The report of the request records in one window of hours, with the request count, the mean duration, the p95 and p99 durations and one row per route. Each report prunes the records older than the configured retention. |
+| Feedback definition | The ordered feedback fields with their English and Finnish labels and options, the image upload limits and the GitHub issue mapping, held in `config/feedback-form.json`. |
+| Feedback application store | The separate PostgreSQL database that `config/feedback.toml` names, which holds the feedback submissions and their publication state apart from every curriculum dataset. |
+| Feedback publication | The sender's one bounded attempt to turn one opted-in feedback submission into one GitHub issue in the configured repository, recorded on the submission as its publication state. |
 | Backup file | One file under `data/backups` that the backup cleanup lists and can delete. |
 | App rebuild | The maintenance command that builds the browser app, recreates the database and embedding containers, restarts the web server and checks its bind. |
 | Administration rebuild | The maintenance action that builds the administration console and then queues a restart of the administration backend, which signs every operator out. |

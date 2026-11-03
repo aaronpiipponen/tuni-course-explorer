@@ -36,14 +36,10 @@ from course_explorer.prerequisite.domain import (
     InferredReadState,
     InferredSetCoverage,
     InferredSetReadResult,
-    PrerequisiteExpression,
 )
 from course_explorer.prerequisite.structure import PrerequisiteSolverStructure
 from tests.prerequisite._expression_support import (
     course_summary as course_summary,
-)
-from tests.prerequisite._expression_support import (
-    fixture_structure as _fixture_structure,
 )
 from tests.prerequisite._expression_support import (
     inferred_course as _shared_inferred_course,
@@ -242,6 +238,16 @@ class FakeCurriculumRead:
         self.course_reads: list[tuple[str, ...]] = []
         self.module_reads: list[tuple[str, ...]] = []
 
+    @property
+    def courses(self) -> tuple[CatalogueCourse, ...]:
+        """Return every supplied course in canonical group order."""
+        return self._courses
+
+    @property
+    def modules(self) -> tuple[CatalogueModule, ...]:
+        """Return every supplied module."""
+        return self._modules
+
     def get_courses(self, group_ids) -> tuple[CatalogueCourse, ...]:
         """Return only the requested supplied courses, in canonical group order."""
         self.course_reads.append(tuple(group_ids))
@@ -255,30 +261,17 @@ class FakeCurriculumRead:
         return tuple(module for module in self._modules if module.group_id in wanted)
 
 
-class FullCatalogueFakeCurriculum(FakeCurriculumRead):
-    """Scoped-read fake that answers every request with the whole catalogue.
-
-    It exists only to prove that on-demand caching of referenced identities produces the same
-    compilation as having every canonical identity preloaded.
-    """
-
-    def get_courses(self, group_ids) -> tuple[CatalogueCourse, ...]:
-        """Return the whole course catalogue regardless of the requested identities."""
-        self.course_reads.append(tuple(group_ids))
-        return self._courses
-
-    def get_modules(self, group_ids) -> tuple[CatalogueModule, ...]:
-        """Return the whole module catalogue regardless of the requested identities."""
-        self.module_reads.append(tuple(group_ids))
-        return self._modules
-
-
 class RecordingInferredSetRead:
     """Recording `InferredSetRead` returning configured per-target results."""
 
     def __init__(self, results: dict[str, InferredSetReadResult] | None = None):
         self.reads: list[str] = []
         self._results = dict(results or {})
+
+    @property
+    def results(self) -> dict[str, InferredSetReadResult]:
+        """Return the configured per-target results."""
+        return self._results
 
     def read(self, target_group_id: str) -> InferredSetReadResult:
         """Record and return the configured result, defaulting to unavailable."""
@@ -300,6 +293,11 @@ class RecordingEquivalenceGroupRead:
         self.reads: list[str] = []
         self.bulk_reads: list[tuple[str, ...]] = []
         self._groups = dict(groups or {})
+
+    @property
+    def groups(self) -> dict[str, tuple[CurrentEquivalenceGroup, ...]]:
+        """Return the configured per-member groups."""
+        return self._groups
 
     def read_for_member(self, member_group_id: str) -> tuple[CurrentEquivalenceGroup, ...]:
         """Record and return the configured sorted group tuple, defaulting to empty."""
@@ -373,36 +371,6 @@ def current_result(
 
 
 inferred_course = functools.partial(_shared_inferred_course, inference=INFERENCE_METADATA)
-
-
-def make_structure(
-    root: CourseSummary,
-    requirements: PrerequisiteExpression | None,
-    courses: tuple[CourseSummary, ...],
-    *,
-    include_recommended: bool = False,
-    include_inferred: bool = False,
-    active_only: bool = False,
-    excluded_group_ids: tuple[str, ...] = (),
-    completed_node_keys: tuple[str, ...] = (),
-    excluded_node_keys: tuple[str, ...] = (),
-    cycle_group_ids: tuple[str, ...] = (),
-    coverage: tuple[object, ...] = (),
-) -> PrerequisiteSolverStructure:
-    """Build one native fixture structure with projector-installed bindings."""
-    return _fixture_structure(
-        requirements,
-        root=root,
-        courses=courses,
-        include_recommended=include_recommended,
-        include_inferred=include_inferred,
-        active_only=active_only,
-        excluded_group_ids=excluded_group_ids,
-        completed_node_keys=completed_node_keys,
-        excluded_node_keys=excluded_node_keys,
-        cycle_group_ids=cycle_group_ids,
-        coverage=coverage,
-    )
 
 
 def piece_of(structure: PrerequisiteSolverStructure, use_id: str):

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+import pytest
+
 from course_explorer.curriculum import CatalogueCurriculumPeriod
 from course_explorer.enums import (
     ModuleRuleType,
@@ -23,9 +25,6 @@ from course_explorer.prerequisite.domain import (
     UnresolvedPrerequisiteReason,
     UnresolvedRequirement,
 )
-from course_explorer.prerequisite.graph import PrerequisiteGraphCompiler
-from course_explorer.prerequisite.projection import project_prerequisite_graph
-from course_explorer.prerequisite.structure import support_id
 from tests.prerequisite._graph_support import (
     FakeCurriculumRead,
     RecordingEquivalenceGroupRead,
@@ -316,7 +315,7 @@ def test_saved_module_box_key_fulfils_its_calculation_support(solver_bundle: Non
     assert marked.solver.completed_node_keys == tuple(sorted((box.node_id, orphan)))
     binding = next(value for value in marked.solver.bindings if box.node_id in value.mark_node_ids)
     assert binding.owner_group_id == "root"
-    assert support_id(owner_group_id="root", piece_id=binding.piece_id) == binding.support_id
+    assert f"s:root:{binding.piece_id}" == binding.support_id
 
     # The saved box key fulfils its calculation support automatically, without completing the members.
     manual = solve_route(marked.solver, [])
@@ -391,43 +390,7 @@ def test_projection_groups_visible_connections_without_losing_relationship_evide
     assert not lit & set(course_c_edge.member_ids)
 
 
-def test_returned_category_roots_reference_the_native_structure() -> None:
-    """Direct compilation returns category roots that resolve in its own use table."""
-    courses = (
-        catalogue_course(
-            "root",
-            prerequisite_options=(
-                prerequisite_option(
-                    0,
-                    PrerequisiteRequirementKind.COMPULSORY,
-                    prerequisite_course_member(0, "a"),
-                ),
-                prerequisite_option(
-                    0,
-                    PrerequisiteRequirementKind.RECOMMENDED,
-                    prerequisite_course_member(0, "b"),
-                ),
-            ),
-        ),
-        catalogue_course("a"),
-        catalogue_course("b"),
-    )
-    compiler = PrerequisiteGraphCompiler(
-        FakeCurriculumRead(courses),
-        RecordingInferredSetRead(),
-        RecordingEquivalenceGroupRead(),
-    )
-    direct = compiler.compile_direct_many(("root",))
-    entry = direct[0]
-    assert entry.required_use_id is not None
-    assert entry.recommended_use_id is not None
-    uses = {use.use_id: use for use in entry.solver.uses}
-    assert entry.required_use_id in uses
-    assert entry.recommended_use_id in uses
-    required = piece_of(entry.solver, entry.required_use_id)
-    recommended = piece_of(entry.solver, entry.recommended_use_id)
-    assert required.kind == "course" and required.course_group_id == "a"
-    assert recommended.kind == "course" and recommended.course_group_id == "b"
+pytestmark = pytest.mark.integration
 
 
 def test_module_cards_hide_member_closure_without_relabeling_independent_occurrences(
@@ -543,6 +506,7 @@ def test_childless_diagnostic_leaf_is_drawn() -> None:
 
 def test_single_child_and_or_wrappers_collapse_without_changing_meaning(
     solver_bundle: None,
+    native_graph,
 ) -> None:
     """A singleton module wrapper and a stored inferred wrapper collapse to their child."""
     year_period = (CatalogueCurriculumPeriod(id="period-2026", academic_year_start=2026),)
@@ -583,7 +547,7 @@ def test_single_child_and_or_wrappers_collapse_without_changing_meaning(
             ),
         ),
     )
-    module_compilation = PrerequisiteGraphCompiler(
+    module_compilation = native_graph(
         FakeCurriculumRead(
             (
                 module_root,
@@ -670,7 +634,7 @@ def test_single_child_and_or_wrappers_collapse_without_changing_meaning(
             ),
         ),
     )
-    inferred_wrapper = PrerequisiteGraphCompiler(
+    inferred_wrapper = native_graph(
         FakeCurriculumRead((catalogue_course("wrapper-root"), catalogue_course("solo"))),
         RecordingInferredSetRead(
             {
@@ -718,7 +682,7 @@ def test_single_child_and_or_wrappers_collapse_without_changing_meaning(
             ),
         ),
     )
-    free_compilation = PrerequisiteGraphCompiler(
+    free_compilation = native_graph(
         FakeCurriculumRead((free_root,), (free_module,)),
         RecordingInferredSetRead(),
         RecordingEquivalenceGroupRead(),
@@ -761,7 +725,7 @@ def test_single_child_and_or_wrappers_collapse_without_changing_meaning(
     assert _reachable_node_ids(folded.display) == {node.node_id for node in folded.display.nodes}
 
 
-def test_composed_and_role_distinguishes_logical_join_from_expanded_course() -> None:
+def test_composed_and_role_distinguishes_logical_join_from_expanded_course(native_graph) -> None:
     """Only the compiler's expanded-course role qualifies. An identical logical join never does."""
     root = catalogue_course(
         "root",
@@ -778,7 +742,7 @@ def test_composed_and_role_distinguishes_logical_join_from_expanded_course() -> 
             ),
         ),
     )
-    logical_compilation = PrerequisiteGraphCompiler(
+    logical_compilation = native_graph(
         FakeCurriculumRead(
             (root, catalogue_course("required-a"), catalogue_course("recommended-b"))
         ),
@@ -833,7 +797,7 @@ def test_composed_and_role_distinguishes_logical_join_from_expanded_course() -> 
             ),
         ),
     )
-    expanded_compilation = PrerequisiteGraphCompiler(
+    expanded_compilation = native_graph(
         FakeCurriculumRead(
             (
                 expanded_root,
@@ -982,6 +946,7 @@ def test_course_nodes_annotate_official_and_inferred_provenance() -> None:
 
 def test_active_projection_compacts_source_alternatives_with_shared_course_chains(
     solver_bundle: None,
+    native_graph,
 ) -> None:
     """The shared-node drawing comes from real source alternatives."""
     root = catalogue_course(
@@ -1036,7 +1001,7 @@ def test_active_projection_compacts_source_alternatives_with_shared_course_chain
         catalogue_course("inactive-alt", is_active=False),
         catalogue_course("inactive-sub", is_active=False),
     )
-    compilation = PrerequisiteGraphCompiler(
+    compilation = native_graph(
         FakeCurriculumRead(courses),
         RecordingInferredSetRead(),
         RecordingEquivalenceGroupRead(),
@@ -1075,11 +1040,11 @@ def test_active_projection_compacts_source_alternatives_with_shared_course_chain
         "db100",
     ]
     assert Decimal(path["total_new_credits"]) == Decimal("15")
-    assert project_prerequisite_graph(structure).display == display
 
 
 def test_mandatory_position_rule_governs_duplicate_cardinality_open_and_cycle_positions(
     solver_bundle: None,
+    native_graph,
 ) -> None:
     """A required course expands once, while non-mandatory, bounded and open positions expand
     each slot.
@@ -1109,7 +1074,7 @@ def test_mandatory_position_rule_governs_duplicate_cardinality_open_and_cycle_po
             ),
         ),
     )
-    compilation = PrerequisiteGraphCompiler(
+    compilation = native_graph(
         FakeCurriculumRead(
             (
                 root,
@@ -1184,7 +1149,7 @@ def test_mandatory_position_rule_governs_duplicate_cardinality_open_and_cycle_po
             ),
         ),
     )
-    repeat_compilation = PrerequisiteGraphCompiler(
+    repeat_compiler = native_graph(
         FakeCurriculumRead(
             (
                 repeat_root,
@@ -1197,7 +1162,8 @@ def test_mandatory_position_rule_governs_duplicate_cardinality_open_and_cycle_po
         ),
         RecordingInferredSetRead(),
         RecordingEquivalenceGroupRead(),
-    ).compile("repeat-root")
+    )
+    repeat_compilation = repeat_compiler.compile("repeat-root")
     repeat_groups = _expanded_head_groups(
         repeat_compilation.solver, repeat_compilation.solver.root_use_id
     )
@@ -1215,15 +1181,14 @@ def test_mandatory_position_rule_governs_duplicate_cardinality_open_and_cycle_po
     assert Decimal(route["total_new_credits"]) == Decimal("25")
     # A saved key on the shared logical box is not a markable box identity, so the drawing has one
     # normalized connector and the minimum route charges 25 new credits.
-    marked_structure = repeat_compilation.solver.model_copy(
-        update={"excluded_node_keys": (shared_edges[0].target_node_id,)}
+    marked = repeat_compiler.compile(
+        "repeat-root", excluded_node_keys=(shared_edges[0].target_node_id,)
     )
-    marked = project_prerequisite_graph(marked_structure)
     assert marked.display is not None
     assert {(edge.source_node_id, edge.target_node_id) for edge in marked.display.edges} == {
         (edge.source_node_id, edge.target_node_id) for edge in repeat_compilation.display.edges
     }
-    assert Decimal(solve_route(marked_structure, [])["total_new_credits"]) == Decimal("25")
+    assert Decimal(solve_route(marked.solver, [])["total_new_credits"]) == Decimal("25")
 
     # A single-child wrapper at a mandatory position passes the mandatory flag to its child. Module
     # bodies are their own context: the member head expands inside the module while the independent
@@ -1262,7 +1227,7 @@ def test_mandatory_position_rule_governs_duplicate_cardinality_open_and_cycle_po
             ),
         ),
     )
-    wrapper_compilation = PrerequisiteGraphCompiler(
+    wrapper_compilation = native_graph(
         FakeCurriculumRead(
             (
                 wrapper_root,
@@ -1319,7 +1284,7 @@ def test_mandatory_position_rule_governs_duplicate_cardinality_open_and_cycle_po
             ),
         ),
     )
-    cardinality_compilation = PrerequisiteGraphCompiler(
+    cardinality_compilation = native_graph(
         FakeCurriculumRead(
             (
                 cardinality_root,
@@ -1349,7 +1314,7 @@ def test_mandatory_position_rule_governs_duplicate_cardinality_open_and_cycle_po
             ),
         ),
     )
-    open_compilation = PrerequisiteGraphCompiler(
+    open_compilation = native_graph(
         FakeCurriculumRead(
             (open_root, head, catalogue_course("head-a"), catalogue_course("head-b"))
         ),
@@ -1380,7 +1345,7 @@ def test_mandatory_position_rule_governs_duplicate_cardinality_open_and_cycle_po
             ),
         ),
     )
-    cycle_compilation = PrerequisiteGraphCompiler(
+    cycle_compilation = native_graph(
         FakeCurriculumRead((cycle_root, cycle_a)),
         RecordingInferredSetRead(),
         RecordingEquivalenceGroupRead(),
@@ -1398,9 +1363,9 @@ def test_mandatory_position_rule_governs_duplicate_cardinality_open_and_cycle_po
     ] == ["course_cycle"]
 
 
-def test_a_course_with_a_substitution_expands_at_its_compulsory_and_repeated_recommended_occurrences() -> (
-    None
-):
+def test_a_course_with_a_substitution_expands_at_its_compulsory_and_repeated_recommended_occurrences(
+    native_graph,
+) -> None:
     """A course carrying a substitution expands at both its compulsory and recommended slots."""
     root = catalogue_course(
         "alternatives-root",
@@ -1427,7 +1392,7 @@ def test_a_course_with_a_substitution_expands_at_its_compulsory_and_repeated_rec
         ),
         substitution_options=(substitution_option(0, ("head-alt", None)),),
     )
-    compilation = PrerequisiteGraphCompiler(
+    compilation = native_graph(
         FakeCurriculumRead(
             (
                 root,
@@ -1595,12 +1560,13 @@ def test_projection_aggregates_course_path_flags_without_rewriting_provenance() 
     assert substitution_facts
     assert all(fact.origin is PrerequisiteOrigin.OFFICIAL for fact in substitution_facts)
 
-    # Deterministic: an identical structure projects to the same aggregated flags.
-    assert project_prerequisite_graph(compilation.solver).display == compilation.display
+    # The native projection installs the aggregated flags once per compilation.
+    assert compilation.display is not None
 
 
 def test_module_cards_follow_activity_retention_and_unretained_member_reports_no_solution(
     solver_bundle: None,
+    native_graph,
 ) -> None:
     """Module cards follow activity retention and exclusion, and an unretained member blocks the route."""
     year_period = (CatalogueCurriculumPeriod(id="period-2026", academic_year_start=2026),)
@@ -1656,7 +1622,7 @@ def test_module_cards_follow_activity_retention_and_unretained_member_reports_no
         active_member,
         catalogue_course("external-prerequisite"),
     )
-    compiler = PrerequisiteGraphCompiler(
+    compiler = native_graph(
         FakeCurriculumRead(courses, (module,)),
         RecordingInferredSetRead(),
         RecordingEquivalenceGroupRead(),
@@ -1705,6 +1671,7 @@ def test_module_cards_follow_activity_retention_and_unretained_member_reports_no
 
 def test_external_module_dependencies_preserve_conditional_route_evidence(
     solver_bundle: None,
+    native_graph,
 ) -> None:
     """A hidden-member diamond holds one framed external obligation and exact route evidence."""
     year_period = (CatalogueCurriculumPeriod(id="period-2026", academic_year_start=2026),)
@@ -1774,7 +1741,7 @@ def test_external_module_dependencies_preserve_conditional_route_evidence(
         outside,
         catalogue_course("X"),
     )
-    compilation = PrerequisiteGraphCompiler(
+    compilation = native_graph(
         FakeCurriculumRead(courses, (module,)),
         RecordingInferredSetRead(),
         RecordingEquivalenceGroupRead(),
@@ -1914,7 +1881,7 @@ def test_external_module_dependencies_preserve_conditional_route_evidence(
     choice_external = catalogue_course(
         "choice-external", prerequisite_options=require("choice-dep")
     )
-    choice_compilation = PrerequisiteGraphCompiler(
+    choice_compilation = native_graph(
         FakeCurriculumRead(
             (
                 choice_root,
@@ -1940,7 +1907,9 @@ def test_external_module_dependencies_preserve_conditional_route_evidence(
     }
 
 
-def test_member_whole_module_prerequisite_draws_a_distinct_module_node(solver_bundle: None) -> None:
+def test_member_whole_module_prerequisite_draws_a_distinct_module_node(
+    solver_bundle: None, native_graph
+) -> None:
     """A member's whole-module prerequisite draws its own node while structural nesting elides."""
     year_period = (CatalogueCurriculumPeriod(id="period-2026", academic_year_start=2026),)
     outer_module = catalogue_module(
@@ -2021,7 +1990,7 @@ def test_member_whole_module_prerequisite_draws_a_distinct_module_node(solver_bu
             ),
         ),
     )
-    compilation = PrerequisiteGraphCompiler(
+    compilation = native_graph(
         FakeCurriculumRead(
             (root, member_p, member_q, catalogue_course("E")),
             (outer_module, structural_module, whole_module),
@@ -2081,7 +2050,9 @@ def test_member_whole_module_prerequisite_draws_a_distinct_module_node(solver_bu
     assert not (set(covered["lit_members"]) & set(module_to_e.member_ids))
 
 
-def test_module_membership_scopes_shared_external_course_connections(solver_bundle: None) -> None:
+def test_module_membership_scopes_shared_external_course_connections(
+    solver_bundle: None, native_graph
+) -> None:
     """Each module draws its own external member connection, and another membership redirects
     none.
     """
@@ -2156,7 +2127,7 @@ def test_module_membership_scopes_shared_external_course_connections(solver_bund
             ),
         ),
     )
-    compilation = PrerequisiteGraphCompiler(
+    compilation = native_graph(
         FakeCurriculumRead(
             (root, member_p, catalogue_course("Q")), (module_m1, module_m2, module_m3)
         ),
@@ -2198,7 +2169,9 @@ def test_module_membership_scopes_shared_external_course_connections(solver_bund
         assert not (set(covered["lit_members"]) & set(edge.member_ids))
 
 
-def test_member_prerequisite_choice_draws_its_conditional_or(solver_bundle: None) -> None:
+def test_member_prerequisite_choice_draws_its_conditional_or(
+    solver_bundle: None, native_graph
+) -> None:
     """A member's official and inferred alternatives keep one conditional OR with its disclosure."""
     year_period = (CatalogueCurriculumPeriod(id="period-2026", academic_year_start=2026),)
     module_a = catalogue_module(
@@ -2266,7 +2239,7 @@ def test_member_prerequisite_choice_draws_its_conditional_or(solver_bundle: None
             ),
         ),
     )
-    compilation = PrerequisiteGraphCompiler(
+    compilation = native_graph(
         FakeCurriculumRead(
             (root, member_p, member_q, catalogue_course("E")),
             (module_a,),

@@ -1,8 +1,16 @@
-# Portable loopback bind, process supervision, browser-drawing and served-feature policy for
-# read-only HTTP serving.
+# External app address, loopback bind, process supervision, browser-drawing and
+# served-feature policy for read-only HTTP serving.
+# External root address of this site. The administration console's App link and the feedback
+# exact Host and Origin boundary both read this key. One absolute address at the root: HTTPS, or
+# plain HTTP for a loopback hostname, without credentials, wildcard, whitespace, query or fragment.
+WEB_APP_URL = "http://localhost:8037/"
 WEB_HOST = "127.0.0.1"
 WEB_PORT = 8037
 WEB_WORKERS = 4
+# glibc malloc arenas per web process, as a positive integer. The launcher passes it to the
+# supervisor, and the router and every forked worker inherit it. Fewer arenas cap the free heap
+# each worker retains under concurrency.
+WEB_MALLOC_ARENA_MAX = 2
 # The supervisor replaces an exited router or worker on the same listening socket. This many
 # exits of the same role inside the window stop the unit for systemd to restart.
 WEB_RESPAWN_EXIT_LIMIT = 3
@@ -13,24 +21,25 @@ PREREQUISITE_GRAPH_MAX_ELEMENTS = 500
 WEB_EMBEDDINGS_ENABLED = true
 # Serve inferred prerequisite data and the Inferred controls on every surface.
 WEB_INFERENCE_ENABLED = true
-# Retained serving caches. Byte values are bytes and entry keys are entry counts.
-# WEB_RETAINED_CACHE_AGGREGATE_BYTES is the ceiling for WEB_WORKERS times one process's
-# retained share, where that share is the sum of the three per-process shares below. One serving
-# process retains the normalized lookup projection, raw prerequisite source facts and descriptive
-# chunk tuples. The aggregate calculation is WEB_WORKERS *
-# (WEB_LOOKUP_PROJECTION_CACHE_BYTES + WEB_PREREQUISITE_SOURCE_CACHE_ENTRIES *
-# WEB_PREREQUISITE_SOURCE_CACHE_ENTRY_BYTES + WEB_CHUNK_CACHE_ENTRIES *
-# WEB_CHUNK_CACHE_ENTRY_BYTES).
-WEB_RETAINED_CACHE_AGGREGATE_BYTES = 1073741824
-# Bytes the normalized course and module lookup projection is accounted at.
-WEB_LOOKUP_PROJECTION_CACHE_BYTES = 33554432
-# Raw course and module source facts one process retains, and the bytes each is accounted at.
-WEB_PREREQUISITE_SOURCE_CACHE_ENTRIES = 8000
-WEB_PREREQUISITE_SOURCE_CACHE_ENTRY_BYTES = 7006
-# Descriptive chunk tuples one process retains, and the bytes each is accounted at. The per-entry
-# value estimates the retained size of one cached chunk tuple.
-WEB_CHUNK_CACHE_ENTRIES = 497
-WEB_CHUNK_CACHE_ENTRY_BYTES = 137794
+# Retained serving caches. Each key gives the byte size of one supervisor-owned cache region, and
+# every region lives as long as the supervisor that created it. The artifact store, shared centroid
+# and chunk stores and the native fact handles are charged to the worker cgroup, not to this Python
+# share.
+# Bytes of the shared next-course report region.
+WEB_NEXT_COURSE_REPORT_CACHE_BYTES = 100663296
+# Bytes of the shared query-embedding region.
+WEB_QUERY_EMBEDDING_CACHE_BYTES = 50331648
 # Retention in days for the per-request usage records. The usage report keeps records from the
 # current hour back this many days. A requested hour window longer than this retention is refused.
 USAGE_RETENTION_DAYS = 30
+# Request-input bounds for the read-only API. Each course list in one request holds at most this
+# many identities, and each identity, official code and module-version key or value holds at most
+# this many characters.
+WEB_REQUEST_MAX_COURSE_ITEMS = 500
+WEB_REQUEST_MAX_IDENTIFIER_LENGTH = 40
+# Maximum characters of one search query text.
+WEB_REQUEST_MAX_QUERY_LENGTH = 500
+# Bytes of one request body the front router reads. A larger body is refused with 413. The largest
+# legitimate body is a study-structure request with every input at its bound, about 64.6 KB, so this
+# leaves about 9 KB of headroom.
+WEB_REQUEST_BODY_MAX_BYTES = 73728

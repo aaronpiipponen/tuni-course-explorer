@@ -4,7 +4,7 @@ The translation stage runs on the worker and fills the missing name, content, an
 
 ## What the stage fills
 
-Translation is a [Remote stage](/docs/reference/glossary.md#administration) of the preparation path. It works on the worker's own copy of the selected dataset, and the finished copy comes back at the dataset return.
+Translation is a [Remote stage](/docs/reference/glossary.md#administration) of the preparation path. It works on the worker's own copy of the Working dataset, and the finished copy comes back at the dataset return.
 
 For every represented course the stage reads six cells: the name, the content, and the learning outcomes, each in Finnish and in English. It fills a cell when the version holds no official text for that field and language and the same field holds official text in the other language. That official text is the source of the translation.
 
@@ -12,7 +12,7 @@ A cell whose field holds official text in neither language is left as it is, bec
 
 Its output holds derived translation entries only, and those entries are kept apart from the official text. The official text, the embeddings, and the inference results of the dataset are written by their own stages, and the entries of this stage reach the store only through the import described in [The output it publishes](#the-output-it-publishes).
 
-![The worker reads its own copy of the selected dataset. The selector queues the cells to translate, the translation runtime answers one cell per request, and the output file is republished after every entry. The import writes the entries into the translation store of the same copy, and the dataset return brings the whole copy back. The outlined frame marks the steps that run on the worker.](/docs/diagrams/translation-pipeline.svg)
+![The worker reads its own copy of the Working dataset, inside the outlined frame that marks the steps running there. The selector queues the cells to translate, the translation runtime answers one cell per request, and the output file is republished after every entry. The import writes the entries into the translation store of the same copy, and the dataset return brings the whole copy back.](/docs/diagrams/translation-pipeline.svg)
 
 ## Which cells are queued
 

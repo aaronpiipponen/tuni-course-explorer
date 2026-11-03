@@ -48,7 +48,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from course_explorer.administration import utc_now
 from course_explorer.config import (
-    load_embedding_settings,
+    load_embedding_runtime_settings,
     load_inference_context_settings,
     load_inference_rerank_input_settings,
     load_inference_rerank_settings,
@@ -112,11 +112,17 @@ from course_explorer.validation import require_aware as _require_aware
 class InferenceJobRuntime(GenerationRuntimeControl, Protocol):
     """One owned worker runtime's idempotent load/unload and elapsed-request scope control."""
 
-    def start_rerank(self) -> None: ...
+    def start_rerank(self) -> None:
+        """Load the reranking model, or leave it loaded."""
+        ...
 
-    def stop_rerank(self) -> None: ...
+    def stop_rerank(self) -> None:
+        """Unload the reranking model, or leave it unloaded."""
+        ...
 
-    def request_scope(self, seconds: float) -> AbstractContextManager[None]: ...
+    def request_scope(self, seconds: float) -> AbstractContextManager[None]:
+        """Limit one request's HTTP I/O to ``seconds`` of elapsed time."""
+        ...
 
 
 class _JobModel(BaseModel):
@@ -246,7 +252,7 @@ def run_inference_job(
     before the writer issues another request. A bounded-stage summary or unrelated notification is
     not this callback.
     """
-    embedding_settings = load_embedding_settings()
+    embedding_settings = load_embedding_runtime_settings()
     settings = load_inference_settings()
     context_settings = load_inference_context_settings()
     selection = load_inference_selection_settings()
@@ -345,10 +351,10 @@ def run_inference_job(
                 stage_seconds += max(0.0, (ended - started).total_seconds())
 
         def progress() -> InferenceJobProgress:
-            # An explicit operator FAILED decision is never remaining at inference on any invocation,
-            # independently of transient exhaustion, while its genuinely pending/failed upstream work
-            # is counted. Invocation-local exhaustion is added once and never double-counts the
-            # terminal decision.
+            # An explicit operator FAILED decision is never remaining at inference on any
+            # invocation, independently of transient exhaustion, while its genuinely
+            # pending/failed upstream work is counted. Invocation-local exhaustion is added once
+            # and never double-counts the terminal decision.
             decided_failed = {
                 group_id for group_id in states if markers[group_id].disposition == "failed"
             }
@@ -874,7 +880,7 @@ def run_inference_job(
             notify()
             return cycle
 
-        # Emit the real durable done/total before any new measured pace exists.
+        # Emit the durable done and total before a measured pace exists.
         notify()
         if cycle.stage == "multiview":
             if not run_multiview_stage():

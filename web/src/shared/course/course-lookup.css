@@ -31,6 +31,9 @@
     15px Inter,
     sans-serif;
 }
+.course-lookup-controls > .toggle-chip {
+  flex: none;
+}
 .course-lookup-filters {
   margin-top: 8px;
 }
@@ -39,7 +42,9 @@
   max-height: 300px;
   overflow-y: auto;
   margin-top: 10px;
-  padding-bottom: 8px;
+  padding: 8px 0 8px 8px;
+  border: 1px solid var(--color-line);
+  border-radius: 12px;
   overscroll-behavior: contain;
 }
 .lookup-virtual-list {
@@ -73,12 +78,6 @@
   text-align: left;
   font-size: 13px;
   cursor: pointer;
-}
-.course-lookup-list
-  .lookup-virtual-spacer
-  > .lookup-virtual-row:first-child
-  > .prow {
-  border-top: 0;
 }
 .course-lookup-list .lookup-virtual-row > .prow:hover {
   background: rgb(255 255 255 / 4%);
@@ -142,6 +141,20 @@
     12px "JetBrains Mono",
     ui-monospace,
     monospace;
+}
+@media (min-width: 681px) {
+  /* The card's own bottom padding and border add to the space below the message, so the message's
+     top padding carries the same amount to keep both gaps equal. */
+  .course-lookup-empty {
+    padding: 23px 8px 8px;
+  }
+  /* A stable gutter keeps the result cards at the same inset whether or not the scrollbar shows. */
+  .course-lookup-list {
+    padding: 8px 0 2px 8px;
+  }
+  .course-lookup-list[data-scrollable="false"] {
+    padding-right: 8px;
+  }
 }
 @media (max-width: 680px) {
   .course-lookup-controls > input {

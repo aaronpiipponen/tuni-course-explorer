@@ -4,30 +4,32 @@ The Compare tab holds two courses in the slots A and B and reports how much of t
 
 ## The two slots
 
-Two courses fill the slots A and B.
+Two courses fill the slots A and B. A small **?** control above the slots opens the comparison help drawer, with empty or filled slots.
 
 1. Open the **Compare** tab. Each empty slot reads **+ Course A** or **+ Course B**.
 2. Select the empty slot. The course picker opens over the tab and names the slot it fills.
 3. Type part of a course name or code into the picker's filter field. The picker lists every course whose code or shown name contains the text.
 4. Select **+ add** on a course. The course takes the slot.
 
-A course also joins from any tab: choose **Add to comparison** in its [course menu](/docs/guides/README.md#shared-course-state), and it takes the first empty slot. A course that already holds a slot shows **Already in comparison** in place of that action.
+A course also joins from any tab: choose **Add to comparison** in its [course menu](/docs/guides/README.md#shared-course-state), and it takes the first empty slot. A bottom notice names the course it added, with the word **comparison** as a link to the Compare tab. A course that already holds a slot shows **Already in comparison** in place of that action.
 
 To see what one of the two courses expects before it is taken, open its [prerequisite graph](/docs/guides/prerequisites.md).
 
-![The course picker open below the two slots, with slot A filled and slot B empty, a filter field holding a code fragment, the Active only option, Close, and course rows that each end in + add. One row carries the completed badge and another the slot A badge.](/docs/screenshots/compare-course-picker.png)
+![The course picker with its choose course a label and Close above a filter field holding a code fragment, the Active only option, and course rows that each end in + add](/docs/screenshots/compare-course-picker.png)
 
-The picker carries its own **Active only** option and a **Close** button, and it closes when you choose a course, when you select outside it, and when you press Escape. While the picker is open the rest of the tab fades back.
+The picker carries its own **Active only** option and a **Close** button, and it closes when you choose a course, when you select outside it, and when you press Escape. On a desktop screen **Active only** sits inside the filter bar at its right, and on a phone it sits below the field. While the picker is open the rest of the tab fades back.
+
+The help drawer explains the slots, the five meters, the verdict and a missing measurement. The **Compare**, **Overall relatedness**, **Overlap**, **Verdict** and **not available** entries link to the pages that explain them.
 
 On a phone the two slots stack one above the other. Each filled slot shows A or B beside **Replace** and **Remove** in a head row above the code, the name wraps in full, and the five meters put each label and its value on one line with the bar below. The picker opens above the tab bar and below the top of the tab with a small margin on each side, scrolls inside that box, and carries the same **Close** button, filter field, **Active only** option and **+ add** rows. [Using the app on a phone](/docs/guides/phone.md) describes the phone shell and the sheets of each tab.
 
 ## When both slots are full
 
-Adding a course from a course menu while both slots are full opens the dialog **Replace which course?**, which lists the two courses that hold the slots with a **Replace** button on each, above a **Cancel** button at the left of the dialog. The course behind the button you select leaves the comparison, and the course you chose takes its slot.
+Adding a course from a course menu while both slots are full opens the dialog **Replace which course?**, which lists the two courses that hold the slots with a **Replace** button on each, above a **Cancel** button at the left of the dialog. The course behind the button you select leaves the comparison, and the course you chose takes its slot and shows the same bottom notice.
 
 ![The Replace which course? dialog, naming the course to add and listing the two courses in the slots, each with a Replace button, above Cancel.](/docs/screenshots/compare-replace-dialog.png)
 
-Choosing a course in the picker needs no question, because the picker was opened from one slot, so that slot is the one that changes.
+Choosing a course in the picker needs no question, because the picker was opened from one slot, so that slot is the one that changes. The picker shows no bottom notice.
 
 The two slots never hold the same course, so choosing the course that holds the other slot clears that other slot.
 
@@ -49,9 +51,9 @@ A comparison reports five percentages. Each one carries an amount on a bar and a
 
 Each of the two overlap meters names both course codes and the direction it measures. The sublabels read **whole course**, **content vs content**, **outcomes vs outcomes**, **how much of A has a match in B**, and **how much of B has a match in A**.
 
-A meter with no value to show reads **not available**, which happens when the two courses share no language, or when one side carries no text in the field that the meter reads. A reading of 0 % is a result, and **not available** alone marks a meter without a value.
+A meter with no value to show reads **not available**, which happens when the two courses share no language, or when one side carries no text in the field that the meter reads. A reading of 0% is a result, and **not available** alone marks a meter without a value.
 
-![Two courses in the slots A and B, each with Replace and Remove, the verdict Loosely related beside the analysis notice, and the five meters with their names, sublabels, bars, and percentages](/docs/screenshots/compare-meters.png)
+![Two courses, DEMO.SIGNAL.101 and DEMO.GRID.101, each with Replace and Remove, the verdict Loosely related beside the course information analysis notice, and the five meters with their names, sublabels, bars, and percentages](/docs/screenshots/compare-meters.png)
 
 ## The verdict
 

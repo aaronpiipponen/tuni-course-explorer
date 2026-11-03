@@ -20,7 +20,7 @@ export function ProgrammeMenu({
   const { t } = useWording();
   // The trigger holds focus while the confirmation a menu item opens is displayed.
   const handOff = (action: () => void) => () => {
-    trigger.current?.focus();
+    trigger.current?.focus({ preventScroll: true });
     action();
   };
   return (

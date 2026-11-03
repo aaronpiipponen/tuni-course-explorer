@@ -19,6 +19,7 @@ import type {
   ConfigurationFilesReport,
   CourseEmbeddingCoverageReport,
   DatasetListReport,
+  FeedbackListReport,
   InferenceAdministrativeSummary,
   LifecycleStatus,
   LogReadReport,
@@ -113,6 +114,7 @@ const DASHBOARD_REPORT: ServerStatusReport = {
   },
   serving: {
     selection_enabled: true,
+    embeddings_enabled: true,
     dataset_id: "b".repeat(32),
     kind: "returned",
     predecessor_id: null,
@@ -121,8 +123,8 @@ const DASHBOARD_REPORT: ServerStatusReport = {
   },
   hubs: [
     {
-      alias: "EMBEDDING_HUB_VECTOR",
-      path: "config/derived/embedding-hub.json",
+      name: "catalogue",
+      path: "data/admin/serving/db-course_explorer/0123456789abcdef01234567/20261028T120000000000Z/embedding-hub.json",
       modified_at: "2026-10-18T08:41:00Z",
       newer_than_web_start: false,
     },
@@ -172,7 +174,41 @@ const EMBEDDING_COVERAGE: CourseEmbeddingCoverageReport = {
 
 const DATASETS: DatasetListReport = {
   schema_version: 1,
-  datasets: [],
+  datasets: [
+    {
+      dataset_id: "b".repeat(32),
+      kind: "returned",
+      database_name: "course_admin_selected",
+      predecessor_id: null,
+      receipt_schema_revision: "20261014_0018",
+      dump_path: "data/admin/dumps/selected.dump",
+      selected: true,
+      working: false,
+      database_presence: "present",
+      artifacts_present: true,
+    },
+    {
+      dataset_id: "d".repeat(32),
+      kind: "copied",
+      database_name: "course_admin_working",
+      predecessor_id: "b".repeat(32),
+      receipt_schema_revision: "20261014_0018",
+      dump_path: null,
+      selected: false,
+      working: true,
+      database_presence: "present",
+      artifacts_present: false,
+    },
+  ],
+  mode: "enrolled",
+  database_probe: "available",
+  bootstrap_database: null,
+  stage_busy: {
+    ingestion: false,
+    embedding: false,
+    translation: false,
+    inference: false,
+  },
 };
 
 const COMMAND_LOG_REPORT: CommandLogReport = { schema_version: 1, entries: [] };
@@ -196,6 +232,8 @@ const USAGE_REPORT: UsageReport = {
   window_end: "2026-10-19T00:00:00Z",
   requests: 0,
   mean_duration_seconds: null,
+  p95_duration_seconds: null,
+  p99_duration_seconds: null,
   routes: [],
 };
 
@@ -215,6 +253,50 @@ const CONFIGURATION_FILE: ConfigurationFileReport = {
 };
 
 const BACKUP_LIST: BackupListReport = { schema_version: 1, backups: [] };
+
+const FEEDBACK_LIST: FeedbackListReport = {
+  definition: {
+    selectPlaceholder: { en: "Not selected", fi: "Ei valittu" },
+    fields: [
+      {
+        id: "type",
+        kind: "select",
+        label: { en: "Type", fi: "Tyyppi" },
+        required: true,
+        options: [
+          {
+            value: "bug",
+            label: { en: "Bug", fi: "Virheilmoitus" },
+            publicIssueByDefault: true,
+          },
+        ],
+      },
+      {
+        id: "title",
+        kind: "text",
+        label: { en: "Title", fi: "Otsikko" },
+        required: true,
+        maxLength: 150,
+      },
+      {
+        id: "screenshots",
+        kind: "attachment",
+        label: { en: "Screenshots", fi: "Kuvakaappaukset" },
+        required: false,
+        acceptedMimeTypes: ["image/png", "image/jpeg"],
+        maxFiles: 3,
+        maxBytesPerFile: 5242880,
+      },
+    ],
+    githubIssue: {
+      typeField: "type",
+      titleField: "title",
+      bodyFields: [],
+      attachmentField: "screenshots",
+    },
+  },
+  submissions: [],
+};
 
 const INFERENCE_SUMMARY: InferenceAdministrativeSummary = {
   schema_version: 1,
@@ -265,12 +347,21 @@ const REPORTS: Record<string, unknown> = {
   "GET /api/preparation/status/ingestion": lifecycleStatus("ingestion"),
   "GET /api/preparation/status/translation": lifecycleStatus("translation"),
   "GET /api/preparation/status/embedding": lifecycleStatus("embedding"),
-  "GET /api/preparation/report/catalogue": CATALOGUE_SUMMARY,
-  "GET /api/preparation/report/teaching-text": TEACHING_TEXT_COVERAGE,
-  "GET /api/preparation/report/embedding": EMBEDDING_COVERAGE,
+  "GET /api/preparation/report/catalogue": {
+    role: "working",
+    report: CATALOGUE_SUMMARY,
+  },
+  "GET /api/preparation/report/teaching-text": {
+    role: "working",
+    report: TEACHING_TEXT_COVERAGE,
+  },
+  "GET /api/preparation/report/embedding": {
+    role: "working",
+    report: EMBEDDING_COVERAGE,
+  },
   "GET /api/inference/status": lifecycleStatus("inference"),
-  "GET /api/inference/summary": INFERENCE_SUMMARY,
-  "GET /api/inference/datasets": DATASETS,
+  "GET /api/inference/summary": { role: "working", report: INFERENCE_SUMMARY },
+  "GET /api/datasets": DATASETS,
   "GET /api/logs/commands": COMMAND_LOG_REPORT,
   "GET /api/logs/sessions": LOG_SESSIONS_REPORT,
   "POST /api/logs/embedding": EMBEDDING_LOG_REPORT,
@@ -278,6 +369,7 @@ const REPORTS: Record<string, unknown> = {
   "GET /api/settings/config/files": CONFIGURATION_FILES,
   "POST /api/settings/config/read": CONFIGURATION_FILE,
   "GET /api/settings/backups": BACKUP_LIST,
+  "POST /api/feedback/list": FEEDBACK_LIST,
 };
 
 /** One browser response exposing only the fields the console transport reads. */
@@ -323,7 +415,7 @@ type RefusalSource =
   | "logout"
   | "stage-action"
   | "inference-action"
-  | "hub-write"
+  | "serving-artifacts-build"
   | "logs-read"
   | "settings-write";
 
@@ -364,7 +456,7 @@ const REFUSAL_ROUTES: Record<RefusalSource, string> = {
   logout: "POST /auth/logout",
   "stage-action": "POST /api/preparation/action",
   "inference-action": "POST /api/inference/action",
-  "hub-write": "POST /api/preparation/hubs",
+  "serving-artifacts-build": "POST /api/preparation/serving-artifacts",
   "logs-read": "GET /api/logs/commands",
   "settings-write": "POST /api/settings/config/set",
 };
@@ -408,6 +500,13 @@ const TAB_TRANSITIONS: TabTransition[] = [
     panel: wording.settings.configuration,
     route: "GET /api/settings/config/files",
   },
+  {
+    name: "tab-feedback",
+    kind: "tab",
+    tab: wording.tabs.feedback,
+    panel: wording.feedback.heading,
+    route: "POST /api/feedback/list",
+  },
 ];
 
 const TRANSITIONS: Transition[] = [
@@ -447,11 +546,11 @@ function actionFor(
       name: wording.action.start,
     };
   }
-  if (source === "hub-write") {
+  if (source === "serving-artifacts-build") {
     return {
       tab: wording.tabs.preparation,
       panel: wording.preparation.embeddingCoverage,
-      name: wording.preparation.writeHubs,
+      name: wording.preparation.buildServingArtifacts,
     };
   }
   return null;
@@ -465,7 +564,7 @@ function protectedHeading(source: RefusalSource): string {
   if (source === "inference-action") {
     return wording.inference.run;
   }
-  if (source === "hub-write") {
+  if (source === "serving-artifacts-build") {
     return wording.preparation.embeddingCoverage;
   }
   if (source === "logs-read") {
@@ -523,7 +622,12 @@ function install(transition: Transition): void {
     }
     if (route === `POST ${ADMIN_REBUILD_PATH}`) {
       if (transition.kind === "admin-rebuild-failure") {
-        return respond(200, { exit_code: 1, report: null, failure_line: null });
+        return respond(200, {
+          exit_code: 1,
+          report: null,
+          failure_line: null,
+          guidance_line: null,
+        });
       }
       // The restart that follows the answered build ends the session the shell held.
       authenticated = false;
@@ -580,6 +684,17 @@ function markerOf(container: HTMLElement, title: string): string {
     throw new Error(`no panel titled ${title}`);
   }
   return section.querySelector(".live")?.textContent ?? "";
+}
+
+/** Return the text of one titled panel. */
+function panelText(container: HTMLElement, title: string): string {
+  const section = [...container.querySelectorAll("section.panel")].find(
+    (element) => element.querySelector("h3")?.textContent === title,
+  );
+  if (section === undefined) {
+    throw new Error(`no panel titled ${title}`);
+  }
+  return section.textContent ?? "";
 }
 
 function buttonNamed(container: HTMLElement, name: string): HTMLButtonElement {
@@ -975,13 +1090,13 @@ describe("signed-in tab session", () => {
     await settle();
 
     // Sign-in reads every enabled consumer once. The signed-in shell holds one server-status read,
-    // and the inference summary and the two listing consumers are enabled by its selection report.
-    const twice = ["GET /api/inference/datasets"];
+    // the inference summary is enabled by its selection report, and the dataset inventory reads on
+    // its own regardless of that report.
     expect(calls).toHaveLength(
-      Object.keys(REPORTS).length + twice.length + sessionCalls().length,
+      Object.keys(REPORTS).length + sessionCalls().length,
     );
     for (const route of Object.keys(REPORTS)) {
-      expect(countOf(route)).toBe(twice.includes(route) ? 2 : 1);
+      expect(countOf(route)).toBe(1);
     }
     // Every one of those automatic reads carries the loop's own marker, so the backend can omit a
     // successful poll from the command log.
@@ -996,6 +1111,33 @@ describe("signed-in tab session", () => {
     expect(headingIsHidden(container, wording.dashboard.serving)).toBe(false);
     for (const transition of TAB_TRANSITIONS.slice(1)) {
       expect(headingIsHidden(container, transition.panel)).toBe(true);
+    }
+    // The header carries six tabs.
+    const tabs = [...container.querySelectorAll("nav.tabs button")].map(
+      (button) => button.textContent?.trim(),
+    );
+    expect(tabs).toEqual([
+      wording.tabs.dashboard,
+      wording.tabs.preparation,
+      wording.tabs.inference,
+      wording.tabs.logs,
+      wording.tabs.settings,
+      wording.tabs.feedback,
+    ]);
+    expect(tabs).not.toContain("Datasets");
+    // The Datasets panel sits in the Settings tree and the reports name the Working dataset.
+    const settingsPane = [...container.querySelectorAll(".tab-pane")].find(
+      (pane) => pane.textContent?.includes(wording.settings.configuration),
+    );
+    expect(settingsPane?.textContent).toContain(wording.datasets.panel);
+    for (const title of [
+      wording.preparation.catalogueSummary,
+      wording.preparation.teachingTextCoverage,
+      wording.preparation.embeddingCoverage,
+    ]) {
+      expect(panelText(container, title)).toContain(
+        wording.datasets.workingRole,
+      );
     }
     // The header carries no account name.
     const header = container.querySelector("header");
@@ -1028,12 +1170,34 @@ describe("signed-in tab session", () => {
     expect(container.textContent).toContain(
       DASHBOARD_REPORT.website.entry_point,
     );
+    expect(container.textContent).toContain(wording.dashboard.embeddingHub);
     expect(markerOf(container, wording.dashboard.serving)).not.toContain(
       wording.notRead,
     );
     expect(markerOf(container, wording.dashboard.serving)).not.toContain(
       wording.reading,
     );
+
+    // A site with the embedding features off replaces the hub rows with the off note.
+    REPORTS["GET /api/dashboard"] = {
+      ...DASHBOARD_REPORT,
+      serving: { ...DASHBOARD_REPORT.serving, embeddings_enabled: false },
+      hubs: [],
+    };
+    try {
+      act(() => root.unmount());
+      root = createRoot(container);
+      await act(async () => {
+        root.render(createElement(App));
+      });
+      await settle();
+      expect(container.textContent).toContain(wording.dashboard.embeddingsOff);
+      expect(container.textContent).not.toContain(
+        wording.dashboard.embeddingHub,
+      );
+    } finally {
+      REPORTS["GET /api/dashboard"] = DASHBOARD_REPORT;
+    }
   });
 
   it("restores the open tab after a reload", async () => {
@@ -1072,13 +1236,16 @@ const SELECTION_SESSION: SessionReport = {
   poll_seconds: SELECTION_POLL_MS / 1000,
 };
 
-// One ordinary dashboard command failure, as the runner reports a checked child failure.
+// One ordinary dashboard command failure, as the runner reports a checked child failure. The class
+// line stays in the command log, and the panel shows the owning operation's guidance line.
 const DASHBOARD_FAILURE_LINE = JSON.stringify({
   error: "CalledProcessError",
   returncode: 1,
 });
+const DASHBOARD_GUIDANCE =
+  "check the configured site unit, this checkout, and the running database and embedding services, then retry";
 
-type SelectionState = "true" | "false" | "failure";
+type SelectionState = "true" | "false" | "failure" | "unavailable";
 
 /** Return one dashboard report with the requested selection state. */
 function selectionReport(
@@ -1088,7 +1255,8 @@ function selectionReport(
     ...DASHBOARD_REPORT,
     serving: {
       ...DASHBOARD_REPORT.serving,
-      selection_enabled: selection === "true",
+      selection_enabled:
+        selection === "unavailable" ? null : selection === "true",
     },
   };
 }
@@ -1119,6 +1287,7 @@ function installSelection(selection: SelectionState): () => void {
           exit_code: 1,
           report: null,
           failure_line: DASHBOARD_FAILURE_LINE,
+          guidance_line: DASHBOARD_GUIDANCE,
         });
       }
       return envelope(selectionReport(selection));
@@ -1150,7 +1319,7 @@ function setDocumentHidden(hidden: boolean): void {
   document.dispatchEvent(new Event("visibilitychange"));
 }
 
-describe.each(["true", "false", "failure"] as const)(
+describe.each(["true", "false", "failure", "unavailable"] as const)(
   "selection gating from a %s dashboard report",
   (selection) => {
     let container: HTMLDivElement;
@@ -1183,7 +1352,8 @@ describe.each(["true", "false", "failure"] as const)(
       // The shell and every ungated panel read at sign-in, while the gated consumers wait.
       expect(heading(container, wording.dashboard.serving)).toBe(true);
       expect(countOf("GET /api/inference/summary")).toBe(0);
-      expect(countOf("GET /api/inference/datasets")).toBe(0);
+      // The dataset inventory is its own loop, so it reads before and regardless of the selection.
+      expect(countOf("GET /api/datasets")).toBe(1);
 
       // A waiting gated consumer states the read in its header marker instead of its body.
       for (const title of [
@@ -1191,11 +1361,12 @@ describe.each(["true", "false", "failure"] as const)(
         wording.inference.coverage,
         wording.inference.identities,
         wording.inference.failures,
-        wording.inference.datasetCleanup,
-        wording.settings.dataset,
       ]) {
         expect(markerOf(container, title)).toContain(wording.reading);
       }
+      expect(markerOf(container, wording.datasets.panel)).not.toContain(
+        wording.reading,
+      );
       const bodyReadingNotes = [
         ...container.querySelectorAll(".pb > .note"),
       ].filter((element) => element.textContent?.trim() === wording.reading);
@@ -1205,15 +1376,16 @@ describe.each(["true", "false", "failure"] as const)(
       await flushMicrotasks();
 
       if (selection === "true") {
-        // An enabled report reads the summary once and each listing consumer once.
+        // An enabled report reads the summary once, while the inventory keeps its own single read.
         expect(countOf("GET /api/dashboard")).toBe(1);
         expect(countOf("GET /api/inference/summary")).toBe(1);
-        expect(countOf("GET /api/inference/datasets")).toBe(2);
+        expect(countOf("GET /api/datasets")).toBe(1);
         expect(container.textContent).not.toContain(wording.selectionDisabled);
         return;
       }
 
-      // A disabled or failed first report issues neither read across one poll and a visible return.
+      // A disabled or failed first report issues no summary read across one poll and a visible
+      // return, and the inventory still reads only its own loop's one.
       await act(async () => {
         await vi.advanceTimersByTimeAsync(SELECTION_POLL_MS);
       });
@@ -1223,7 +1395,8 @@ describe.each(["true", "false", "failure"] as const)(
       setDocumentHidden(false);
       await flushMicrotasks();
       expect(countOf("GET /api/inference/summary")).toBe(0);
-      expect(countOf("GET /api/inference/datasets")).toBe(0);
+      // The independent inventory loop keeps its own single poll and its visible return.
+      expect(countOf("GET /api/datasets")).toBe(3);
 
       if (selection === "false") {
         // The plain state names the site's reason and is not a failure.
@@ -1232,13 +1405,32 @@ describe.each(["true", "false", "failure"] as const)(
         return;
       }
 
-      // A failed dashboard read shows its failure line in place of the disabled-site reason.
+      if (selection === "unavailable") {
+        // A report without a usable selection states the dataset state in every summary panel and
+        // leaves the panels outside their reading marker.
+        expect(container.querySelectorAll("p.failure")).toHaveLength(0);
+        for (const title of [
+          wording.inference.diagnostics,
+          wording.inference.coverage,
+          wording.inference.identities,
+          wording.inference.failures,
+        ]) {
+          expect(panelText(container, title)).toContain(
+            wording.stateUnavailable,
+          );
+          expect(markerOf(container, title)).not.toContain(wording.reading);
+        }
+        return;
+      }
+
+      // A failed dashboard read shows its owning guidance line in place of the disabled-site
+      // reason, and the retained class line stays out of the panel.
       expect(container.textContent).not.toContain(wording.selectionDisabled);
-      expect(
-        [...container.querySelectorAll("p.failure")].map(
-          (element) => element.textContent,
-        ),
-      ).toContain(DASHBOARD_FAILURE_LINE);
+      const failures = [...container.querySelectorAll("p.failure")].map(
+        (element) => element.textContent,
+      );
+      expect(failures).toContain(DASHBOARD_GUIDANCE);
+      expect(failures).not.toContain(DASHBOARD_FAILURE_LINE);
     });
   },
 );

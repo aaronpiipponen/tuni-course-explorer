@@ -18,6 +18,9 @@ const KNOWN_MESSAGES: Record<string, UiTextKey> = {
     "The last browser profile cannot be deleted",
   "Browser store provider is missing": "Browser store provider is missing",
   "Search session provider is missing": "Search session provider is missing",
+  "Read cache provider is missing": "Read cache provider is missing",
+  "Discovery cache provider is missing": "Discovery cache provider is missing",
+  "Notice provider is missing": "Notice provider is missing",
   "Web features provider is missing": "Web features provider is missing",
   "Saved browser state is invalid": "Saved browser state is invalid",
   "Unsupported saved browser state schema":
@@ -63,6 +66,7 @@ const KNOWN_MESSAGES: Record<string, UiTextKey> = {
   "Choose one file": "Choose one file",
   "There is no saved data to export": "There is no saved data to export",
   "Invalid Sisu plan file": "Invalid Sisu plan file",
+  "Invalid Sisu PDF plan": "Invalid Sisu PDF plan",
   "Sisu choice is ambiguous": "Sisu choice is ambiguous",
   "Sisu plan selects two versions of a module":
     "Sisu plan selects two versions of a module",

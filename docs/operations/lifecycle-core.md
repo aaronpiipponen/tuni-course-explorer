@@ -28,7 +28,7 @@ The lifecycle core owns the one detached five-action lifecycle that the ingestio
 
 ## Identity and compatibility
 
-`local_stages.stage_identity_sha256` hashes the stage name, a stage configuration hash, the selected `postgres_db`, and the options. `ingestion_configuration_sha256` covers the Kori source, request-shape, and academic-year fields and the normalization settings, `embedding_configuration_sha256` covers the embedding runtime settings, and the translation and inference adapters supply their own configuration hashes.
+`local_stages.stage_identity_sha256` hashes the stage name, a stage configuration hash, the Working `postgres_db`, and the options. `ingestion_configuration_sha256` covers the Kori source, request-shape, and academic-year fields and the normalization settings, `embedding_configuration_sha256` covers the embedding runtime settings, and the translation and inference adapters supply their own configuration hashes.
 
 `_require_compatible` runs when a start continues a retained session and when resume re-arms one. It compares the retained receipt's `identity_sha256` with `stage.identity_sha256(session.options)`, and for a retained ingestion session it also calls `require_retained_ingestion_manifest`, which re-reads the retained manifest, requires a regular non-symlink file, and compares its SHA-256 with the recorded one. That comparison is the one manifest check before a continued or resumed ingestion action.
 
@@ -59,6 +59,8 @@ The lifecycle core owns the one detached five-action lifecycle that the ingestio
 `local_stages.IngestionStage` and `local_stages.EmbeddingStage` implement the protocol for the two stages that run on the machine that runs the administration command. Both use `course_explorer_admin.worker` as their `server_worker_module`, request the `db` service, and retain their work after a stop. The embedding adapter adds `embedding` to `services` and `temporary_services`, and its `require_prepared` validates the pinned artifact file against `EMBEDDING_ARTIFACT_SHA256`. `run_ingestion_command` prunes every raw capture run that the idle state does not retain, through `local_stages._cleanup_ingestion_raw`.
 
 `remote_stages.RemoteStage` extends the same core with worker bring-up, the detached worker run, the progress mirror, the foreground release hook for pause, and the foreground finalize hook for stop. Translation uses `course_explorer_admin.translation.controller_worker` and inference uses `course_explorer_admin.inference.controller_worker` as their `worker_module`. The adapter tracks the worker lifecycle values in `_RESUMABLE`, `_RESUME_ACCEPTED`, `_PAUSE_ACCEPTED`, `_STOP_ACCEPTED`, `_FINALIZE_ACCEPTED`, and `_CLEANUP_ACCEPTED`, and `_mutation_with_reconcile` retries a lost mutation acknowledgment by reading the real status first.
+
+`mechanics.compose_prefix` builds one Compose bridge for both hosts. A command that runs on this host asks for `interpreter=True`, so the bridge starts in the interpreter of the running command, and the default `uv run` form belongs only to a command that another host runs, whose executable path and environment are its own.
 
 `WorkerResources` records only what the session created or started, and each bit is monotonic so an ordinary retry never repeats an upload or a start. The transport in `src/course_explorer_admin/transport.py` owns the worker helpers, and `WorkerRecovery` bounds one episode of retries. `WorkerAvailabilityError`, `WorkerConnectionLost`, and `WorkerRecoveryCancelled` carry the outcome.
 

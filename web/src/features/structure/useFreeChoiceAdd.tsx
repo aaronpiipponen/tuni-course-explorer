@@ -1,11 +1,11 @@
-/** Shared Unplaced studies addition used by every course card and both add-all actions. */
+/** Shared Unplaced studies addition for the route and member panels' add-all actions. */
 import { useContext } from "react";
-import { setActiveTab } from "../../app/sessionTab";
 import { StoreContext } from "../../state/context";
 import type { DisplayLanguage } from "../../state/types";
 import { useNotice } from "../../shared/useNotice";
 import { uiText } from "../../shared/wording";
 import { addCoursesToFreeChoice } from "../../state/course-actions";
+import { revealUnplacedStudies } from "./reveal";
 
 /** Return the shared addition action, which reports the count the latest saved selection gained. */
 export function useFreeChoiceAdd(): { add(ids: readonly string[]): void } {
@@ -25,10 +25,19 @@ export function useFreeChoiceAdd(): { add(ids: readonly string[]): void } {
   return {
     add: (ids: readonly string[]) => {
       const count = addCoursesToFreeChoice(store, ids);
-      notice.show((language) => countText(language, count), {
-        label: (language) => uiText(language, "Structure of studies"),
-        run: () => setActiveTab("structure"),
-      });
+      notice.show(
+        (language) => countText(language, count),
+        undefined,
+        count === 0
+          ? undefined
+          : {
+              link: {
+                label: (language) =>
+                  uiText(language, "Unplaced studies (notice)"),
+                run: revealUnplacedStudies,
+              },
+            },
+      );
     },
   };
 }

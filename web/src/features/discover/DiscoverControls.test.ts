@@ -1,8 +1,11 @@
-/** Browser-state proof that a presented Discover list tab writes no unchanged choice. */
+/** Browser-state proof that the Discover list tabs keep their saved list and result rows without
+    another write or request. */
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CourseSummary, DiscoveryRequest } from "../../api/types";
+import { DiscoveryCacheContext } from "../../app/discoveryCacheContext";
+import { DiscoveryReportCache } from "../../app/discoveryCache";
 import { ReadCacheContext } from "../../app/readCacheContext";
 import { READ_CACHE_CAPACITY, ReadCache } from "../../app/readCache";
 import { StoreContext } from "../../state/context";
@@ -65,6 +68,10 @@ describe("Discover list preservation", () => {
   function render(
     embeddingsEnabled: boolean,
     cache = new ReadCache("synthetic-dataset", READ_CACHE_CAPACITY),
+    discoveryCache = new DiscoveryReportCache(
+      "synthetic-dataset",
+      localStorage,
+    ),
   ): void {
     act(() =>
       root.render(
@@ -83,7 +90,17 @@ describe("Discover list preservation", () => {
             createElement(
               ReadCacheContext.Provider,
               { value: cache },
-              createElement(NoticeProvider, null, createElement(DiscoverPane)),
+              createElement(
+                DiscoveryCacheContext.Provider,
+                {
+                  value: discoveryCache,
+                },
+                createElement(
+                  NoticeProvider,
+                  null,
+                  createElement(DiscoverPane),
+                ),
+              ),
             ),
           ),
         ),
@@ -177,7 +194,8 @@ describe("Discover list preservation", () => {
       active_only: true,
     };
     const cache = new ReadCache(identity, READ_CACHE_CAPACITY);
-    cache.put(identity, JSON.stringify(["recommended", request]), {
+    const discoveryCache = new DiscoveryReportCache(identity, localStorage);
+    discoveryCache.put(identity, JSON.stringify(["recommended", request]), {
       dataset_identity: identity,
       similarity_results: [
         {
@@ -198,11 +216,21 @@ describe("Discover list preservation", () => {
       },
     );
 
-    render(true, cache);
+    render(true, cache, discoveryCache);
     await act(async () => {});
     await act(async () => {});
     const row = container.querySelector('[data-course-id="course-rec"]');
     expect(row).toBeTruthy();
+
+    const hydrated = new DiscoveryReportCache(identity, localStorage);
+    expect(hydrated.get(JSON.stringify(["recommended", request]))).toBeTruthy();
+    const otherIdentity = new DiscoveryReportCache(
+      "other-synthetic-dataset",
+      localStorage,
+    );
+    expect(
+      otherIdentity.get(JSON.stringify(["recommended", request])),
+    ).toBeUndefined();
 
     const other = createBrowserStore(localStorage);
     act(() => {

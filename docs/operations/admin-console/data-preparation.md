@@ -1,8 +1,8 @@
 # Data preparation
 
-The Data preparation tab holds the ingestion, translation and embedding stages with their controls, and the three reports over the selected dataset.
+The Data preparation tab holds the ingestion, translation and embedding stages with their controls, and the three reports that read Working first and fall back to Selected.
 
-![The Data preparation tab with the three stage panels above the catalogue summary, teaching-text coverage and embedding coverage reports](/docs/screenshots/admin-console-data-preparation.png)
+![The Data preparation tab with the No Working dataset notice above the three idle stage panels and the catalogue summary, teaching-text coverage and embedding coverage reports, each naming the Selected dataset with a No Working dataset hint](/docs/screenshots/admin-console-data-preparation.png)
 
 ## The stage panels
 
@@ -18,20 +18,9 @@ The tab places the three stage panels in one row. Each panel reads its own statu
 | **rate** | The measured work per second. It reads **unknown** when no rate is measured. |
 | **ETA** | The projected time to the end of the work. It reads **unknown** when no estimate exists. |
 
-| State | Meaning |
-|---|---|
-| **idle** | No run is active. The stage holds the progress it recorded and reports no session identity. |
-| **starting** | The stage prepares the run and launches it. |
-| **running** | The run is working. |
-| **paused** | The run ended at a checkpoint, and the session is held for a resume. |
-| **stopped** | The stop ended the run, and the stage finalizes the work. |
-| **completed** | The work of the session finished. |
-| **failed** | The run ended with an error. |
-| **interrupted** | A stage that was starting or running has no live process. |
+The status read reports a stage that was starting or running with no live process as **interrupted**, and [Stage lifecycle](/docs/operations/stage-lifecycle.md#the-durable-states) states every lifecycle state.
 
-The status read reports a stage that was starting or running with no live process as **interrupted**.
-
-![The Ingestion stage panel in the idle state, with unknown session and revision, the server host, zero active time, unknown rate and ETA, and the Start, Pause, Resume and Stop controls](/docs/screenshots/admin-console-stage-panel.png)
+![The Ingestion stage panel in the idle state, with unknown session and revision, the server host, zero active time, unknown rate and ETA, and the disabled Start, Pause, Resume and Stop controls](/docs/screenshots/admin-console-stage-panel.png)
 
 ### What each stage counts
 
@@ -43,7 +32,7 @@ Translation shows **desired**, **completed**, **remaining** and **reboot due**. 
 
 ### The action row
 
-Each stage panel has **Start**, **Pause**, **Resume** and **Stop**.
+Each stage panel has **Start**, **Pause**, **Resume** and **Stop**. The four actions need a Working dataset. When the console's inventory read reports none, the tab shows one **No Working dataset** notice with the copy hint, and every stage panel disables all four actions while its status rows and marker keep updating. Before the first successful inventory read, the actions are enabled and the stage owner reports its own guidance for a run without Working.
 
 | Action | What it does |
 |---|---|
@@ -54,15 +43,15 @@ Each stage panel has **Start**, **Pause**, **Resume** and **Stop**.
 
 Only **Stop** asks for confirmation. Its dialog names the stage, for example **Stop Ingestion** with **Stop the Ingestion stage.** **Cancel**, Escape and a click outside the dialog close it and run nothing. The other three actions start without a confirmation.
 
-While an action runs, the four buttons of that panel are disabled. The panel then shows the status the action returned, and a failed action shows a failure message in the same panel. A successful stop of translation also returns the worker's finished copy as the selected dataset, and [Worker sessions](/docs/operations/worker-sessions.md#pause-stop-and-the-return) describes the return.
+While an action runs, the four buttons of that panel are disabled. The panel then shows the status the action returned, and a failed action shows a failure message in the same panel. A successful stop of translation also returns the worker's finished copy as the Working dataset, and [Worker sessions](/docs/operations/worker-sessions.md#pause-stop-and-the-return) describes the return.
 
 ## The reports
 
-Below the stages are the **Catalogue summary**, **Teaching-text coverage** and **Embedding coverage** panels. Each reads its own command on the automatic interval, so its marker shows **auto** and the time since the last successful read.
+Below the stages are the **Catalogue summary**, **Teaching-text coverage** and **Embedding coverage** panels. Each reads its own command on the automatic interval, so its marker shows **auto** and the time since the last successful read. The read resolves Working first and falls back to Selected when Working is absent, and the panel names the role as a compact strip: **Working dataset**, a **Selected dataset** strip with a **No Working dataset** hint when it fell back, or **No dataset enrolled** with no report rows.
 
 ### Catalogue summary
 
-The panel gives six counts of the selected dataset: **Curriculum periods**, **Canonical courses**, **Active courses**, **Course versions**, **Canonical modules** and **Module versions**. **Canonical courses** and **Canonical modules** count each course and module once, and the version rows count their official versions.
+The panel gives six counts of the dataset the read resolved: **Curriculum periods**, **Canonical courses**, **Active courses**, **Course versions**, **Canonical modules** and **Module versions**. **Canonical courses** and **Canonical modules** count each course and module once, and the version rows count their official versions.
 
 ### Teaching-text coverage
 
@@ -80,15 +69,21 @@ Under the table are four course counts. **Representative courses** counts the co
 
 ### Embedding coverage
 
-The table has one row for each field, language and origin, and a **Total** row. Its columns are **Field, language, origin**, **pending**, **completed** and **failed**. The first column names the field, the language and the origin the report gives for the chunk. The counts are chunks of the selected dataset.
+The table has one row for each field, language and origin, and a **Total** row. Its columns are **Field, language, origin**, **pending**, **completed** and **failed**. The first column names the field, the language and the origin the report gives for the chunk. The counts are chunks of the dataset the read resolved.
 
-**Write hubs** computes both hubs from the current chunks and writes the two files that hold them. A dataset whose embedding coverage is incomplete fails before either file is written. A successful write names both files and the chunk count behind each hub, and it states that loading the hubs requires a web restart. The write starts at once and asks for no confirmation.
+**Build serving artifacts** writes the serving artifact set of the served dataset. It writes every file of one build before the dataset tables change. [Serving artifact build](/docs/backend/text-and-vectors/serving-artifact-build.md#the-embedding-switch) states what each embedding mode writes, the transaction, and the hub pair and centroids computed from that dataset's stored vectors.
 
-![The Embedding coverage panel with a row for each field, language and origin, a Total row and the Write hubs button](/docs/screenshots/admin-console-embedding-coverage.png)
+The three stage panels above write Working, so a completed stage run changes nothing the site serves and needs no build or restart. The build targets the Selected dataset, which is the configured database in bootstrap.
 
-The **Write hubs** button sits below the coverage table.
+On a site that serves the embedding features, a dataset whose current embedding coverage is incomplete fails before any artifact file or derived table is written. [Administration commands](/docs/backend/interfaces/administration-commands.md#the-serving-artifact-command) states what a failed build restores. The build applies no inference coverage gate.
 
-A web server whose site serves the embedding features reads the two hub files when its process starts and holds those values while it runs. A restart is therefore what loads the written hubs, and search and comparison use the written values after that restart. The [Operator menu](/docs/operations/operator-menu.md#writing-the-hubs) describes the same write for the command line.
+A successful build message names the paths and counts of the set the site serves. An embeddings-on build names the hub-pair path, the two hub files with the chunk count behind each, the search group and block counts, the centroid count, the neighbour-row count and the projectable study-root count. An embeddings-off build names the catalogue artifact path and the projectable study-root count and states that the switch is off, so the build wrote no embedding artifacts. Both messages state that the web server reads the artifacts at start and ask for a restart, and [Operations](/docs/operations/README.md#derived-files-served-data-and-the-web-restart) states that restart. The build starts at once and asks for no confirmation. It builds the Selected dataset, which is the configured database in bootstrap, and its hubs come from that dataset's stored vectors, so no second command is needed.
+
+![The Embedding coverage panel with the Selected dataset role strip and its No Working dataset hint, a row for each field, language and origin, a Total row and the Build serving artifacts button](/docs/screenshots/admin-console-embedding-coverage.png)
+
+The **Build serving artifacts** button sits below the coverage table.
+
+The supervisor opens the current artifact build once before it forks its workers. On a site that serves the embedding features that opened set holds the shared centroid and chunk stores of the configured embedding directory, and on a site with them off it holds the catalogue and the study fragments alone. A completed build reaches serving after the full supervisor restart that [Operations](/docs/operations/README.md#derived-files-served-data-and-the-web-restart) states, and the artifact command restarts no unit. The [Operator menu](/docs/operations/operator-menu.md#building-the-serving-artifacts) describes the same build for the command line.
 
 ## When a read fails
 

@@ -31,6 +31,6 @@ def resolve_serving_dataset() -> ServingDataset:
     generation = os.environ.get(SERVING_GENERATION_ENV, "")
     if not generation:
         raise ValueError(f"{SERVING_GENERATION_ENV} is not set for the serving process")
-    settings, dataset_id = load_database_settings_with_identity()
+    settings, dataset_id = load_database_settings_with_identity(role="selected")
     identity = json_sha256([generation, dataset_id], ensure_ascii=False)
     return ServingDataset(settings=settings, identity=identity)

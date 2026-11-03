@@ -1,4 +1,4 @@
-"""Tests for the administrative request timer and shared process owners."""
+"""Contracts for the administrative request timer and shared process owners."""
 
 from __future__ import annotations
 
@@ -65,7 +65,7 @@ def test_exclusive_action_lock_rejects_concurrent_action(tmp_path: Path) -> None
 
 
 def test_subprocess_runner_popen_uses_devnull_mode_0600_logs_and_its_own_session(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capfd: pytest.CaptureFixture[str]
 ) -> None:
     """A detached child gets DEVNULL stdin, mode-0600 append logs, and its own session."""
     stdout_path = tmp_path / "runner.out"
@@ -110,6 +110,15 @@ def test_subprocess_runner_popen_uses_devnull_mode_0600_logs_and_its_own_session
     assert env_process.wait() == 0
     assert env_stdout.read_text(encoding="utf-8").splitlines() == ["explicit-value", "absent"]
     assert oct(env_stdout.stat().st_mode & 0o777) == "0o600"
+
+    # A null output path inherits this process's stream instead of opening a detached log file.
+    inherited = SubprocessRunner().popen(
+        (sys.executable, "-c", "print('inherited line')"),
+        stdout_path=None,
+        stderr_path=None,
+    )
+    assert inherited.wait() == 0
+    assert "inherited line" in capfd.readouterr().out
 
 
 def test_subprocess_runner_run_captures_output_and_honors_files(tmp_path: Path) -> None:

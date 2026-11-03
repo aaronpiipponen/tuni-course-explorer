@@ -143,7 +143,7 @@
 }
 .course-comparison .course-badge {
   padding: 1px 8px;
-  background: #4e008e;
+  background: var(--color-accent-strong);
   color: #fff;
 }
 .course-sources {
@@ -202,9 +202,9 @@
   background: rgb(10 10 15 / 92%);
   box-shadow:
     0 30px 80px rgb(0 0 0 / 80%),
-    0 0 50px -10px rgb(78 0 142 / 50%);
+    0 0 50px -10px rgb(90 30 156 / 50%);
   backdrop-filter: blur(16px);
-  animation: slidedown 0.3s cubic-bezier(0.22, 0.8, 0.2, 1);
+  animation: slidedown var(--phone-rise-duration) var(--phone-rise-ease);
 }
 .course-menu [role="menuitem"] {
   display: flex;
@@ -218,6 +218,14 @@
   text-decoration: none;
   outline: none;
   cursor: pointer;
+}
+.course-menu [role="menuitem"] > .course-menu-ellipsis {
+  min-width: 0;
+  overflow: hidden;
+  color: inherit;
+  font: inherit;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .course-menu [role="menuitem"][data-highlighted]:not([aria-disabled="true"]),
 .course-menu [role="menuitem"]:hover:not([aria-disabled="true"]),
@@ -289,7 +297,7 @@
   cursor: default;
 }
 .course-menu[data-state="closed"] {
-  animation: slideup 0.2s cubic-bezier(0.22, 0.8, 0.2, 1) forwards;
+  animation: slideup var(--phone-rise-duration) var(--phone-rise-ease) forwards;
 }
 @keyframes slideup {
   from {
@@ -322,6 +330,37 @@
   }
   .course-source-cell {
     right: 202px;
+  }
+}
+/* A result card at the wide desktop width keeps one line when its tags fit, and the row grows
+   when they wrap, so a longer interface language never clips them. */
+@media (min-width: 1200px) {
+  .course-card.has-course-sources {
+    height: auto;
+    min-height: var(--course-row-height);
+    grid-template-columns: 62px 112px minmax(90px, 1fr) 240px 150px 90px;
+  }
+  .course-card.has-course-sources .course-name-cell {
+    padding-right: 0;
+  }
+  .course-card.has-course-sources .course-source-cell {
+    position: static;
+    width: auto;
+    height: auto;
+    align-self: center;
+    grid-column: 4;
+    grid-row: 1;
+  }
+  .course-card.has-course-sources .course-meta-cell {
+    grid-column: 5;
+    grid-row: 1;
+  }
+  .course-card.has-course-sources .course-state-cell {
+    grid-column: 6;
+    grid-row: 1;
+  }
+  .course-card.has-course-sources .course-sources {
+    height: auto;
   }
 }
 @media (max-width: 1199px) {
@@ -443,13 +482,15 @@
     border-radius: 16px;
     transform: none !important;
     z-index: 27;
-    transition: bottom 0.24s cubic-bezier(0.22, 0.8, 0.2, 1);
+    transition: bottom var(--phone-rise-duration) var(--phone-rise-ease);
   }
   .course-menu[data-state="open"] {
-    animation: course-sheet-in 180ms ease-out both;
+    animation: course-sheet-in var(--phone-rise-duration) var(--phone-rise-ease)
+      both;
   }
   .course-menu[data-state="closed"] {
-    animation: course-sheet-out 180ms ease-in both;
+    animation: course-sheet-out var(--phone-rise-duration)
+      var(--phone-rise-ease) both;
   }
   @keyframes course-sheet-in {
     from {

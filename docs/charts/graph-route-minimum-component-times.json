@@ -1,7 +1,7 @@
 {
   "type": "bar",
-  "title": "Component times of the four large-case calculations",
-  "description": "Compilation, exact attempt, greedy pass and remaining service time for the four mathematics cases after the scalar correction.",
+  "title": "Component times of the four mathematics calculations",
+  "description": "Compilation, exact attempt, greedy pass and remaining service time for the four mathematics cases.",
   "valueAxis": "Time (s)",
   "categories": ["MATH.MA.880 active only", "MATH.MA.880 all courses", "MATH.MA.725 active only", "MATH.MA.725 all courses"],
   "series": [

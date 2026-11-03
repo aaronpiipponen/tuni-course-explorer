@@ -23,10 +23,12 @@ from sqlalchemy import (
     CheckConstraint,
     Date,
     DateTime,
+    Double,
     ForeignKey,
     ForeignKeyConstraint,
     Index,
     Integer,
+    LargeBinary,
     MetaData,
     Numeric,
     Text,
@@ -37,7 +39,7 @@ from sqlalchemy import (
 from sqlalchemy import (
     Enum as SQLAlchemyEnum,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 from course_explorer.constants import COURSE_EMBEDDING_DIMENSION
@@ -419,6 +421,132 @@ class CourseEmbeddingChunk(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+
+class CourseEmbeddingCentroid(Base):
+    """One represented course's hub-centred unit centroid for recommendation filtering.
+
+    The centroid is one little-endian float64 array of the configured embedding dimension. The
+    representative triple and embedding configuration identify the chunk set it came from.
+    """
+
+    __tablename__ = "course_embedding_centroids"
+    __table_args__ = (
+        _not_blank("sisu_course_unit_id"),
+        CheckConstraint(
+            "representative_source_hash ~ '^[0-9a-f]{64}$'",
+            name="representative_source_hash_sha256",
+        ),
+        CheckConstraint(
+            "embedding_configuration_hash ~ '^[0-9a-f]{64}$'",
+            name="embedding_configuration_hash_sha256",
+        ),
+        CheckConstraint("chunk_count > 0", name="chunk_count_positive"),
+        CheckConstraint(
+            f"octet_length(centroid) = {COURSE_EMBEDDING_DIMENSION * 8}",
+            name="centroid_length",
+        ),
+    )
+
+    group_id: Mapped[str] = mapped_column(
+        Text,
+        ForeignKey("courses.group_id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    sisu_course_unit_id: Mapped[str] = mapped_column(Text)
+    representative_source_hash: Mapped[str] = mapped_column(Text)
+    embedding_configuration_hash: Mapped[str] = mapped_column(Text)
+    chunk_count: Mapped[int] = mapped_column(Integer)
+    centroid: Mapped[bytes] = mapped_column(LargeBinary)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class CourseEmbeddingNeighbor(Base):
+    """One stored nearest descriptive-chunk hit of one query chunk.
+
+    The query and target identities reference the exact stored chunk rows, and the language and
+    embedding configuration stay on those rows rather than being copied here. The key
+    `(query_chunk_id, target_chunk_id)` holds one row per target of a query chunk, and a read orders
+    its rows by score and target chunk.
+    """
+
+    __tablename__ = "course_embedding_neighbors"
+    __table_args__ = (CheckConstraint("score >= -1 AND score <= 1", name="score_cosine_range"),)
+
+    query_chunk_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey(
+            "course_embedding_chunks.id",
+            name="fk_course_embedding_neighbors_query_chunk",
+            ondelete="CASCADE",
+        ),
+        primary_key=True,
+    )
+    target_chunk_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey(
+            "course_embedding_chunks.id",
+            name="fk_course_embedding_neighbors_target_chunk",
+            ondelete="CASCADE",
+        ),
+        primary_key=True,
+    )
+    score: Mapped[float] = mapped_column(Double)
+
+
+class CourseEmbeddingSearchGroup(Base):
+    """One canonical representative group of the packed exact search relation.
+
+    ``group_no`` is the scan's dense group identity, and the three identity columns are the exact
+    representative triple the score belongs to.
+    """
+
+    __tablename__ = "course_embedding_search_groups"
+    __table_args__ = (
+        UniqueConstraint(
+            "group_id",
+            "sisu_course_unit_id",
+            "representative_source_hash",
+            name="uq_course_embedding_search_groups_identity",
+        ),
+    )
+
+    group_no: Mapped[int] = mapped_column(Integer, primary_key=True)
+    group_id: Mapped[str] = mapped_column(Text)
+    sisu_course_unit_id: Mapped[str] = mapped_column(Text)
+    representative_source_hash: Mapped[str] = mapped_column(Text)
+
+
+class CourseEmbeddingSearchBlock(Base):
+    """One packed block of at most 128 centred float32 vectors and their group identities.
+
+    ``groups`` and ``norms`` align by position with the vectors in ``vectors``, which stores the
+    packed float32 payload with external storage.
+    """
+
+    __tablename__ = "course_embedding_search_blocks"
+    __table_args__ = (CheckConstraint("n > 0 AND n <= 128", name="n_range"),)
+
+    block_no: Mapped[int] = mapped_column(Integer, primary_key=True)
+    n: Mapped[int] = mapped_column(Integer)
+    groups: Mapped[list[int]] = mapped_column(ARRAY(Integer))
+    norms: Mapped[list[float]] = mapped_column(ARRAY(Double))
+    vectors: Mapped[bytes] = mapped_column(LargeBinary)
+
+
+class CourseEmbeddingSearchMeta(Base):
+    """The one-row group count of one serving artifact build's packed search relation."""
+
+    __tablename__ = "course_embedding_search_meta"
+    __table_args__ = (
+        CheckConstraint("one_row", name="one_row"),
+        CheckConstraint("group_count > 0", name="group_count_positive"),
+    )
+
+    one_row: Mapped[bool] = mapped_column(Boolean, primary_key=True, default=True)
+    group_count: Mapped[int] = mapped_column(Integer)
 
 
 class Module(Base):
@@ -942,16 +1070,16 @@ class InferenceProposal(Base):
     equivalence: Mapped[list] = mapped_column(JSONB(none_as_null=True))
 
 
-# The teaching-text processing marker is scheduling state, never an "inferred-before" coverage claim:
-# an inactive candidate source may be marked processed without ever receiving a target result, and a
-# generation model/prompt/settings change alone never resets it. `accepted_proposal_id` retains the
-# last accepted pointer even while the marker is FALSE, so pending work never erases the
-# displayed complete output. `generation_attempt_count` is the durable lifetime
-# generation-attempt ordinal owner: it is retained across cycle pruning and drives no-reuse local retry seeds.
-# `disposition` is the operator's durable inference decision: NULL means no override (automatic), and
-# `done`/`failed` are the two explicit terminal choices. It is separate from the
-# teaching-text `processed` flag and is retained across text changes, cycles and pruning until the operator
-# changes or clears it.
+# The teaching-text processing marker is scheduling state, never an "inferred-before" coverage
+# claim. An inactive candidate source may be marked processed without ever receiving a target
+# result, and a generation model/prompt/settings change alone never resets it.
+# `accepted_proposal_id` retains the last accepted pointer even while the marker is FALSE, so
+# pending work never erases the displayed complete output. `generation_attempt_count` is the
+# durable lifetime generation-attempt ordinal owner: it is retained across cycle pruning and
+# drives no-reuse local retry seeds. `disposition` is the operator's durable inference decision:
+# NULL means no override (automatic), and `done`/`failed` are the two explicit terminal choices.
+# It is separate from the teaching-text `processed` flag and is retained across text changes,
+# cycles and pruning until the operator changes or clears it.
 class InferenceCourseProcessing(Base):
     """One canonical course's teaching-text marker, accepted pointer, lifetime counter and decision."""
 

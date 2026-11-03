@@ -29,12 +29,13 @@ export function StructureCard({
         open={open}
         onOpenChange={setOpen}
         className={`structure-card${completed ? " done" : ""}${course.is_active ? "" : " inactive"}${added ? " added" : ""}`}
+        structureSurface
         actions={
           <button
             className={completed ? "is-done" : ""}
             type="button"
             aria-pressed={completed}
-            aria-label={t(completed ? "Mark not completed" : "Mark completed")}
+            aria-label={t(completed ? "Remove completion" : "Mark completed")}
             onClick={() =>
               runAction(() => toggleCompleted(store, course.group_id))
             }

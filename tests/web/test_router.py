@@ -10,7 +10,7 @@ import types
 import httpx
 import pytest
 
-from course_explorer.config import AdmissionSettings
+from course_explorer.config import AdmissionSettings, load_web_settings
 from course_explorer_web.admission import host_cpu
 from course_explorer_web.router import app as router_app
 from course_explorer_web.router.app import create_router
@@ -44,7 +44,7 @@ def test_heavy_requests_place_on_workers_without_a_heavy_request() -> None:
                     asyncio.create_task(
                         client.post(
                             "/api/recommendations",
-                            json=recommendation_body(50, active_only=False),
+                            json=recommendation_body(80, active_only=False),
                             headers=_cookie(letter * 32),
                         )
                     )
@@ -57,6 +57,37 @@ def test_heavy_requests_place_on_workers_without_a_heavy_request() -> None:
                 responses = await asyncio.gather(*pending)
                 assert [response.status_code for response in responses] == [200, 200, 200]
             assert application.state.running_heavy == 0
+        finally:
+            await application.shutdown()
+
+    asyncio.run(exercise())
+
+
+def test_router_refuses_an_oversized_body_without_forwarding() -> None:
+    """A body over the configured byte bound answers 413 and reaches no worker."""
+    harness = WorkerHarness()
+    settings = settings_factory(AdmissionSettings, ADMISSION_ENABLED="1", WEB_WORKERS="4")
+    limit = load_web_settings().web_request_body_max_bytes
+
+    async def exercise() -> None:
+        application = create_router(
+            workers=harness.addresses,
+            settings=settings,
+            client=harness.client(),
+        )
+        await application.startup()
+        try:
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=application), base_url="http://router"
+            ) as client:
+                response = await client.post(
+                    "/api/search",
+                    content=b"x" * (limit + 1),
+                    headers={"content-type": "application/json"},
+                )
+                assert response.status_code == 413
+                assert response.json() == {"detail": "Request body refused"}
+                assert harness.calls == []
         finally:
             await application.shutdown()
 
@@ -97,7 +128,9 @@ def test_light_requests_forward_to_the_least_busy_worker() -> None:
 def test_router_treats_an_unreadable_meter_as_unloaded(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
-    """An unreadable counter logs one error and clears the CPU, the score and the latch, not activity."""
+    """An unreadable counter logs one error and clears the CPU, the score and the latch, not
+    activity.
+    """
     harness = WorkerHarness()
     settings = settings_factory(
         AdmissionSettings,
@@ -162,7 +195,7 @@ def test_router_treats_an_unreadable_meter_as_unloaded(
             assert application.state.saturated is False
             assert application.state.load_position == pytest.approx(0.0)
 
-            # The next good sample starts a fresh CPU baseline and still counts the admitted read.
+            # The next good sample starts a fresh CPU baseline and counts the admitted read.
             busy[0] = 200.0
             monkeypatch.setattr(host_cpu, "busy_cpu_seconds", lambda: busy[0])
             wall_second[0] = 103

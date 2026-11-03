@@ -25,7 +25,6 @@ from tests.support import settings_factory
 
 DEFAULT_PRIORITY = ("exact_code", "substring", "fuzzy_name", "semantic")
 HASH_A = "a" * 64
-SENTINEL_ROWS = ("sentinel-row",)
 
 
 def search_settings(priority: tuple[str, ...] = DEFAULT_PRIORITY) -> SearchSettings:
@@ -56,56 +55,40 @@ def represented(course_summary: CourseSummary) -> RepresentedCourseSummary:
     )
 
 
-class FakeCurriculum:
-    """Recording stand-in for the one represented-summary read the unified service owns."""
-
-    def __init__(self, records: tuple[RepresentedCourseSummary, ...] = ()) -> None:
-        self._records = records
-        self.calls: list[bool | None] = []
-
-    def list_represented_summaries(
-        self, *, active_only: bool | None = None
-    ) -> tuple[RepresentedCourseSummary, ...]:
-        self.calls.append(active_only)
-        return self._records
-
-
 class FakeLookup:
     """Recording stand-in for the lookup service returning caller-supplied results."""
 
     def __init__(
         self,
         *,
+        records: tuple[RepresentedCourseSummary, ...] = (),
         exact: tuple[CourseSummary, ...] = (),
         substring: tuple[CourseSummary, ...] = (),
         fuzzy: tuple[FuzzyCourseResult, ...] = (),
     ) -> None:
+        self._records = records
         self._exact = exact
         self._substring = substring
         self._fuzzy = fuzzy
         self.calls: list[tuple] = []
-        self.rows: list[object] = []
-        self.row_requests: list[tuple[bool, object]] = []
 
-    def lookup_rows(self, *, include_inactive, represented=None):
-        self.row_requests.append((include_inactive, represented))
-        return SENTINEL_ROWS
+    def represented_index(self, *, include_inactive: bool) -> dict[str, RepresentedCourseSummary]:
+        if include_inactive:
+            records = self._records
+        else:
+            records = tuple(record for record in self._records if record.summary.is_active)
+        return {record.summary.group_id: record for record in records}
 
-    def exact_code_search(self, query, *, display_language, include_inactive=True, rows=None):
+    def exact_code_search(self, query, *, display_language, include_inactive=True):
         self.calls.append(("exact_code", query, display_language, include_inactive))
-        self.rows.append(rows)
         return self._exact
 
-    def substring_search(self, query, *, display_language, include_inactive=True, rows=None):
+    def substring_search(self, query, *, display_language, include_inactive=True):
         self.calls.append(("substring", query, display_language, include_inactive))
-        self.rows.append(rows)
         return self._substring
 
-    def fuzzy_name_search(
-        self, query, *, display_language, min_score=None, include_inactive=True, rows=None
-    ):
+    def fuzzy_name_search(self, query, *, display_language, min_score=None, include_inactive=True):
         self.calls.append(("fuzzy_name", query, display_language, min_score, include_inactive))
-        self.rows.append(rows)
         return self._fuzzy
 
 
@@ -137,14 +120,11 @@ def service(
     semantic: tuple[CourseSearchResult, ...] = (),
     semantic_error: BaseException | None = None,
     records: tuple[RepresentedCourseSummary, ...] = (),
-) -> tuple[UnifiedCourseSearchService, FakeLookup, FakeSemantic, FakeCurriculum]:
-    lookup = FakeLookup(exact=exact, substring=substring, fuzzy=fuzzy)
+) -> tuple[UnifiedCourseSearchService, FakeLookup, FakeSemantic]:
+    lookup = FakeLookup(records=records, exact=exact, substring=substring, fuzzy=fuzzy)
     semantic_service = FakeSemantic(semantic, semantic_error)
-    curriculum = FakeCurriculum(records)
-    composed = UnifiedCourseSearchService(
-        curriculum, semantic_service, lookup, search_settings(priority)
-    )
-    return composed, lookup, semantic_service, curriculum
+    composed = UnifiedCourseSearchService(semantic_service, lookup, search_settings(priority))
+    return composed, lookup, semantic_service
 
 
 def test_unified_search_dispatches_every_method_merges_sources_and_preserves_scores() -> None:
@@ -152,7 +132,7 @@ def test_unified_search_dispatches_every_method_merges_sources_and_preserves_sco
     shared = summary("group-shared", code="COMP.CS.100")
     exact_only = summary("group-exact", code="COMP.CS.200")
 
-    composed, lookup, semantic, curriculum = service(
+    composed, lookup, semantic = service(
         exact=(shared, exact_only),
         substring=(),
         fuzzy=(FuzzyCourseResult(course=shared, score=88.0),),
@@ -179,14 +159,7 @@ def test_unified_search_dispatches_every_method_merges_sources_and_preserves_sco
     ]
     assert semantic.calls == [("semantic", "comp.cs", 0.25, False)]
 
-    # Exactly one represented-summary read, performed once and shared with the semantic pairing.
-    assert curriculum.calls == [True]
-    assert len(lookup.row_requests) == 1
-    assert lookup.row_requests[0][0] is False
-    assert lookup.row_requests[0][1] is semantic.represented[0]
-    # One row set serves the three lexical methods.
-    assert len(lookup.rows) == 3
-    assert all(entry is SENTINEL_ROWS for entry in lookup.rows)
+    # The semantic pairing reads the represented summaries once.
     assert len(semantic.represented) == 1
 
     assert [result.course.group_id for result in results] == ["group-shared", "group-exact"]
@@ -206,11 +179,13 @@ def test_unified_search_uses_configured_tiers_then_activity_and_method_order() -
     inactive_exact = summary("group-exact-i", is_active=False)
     substring = summary("group-sub")
     semantic = summary("group-sem")
+    records = (represented(active_exact), represented(inactive_exact))
 
-    composed, _, _, _ = service(
+    composed, _, semantic_service = service(
         exact=(inactive_exact, active_exact),
         substring=(substring,),
         semantic=(CourseSearchResult(course=semantic, score=0.5),),
+        records=records,
     )
     report = composed.search("q", display_language="en")
     assert report.semantic_available is True
@@ -218,6 +193,14 @@ def test_unified_search_uses_configured_tiers_then_activity_and_method_order() -
     assert report.semantic_min_score == 0.30
     assert report.fuzzy_min_score == 80
     results = report.results
+
+    # The default scope pairs the semantic read with the projection records themselves.
+    assert semantic_service.represented[0] == {
+        record.summary.group_id: record for record in records
+    }
+    # An active-only request pairs it with the same records filtered to active courses.
+    composed.search("q", display_language="en", include_inactive=False)
+    assert semantic_service.represented[1] == {records[0].summary.group_id: records[0]}
 
     # Exact tier first (active before inactive, then primary-method position), then substring, then semantic.
     assert [result.course.group_id for result in results] == [
@@ -230,7 +213,7 @@ def test_unified_search_uses_configured_tiers_then_activity_and_method_order() -
     # Within the fuzzy tier, the source service's relevance order is preserved.
     fuzzy_high = summary("group-fuzzy-high")
     fuzzy_low = summary("group-fuzzy-low")
-    fuzzy_order, _, _, _ = service(
+    fuzzy_order, _, _ = service(
         fuzzy=(
             FuzzyCourseResult(course=fuzzy_high, score=95.0),
             FuzzyCourseResult(course=fuzzy_low, score=85.0),
@@ -244,7 +227,7 @@ def test_unified_search_uses_configured_tiers_then_activity_and_method_order() -
     ]
 
     # Changing only the configured priority changes primary tiers and output order.
-    reordered, _, _, _ = service(
+    reordered, _, _ = service(
         priority=("semantic", "substring", "exact_code", "fuzzy_name"),
         exact=(active_exact,),
         semantic=(CourseSearchResult(course=semantic, score=0.5),),
@@ -260,7 +243,7 @@ def test_unified_search_uses_configured_tiers_then_activity_and_method_order() -
 def test_unified_search_returns_every_unique_match_without_a_cap() -> None:
     """No cap discards matches, and every unique exact match is returned once."""
     many = tuple(summary(f"group-{index:02d}") for index in range(15))
-    composed, _, _, _ = service(exact=many)
+    composed, _, _ = service(exact=many)
     report = composed.search("q", display_language="fi")
     assert len(report.results) == 15
     # A successful semantic request that matched no course leaves semantic matching available.
@@ -276,7 +259,7 @@ def test_unified_search_preserves_lexical_matches_when_embedding_is_unavailable(
     exact_only = summary("group-exact", code="COMP.CS.200")
     substring = summary("group-sub")
 
-    composed, _, semantic, curriculum = service(
+    composed, _, semantic = service(
         exact=(shared, exact_only) if populated else (),
         substring=(substring,) if populated else (),
         fuzzy=(FuzzyCourseResult(course=shared, score=88.0),) if populated else (),
@@ -298,13 +281,12 @@ def test_unified_search_preserves_lexical_matches_when_embedding_is_unavailable(
         assert report.results[0].match_sources == ("exact_code", "fuzzy_name")
         assert report.results[0].fuzzy_score == 88.0
     assert semantic.calls == [("semantic", "comp.cs", 0.25, True)]
-    assert curriculum.calls == [None]
 
 
 def test_unified_search_propagates_non_request_failures() -> None:
     """A non-request failure from the semantic seam propagates instead of a partial report."""
     error = EmbeddingContractError("POST /v1/embeddings: response violates embedding schema")
-    composed, _, _, _ = service(semantic_error=error)
+    composed, _, _ = service(semantic_error=error)
 
     with pytest.raises(EmbeddingContractError) as raised:
         composed.search("q", display_language="en")

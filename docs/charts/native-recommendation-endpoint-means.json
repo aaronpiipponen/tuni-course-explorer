@@ -1,0 +1,26 @@
+{
+  "type": "bar",
+  "title": "Matched recommendation endpoint means for the earlier product build and the product",
+  "description": "Mean core-seconds over three distinct report-cache misses for the earlier product build and the product at bases 20, 40, 50 and 60, in active-only and including-inactive scope.",
+  "valueAxis": "Core-seconds",
+  "categories": [
+    "Basis 20, active",
+    "Basis 20, inactive",
+    "Basis 40, active",
+    "Basis 40, inactive",
+    "Basis 50, active",
+    "Basis 50, inactive",
+    "Basis 60, active",
+    "Basis 60, inactive"
+  ],
+  "series": [
+    {
+      "name": "Earlier product build",
+      "values": [1.3231, 1.1405, 2.8952, 4.9177, 3.1146, 5.5181, 3.7763, 5.8694]
+    },
+    {
+      "name": "Product",
+      "values": [0.346, 0.4331, 0.7372, 0.699, 0.649, 0.8396, 0.712, 0.8444]
+    }
+  ]
+}

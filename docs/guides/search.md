@@ -23,7 +23,7 @@ The app runs every method its site serves for the submitted query and merges the
 | **Fuzzy search** | A course whose shown name is close to the query, so a typo or a different word order can match it. |
 | **Semantic** | A course whose teaching text is about the topic the query describes, even when the text shares no word with the query. Available with the embedding features. |
 
-The **?** button opens **About these options**, which explains the activity option and the match methods of the site, and ends with a **Searching for courses** link to this guide.
+The **?** button opens **About these options**, which explains the activity option and the match methods of the site. The activity option, the method heading, the Semantic method and the results entry link to the section of this guide or the technical search page that explains them.
 
 ## Reading the results
 
@@ -44,12 +44,13 @@ Each result is one course and shows its official code, its name, its credits, an
 | A search is under way | Placeholder rows where the results appear |
 | Semantic search is unavailable | **Semantic search is unavailable. Showing matches by code and name only.** The code and name matches the search found are listed. |
 | No course matched | **No courses match this search.** |
-| No course matched while semantic search is unavailable | The notice about semantic search, then **No courses match this search.** |
+| No course matched with **Active only** on | **No active courses matched. Consider turning Active only off.** |
+| No course matched while semantic search is unavailable | The notice about semantic search, then the empty text of the **Active only** state. |
 | The search failed | A notice with a short summary and the supplied detail under **Original technical detail** |
 
 A topic match needs the embedding service. When that service does not answer, the tab shows the notice and lists the matches it found by code, by code fragment, and by name, with the usual count, groups, and course cards. The notice belongs to the report of that search alone, so running the search again, changing the app language or the **Active only** option replaces it, and a search that reaches the service shows no notice. An unavailable topic match is not a failed search, so the tab shows the results rather than an error.
 
-A site that serves no topic matching never asks the embedding service for a query vector, so its tab shows no notice about an unavailable topic match and lists the name and code matches alone. The **?** drawer of such a site explains the three methods it serves.
+A site that serves no topic matching never asks the embedding service for a query vector, so its tab shows no notice about an unavailable topic match and lists the name and code matches alone. The **?** drawer of such a site explains the three methods it serves, and its method heading and results entry link to the page that explains them.
 
 Before the first search the tab holds the search field with **Active only** and the magnifier, and the **?** button.
 
@@ -59,6 +60,6 @@ The query and the **Active only** option belong to the [profile](/docs/guides/pr
 
 ## Acting on a result
 
-Every result opens the shared [course menu](/docs/guides/README.md#shared-course-state), with **Add to comparison** on a site that serves comparison, **Open prerequisite graph**, **Add to Unplaced studies**, **Mark completed**, and **Open in Sisu**. From the menu a course joins the [Compare tab](/docs/guides/compare.md), opens as the root of the [prerequisite graph](/docs/guides/prerequisites.md), joins [Unplaced studies](/docs/guides/structure-of-studies.md#unplaced-studies), gains or loses its completion, or opens the official page of the course outside the app. **Add to Unplaced studies** reports the number of courses it added in a bottom notice with a **Structure of studies** link. **Mark completed** completes a selected course in place. For a course that is not selected, the dialog **Mark completed?** offers **Cancel** and **Add and complete**, and **Add and complete** adds the course to Unplaced studies and completes it. **Cancel** changes nothing. This is described in [shared course state](/docs/guides/README.md#shared-course-state).
+Every result opens the shared [course menu](/docs/guides/README.md#shared-course-state), which lists its entries, the bottom notices they show and the **Mark completed?** dialog. A course that joins the comparison carries its slot letter on its result card.
 
 How the four methods match a query and how their results are merged is described in [Search](/docs/backend/search-and-discovery/search.md).

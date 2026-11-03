@@ -1,16 +1,18 @@
 # Admission control
 
-Admission control applies cookie-scoped rate and concurrency limits, estimated-cost heavy budgets, and global heavy slots with a waiting queue and refusals to the nine fixed API POST paths.
+Admission control applies cookie-scoped limits and heavy budgets to the nine catalogue API POST paths, while the feedback paths carry a separate hourly allowance.
 
 ## What admission control limits
 
-With `ADMISSION_ENABLED` true, the [front router](/docs/reference/glossary.md#administration) decides for every POST to one of the nine fixed API paths whether the read is served, waits or is refused. A GET, a shell document, a static asset, an unknown path and a POST outside that set pass without a limit. A [worker process](/docs/reference/glossary.md#administration) applies no admission rule of its own.
+With `ADMISSION_ENABLED` true, the [front router](/docs/reference/glossary.md#administration) decides for every POST to one of the nine fixed catalogue API paths whether the read is served, waits or is refused. A GET, a shell document, a static asset, an unknown path, a POST outside that set and a feedback submission pass without a catalogue limit. A [worker process](/docs/reference/glossary.md#administration) applies no admission rule of its own.
 
 Admission expresses a read's cost in core-seconds, estimated from the configured curve or the fixed search charge, and a prerequisite graph is charged the elapsed seconds recorded for an earlier build. The front router charges a heavy read that cost against its cookie's budget, so the limits bound the reads a cookie starts and the cost charged for them. The charge is fixed when the front router admits the read, and the read's CPU use after admission does not change it.
 
-The example `config/admission.toml` sets `ADMISSION_ENABLED` to `true`, so a copy that uses the example file gives every read on the nine API paths an admission class, queues a heavy read that finds no free slot while its queue has room, and sets the `tce_anon` cookie on every response under `/api/`. A site with admission enabled needs at least two worker processes, because the global heavy slots cap at one fewer than `WEB_WORKERS` and at least one worker process carries no heavy work.
+The example `config/admission.toml` sets `ADMISSION_ENABLED` to `true`, so a copy that uses the example file gives every read on the nine catalogue API paths an admission class, queues a heavy read that finds no free slot while its queue has room, and sets the `tce_anon` cookie on every catalogue API request it admits or refuses after the body read. A body refused at `WEB_REQUEST_BODY_MAX_BYTES`, and a client that disconnects inside that bounded read, are answered before the cookie channel exists, so that refusal carries no cookie. The two feedback paths set the same cookie on a feedback definition read and on an accepted or quota-refused submission, while a site, media-type or declared-length refusal answers before an identity exists. A site with admission enabled needs at least two worker processes, because the global heavy slots cap at one fewer than `WEB_WORKERS` and at least one worker process carries no heavy work.
 
-The front router takes the whole policy when it starts, so a changed key reaches a site when the web server restarts. Its admission counters, tickets and graph costs live in process memory, so a replacement front router starts with empty admission state. A dataset read uses the serving dataset, and the front router appends one request record for every HTTP request, refused or served.
+With `ADMISSION_ENABLED` false, the front router builds no admission state, reads no core count, starts no sampler and takes no catalogue ticket, and every read is forwarded to the least busy worker process. The two feedback paths keep their own allowance and cookie.
+
+The front router takes the whole policy when it starts, so a changed key reaches a site when the web server restarts. Its admission counters and tickets live in process memory, and its [graph cost cache](/docs/reference/glossary.md#administration) holds the measured graph costs of the dataset identity it resolved. A replacement front router starts with empty admission state and an empty graph cost cache. A dataset read uses the serving dataset, and the front router appends one request record for every HTTP request, refused or served.
 
 ## The three admission classes
 
@@ -28,15 +30,15 @@ The heavy class follows the request shape alone, except for a prerequisite graph
 - A recommendation or a next-courses read is heavy from its heavy basis size upward. The read takes the active-only scope unless the body sets `active_only` to false, and only an explicit false selects the scope that includes inactive courses.
 - `POST /api/prerequisites` is heavy only when an earlier build with the same cache field cost at least `ADMISSION_GRAPH_HEAVY_SECONDS`. A graph's first read is light, and a following read of the same field at or above the cutoff is heavy.
 
-The graph cache field holds the target string the request sends and the three toggles. An official code and the canonical identity of the same course therefore hold separate entries, and requests that share a target string and flags share the recorded cost whatever their course sets.
+A [graph cost cache](/docs/reference/glossary.md#administration) field holds the target string the request sends and the three toggles. An official code and the canonical identity of the same course therefore hold separate entries, and requests that share a target string and flags share the recorded cost whatever their course sets. The front router holds the one store of those costs in process memory.
 
 A build is recorded when the request's target string is the root's canonical identity in the report or an exact official code of the root course. Each of those spellings is its own cache field, and each is measured on its own. A request that sends any other spelling of the course is served and its graph resolved, and its field holds no recorded cost, so every read of that field is light. The browser sends the canonical identity its course data holds, so its builds are recorded.
 
-A recorded cost belongs to the serving dataset identity, and a build recorded under another identity clears the cache.
+A recorded cost belongs to the serving dataset identity, and a build recorded under another identity clears the cache. [Admission policy arithmetic](/docs/backend/interfaces/admission-policy.md#the-cost-curves) states the cost a graph read carries, and [Web routes](/docs/backend/interfaces/web-routes.md#the-route-modules) lists the prerequisite route and its adapter.
 
 The basis size of a recommendation or next-courses read is the number of distinct nonblank identifier strings in the basis the read uses. A `selected` basis uses the selected courses, or the completed courses when the selected list is empty, and every other basis uses the completed courses. A body that is not a JSON object takes the request defaults, so an unparseable search body is priced as a search that includes inactive courses.
 
-The example sets both recommendation cutoffs to five courses, the active-only next-courses cutoff to 63 courses and the inactive one to 26, the graph cutoff to 1.0 second, and the fixed cost of a search that includes inactive courses to 2.5 core-seconds. The curve that turns a basis size into a heavy read's estimated cost is on [Web server](/docs/backend/interfaces/web-server.md#admission-control).
+The example sets the active-only recommendation cutoff to 92 courses, the recommendation cutoff that includes inactive courses to 59 courses, the active-only next-courses cutoff to 317 courses and the inactive one to 121, the graph cutoff to 1.0 second, and the fixed cost of a search that includes inactive courses to 0.22689 core-seconds. A recommendation or next-courses read is charged the cost its scope's two-segment curve gives for its basis size, and [Admission policy arithmetic](/docs/backend/interfaces/admission-policy.md#the-cost-curves) states the curves.
 
 The diagram follows one API request through its class, its checks, its placement and its record.
 
@@ -46,11 +48,17 @@ A free read passes to a worker process without a check. A light read takes the l
 
 ## The anonymous cookie
 
-With admission enabled, one anonymous cookie identifies a browser. The front router sets `tce_anon` to 32 lowercase hexadecimal characters on every response it sends for a path under `/api/`, with `Max-Age` of `ADMISSION_COOKIE_MAX_AGE_SECONDS` (2592000 seconds, 30 days, in the example), `Path=/`, `HttpOnly`, `Secure` and `SameSite=Lax`. A refused read carries the same header as a served one.
+With admission enabled, one anonymous cookie identifies a browser. The front router sets `tce_anon` to 32 lowercase hexadecimal characters on the response to every request under `/api/` that it admits or refuses after the body read, with `Max-Age` of `ADMISSION_COOKIE_MAX_AGE_SECONDS` (2592000 seconds, 30 days, in the example), `Path=/`, `HttpOnly`, `Secure` and `SameSite=Lax`. A refused read carries the same header as a served one. A body refused at `WEB_REQUEST_BODY_MAX_BYTES`, and a client that disconnects inside that bounded read, are answered before that response channel exists, so that refusal carries none.
 
 A request whose cookie is absent or malformed receives a freshly minted value, and the front router limits that value like any other. The limits follow the cookie, so a client that presents a fresh cookie with every request starts each budget full, while the shared heavy slots and the queue cap the heavy reads the site runs and holds at once.
 
 A cookie's light and heavy counters become eligible for removal once the identity has been idle for `ADMISSION_IDENTITY_TTL_SECONDS` (3600 seconds in the example) and holds no light read, heavy ticket or place in the queue. The front router sweeps once per TTL interval, so an idle identity can last past the configured time until the next sweep.
+
+## The feedback submission allowance
+
+The two feedback paths take no light or heavy token. The front router admits one submission attempt per browser and site in a rolling hour: `FEEDBACK_BROWSER_SUBMISSIONS_PER_HOUR` (5 in the example) and `FEEDBACK_SITE_SUBMISSIONS_PER_HOUR` (30 in the example). The feedback definition read spends no allowance. The front router charges a `POST` submission after the exact-site, `application/json` and declared-length checks and before the body is read, so an invalid or oversized submission spends it. A refusal answers 429 with `{"detail": "Feedback request refused"}`, `Cache-Control: no-store` and a ceiling-rounded `Retry-After` for the greater of the browser and site waits. [Web routes](/docs/backend/interfaces/web-routes.md#the-route-modules) describes the two feedback handlers.
+
+The allowance is built whatever `ADMISSION_ENABLED` says, and it reuses the same `tce_anon` cookie. A fresh cookie gets a fresh browser allowance, so a client that discards cookies resets its own count, while the site allowance caps every browser together. The deque holds only the monotonic timestamps and opaque identity keys of the rolling hour, expires them on the next admission, and is lost when the front router process is replaced.
 
 ## The light limits
 
@@ -62,13 +70,13 @@ A light read that finds the cookie's concurrency in use or its balance below one
 
 ## The heavy budget
 
-One cookie holds a heavy bucket whose capacity is the current budget: `ADMISSION_HEAVY_BUDGET_CORE_SECONDS` at the headroom line (120 core-seconds in the example) and `ADMISSION_HEAVY_BUDGET_SATURATED_CORE_SECONDS` at saturation (40 in the example). Between the two lines the budget falls linearly. The bucket refills over `ADMISSION_WINDOW_SECONDS` (60 seconds in the example) at the budget divided by the window. The measured effect of that saturated budget on heavy completions is recorded in [Serving load and admission limits](/docs/experiments/runtime-storage-and-serving/serving-load-and-limits.md#the-saturated-budget-at-40-core-seconds).
+One cookie holds a heavy bucket whose capacity is the current budget: `ADMISSION_HEAVY_BUDGET_CORE_SECONDS` at the headroom line (120 core-seconds in the example) and `ADMISSION_HEAVY_BUDGET_SATURATED_CORE_SECONDS` at saturation (40 in the example). Between the two lines the budget falls linearly. The bucket refills over `ADMISSION_WINDOW_SECONDS` (60 seconds in the example) at the budget divided by the window.
 
-A heavy read is charged its cost. A read whose cost is above the budget is charged the whole budget, so it passes while the bucket is full and fails once the balance has fallen below the budget. A read whose charge the balance cannot cover answers 429 at once. A read that is refused at the queue cap gets its charge back.
+A heavy read is charged its cost. A read whose cost is above the budget is charged the whole budget, so it passes while the bucket is full and fails once the balance has fallen below the budget. A read whose charge the balance cannot cover answers 429 at once. A read that is refused at the queue cap gets its charge back. The bucket arithmetic behind those outcomes is stated in [Admission policy arithmetic](/docs/backend/interfaces/admission-policy.md#the-policy-arithmetic).
 
 ## The load score
 
-The front router combines three terms into one load score over a window of `ADMISSION_LOAD_WINDOW_SECONDS` seconds (60 in the example): the whole host's CPU utilisation, the light reads admitted in the window and the heavy reads admitted or running in it. `ADMISSION_SCORE_CPU_WEIGHT`, `ADMISSION_SCORE_LIGHT_WEIGHT` and `ADMISSION_SCORE_HEAVY_WEIGHT` set the three weights (1.0, 0.012 and 0.004 in the example). The weights and the fitted score behind them are recorded in [Serving load and admission limits](/docs/experiments/runtime-storage-and-serving/serving-load-and-limits.md#the-fitted-score).
+The front router combines three terms into one load score over a window of `ADMISSION_LOAD_WINDOW_SECONDS` seconds (60 in the example): the whole host's CPU utilisation, the light reads admitted in the window and the heavy reads admitted or running in it. `ADMISSION_SCORE_CPU_WEIGHT`, `ADMISSION_SCORE_LIGHT_WEIGHT` and `ADMISSION_SCORE_HEAVY_WEIGHT` set the three weights (1.0, 0.012 and 0.004 in the example).
 
 The CPU utilisation is the host's busy CPU core-seconds over the window divided by the window length and the host's core count. It covers every process on the host, including work outside this site. The front router samples the host CPU once a second, and every admission reads the values the last sample stored.
 
@@ -102,7 +110,7 @@ A heavy read that finds no free slot joins a first-in-first-out queue and waits 
 
 The front router places an admitted heavy read on a worker process that carries no other heavy read, and it picks the least busy such process, with the lowest index on a tie. A light read goes to the least busy worker process, which may carry a heavy read.
 
-A read holds its worker process until its response body ends. The router opens one connection per forwarded read and reuses none. A failed connection to a worker process ends the request with status 500, and the read is not retried or moved to another process. The measured distribution of that placement is recorded in [Serving cost and routing](/docs/experiments/runtime-storage-and-serving/serving-cost-and-routing.md).
+A read holds its worker process until its response body ends. The router opens one connection per forwarded read and reuses none. A failed connection to a worker process ends the request with status 500, and the read is not retried or moved to another process.
 
 ## Refusals
 
@@ -113,41 +121,12 @@ A read holds its worker process until its response body ends. The router opens o
 | Heavy balance | The charge is more than the cookie's heavy balance. |
 | Queue cap | The queue already holds the current cap of waiting heavy reads. |
 
-Every refusal is status 429 with the body `{"detail": "Too much traffic"}` and `Retry-After` set to `ADMISSION_RETRY_AFTER_SECONDS` (5 seconds in the example). The response carries the anonymous cookie. A refused read reaches no worker process and counts nothing in the load score.
+Every refusal answers status 429 with the body `{"detail": "Too much traffic"}` and `Retry-After` set to `ADMISSION_RETRY_AFTER_SECONDS` (5 seconds in the example). The response carries the anonymous cookie. A refused read reaches no worker process and counts nothing in the load score. The feedback allowance has its own fixed refusal body and its own computed delay, stated above.
 
 ## The usage record of a refused read
 
-The front router appends one [request record](/docs/backend/interfaces/web-server.md#the-request-usage-record) for every HTTP request it answers, so a refusal adds a record with status 429 and the read's fixed route label. The record holds the start hour, the route label, the status and the duration, and no cookie, identity, body or query. The [usage report](/docs/backend/interfaces/command-line.md#the-request-usage-report) counts those records and gives each route's request count and mean duration, so a refusal raises its route's count and mean and its 429 appears in the record alone.
+The front router appends one [request record](/docs/backend/interfaces/front-router.md#the-request-usage-record) for every HTTP request it answers, so a refusal adds a record with status 429 and the read's fixed route label. The record holds the start hour, the route label, the status and the duration, and no cookie, identity, body or query. [Administration commands](/docs/backend/interfaces/administration-commands.md#the-request-usage-report) states the usage report that counts those records and gives each route's request count with its mean and exact nearest-rank p95 and p99 durations. A refusal adds its own duration to that distribution, so it can raise or lower the mean and either percentile, and its 429 status appears in the record alone.
 
 ## Settings that move the bounds
 
-The table gives the value the example configuration sets for each key, and every admission key lives in `config/admission.toml`.
-
-| Setting | Bound | Example |
-|---|---|---|
-| `ADMISSION_ENABLED` | Whether the front router limits reads at all. | `true` |
-| `ADMISSION_LIGHT_OPERATIONS_PER_MINUTE` | The refill rate of one cookie's light bucket at the headroom line. | 120 |
-| `ADMISSION_LIGHT_BURST` | The light tokens one cookie's bucket holds. | 20 |
-| `ADMISSION_LIGHT_CONCURRENCY` | The light reads one cookie runs at once at the headroom line. | 8 |
-| `ADMISSION_LIGHT_LOAD_FLOOR` | The share of the headroom light limits that applies at saturation. | 0.25 |
-| `ADMISSION_HEAVY_BUDGET_CORE_SECONDS` | One cookie's heavy budget for a window at the headroom line. | 120 |
-| `ADMISSION_HEAVY_BUDGET_SATURATED_CORE_SECONDS` | The same budget at saturation. | 40 |
-| `ADMISSION_WINDOW_SECONDS` | The window one heavy budget refills over. | 60 |
-| `ADMISSION_HEAVY_SLOTS` | The global heavy slots at the headroom line, before the cap at one fewer than `WEB_WORKERS`. | 3 |
-| `ADMISSION_HEAVY_QUEUE_HEADROOM_LIMIT` | The waiting heavy reads the queue admits at the headroom line. | 64 |
-| `ADMISSION_HEAVY_QUEUE_MIDDLE_LIMIT` | The waiting heavy reads the queue admits in the middle regime. | 32 |
-| `ADMISSION_HEAVY_QUEUE_SATURATED_LIMIT` | The waiting heavy reads the queue admits at saturation. | 16 |
-| `ADMISSION_SCORE_HEADROOM` | The score at or below which the site is in headroom. | 0.60 |
-| `ADMISSION_SCORE_SATURATION` | The score at or above which the site is saturated. | 1.05 |
-| `ADMISSION_SCORE_RELEASE` | The score below which a saturated site leaves saturation. | 0.90 |
-| `ADMISSION_LOAD_WINDOW_SECONDS` | The window of CPU samples and admitted activity the score measures. | 60 |
-| `ADMISSION_SCORE_CPU_WEIGHT`, `ADMISSION_SCORE_LIGHT_WEIGHT`, `ADMISSION_SCORE_HEAVY_WEIGHT` | The three weights of the load score. | 1.0, 0.012, 0.004 |
-| `ADMISSION_GRAPH_HEAVY_SECONDS` | The measured cost from which a graph read is heavy. | 1.0 |
-| `ADMISSION_SEARCH_INACTIVE_COST_CORE_SECONDS` | The fixed cost of a search that includes inactive courses. | 2.5 |
-| `ADMISSION_RECOMMENDATION_ACTIVE_HEAVY_BASIS`, `ADMISSION_RECOMMENDATION_INACTIVE_HEAVY_BASIS` | The basis size from which a recommendation is heavy in each scope. | 5, 5 |
-| `ADMISSION_NEXT_COURSES_ACTIVE_HEAVY_BASIS`, `ADMISSION_NEXT_COURSES_INACTIVE_HEAVY_BASIS` | The basis size from which a next-courses read is heavy in each scope. | 63, 26 |
-| `ADMISSION_IDENTITY_TTL_SECONDS` | The idle time after which a cookie's counters become eligible for removal. | 3600 |
-| `ADMISSION_COOKIE_MAX_AGE_SECONDS` | The cookie's lifetime in the browser. | 2592000 |
-| `ADMISSION_RETRY_AFTER_SECONDS` | The delay a refusal states in `Retry-After`. | 5 |
-
-`WEB_WORKERS` in `config/web.toml` caps the heavy slots, and a site with admission enabled needs at least two worker processes. [Configuration](/docs/backend/configuration.md#subsystem-keys) lists every key row and its constraints.
+Every admission key lives in `config/admission.toml`, and `WEB_WORKERS` in `config/web.toml` caps the heavy slots, so a site with admission enabled needs at least two worker processes. The serving switch, the counter lifetimes, the load-score window and weights, the three score lines, the light rate, burst and concurrency, the heavy budgets, slots and queue caps, the four heavy basis cutoffs, the graph cutoff, the fixed inactive-search cost and the two cost curves are listed with their effects and the value the example file sets in [Subsystem keys](/docs/backend/configuration.md#subsystem-keys). [Admission policy arithmetic](/docs/backend/interfaces/admission-policy.md) states the arithmetic behind the bounds, the curves and the refund a refusal makes.

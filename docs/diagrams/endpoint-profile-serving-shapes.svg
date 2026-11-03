@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 620" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">One read in the profiled build and on a served site</title>
+  <desc id="d">In the profiled build of 19 October 2026 the browser sends a request to two worker
+  processes with synchronous handlers, which read the dataset and return an uncompressed body, and
+  the route calculation runs on the server. On a served site the request passes the front router to
+  the configured worker processes, the body is compressed from 500 bytes, and the browser
+  calculates the route from the graph report.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="620" rx="12" fill="#232434"/>
+
+  <text x="48" y="56" font-size="16" fill="#a3a4b8">Profiled build, 19 October 2026</text>
+  <text x="512" y="56" font-size="16" fill="#a3a4b8">Served site</text>
+
+  <rect x="48" y="76" width="400" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="248" y="102" text-anchor="middle" font-size="16" fill="#ececf2">Browser app</text>
+  <text x="248" y="124" text-anchor="middle" font-size="14" fill="#a3a4b8">sends the request</text>
+
+  <rect x="48" y="168" width="400" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="248" y="194" text-anchor="middle" font-size="16" fill="#ececf2">Two worker processes</text>
+  <text x="248" y="216" text-anchor="middle" font-size="14" fill="#a3a4b8">synchronous handlers</text>
+
+  <rect x="48" y="260" width="400" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="248" y="286" text-anchor="middle" font-size="16" fill="#ececf2">Dataset read</text>
+  <text x="248" y="308" text-anchor="middle" font-size="14" fill="#a3a4b8">one command per read</text>
+
+  <rect x="48" y="352" width="400" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="248" y="378" text-anchor="middle" font-size="16" fill="#ececf2">JSON body</text>
+  <text x="248" y="400" text-anchor="middle" font-size="14" fill="#a3a4b8">uncompressed</text>
+
+  <rect x="512" y="76" width="400" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="712" y="102" text-anchor="middle" font-size="16" fill="#ececf2">Browser app</text>
+  <text x="712" y="124" text-anchor="middle" font-size="14" fill="#a3a4b8">sends the request and solves the route</text>
+
+  <rect x="512" y="168" width="400" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="712" y="194" text-anchor="middle" font-size="16" fill="#ececf2">Front router</text>
+  <text x="712" y="216" text-anchor="middle" font-size="14" fill="#a3a4b8">admits each read</text>
+
+  <rect x="512" y="260" width="400" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="712" y="286" text-anchor="middle" font-size="16" fill="#ececf2">Worker processes</text>
+  <text x="712" y="308" text-anchor="middle" font-size="14" fill="#a3a4b8">set by WEB_WORKERS</text>
+
+  <rect x="512" y="352" width="400" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="712" y="378" text-anchor="middle" font-size="16" fill="#ececf2">Dataset read</text>
+  <text x="712" y="400" text-anchor="middle" font-size="14" fill="#a3a4b8">one command per read</text>
+
+  <rect x="512" y="444" width="400" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="712" y="470" text-anchor="middle" font-size="16" fill="#ececf2">JSON body</text>
+  <text x="712" y="492" text-anchor="middle" font-size="14" fill="#a3a4b8">gzip from 500 bytes</text>
+
+  <line x1="248" y1="140" x2="248" y2="168" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="248" y1="232" x2="248" y2="260" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="248" y1="324" x2="248" y2="352" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="256" y="343" font-size="14" fill="#a3a4b8">serializes</text>
+
+  <line x1="712" y1="140" x2="712" y2="168" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="720" y="159" font-size="14" fill="#a3a4b8">sends</text>
+  <line x1="712" y1="232" x2="712" y2="260" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="720" y="251" font-size="14" fill="#a3a4b8">forwards</text>
+  <line x1="712" y1="324" x2="712" y2="352" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="712" y1="416" x2="712" y2="444" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="720" y="435" font-size="14" fill="#a3a4b8">compresses</text>
+
+  <text x="48" y="456" font-size="14" fill="#a3a4b8">The route calculation runs on the server.</text>
+  <text x="48" y="480" font-size="14" fill="#a3a4b8">The server sends no compressed response.</text>
+  <text x="512" y="540" font-size="14" fill="#a3a4b8">The browser calculates the route</text>
+  <text x="512" y="564" font-size="14" fill="#a3a4b8">from the graph report.</text>
+</svg>

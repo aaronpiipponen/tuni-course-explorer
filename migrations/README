@@ -1,0 +1,26 @@
+Alembic owns all application schema changes.
+
+One migration chain under `migrations/versions` serves the configured database, the Selected dataset
+and the Working dataset. The single head is `20261103_0023`.
+
+`uv run alembic upgrade head` applies the head to the database that the settings and the
+environment file name. `migrations/env.py` composes the tracked TOML and the environment file
+through `load_raw_database_settings`, and it accepts a caller-owned connection through
+`config.attributes["connection"]`, so a caller can reuse one resolved connection instead of
+reopening settings. With no supplied connection the default settings and engine path runs.
+
+An enrolled site resolves the Selected dataset. Enroll it with
+`uv run python scripts/admin.py setup datasets`, then apply the head to it with
+`uv run python scripts/admin.py migrate selected`. The command also accepts `working` and
+`database`, and the `database` form applies only while no Selected dataset is enrolled. Each form
+requires the `db` Compose service to run.
+
+Reverse one revision with `uv run alembic downgrade <revision>`. A downgrade that would lose
+retained evidence raises an error.
+
+The feedback application store has its own chain under `migrations_feedback/versions`, with the
+single head `20261103_feedback_0004`. Apply it with
+`uv run alembic -c alembic_feedback.ini upgrade head`, and `migrations_feedback/env.py` resolves the
+feedback database through `load_feedback_settings` with the same caller-owned connection hook.
+Every downgrade in that chain raises an error instead of dropping retained answers, attachments or
+publication outcomes. A reverse step therefore restores from a dump.

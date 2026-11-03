@@ -7,11 +7,14 @@ Usage:
 import argparse
 from collections.abc import Sequence
 
-from course_explorer.search.lookup_commands import run_catalogue_command
+from _checkout_source import install
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     """Parse no arguments, delegate once, and print one JSON report line."""
+    install()
+    from course_explorer.search.lookup_commands import run_catalogue_command
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.parse_args(argv)
     report = run_catalogue_command()

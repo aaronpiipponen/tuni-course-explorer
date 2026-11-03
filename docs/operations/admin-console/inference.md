@@ -1,8 +1,8 @@
 # Inference
 
-The Inference tab holds the inference run, its publication reports, the target decisions and the dataset cleanup for the selected dataset.
+The Inference tab holds the inference run, its publication reports over the resolved dataset, and the target decisions.
 
-![The Inference tab with the inference run, its publication and coverage reports, the generation identities, and the target decisions, dataset cleanup and failures panels](/docs/screenshots/admin-console-inference.png)
+![The Inference tab with the inference run, its publication and coverage reports, the generation identities, and the target decisions and failures panels](/docs/screenshots/admin-console-inference.png)
 
 ## The inference run
 
@@ -23,7 +23,7 @@ Below the rows, one line per reported stage shows the stage name, a progress bar
 
 ## The lifecycle actions
 
-The run offers **Start**, **Pause**, **Resume** and **Stop**.
+The run offers **Start**, **Pause**, **Resume** and **Stop**. The four actions need a Working dataset. When the console's inventory read reports none, the tab shows one **No Working dataset** notice with the copy hint and the run panel disables all four actions, while the run rows and the marker keep updating. Before the first successful inventory read, the actions are enabled and the stage owner reports its own guidance for a run without Working.
 
 Only **Stop** asks for confirmation. Its dialog names the inference run, and **Cancel**, Escape and a click outside the dialog close it and run nothing. The other three actions run at once.
 
@@ -31,11 +31,13 @@ While an action runs, the four controls are disabled. A successful action shows 
 
 The run starts the inference stage on the worker. [Worker sessions](/docs/operations/worker-sessions.md) describes the worker session, its copy of the dataset and the return.
 
-## When the selected dataset is not enabled
+## When no dataset is selected
 
-The report panels and the dataset cleanup depend on the selected dataset. When the site reports that dataset as not enabled, they show **The selected dataset is not enabled on this site.** in place of their rows. The console reads no summary and no dataset listing in that state.
+The report panels read only while the site has a Selected dataset. A site with no Selected dataset shows **No dataset is selected on this site.** in place of their rows and issues no summary read. A site whose dataset state is unavailable shows **The dataset state is unavailable: data/ or its dataset tree is a symlink or not a directory.** in the four summary panels and issues no summary read.
 
-The inference run reads its status independently of the selection state.
+When the summary read runs, the backend resolves Working first and Selected when Working is absent, and the Coverage panel names the role it read. A Selected fallback shows a **Selected dataset** strip with a **No Working dataset** hint.
+
+The inference run reads its status independently of the selection state, and the [Dataset roles](/docs/operations/admin-console/dataset-roles.md) panel in Settings reads its inventory independently of it as well.
 
 ## Publication diagnostics
 
@@ -58,7 +60,7 @@ The **Publication diagnostics** panel reports the counts of the publication and 
 
 ## Inference coverage
 
-The **Coverage** panel counts the inferred results the selected dataset retains on the server.
+The **Coverage** panel counts the inferred results the resolved dataset retains on the server.
 
 | Row | Meaning |
 |---|---|
@@ -93,7 +95,7 @@ A target an operator marked DONE adds no row, because it carries no generation i
 
 The **Target decisions** panel records one decision for one canonical target: **NOTHING**, **DONE** or **FAILED**. Before a lookup, it shows **Search for a target identity before recording a decision.**
 
-![The Target decisions panel with an empty canonical target group id, the prompt to search, the NOTHING, DONE and FAILED choices and the disabled Record decision button](/docs/screenshots/admin-console-inference-target-decisions.png)
+![The Target decisions panel with an empty identity input beside Search, the prompt to search, the NOTHING, DONE and FAILED choices and the Record decision button](/docs/screenshots/admin-console-inference-target-decisions.png)
 
 1. Enter the canonical target group identity in the input and select **Search**.
 2. The panel shows the dataset, the canonical group, the official code, the English name and the recorded decision.
@@ -104,25 +106,11 @@ The **Target decisions** panel records one decision for one canonical target: **
 
 A decision applies only to the identity the lookup resolved. Editing the input after a lookup shows **The input differs from the recorded identity.** and disables the decision controls until **Search** runs again. A recorded decision replaces the shown decision and refreshes the summary panels.
 
-The lookup requires the selected-dataset switch `SELECTED_DATASET_ENABLED` in `config/database.toml` enabled, and the selected database at the migration head. The decision additionally requires a verified returned dataset and every stage idle. A refusal appears in the panel.
-
-## Dataset cleanup
-
-The **Dataset cleanup** panel lists the retained datasets that hold a database or a retained dump, and deletes one that the site does not serve.
-
-| Column | Meaning |
-|---|---|
-| **Dataset** | The dataset identity. |
-| **Database** | The database name. |
-| **Dump** | The retained dump path, or **unknown** when no dump is retained. |
-
-The selected dataset is listed first and carries the **selected** marker in place of the **Delete** control. Every other row offers **Delete**.
-
-**Delete** opens the **Delete retained dataset** dialog, which names the dataset identity and the database name. **Cancel**, Escape and a click outside the dialog close it and change nothing. **Confirm** drops the database and removes the retained dump, then the listing reloads. A failed deletion leaves the row and shows the failure in the panel.
+The lookup requires the Working dataset and its database at the migration head. The decision additionally requires a verified returned or copied Working dataset and every stage idle. A refusal appears in the panel.
 
 ## Failures
 
-The **Failures** panel lists the failure records the selected dataset retains.
+The **Failures** panel lists the failure records the resolved dataset retains.
 
 | Column | Meaning |
 |---|---|

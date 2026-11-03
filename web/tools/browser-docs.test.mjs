@@ -12,7 +12,7 @@ test(
     try {
       await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
       await page.locator(".app-shell").waitFor({ state: "visible" });
-      await page.locator(".docs-link").click();
+      await page.locator('.docs-link[href="/docs"]').click();
       await page.waitForFunction(() => location.pathname === "/docs");
       await page.locator(".docs-shell").waitFor({ state: "visible" });
 

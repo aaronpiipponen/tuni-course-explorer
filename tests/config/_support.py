@@ -17,7 +17,10 @@ from course_explorer.config import (
     AdmissionSettings,
     CaptureSettings,
     DatabaseSettings,
-    EmbeddingSettings,
+    EmbeddingRuntimeSettings,
+    FeedbackIntakeSettings,
+    FeedbackSenderSettings,
+    FeedbackSettings,
     InferenceContextSettings,
     InferenceControllerSettings,
     InferenceRerankInputSettings,
@@ -43,23 +46,11 @@ from tests.support import (
 
 __all__ = ["REPO_ROOT"]
 
-MACHINE_LOCAL_KEYS = {
-    "TRANSLATION_CONTROLLER_SSH_TARGET",
-    "TRANSLATION_CONTROLLER_WSL_DISTRIBUTION",
-    "TRANSLATION_CONTROLLER_WORKER_PROJECT_ROOT",
-    "ADMIN_SITE_WEB_SERVICE_UNIT",
-    "ADMIN_SITE_ADMIN_SERVICE_UNIT",
-    "ADMIN_SITE_WEB_SERVICE_SCOPE",
+LOCAL_TEMPLATE_KEYS = {
+    "POSTGRES_PASSWORD",
+    "FEEDBACK_POSTGRES_PASSWORD",
+    "FEEDBACK_GITHUB_TOKEN",
 }
-MACHINE_TEMPLATE_VALUES = {
-    "TRANSLATION_CONTROLLER_SSH_TARGET": "replace-with-ssh-target",
-    "TRANSLATION_CONTROLLER_WSL_DISTRIBUTION": "replace-with-wsl-distribution",
-    "TRANSLATION_CONTROLLER_WORKER_PROJECT_ROOT": "/home/replace-with-user/tuni-course-explorer",
-    "ADMIN_SITE_WEB_SERVICE_UNIT": "replace-with-web.service",
-    "ADMIN_SITE_ADMIN_SERVICE_UNIT": "replace-with-admin.service",
-    "ADMIN_SITE_WEB_SERVICE_SCOPE": "user",
-}
-LOCAL_TEMPLATE_KEYS = {"POSTGRES_PASSWORD"} | MACHINE_LOCAL_KEYS
 
 
 def _keys(settings_type: type[BaseSettings]) -> dict[str, str]:
@@ -82,7 +73,6 @@ def _keys(settings_type: type[BaseSettings]) -> dict[str, str]:
 POSTGRES_KEYS = {
     **_keys(DatabaseSettings),
     "POSTGRES_PASSWORD": "local-password",
-    "SELECTED_DATASET_ENABLED": "0",
 }
 ADMIN_DATASET_KEYS = {
     key: value
@@ -92,7 +82,7 @@ ADMIN_DATASET_KEYS = {
 KORI_KEYS = _keys(KoriSettings)
 CAPTURE_KEYS = _keys(CaptureSettings)
 NORMALIZATION_KEYS = _keys(NormalizationSettings)
-EMBEDDING_KEYS = _keys(EmbeddingSettings)
+EMBEDDING_KEYS = _keys(EmbeddingRuntimeSettings)
 LOCAL_LIFECYCLE_KEYS = _keys(LocalLifecycleSettings)
 SEARCH_KEYS = _keys(SearchSettings)
 TRANSLATION_KEYS = _keys(TranslationSettings)
@@ -103,6 +93,9 @@ WORKER_GPU_REBOOT_KEYS = _keys(WorkerGpuRebootSettings)
 WEB_KEYS = _keys(WebSettings)
 ADMISSION_KEYS = _keys(AdmissionSettings)
 ADMIN_WEB_KEYS = _keys(AdminWebSettings)
+FEEDBACK_KEYS = _keys(FeedbackSettings)
+FEEDBACK_INTAKE_KEYS = _keys(FeedbackIntakeSettings)
+FEEDBACK_SENDER_KEYS = _keys(FeedbackSenderSettings)
 TRANSLATION_CONTROLLER_KEYS = {
     **_keys(TranslationControllerSettings),
     **WORKER_GPU_REBOOT_KEYS,
@@ -155,8 +148,10 @@ FIXTURE_VALUES: dict[str, str] = {
     **WEB_KEYS,
     **ADMISSION_KEYS,
     **ADMIN_WEB_KEYS,
+    **FEEDBACK_KEYS,
+    **FEEDBACK_INTAKE_KEYS,
+    **FEEDBACK_SENDER_KEYS,
 }
-PUBLIC_ALIASES = FIXTURE_VALUES.keys() - LOCAL_TEMPLATE_KEYS
 
 
 def _set_environment(
@@ -190,8 +185,8 @@ def set_administrative_controller_environment(
     """Set the shared administrative inputs: admin root, derived prefixes, and stage roots.
 
     The administrative state root plus the four stage roots resolve from these process-environment
-    values. Tests point the owning module's ``repository_root`` at their temporary repository and
-    override the one stage root under test here.
+    values. Tests point the shared ``administration.repository_root`` owner at their temporary
+    repository and override the one stage root under test here.
     """
     values = {
         "ADMIN_STATE_ROOT": POSTGRES_KEYS["ADMIN_STATE_ROOT"],

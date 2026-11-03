@@ -6,9 +6,11 @@ A search query matches courses through the lexical and semantic methods a site s
 
 [Unified search](/docs/reference/glossary.md#search-and-comparison) runs every method a site serves for one query and merges their results into one entry per course, so a course that several methods match appears once with the list of methods that matched it. The methods are Exact code, Substring, Fuzzy search, and Semantic, and a site that serves embedding features runs all four.
 
-One request carries the query, the app language, a minimum score for each scored method, and whether inactive courses take part. A serving process takes one normalized row set for the requested activity scope from its dataset lookup projection, or reads the represented courses once when it holds no projection, and shares those rows between the lexical methods, so every method describes the same catalogue. The semantic method pairs its hits with the represented records of the same request.
+One request carries the query, the app language, a minimum score for each scored method, and whether inactive courses take part. A serving process takes the normalized rows for the requested activity scope from its dataset lookup projection, and each lexical method reads the part it needs of the projection's rows, per-language name lists and fuzzy-name token tables, so every method describes the same catalogue. The semantic method pairs its hits with the projection's represented index for the request's activity scope, which the same lookup service returns without a database read.
 
 The semantic method needs a vector for the query, and it embeds the query through the same service that produced the stored vectors. [Embeddings](/docs/backend/text-and-vectors/embeddings.md) describes that service and the vectors it stores.
+
+The diagram follows one query through the methods and the merge into the ordered results.
 
 ![On a site that serves semantic matching, one query reaches the four search methods, and the embedding service supplies the query vector that the semantic method measures. The four methods' results are merged into one entry per course and ordered by the configured tier order.](/docs/diagrams/search-pipeline.svg)
 
@@ -17,7 +19,7 @@ The semantic method needs a vector for the query, and it embeds the query throug
 Each method has its own matching rule, its own cutoff where it has one, and its own order.
 
 > [!IMPORTANT]
-> The fuzzy cutoff, the token-coverage weight, and the semantic threshold decide how many courses the fuzzy and semantic methods return. Every course a method matches at or above its cutoff is returned, and no method applies a result-count limit. Lowering the cutoff widens the result, and raising the token-coverage weight lets a course that matches the query token by token score higher.
+> The fuzzy cutoff, the token-coverage weight, and the semantic threshold decide how many courses the fuzzy and semantic methods return. The fuzzy score tie-break weight decides only their order. Every course a method matches at or above its cutoff is returned, and no method applies a result-count limit. Lowering the cutoff widens the result, and raising the token-coverage weight lets a course that matches the query token by token score higher.
 
 ### Exact code
 
@@ -31,17 +33,23 @@ A course matches when the query is contained in its official code or in the name
 
 Fuzzy search scores the displayed official name of each course against the query from 0 to 100 and keeps every course at or above the cutoff, so a name with a typo or a different word order can match as well. A course with no displayed official name takes no part in the scoring.
 
-The score is the greater of two 0 to 100 values. The first is the similarity of the whole query to the whole name. The second is the coverage of the query tokens: each query token is compared with the tokens of the name, and the coverage is the configured weight times the mean of each query token's best similarity to a name token. A query that holds no token is scored by whole-name similarity alone, and a cutoff above the weight times 100 leaves only whole-name similarity able to qualify a course.
+The score starts from the stronger of two 0 to 100 values. The first is the whole-name similarity, which is symmetric and rewards a shared prefix, so a long query cannot raise a short unrelated name. The second is the coverage of the query tokens, which compares each query token with the tokens of the name. The weaker of the two values then closes part of the gap to 100, so two names that both cover the query order by their whole-name similarity. The stronger value alone decides whether a course reaches the cutoff, so the tie-break never removes a match.
 
-`FUZZY_SEARCH_MIN_SCORE` in `config/search.toml` sets the cutoff, and the example sets 80. `FUZZY_TOKEN_MATCH_WEIGHT` sets the weight of token coverage, greater than 0 and at most 1, and the example sets 0.95. A lower weight favors whole-name similarity. Token coverage reaches the weight times 100 at most, so with the example weight a whole-name match that scores 100 outranks every token-only score.
+The whole-name similarity runs over the projection's name list for the request's app language and activity scope, and the token comparison runs against the token table the serving dataset retains, so a query tokenizes no title. A query that holds no token is scored by whole-name similarity alone, and a cutoff above the weight times 100 leaves only whole-name similarity able to qualify a course. [Search queries and merge](/docs/backend/search-and-discovery/search-queries.md#normalization-and-ordering) states the whole-name similarity, the token comparison and their formulas.
+
+`FUZZY_SEARCH_MIN_SCORE` in `config/search.toml` sets the cutoff. `FUZZY_TOKEN_MATCH_WEIGHT` sets the weight of token coverage, greater than 0 and at most one. A lower weight favors whole-name similarity. `FUZZY_SCORE_TIE_BREAK_WEIGHT` sets the share of the gap to 100 that the weaker value closes, from 0 to 1. Token coverage reaches the weight times 100 at most, so with a weight below one a whole-name match that scores 100 outranks every token-only score.
 
 ### Semantic
 
-The semantic method embeds the query and measures that vector against the stored vectors of the represented courses. A course's relevance is its best chunk. The read takes the completed chunks of the course's current representative version that were written under the configured embedding configuration, and a chunk of another version, a pending chunk, and a failed chunk contribute no score. A score is a cosine measured after the embedding hub is subtracted from the query vector and from the stored vector, so a score runs from -1 to 1 and an unrelated course scores close to zero. Every course whose best chunk reaches the threshold is returned. `SEMANTIC_SEARCH_MIN_SCORE` in `config/search.toml` sets the threshold, and the example sets 0.30. No approximate HNSW configuration returned the exact set for all four measured queries, as [Exact and approximate semantic retrieval](/docs/experiments/search-and-translation/semantic-retrieval.md) records.
+The semantic method embeds the query and measures that vector against the stored vectors of the represented courses. A course's relevance is its best chunk. The read takes the completed chunks of the course's current representative version that were written under the configured embedding configuration, and a chunk of another version, a pending chunk, and a failed chunk contribute no score. A score is a cosine measured after the embedding hub is subtracted from the query vector and from the stored vector, so a score runs from -1 to 1 and an unrelated course scores close to zero. Every course whose best chunk reaches the threshold is returned. `SEMANTIC_SEARCH_MIN_SCORE` in `config/search.toml` sets the threshold. [Exact and approximate semantic retrieval](/docs/experiments/search-and-translation/semantic-retrieval.md) records the measurements of the exact read and the approximate alternatives.
+
+## The packed exact read
+
+On a site that serves the embedding features, the semantic method reads the dataset's [packed search relation](/docs/reference/glossary.md#serving-data) in one exact scan. Each represented course's best score is returned, the threshold is applied to it, and the results are ordered by canonical group and version. The artifact set reads the meta row and the neighbour presence once when it opens. A missing packed search meta row is refused at open only when the catalogue hub is nonempty, and an empty hub opens a zero retained group count. A missing hub file, a missing embedding directory, a malformed hub, and a dataset that holds embedded chunks with no stored neighbour row each fail at open with one `ValueError` naming `scripts/admin.py serving-artifacts`. A database without the packed scan extension fails the semantic read when the scan statement runs. [Search queries and merge](/docs/backend/search-and-discovery/search-queries.md#the-semantic-read-and-the-service) describes the packed relation, the scan call and its joins.
 
 ## Running one search
 
-`config/search.toml` sets the fuzzy cutoff, the fuzzy token-coverage weight, and the semantic threshold that every request uses. A request may carry its own fuzzy cutoff from 0 to 100 or its own semantic threshold from -1 to 1, and that value replaces the configured one for that request, so one caller can read a narrower or a wider result than the configured default. The token-coverage weight has no request override.
+`config/search.toml` sets the fuzzy cutoff, the fuzzy token-coverage weight, the fuzzy score tie-break weight, and the semantic threshold that every request uses. A request may carry its own fuzzy cutoff from 0 to 100 or its own semantic threshold from -1 to 1, and that value replaces the configured one for that request, so one caller can read a narrower or a wider result than the configured default. The two fuzzy weights have no request override.
 
 ```bash
 uv run python scripts/search.py "data structures" --display-language en --active-only
@@ -51,7 +59,7 @@ The command runs one unified search and prints one JSON report with the merged r
 
 ## When the query embedding request fails
 
-The semantic method needs a query vector, and a search makes one query embedding request for it. `SEARCH_EMBEDDING_REQUEST_TIMEOUT_SECONDS` in `config/search.toml` is the timeout of that request in seconds and is greater than 0, and the example sets 5. `SEARCH_EMBEDDING_MAX_ATTEMPTS` is its attempt count including the first, at least 1, and the example sets 1. The timeout bounds the network phases of each attempt, so it is not a deadline for the whole search. The two keys are separate from the generation policy of the embedding stage, which `EMBEDDING_REQUEST_TIMEOUT_SECONDS` and `EMBEDDING_MAX_ATTEMPTS` set for its batch requests.
+The semantic method needs a query vector, and a search makes one query embedding request for it. `SEARCH_EMBEDDING_REQUEST_TIMEOUT_SECONDS` in `config/search.toml` is the timeout of that request in seconds and is greater than 0. `SEARCH_EMBEDDING_MAX_ATTEMPTS` is its attempt count including the first, at least 1. The timeout bounds the network phases of each attempt, so it is not a deadline for the whole search. The two keys are separate from the generation policy of the embedding stage, which `EMBEDDING_REQUEST_TIMEOUT_SECONDS` and `EMBEDDING_MAX_ATTEMPTS` set for its batch requests.
 
 A transport failure, a 429 status, and a status from 500 to 599 are retried while attempts remain, up to the attempt count `SEARCH_EMBEDDING_MAX_ATTEMPTS` sets, with a wait that grows between attempts, and every other non-200 status ends the request at once. The query embedding request fails when no attempt succeeds. When it fails, the search returns the exact-code, substring, and fuzzy matches it found. The report then carries `semantic_available` false, no semantic match source, and no semantic score in any result, and it may carry no result at all. A request that reaches the service and returns no course above the threshold reports `semantic_available` true, because the method ran and found nothing. A malformed successful response, a database failure, and an invalid input are not request failures, and each one ends the search with a failure and no report.
 
@@ -63,7 +71,7 @@ On such a site the command loads no embedding settings, builds no embedding prov
 
 That false availability is not the provider outage of the section above, and the Search tab distinguishes the two: it shows the unavailable notice only on a site that serves semantic matching, and it draws the returned lexical matches, the empty state and the ordinary request errors in both cases.
 
-`scripts/search.py` runs the command with semantic matching, so a bare command uses every method the configuration allows.
+`scripts/search.py` takes its semantic availability from the artifact set it opens. It runs the semantic method when that set holds the embedding reads and the three lexical methods alone on a site with the embedding features off, so a bare command uses every method the set allows. It builds one lookup projection for that command lifetime, and when the build holds them it passes the catalogue hub and the packed group count explicitly. The command owns no projection cache and reads no artifact identity per request. The administrative and web callers use the same artifact opener.
 
 ## Scores and match sources
 
@@ -71,7 +79,7 @@ Each merged result carries the methods that matched it and the score of each sco
 
 ## Tier order
 
-Merged results are ordered by [tier order](/docs/reference/glossary.md#search-and-comparison). `SEARCH_TIER_PRIORITY` in `config/search.toml` lists the four methods in their order of precedence, and it must name each of them exactly once. The example sets `exact_code`, `substring`, `fuzzy_name`, and `semantic` in that order. The tier order a report returns omits `semantic` when the search ran without the semantic method, so an effective order names only the methods that ran.
+Merged results are ordered by [tier order](/docs/reference/glossary.md#search-and-comparison). `SEARCH_TIER_PRIORITY` in `config/search.toml` lists the four methods in their order of precedence, and it must name each of them exactly once. The tier order a report returns omits `semantic` when the search ran without the semantic method, so an effective order names only the methods that ran.
 
 Three rules decide the merged order, applied in turn.
 
@@ -113,6 +121,7 @@ The Compare, Prerequisites, Discover, and Structure of studies tabs hold courses
 | `SEMANTIC_SEARCH_MIN_SCORE` | The smallest semantic score that returns a course, from -1 to 1. The example sets 0.30. |
 | `FUZZY_SEARCH_MIN_SCORE` | The smallest name-similarity score that returns a course, from 0 to 100. The example sets 80. |
 | `FUZZY_TOKEN_MATCH_WEIGHT` | The weight of query-token coverage in the fuzzy score, greater than 0 and at most 1. The example sets 0.95. |
+| `FUZZY_SCORE_TIE_BREAK_WEIGHT` | The share of the gap to 100 that the weaker whole-name or token-coverage value closes, from 0 to 1. It orders fuzzy matches without changing which ones qualify. The example sets 0.1. |
 | `SEARCH_EMBEDDING_REQUEST_TIMEOUT_SECONDS` | The timeout of the one query embedding request a search makes, in seconds and greater than 0. The example sets 5. |
 | `SEARCH_EMBEDDING_MAX_ATTEMPTS` | The attempt count of that query embedding request, the first included, at least 1. The example sets 1. |
 | `WEB_EMBEDDINGS_ENABLED` | Whether this site composes semantic matching, its provider and its stored-vector read, in `config/web.toml`. The example sets `true`. |

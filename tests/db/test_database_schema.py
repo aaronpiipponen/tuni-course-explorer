@@ -1,8 +1,6 @@
 """Opt-in PostgreSQL migration, constraint, and transaction integration tests."""
 
 import uuid
-from collections.abc import Iterator
-from contextlib import contextmanager
 from datetime import UTC, datetime
 
 import pytest
@@ -11,7 +9,7 @@ from alembic.config import Config
 from sqlalchemy import Engine, MetaData, Table, inspect, select, text, update
 from sqlalchemy.exc import IntegrityError
 
-from course_explorer.config import load_database_settings, load_raw_database_settings
+from course_explorer.config import load_raw_database_settings
 from course_explorer.datasets import require_database_schema
 from course_explorer.db.models import (
     Base,
@@ -26,7 +24,7 @@ from course_explorer.db.models import (
     ModuleRuleNode,
     SourceSnapshot,
 )
-from course_explorer.db.session import create_database_engine, create_session_factory, session_scope
+from course_explorer.db.session import create_session_factory, session_scope
 from course_explorer.enums import (
     IngestionRunStatus,
     ModuleRuleType,
@@ -38,48 +36,11 @@ from course_explorer.inference.scheduling_repository import InferenceSchedulingR
 from tests.conftest import alembic_config
 from tests.db._schema_support import constraint_name
 from tests.db._schema_support import integrity_records as integrity_records
+from tests.support.database import scratch_database
 
 pytestmark = [
     pytest.mark.integration,
 ]
-
-
-@contextmanager
-def _scratch_database(prefix: str) -> Iterator[Engine]:
-    """Create one uniquely named test-owned database and drop it after the caller finishes.
-
-    The raw settings must name a disposable ``_test`` database and no selected dataset. The
-    database is created from ``template0`` through one administration connection to ``postgres``,
-    and the yielded engine connects to the new database alone. Both engines are disposed even when
-    creating or dropping the database fails.
-    """
-    raw = load_raw_database_settings()
-    assert raw.selected_dataset_enabled is False
-    assert raw.postgres_db.endswith("_test")
-
-    name = f"{prefix}_{uuid.uuid4().hex}_test"
-    administration_engine = create_database_engine(
-        raw.model_copy(update={"postgres_db": "postgres"})
-    )
-    engine = create_database_engine(raw.model_copy(update={"postgres_db": name}))
-
-    def autocommit():
-        return administration_engine.connect().execution_options(isolation_level="AUTOCOMMIT")
-
-    created = False
-    try:
-        with autocommit() as administration:
-            administration.exec_driver_sql(f'CREATE DATABASE "{name}" TEMPLATE template0')
-        created = True
-        yield engine
-    finally:
-        engine.dispose()
-        try:
-            if created:
-                with autocommit() as administration:
-                    administration.exec_driver_sql(f'DROP DATABASE "{name}"')
-        finally:
-            administration_engine.dispose()
 
 
 def test_head_schema_matches_metadata_and_preserves_operator_decision(
@@ -91,10 +52,9 @@ def test_head_schema_matches_metadata_and_preserves_operator_decision(
     preserves the recorded operator decision.
     """
     engine, factory = database
-    # The same public loader Alembic uses must return the guarded raw test database,
-    # so migration authority matches the engine the fixture handed the test.
-    settings = load_database_settings()
-    assert settings.selected_dataset_enabled is False
+    # The raw loader must return the guarded test database, so migration authority matches the
+    # engine the fixture handed the test.
+    settings = load_raw_database_settings()
     assert settings.postgres_db.endswith("_test")
     assert settings.postgres_db == engine.url.database
 
@@ -177,13 +137,13 @@ def test_shared_migration_chain_builds_fresh_head_schema() -> None:
     migrates it over the shared supplied-connection path, and asserts the single head, the exact
     ORM table set and the four columns of ``inference_model_attempts``.
     """
-    with _scratch_database("course_chain") as engine:
+    with scratch_database("course_chain") as engine:
         with engine.connect() as connection:
             command.upgrade(alembic_config(connection), "head")
-            assert require_database_schema(connection) == "20261025_0019"
+            assert require_database_schema(connection) == "20261103_0023"
             assert (
                 connection.scalar(text("SELECT version_num FROM alembic_version"))
-                == "20261025_0019"
+                == "20261103_0023"
             )
             assert set(inspect(connection).get_table_names()) == set(Base.metadata.tables) | {
                 "alembic_version"
@@ -240,7 +200,7 @@ def test_identity_column_migration_preserves_populated_results() -> None:
     run_identity = "3" * 64
     work_key = "5" * 64
 
-    with _scratch_database("course_identity") as engine:
+    with scratch_database("course_identity") as engine:
         with engine.connect() as connection:
             command.upgrade(alembic_config(connection), "20261014_0018")
 
@@ -384,7 +344,7 @@ def test_identity_column_migration_preserves_populated_results() -> None:
             connection.commit()
 
             command.upgrade(alembic_config(connection), "head")
-            assert require_database_schema(connection) == "20261025_0019"
+            assert require_database_schema(connection) == "20261103_0023"
             after = rows(connection, retained_tables)
             connection.commit()
 
@@ -442,7 +402,7 @@ def test_identity_column_migration_preserves_populated_results() -> None:
             connection.rollback()
             assert (
                 connection.scalar(text("SELECT version_num FROM alembic_version"))
-                == "20261025_0019"
+                == "20261103_0023"
             )
             after_downgrade = rows(connection, retained_tables)
             assert after_downgrade == after

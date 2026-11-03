@@ -1,14 +1,18 @@
 # Tables and migrations
 
-Every table is declared as a SQLAlchemy model in the course_explorer.db.models module, and one Alembic chain in the migrations directory builds and changes the schema.
+Two separate schema owners build a curriculum database and the feedback application store's database from their own Alembic migration chains.
+
+The curriculum tables are declared as SQLAlchemy models in the `course_explorer.db.models` module, and one Alembic chain in the `migrations/` directory builds and changes the curriculum schema. A separate feedback application store schema declares its own metadata in `src/course_explorer/feedback/models.py` and has its own migration chain under `migrations_feedback/`.
 
 ## Conventions
 
-`Base` in `src/course_explorer/db/models.py` is a `DeclarativeBase` carrying `NAMING_CONVENTION` on its `MetaData`, so a primary key, unique constraint, check constraint, foreign key, or index without an explicit name gets the conventional one.
+`Base` in `src/course_explorer/db/models.py` is a `DeclarativeBase` carrying `NAMING_CONVENTION` on its `MetaData`, so a primary key, unique constraint, check constraint, foreign key, or index without an explicit name gets the conventional one. `FeedbackBase` in `src/course_explorer/feedback/models.py` declares the same convention values on its own `MetaData`.
 
-`_enum(enum_type, name)` stores the declared enum values in a text column with a check constraint (`native_enum=False`, `create_constraint=True`), and its `values_callable` stores each member's value, so the allowed values live in the constraint rather than in a PostgreSQL enum type. `_not_blank(column)` adds the standard `btrim(column) <> ''` check. Closed sets that are not enumerations, such as the processing cycle stage, the failure reason, and the operator disposition, carry a literal check of their own. Every SHA-256 column carries a `~ '^[0-9a-f]{64}$'` check, except `source_snapshots.source_hash`, which carries the non-blank check only.
+`_enum(enum_type, name)` stores the declared enum values in a text column with a check constraint (`native_enum=False`, `create_constraint=True`), and its `values_callable` stores each member's value, so the allowed values live in the constraint rather than in a PostgreSQL enum type. `_not_blank(column)` adds the standard `btrim(column) <> ''` check. Closed sets that are not enumerations, such as the processing cycle stage, the failure reason, and the operator disposition, carry a literal check of their own. Every SHA-256 column carries a `~ '^[0-9a-f]{64}$'` check, except `source_snapshots.source_hash`, which carries the non-blank check only, and `course_embedding_search_groups.representative_source_hash`, which carries no check of its own.
 
-Primary keys are `UUID` columns with a Python-side `uuid.uuid4` default, except `curriculum_periods.id`, which is the text identifier the source publishes, `course_texts`, keyed by `course_version_id`, `inference_course_processing`, keyed by `course_id`, and the composite keys on `course_version_curriculum_periods`, `module_version_curriculum_periods`, and `inference_processing_targets`. Timestamps are `DateTime(timezone=True)`. The `created_at`, `published_at`, and `started_at` columns carry a `now()` server default, and a table whose rows are updated in place also carries `updated_at` with `onupdate=now()`. The remaining timestamp columns carry no default: `derived_course_texts.generated_at`, `inferred_prerequisite_sets.generated_at`, `inferred_equivalence_groups.generated_at`, `inference_model_attempts.finished_at`, `ingestion_runs.finished_at`, and `course_embedding_chunks.translation_generated_at` are written by the code.
+Primary keys are `UUID` columns with a Python-side `uuid.uuid4` default, except `curriculum_periods.id`, which is the text identifier the source publishes, `course_texts`, keyed by `course_version_id`, `inference_course_processing`, keyed by `course_id`, and the composite keys on `course_version_curriculum_periods`, `module_version_curriculum_periods`, `inference_processing_targets`, and `course_embedding_neighbors`, whose two UUID key columns carry no default. `course_embedding_centroids` is keyed by the text `group_id` that references `courses.group_id`, `course_embedding_search_groups` and `course_embedding_search_blocks` by their integer `group_no` and `block_no`, and `course_embedding_search_meta` by the boolean `one_row`.
+
+Timestamps are `DateTime(timezone=True)`. The `created_at`, `published_at`, and `started_at` columns carry a `now()` server default, and a table whose rows are updated in place also carries `updated_at` with `onupdate=now()`. The remaining timestamp columns carry no default: `derived_course_texts.generated_at`, `inferred_prerequisite_sets.generated_at`, `inferred_equivalence_groups.generated_at`, `inference_model_attempts.finished_at`, `ingestion_runs.finished_at`, and `course_embedding_chunks.translation_generated_at` are written by the code.
 
 ## Tables
 
@@ -48,6 +52,11 @@ Primary keys are `UUID` columns with a Python-side `uuid.uuid4` default, except 
 | Model | Table | Key columns | Unique constraints and foreign keys |
 |---|---|---|---|
 | `CourseEmbeddingChunk` | `course_embedding_chunks` | `id`, `course_version_id`, `field`, `language`, `chunk_index`, `text_origin`, `text`, `representative_source_hash`, `effective_text_hash`, `source_text_hash`, `chunk_text_hash`, `embedding_model`, `embedding_artifact_sha256`, `embedding_configuration_hash`, `translation_method`, `translation_model`, `translation_generated_at`, `status`, `embedding`, `updated_at` | `uq_course_embedding_chunks_version_field_language_index` on `(course_version_id, field, language, chunk_index)`, the HNSW index `ix_course_embedding_chunks_embedding_hnsw` over `embedding` with `vector_cosine_ops` and `m` 16 and `ef_construction` 64, `embedding` a `Vector(1024)` column whose dimension is `COURSE_EMBEDDING_DIMENSION` in `src/course_explorer/constants.py`, `course_version_id` referencing `course_versions.id` with `CASCADE`, every hash a 64-character SHA-256, the origin provenance consistent with the translation columns, and the lifecycle consistent: `completed` carries a vector and `pending` and `failed` carry none |
+| `CourseEmbeddingNeighbor` | `course_embedding_neighbors` | `query_chunk_id`, `target_chunk_id`, `score` | `query_chunk_id` and `target_chunk_id` form the primary key, both chunk identities reference `course_embedding_chunks.id` with `CASCADE`, and `score` is a cosine in `[-1, 1]` |
+| `CourseEmbeddingSearchGroup` | `course_embedding_search_groups` | `group_no`, `group_id`, `sisu_course_unit_id`, `representative_source_hash` | `group_no` is the primary key and `(group_id, sisu_course_unit_id, representative_source_hash)` is unique |
+| `CourseEmbeddingSearchBlock` | `course_embedding_search_blocks` | `block_no`, `n`, `groups`, `norms`, `vectors` | `block_no` is the primary key, `n` is from 1 to 128, and `vectors` uses external storage |
+| `CourseEmbeddingSearchMeta` | `course_embedding_search_meta` | `one_row`, `group_count` | `one_row` is the primary key and is true, and `group_count` is positive |
+| `CourseEmbeddingCentroid` | `course_embedding_centroids` | `group_id`, `sisu_course_unit_id`, `representative_source_hash`, `embedding_configuration_hash`, `chunk_count`, `centroid`, `updated_at` | `group_id` is the primary key and references `courses.group_id` with `CASCADE`, `centroid` is a `bytea` of exactly 8192 bytes, `chunk_count` is positive, every hash is a 64-character SHA-256, and `sisu_course_unit_id` is non-blank |
 
 ### Inferred data
 
@@ -99,12 +108,37 @@ The module also declares `InferenceRunStatus` and `InferenceAttemptStatus`, and 
 
 | Helper | Behavior |
 |---|---|
-| `create_database_engine(settings)` | Builds one engine from the `sqlalchemy_url` property of `DatabaseSettings` with `pool_pre_ping=True` |
+| `create_database_engine(settings)` | Builds one engine from the `sqlalchemy_url` property of a settings value that implements `DatabaseConnectionSettings` with `pool_pre_ping=True` |
 | `create_session_factory(engine)` | Builds a `sessionmaker` with `expire_on_commit=False`, so a caller can read loaded attributes after a successful commit |
-| `database_context(settings)` | Yields one session factory and disposes the engine when the caller exits, including on an exception |
+| `database_context(settings, *, factory=None)` | Yields one session factory for any `DatabaseConnectionSettings` value. A supplied `factory` is yielded as given, and its engine lifetime belongs to the caller. Without one, the context builds an engine and disposes it when the caller exits, including on an exception |
 | `session_scope(factory)` | Opens `factory.begin()`, commits successful work, and rolls back a raised exception |
 
-## Migration chain
+`DatabaseConnectionSettings` is a protocol with one read-only `sqlalchemy_url` property. `DatabaseSettings` and `FeedbackSettings` each satisfy it with their own connection components, so the runtime callers and their arguments are the same for both databases.
+
+## The feedback application store schema
+
+The feedback application store schema lives in a separate database and owns two tables. `FeedbackBase` in `src/course_explorer/feedback/models.py` carries their metadata, and `alembic_feedback.ini` points its `script_location` at `migrations_feedback/`. The chain has the single head `20261103_feedback_0004`, and `require_feedback_schema` in `src/course_explorer/feedback/schema.py` refuses a database whose current heads differ from it or a repository that exposes more than one head.
+
+| Model | Table | Key columns | Constraints |
+|---|---|---|---|
+| `FeedbackSubmission` | `feedback_submissions` | `id`, `created_at`, `answers`, `public_issue`, `publication_state`, `issue_url`, `publication_failure` | `id` is the primary key, `created_at` carries a `now()` server default, `answers` is nonnull JSONB, `issue_url` and `publication_failure` are nullable text, and the named check `current_publication_state` permits `private` for an opted-out row and `pending`, `uncertain`, `published`, `partial` or `failed` for an opted-in row |
+| `FeedbackAttachment` | `feedback_attachments` | `id`, `feedback_id`, `field_id`, `filename`, `mime_type` | `id` is the primary key, `feedback_id` references `feedback_submissions.id` with `CASCADE`, the named check `mime_type_valid` permits `image/png` and `image/jpeg`, and the named check `filename_present` requires a nonempty submitted filename |
+
+The Python service generates both identities before it writes, so the tables carry no identity default. `answers` holds only configured non-attachment field IDs and their stored string or null values. Attachment associations and their submitted filenames live in `feedback_attachments` alone. The extension revision backfills the filename of rows written before it from their generated identity. The submission row holds the explicit publication choice, its current state, the created issue link and one safe current failure. It carries no attempt history, claim token or dispatch field. A migration that changes the feedback application store schema is a revision in `migrations_feedback/versions/`.
+
+`FeedbackService.list_submissions` reads the current feedback definition and selects rows in PostgreSQL: each supplied select filter is one JSONB text predicate, every text and textarea field is one escaped case-insensitive containment predicate, and one CASE expression ranks the earliest matching field in definition order. The order continues by `created_at DESC, id DESC`, so a submission appears once and same-group ties are newest first. Attachment metadata for the selected identities is fetched in one scoped query, and `get` and the listing share one projection.
+
+`read_attachment` requires both the submission and attachment identities and returns standard base64 of the stored bytes with no filesystem path. `delete` reads exactly the named submission and its metadata, removes the owned files through `AttachmentStore.discard_submission`, deletes the row in the same transaction and reports success after the commit. The field directory and the attachment root belong to the feedback application store, and every other submission is untouched. File removal and the database commit are not one transaction: a file failure can leave a partial removal, and a database failure after file removal can leave the row, so both failures propagate.
+
+Apply the chain to the database that `config/feedback.toml` names:
+
+```bash
+uv run python -m alembic -c alembic_feedback.ini upgrade head
+```
+
+The revision `20261027_feedback_0001` creates the two tables and their constraints. The revision `20261027_feedback_0002` adds the nullable `issue_url` and `publication_failure` columns and replaces the initial-choice check with the current-state check, preserving every stored row. The revision `20261103_feedback_0003` backfills the submitted filename of the rows written before it from their generated identity. The revision `20261103_feedback_0004` drops the stored byte size column and its check, and its downgrade raises. Each downgrade raises a `RuntimeError` rather than dropping retained feedback.
+
+## Curriculum migration chain
 
 `migrations/versions/` holds one file per revision, `alembic.ini` points `script_location` at `migrations`, and `migrations/env.py` takes `Base.metadata` from `course_explorer.db.models` as the schema authority. The chain, oldest first:
 
@@ -127,8 +161,12 @@ The module also declares `InferenceRunStatus` and `InferenceAttemptStatus`, and 
 17. `20261012_0017` adds the nullable `inference_course_processing.disposition` column and its closed choice check.
 18. `20261014_0018` widens the `inference_target_failures.reason` check with `context_exceeded`.
 19. `20261025_0019` drops the run prompt-content and schema hashes and the target-work input hash with their checks. Its downgrade raises.
+20. `20261027_0020` creates `course_embedding_centroids` with its representative, configuration and hub hashes, its positive chunk count and its fixed-size centroid. Its downgrade drops the derived table.
+21. `20261028_0021` creates `course_embedding_neighbors` with its composite key and its two cascading chunk references. Its downgrade drops the derived table.
+22. `20261028_0022` installs the `course_embedding_search` extension, creates the three tables of the packed search relation, and drops the `hub_sha256` column and its format check from `course_embedding_centroids`. A centroid row carries no hub digest, because the hub pair of the serving artifact build is the one hub identity a read uses. Its downgrade restores the nullable digest column and its check, then drops the search tables and the extension.
+23. `20261103_0023` drops `course_embedding_neighbors.rank` and its check and re-keys the derived table on `(query_chunk_id, target_chunk_id)`. Its downgrade recomputes the rank from the stored score order and restores the old key.
 
-The head is `20261025_0019`. A revision that cannot restore the data it removes raises instead of dropping rows, so `20261008_0014`, `20261008_0015`, and `20261025_0019` apply in one direction only.
+The curriculum head is `20261103_0023`. A revision that cannot restore the data it removes raises instead of dropping rows, so `20261008_0014`, `20261008_0015`, and `20261025_0019` apply in one direction only.
 
 ## Adding a migration
 
@@ -136,24 +174,28 @@ The head is `20261025_0019`. A revision that cannot restore the data it removes 
    ```bash
    uv run python -m alembic revision -m "add x"
    ```
-   The file written under `migrations/versions/` records the single current head in `down_revision`.
-2. Fill `upgrade()` and `downgrade()` with explicit operations, following the surrounding files. A `downgrade()` that cannot restore the data raises a `RuntimeError` with the reason, as `20261008_0014`, `20261008_0015`, and `20261025_0019` do.
-3. Change `src/course_explorer/db/models.py` in the same step, because `migrations/env.py` uses `Base.metadata` and the schema tests compare the head schema against `Base.metadata.tables`.
-4. Keep one head. `require_database_schema` in `src/course_explorer/datasets.py` raises when the repository exposes more than one, and a database whose revision differs from the head raises `DatabaseSchemaMismatchError`.
+   The file written under `migrations/versions/` records the single current head in `down_revision`. A feedback revision uses `uv run python -m alembic -c alembic_feedback.ini revision -m "add x"` and is written under `migrations_feedback/versions/`.
+2. Fill `upgrade()` and `downgrade()` with explicit operations, following the surrounding files. A `downgrade()` that cannot restore the data raises a `RuntimeError` with the reason, as `20261008_0014`, `20261008_0015`, `20261025_0019` and the feedback revision do.
+3. Change the owning models in the same step: `src/course_explorer/db/models.py` for the curriculum chain, whose `Base.metadata` `migrations/env.py` uses, and `src/course_explorer/feedback/models.py` for the feedback chain, whose `FeedbackBase.metadata` `migrations_feedback/env.py` uses.
+4. Keep one head per chain. `require_database_schema` in `src/course_explorer/datasets.py` checks the curriculum chain, `require_feedback_schema` in `src/course_explorer/feedback/schema.py` checks the feedback chain, and each raises when its repository exposes more than one head or its database holds another revision.
 5. Apply the chain:
    ```bash
    uv run python -m alembic upgrade head
+   uv run python -m alembic -c alembic_feedback.ini upgrade head
    ```
-   `migrations/env.py` resolves the target database through `load_database_settings`, unless the caller publishes a connection under `config.attributes["connection"]`, which is how the tests migrate a connection they already own.
+   `migrations/env.py` and `migrations_feedback/env.py` resolve their own target database through their settings loader, unless the caller publishes a connection under `config.attributes["connection"]`, which is how the tests migrate a connection they already own.
 
 ## Schema tests
 
-The tests are marked `integration` and run against the test database that `tests/conftest.py` migrates and truncates.
+The tests are marked `integration` and run against disposable `_test` databases. The curriculum tests use the database that `tests/conftest.py` migrates and truncates. The feedback tests use `tests/feedback/conftest.py`, which creates one database through `tests/support/database.py`, applies the feedback head and drops that database when the test ends.
 
 | File | Covers |
 |---|---|
 | `tests/db/_schema_support.py` | The `integrity_records` and `two_course_versions` fixtures and the `derived_text_row`, `embedding_chunk_row`, and `inferred_set_row` builders |
 | `tests/db/test_database_schema.py` | Table set parity with `Base.metadata.tables`, the installed `vector` extension, the additive column types and defaults, head reapplication that preserves markers, failures and decisions, the fresh chain built from `template0` over a supplied connection, the identity-column migration over populated results with its irreversible 0019 refusal, and the commit and rollback contract of `session_scope` |
+| `tests/embeddings/test_centroid_repository.py` | The complete replacement of the centroid set in one transaction, and the stored row's representative identity, configuration hash, chunk count and 8192-byte centroid |
+| `tests/feedback/conftest.py` | The feedback `_test` database migrated through `alembic_feedback.ini` and the temporary attachment root |
+| `tests/feedback/test_feedback_service.py` | The feedback-only table set, the feedback head, the absent `vector` extension and the curriculum-metadata disjointness in `test_feedback_schema_is_independent_of_curriculum`, the preserved rows and null new outcomes of the feedback revision, the stored submission round trip through a freshly composed service, the refusal of invalid answers with no row or file, the refusal of malformed, truncated, oversized and excess uploads with no row or file, configured text-order search without duplicates, combined filters over every select, and the scoped attachment read and named deletion of one submission |
 | `tests/db/test_curriculum_repository.py` | Normalization into the real schema and the catalogue read seam over it, including the unique source identity and the same-module parent rule |
 | `tests/db/test_inferred_schema.py` | The category migration and the inferred set constraints, including a refused downgrade beside a recommended occurrence |
 | `tests/db/test_teaching_embedding_schema.py` | The derived text provenance constraints, the chunk origin and lifecycle constraints, the vector dimension, and the cascade with a deleted course version |

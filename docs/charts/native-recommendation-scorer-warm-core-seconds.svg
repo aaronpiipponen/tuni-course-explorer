@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 628" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Warm recommendation endpoint core-seconds with the Python scorer and the native scorer</title>
+  <desc id="d">Warm recommendation endpoint core-seconds for the Python scorer and the native scorer at bases 20, 40, 50 and 60, in active-only and including-inactive scope.</desc>
+  <rect width="960" height="628" rx="12" fill="#232434"/>
+  <rect x="61" y="33" width="14" height="14" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="96" y="45" font-size="14" fill="#a3a4b8">Python scorer</text>
+  <rect x="242.2" y="33" width="14" height="14" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="277.2" y="45" font-size="14" fill="#a3a4b8">Native scorer</text>
+  <line x1="215.2" y1="72" x2="215.2" y2="552" stroke="#a3a4b8" stroke-width="1"/>
+  <text x="215.2" y="574" text-anchor="middle" font-size="14" fill="#a3a4b8">0</text>
+  <line x1="341.3" y1="72" x2="341.3" y2="552" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="341.3" y="574" text-anchor="middle" font-size="14" fill="#a3a4b8">0.2</text>
+  <line x1="467.4" y1="72" x2="467.4" y2="552" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="467.4" y="574" text-anchor="middle" font-size="14" fill="#a3a4b8">0.4</text>
+  <line x1="593.4" y1="72" x2="593.4" y2="552" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="593.4" y="574" text-anchor="middle" font-size="14" fill="#a3a4b8">0.6</text>
+  <line x1="719.5" y1="72" x2="719.5" y2="552" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="719.5" y="574" text-anchor="middle" font-size="14" fill="#a3a4b8">0.8</text>
+  <line x1="845.6" y1="72" x2="845.6" y2="552" stroke="#4a4c6b" stroke-width="1"/>
+  <text x="845.6" y="574" text-anchor="middle" font-size="14" fill="#a3a4b8">1</text>
+  <text x="203.2" y="107" text-anchor="end" font-size="14" fill="#ececf2">Basis 20, active</text>
+  <rect x="215.2" y="80" width="144.8" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="368" y="95" font-size="14" fill="#a3a4b8">0.2297</text>
+  <rect x="215.2" y="104" width="106.9" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="330.1" y="119" font-size="14" fill="#a3a4b8">0.1695</text>
+  <text x="203.2" y="167" text-anchor="end" font-size="14" fill="#ececf2">Basis 20, inactive</text>
+  <rect x="215.2" y="140" width="195.3" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="418.5" y="155" font-size="14" fill="#a3a4b8">0.3098</text>
+  <rect x="215.2" y="164" width="132.3" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="355.5" y="179" font-size="14" fill="#a3a4b8">0.2099</text>
+  <text x="203.2" y="227" text-anchor="end" font-size="14" fill="#ececf2">Basis 40, active</text>
+  <rect x="215.2" y="200" width="272.5" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="495.7" y="215" font-size="14" fill="#a3a4b8">0.4323</text>
+  <rect x="215.2" y="224" width="176.3" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="399.5" y="239" font-size="14" fill="#a3a4b8">0.2796</text>
+  <text x="203.2" y="287" text-anchor="end" font-size="14" fill="#ececf2">Basis 40, inactive</text>
+  <rect x="215.2" y="260" width="297.6" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="520.8" y="275" font-size="14" fill="#a3a4b8">0.4721</text>
+  <rect x="215.2" y="284" width="193.4" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="416.6" y="299" font-size="14" fill="#a3a4b8">0.3068</text>
+  <text x="203.2" y="347" text-anchor="end" font-size="14" fill="#ececf2">Basis 50, active</text>
+  <rect x="215.2" y="320" width="502.3" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="725.5" y="335" font-size="14" fill="#a3a4b8">0.7968</text>
+  <rect x="215.2" y="344" width="279.6" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="502.8" y="359" font-size="14" fill="#a3a4b8">0.4436</text>
+  <text x="203.2" y="407" text-anchor="end" font-size="14" fill="#ececf2">Basis 50, inactive</text>
+  <rect x="215.2" y="380" width="611.4" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="834.6" y="395" font-size="14" fill="#a3a4b8">0.9698</text>
+  <rect x="215.2" y="404" width="364.2" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="587.4" y="419" font-size="14" fill="#a3a4b8">0.5778</text>
+  <text x="203.2" y="467" text-anchor="end" font-size="14" fill="#ececf2">Basis 60, active</text>
+  <rect x="215.2" y="440" width="419.7" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="642.9" y="455" font-size="14" fill="#a3a4b8">0.6657</text>
+  <rect x="215.2" y="464" width="260.9" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="484.1" y="479" font-size="14" fill="#a3a4b8">0.4138</text>
+  <text x="203.2" y="527" text-anchor="end" font-size="14" fill="#ececf2">Basis 60, inactive</text>
+  <rect x="215.2" y="500" width="521.7" height="20" rx="2" fill="#c4a0ff" stroke="none" stroke-width="1.5"/>
+  <text x="744.9" y="515" font-size="14" fill="#a3a4b8">0.8276</text>
+  <rect x="215.2" y="524" width="322.9" height="20" rx="2" fill="#35d9f1" stroke="none" stroke-width="1.5"/>
+  <text x="546.1" y="539" font-size="14" fill="#a3a4b8">0.5122</text>
+  <text x="530.4" y="604" text-anchor="middle" font-size="14" fill="#a3a4b8">Core-seconds</text>
+</svg>

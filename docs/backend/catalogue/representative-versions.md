@@ -22,7 +22,7 @@ Two candidates that agree on the step and on the year are separated by the great
 
 The selection reads the academic year and the window stored with each course, so a course's representative is chosen under the same values that decide its active state.
 
-![Each version of a course keeps its greatest year at or before the current academic year. A version listed only after the current academic year is left out, and a course with no remaining version has no representative. The candidates are then ordered by the current academic year, the greatest year inside the activity window, and the greatest earlier year, with a final box that breaks a tie by the greater source modification ordinal and then by the greatest exact source version identity.](/docs/diagrams/representative-selection.svg)
+![Each version of a course keeps its greatest year at or before the current academic year. A version listed only after the current academic year is left out. The candidates are then ordered by the current academic year, the greatest year inside the activity window, and the greatest earlier year, with a final box that breaks a tie by the greater source modification ordinal and then by the greatest exact source version identity.](/docs/diagrams/representative-selection.svg)
 
 ## Activity and the window
 

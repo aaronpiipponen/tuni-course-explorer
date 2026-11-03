@@ -7,7 +7,8 @@ attaches the separate restart command as a background task that Starlette runs a
 response body send. A failed or cancelled send therefore runs no restart. The command's owning
 service enforces file confinement, key existence, JSON literal parsing, backup name safety, branch
 validity and every stage guard, and this layer validates the shape of a parameter. A refused
-preflight presents the command's own failure. The configuration file
+preflight presents the command's own failure. The dataset inventory, its copies, its role migrations
+and its deletions belong to the Datasets routes. The configuration file
 listing, the configuration file read and the backup listing forward the console's automatic-read
 marker to the runner, while every write and maintenance action is explicit. Every answer is
 non-cacheable.
@@ -33,8 +34,6 @@ from course_explorer_admin_web.runner import (
     ConfigReadInput,
     ConfigSetCommand,
     ConfigSetInput,
-    DatasetMigrateCommand,
-    DatasetSetupCommand,
     RebuildCommand,
     RestartAdminCommand,
     WorkerPreflightCommand,
@@ -138,20 +137,6 @@ def rebuild_admin(request: Request, body: EmptyRequest) -> JSONResponse:
     return JSONResponse(
         content=result.model_dump(mode="json"), headers=NO_STORE_HEADERS, background=task
     )
-
-
-@router.post("/api/settings/datasets/setup")
-def dataset_setup(request: Request, response: Response, body: EmptyRequest) -> CommandResult:
-    """Run the fixed selected-dataset enrollment once."""
-    response.headers.update(NO_STORE_HEADERS)
-    return request.app.state.commands.run(DatasetSetupCommand(kind="datasets-setup"))
-
-
-@router.post("/api/settings/datasets/migrate")
-def dataset_migrate(request: Request, response: Response, body: EmptyRequest) -> CommandResult:
-    """Run the fixed selected-dataset migration once."""
-    response.headers.update(NO_STORE_HEADERS)
-    return request.app.state.commands.run(DatasetMigrateCommand(kind="datasets-migrate"))
 
 
 @router.post("/api/settings/worker/setup")

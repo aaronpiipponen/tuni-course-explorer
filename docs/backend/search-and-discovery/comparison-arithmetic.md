@@ -4,7 +4,7 @@ The comparison service turns two courses' stored chunk vectors into five percent
 
 ## Chunk carriers and centring
 
-`TeachingEmbeddingChunk` in `src/course_explorer/embeddings/read.py` is the request-local carrier: `group_id`, `field`, `language`, `chunk_index`, `text_origin`, `character_count`, and `embedding`. `TeachingEmbeddingRepository.get_chunks(represented, *, embedding_configuration_hash, descriptive_only=False, cache=None)` returns the completed, vector-backed rows whose `(group_id, sisu_course_unit_id, representative_source_hash)` triple matches a requested record and whose configuration hash equals the digest. With `descriptive_only` the statement keeps only the content and outcomes rows, and the comparison command reads every field and passes no cache. An empty request returns before opening a session, and a requested identity with no compatible row contributes no chunk.
+`TeachingEmbeddingChunk` in `src/course_explorer/embeddings/read.py` is the request-local carrier: `chunk_id`, `group_id`, `sisu_course_unit_id`, `representative_source_hash`, `field`, `language`, `chunk_index`, `text_origin`, `character_count`, and `embedding`. `TeachingEmbeddingRepository.get_chunks(represented, *, embedding_configuration_hash, descriptive_only=False, shared_store=None)` returns the completed, vector-backed rows whose `(group_id, sisu_course_unit_id, representative_source_hash)` triple matches a requested record and whose configuration hash equals the digest. With `descriptive_only` the read uses the shared serving store and returns the content and outcomes rows. The comparison command reads every field from the database projection and passes no shared store. An empty request returns before opening a session, and a requested identity with no compatible row contributes no chunk.
 
 `centre_chunks(chunks, hub, *, outcomes_hub=None)` in the same module replaces each chunk's vector with `subtract_hub(vector, hub)`, and with `subtract_hub_for_field` when an outcomes hub is supplied, so an outcomes chunk is centred on the outcomes hub and every other chunk on the embedding hub.
 
@@ -20,7 +20,7 @@ centroid    = sum(unit(chunk.embedding) * chunk.character_count for chunk in chu
 
 `_unit` raises `ValueError` for a vector whose norm is zero, and `_centroid` raises `ValueError` when the total character count is not positive. Weighting by the stored character count means a long chunk contributes more of its text than a short one.
 
-Two helpers sit under every meter. `_cosine(left, right)` returns the dot product of the two unit vectors clipped to `[-1, 1]`, and `_percent(cosine)` returns `100 * max(0, cosine)`, so a negative similarity reads as 0 percent.
+Two helpers sit under every meter. `_cosine(left, right)` returns the dot product of the two unit vectors clipped to `[-1, 1]`, and `_percent(cosine)` returns `100 * max(0, cosine)`, so a negative similarity reads as 0 percent. The arithmetic runs on float64 NumPy arrays: `_unit` uses `unit_row` from `src/course_explorer/embeddings/vector_math.py`, `_cosine` uses `numpy.dot`, `_centroid` and `_weighted_sum` weight one row matrix and sum its rows, and every chunk-centring call goes through `centre_chunks`, which applies `subtract_hub` and, when an outcomes hub is supplied, `subtract_hub_for_field` from `src/course_explorer/embeddings/hub.py`.
 
 ## Field and whole-text meters
 
@@ -42,11 +42,11 @@ result = _percent(equal-weight mean of cosines)   # None when no language qualif
 
 The weight of a field that one side lacks is left out of both sums and out of the divisor, so the other weights are renormalized over the fields the pair shares. The meter compares the two weighted centroids as a whole, so it reflects the whole text of each course rather than the best matching passage.
 
-`compare_teaching_chunks(a, b, *, settings, hub, outcomes_hub)` centres both sides once with `centre_chunks`, builds those three meters from the centred chunks, and adds the overlap result, which centres its own input, returning one `ComparisonMeters`.
+`compare_teaching_chunks(a, b, *, settings, hub, outcomes_hub)` centres both sides once with `centre_chunks`, builds the three meters from the centred chunks, and adds the overlap result from the same centred chunks, so the overlap reuses the centring instead of repeating it, and returns one `ComparisonMeters`.
 
 ## Directional overlap and the verdict
 
-`DESCRIPTIVE_TEACHING_TEXT_FIELDS` is `(CONTENT, OUTCOMES)`, so a name chunk takes no part in an overlap. `_prepare_descriptive_chunks(chunks)` groups those chunks by language into `(unit(chunk.embedding), chunk.character_count)` pairs, and `PreparedTeachingOverlap(chunks)` holds that projection for the side that stays fixed across comparisons.
+`DESCRIPTIVE_TEACHING_TEXT_FIELDS` is `(CONTENT, OUTCOMES)`, so a name chunk takes no part in an overlap. `_prepare_descriptive_chunks(chunks)` groups those chunks by language into one unit matrix and one character-weight row, and `PreparedTeachingOverlap(chunks)` holds that projection for the side that stays fixed across comparisons. `PreparedTeachingOverlap.compare` takes one `a_units @ b_units.T` score matrix per language, clamps it to `[-1, 1]`, and applies the row and column maxima with the same weight sums.
 
 `PreparedTeachingOverlap.compare(chunks, *, floor, ceiling)` returns one `DirectionalOverlap`. For each language with descriptive chunks on both sides:
 
@@ -58,7 +58,7 @@ a_mean      = sum(a[i].weight * max(0, max over j of score[i][j]) for i) / a_tot
 b_mean      = sum(b[j].weight * max(0, max over i of score[i][j]) for j) / b_total
 ```
 
-Each per-language `a_mean` is the character-weighted mean of each source chunk's best cosine against the destination chunks, and each `b_mean` is the same statistic in the other direction. The per-language values of one direction are averaged with equal weight, and that mean is mapped through `overlap_percent` to become `a_in_b` or `b_in_a`. With no common language both values are `None`. `teaching_overlap(a, b, *, hub, outcomes_hub, floor, ceiling)` is `PreparedTeachingOverlap(centre_chunks(b, ...)).compare(centre_chunks(a, ...), ...)`, so `a_in_b` measures A's chunks against B's and `b_in_a` measures B's against A's.
+Each per-language `a_mean` is the character-weighted mean of each source chunk's best cosine against the destination chunks, and each `b_mean` is the same statistic in the other direction. The per-language values of one direction are averaged with equal weight, and that mean is mapped through `overlap_percent` to become `a_in_b` or `b_in_a`. With no common language both values are `None`. `a_in_b` measures A's chunks against B's and `b_in_a` measures B's against A's.
 
 `overlap_percent(mean_cosine, *, floor, ceiling)` is the calibration:
 
@@ -79,10 +79,10 @@ and it raises `ValueError` when `ceiling <= floor`.
 `run_course_comparison_command(course_a, course_b)` in `src/course_explorer/comparison/commands.py` is the one composition path:
 
 1. It raises `ValueError` for a blank `course_a` or `course_b` before it loads any settings.
-2. It loads `SearchSettings` and `EmbeddingSettings`.
-3. It resolves both inputs through `CourseLookupService.resolve_courses((course_a, course_b))`, so each input is an exact canonical identity first and an exact official code second, an unknown or ambiguous input raises, and the two inputs may resolve to the same course.
+2. It loads `SearchSettings` and `EmbeddingRuntimeSettings` and receives the opened serving artifact build's hub pair.
+3. It resolves both inputs through the [course resolver](/docs/reference/glossary.md#search-and-comparison), so each input is an exact canonical identity first and an exact official code second, an unknown or ambiguous input raises, and the two inputs may resolve to the same course.
 4. It reads `TeachingEmbeddingRepository.get_chunks(resolved, embedding_configuration_hash=embedding_configuration_sha256(embedding_settings))` inside one database context, then groups the rows by `group_id` and takes one tuple per side.
-5. It calls `compare_teaching_chunks` with `hub=embedding_settings.embedding_hub_vector`, `outcomes_hub=embedding_settings.embedding_outcomes_hub_vector`, and the floor and ceiling from the search settings, then `comparison_verdict`.
+5. It calls `compare_teaching_chunks` with the build's catalogue and outcomes hubs and the floor and ceiling from the search settings, then `comparison_verdict`.
 6. It sets `uses_derived_text` by testing every chunk of both sides for `text_origin is TeachingTextOrigin.DERIVED`.
 7. It returns a `CourseComparisonReport` carrying both `CourseSummary` values, the meters, the verdict, and the flag.
 
@@ -90,19 +90,7 @@ and it raises `ValueError` when `ceiling <= floor`.
 
 ## Settings
 
-`SearchSettings` in `src/course_explorer/config.py` holds the comparison policy, read from `config/search.toml`:
-
-| Field | Key | Bounds | Example |
-|---|---|---|---|
-| `comparison_name_weight` | `COMPARISON_NAME_WEIGHT` | Greater than 0, finite | 0.10 |
-| `comparison_content_weight` | `COMPARISON_CONTENT_WEIGHT` | Greater than 0, finite | 0.45 |
-| `comparison_outcomes_weight` | `COMPARISON_OUTCOMES_WEIGHT` | Greater than 0, finite | 0.45 |
-| `comparison_overlap_floor` | `COMPARISON_OVERLAP_FLOOR` | 0 to 1 | 0.20 |
-| `comparison_overlap_ceiling` | `COMPARISON_OVERLAP_CEILING` | 0 to 1 | 0.90 |
-| `comparison_heavy_overlap_percent` | `COMPARISON_HEAVY_OVERLAP_PERCENT` | 0 to 100 | 70 |
-| `comparison_partial_overlap_percent` | `COMPARISON_PARTIAL_OVERLAP_PERCENT` | 0 to 100 | 30 |
-| `comparison_same_area_percent` | `COMPARISON_SAME_AREA_PERCENT` | 0 to 100 | 35 |
-| `comparison_loose_related_percent` | `COMPARISON_LOOSE_RELATED_PERCENT` | 0 to 100 | 20 |
+`SearchSettings` in `src/course_explorer/config.py` holds the comparison policy, read from `config/search.toml`. [Comparison](/docs/backend/search-and-discovery/comparison.md#languages-and-fields) lists the keys and example values of the three weights, and [Comparison](/docs/backend/search-and-discovery/comparison.md#overlap-calibration-and-the-verdict) lists the six threshold keys and example values.
 
 `SearchSettings.validate_comparison_threshold_order` refuses a floor at or above the ceiling, a partial threshold at or above the heavy threshold, and a loose threshold at or above the same-area threshold.
 

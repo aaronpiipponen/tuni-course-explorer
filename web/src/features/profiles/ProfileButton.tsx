@@ -3,6 +3,7 @@ import { useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useCurrentProfile } from "../../state/useCurrentProfile";
 import { useAction } from "../../shared/useAction";
+import { useScrollbarShift } from "../../shared/useScrollbarShift";
 import { useWording } from "../../shared/useWording";
 import { usePhoneTabsOnClose } from "../../shared/usePhoneTabsOnClose";
 import { PROFILE_NOTICE_MS } from "./ProfileNotice";
@@ -32,6 +33,8 @@ export function ProfileButton({
   const { store, profile, currentProfileId, profiles } = useCurrentProfile();
   const { t } = useWording();
   const [open, setOpen] = useState(false);
+  const [menu, setMenu] = useState<HTMLDivElement | null>(null);
+  useScrollbarShift(menu, open);
   usePhoneTabsOnClose(open);
   const { runAction, error } = useAction(PROFILE_NOTICE_MS);
   const { runAction: runRename, error: renameError } =
@@ -57,7 +60,8 @@ export function ProfileButton({
           </button>
         </Dialog.Trigger>
         <Dialog.Content
-          className="profile-menu"
+          ref={setMenu}
+          className="profile-menu thin-scrollbar"
           aria-describedby={undefined}
           onEscapeKeyDown={() => {
             if (!open) onClosedEscape?.();

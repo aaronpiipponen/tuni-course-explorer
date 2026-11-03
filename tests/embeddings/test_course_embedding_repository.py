@@ -45,6 +45,7 @@ from course_explorer_admin.lifecycle import (
 )
 from course_explorer_admin.local_stages import EmbeddingStage
 from course_explorer_admin.worker import run_lifecycle_worker
+from tests.datasets._support import write_dataset_roles
 from tests.embeddings._repository_support import (
     FakeProvider,
     _chunk_state,
@@ -203,7 +204,9 @@ def test_reconcile_embeds_and_reuses_matching_chunks(
 def test_reconcile_invalidates_translation_and_removes_inactive_representative_chunks(
     database: tuple[Engine, object],
 ) -> None:
-    """A translation change resets its own chunk. A representative change removes the inactive representative's chunks."""
+    """A translation change resets its own chunk. A representative change removes the inactive
+    representative's chunks.
+    """
     ids = seed_representatives(database)
     _, factory = database
     service, _, provider, _, _ = compose(database)
@@ -290,6 +293,7 @@ def test_batch_checkpoint_pause_and_restart_preserve_completed_vectors(
     root = tmp_path / "lifecycle"
     session_id = "1" * 32
     _seed_embedding_session(root, session_id, options=options)
+    write_dataset_roles()
 
     clock = _VirtualClock(datetime(2026, 1, 1, 12, 0, tzinfo=UTC))
     setup_seconds = iter((5000.0, 9000.0))
@@ -498,7 +502,9 @@ def test_failed_and_interrupted_chunks_are_retryable(
 def test_require_current_chunks_is_projected_read_only_and_refuses_stale_work(
     database: tuple[Engine, object],
 ) -> None:
-    """Readiness accepts exact completed vectors, refuses stale/missing work, and mutates nothing."""
+    """Readiness accepts exact completed vectors, refuses stale/missing work, and mutates
+    nothing.
+    """
     from course_explorer.db.models import CourseEmbeddingChunk
     from course_explorer.embeddings.generation import build_course_embedding_chunks
 

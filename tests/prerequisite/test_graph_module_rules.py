@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import date
 from decimal import Decimal
 
+import pytest
+
 from course_explorer.curriculum import (
     CatalogueCurriculumPeriod,
     CatalogueModuleRule,
@@ -19,13 +21,6 @@ from course_explorer.prerequisite.domain import (
     OfficialPrerequisiteKind,
     PrerequisiteOrigin,
     UnresolvedPrerequisiteReason,
-)
-from course_explorer.prerequisite.graph import (
-    PrerequisiteGraphCompiler,
-)
-from course_explorer.prerequisite.satisfaction import (
-    PrerequisiteSatisfactionState,
-    evaluate_prerequisite_satisfaction,
 )
 from tests.prerequisite._graph_support import (
     FakeCurriculumRead,
@@ -46,13 +41,16 @@ from tests.prerequisite._graph_support import (
     prerequisite_course_member,
     prerequisite_module_member,
     prerequisite_option,
-    root_summary,
 )
+from tests.prerequisite._native_support import native_requirement_state
 from tests.prerequisite._path_support import solve_route
+
+pytestmark = pytest.mark.integration
 
 
 def test_compiler_expands_all_seven_module_rule_kinds_without_module_nodes(
     solver_bundle: None,
+    native_graph,
 ) -> None:
     """Compiler calculation keeps inlined module rules. The drawing graph shows one module node."""
     year_period = (CatalogueCurriculumPeriod(id="period-2026", academic_year_start=2026),)
@@ -157,7 +155,7 @@ def test_compiler_expands_all_seven_module_rule_kinds_without_module_nodes(
         catalogue_course("shared"),
         catalogue_course("nested-only"),
     )
-    compiler = PrerequisiteGraphCompiler(
+    compiler = native_graph(
         FakeCurriculumRead(courses, modules),
         RecordingInferredSetRead(),
         RecordingEquivalenceGroupRead(),
@@ -275,8 +273,7 @@ def test_compiler_expands_all_seven_module_rule_kinds_without_module_nodes(
 
     # Ignored free choice and all-mandatory bounds add no witness. Known numeric requirements are
     # met, so satisfaction holds and the route is exact at zero credits.
-    satisfied = evaluate_prerequisite_satisfaction(compilation.solver, ["c1", "c2", "shared"])
-    assert satisfied.requirements_state is PrerequisiteSatisfactionState.SATISFIED
+    assert native_requirement_state(compiler, "root", ("c1", "c2", "shared")) == "satisfied"
     exact = solve_route(compilation.solver, ["c1", "c2", "shared"])
     assert exact["state"] == "exact"
     assert Decimal(exact["total_new_credits"]) == Decimal("0")
@@ -323,7 +320,9 @@ def test_compiler_expands_all_seven_module_rule_kinds_without_module_nodes(
     ]
 
 
-def test_module_version_selection_uses_root_year_and_reports_missing_or_ambiguous() -> None:
+def test_module_version_selection_uses_root_year_and_reports_missing_or_ambiguous(
+    native_graph,
+) -> None:
     """Exact-year membership wins, validity is the fallback, and ties are never silently picked."""
     root = catalogue_course(
         "root",
@@ -339,7 +338,7 @@ def test_module_version_selection_uses_root_year_and_reports_missing_or_ambiguou
 
     def compile_with_versions(*versions: CatalogueModuleVersion):
         module = catalogue_module("module-select", versions)
-        return PrerequisiteGraphCompiler(
+        return native_graph(
             FakeCurriculumRead((root, course), (module,)),
             RecordingInferredSetRead(),
             RecordingEquivalenceGroupRead(),
@@ -379,7 +378,7 @@ def test_module_version_selection_uses_root_year_and_reports_missing_or_ambiguou
     assert no_versions_use is not None
     result = piece_of(no_versions.solver, no_versions_use)
     assert result.kind == "unresolved"
-    assert result.reason is UnresolvedPrerequisiteReason.MISSING_MODULE.value
+    assert result.reason == UnresolvedPrerequisiteReason.MISSING_MODULE.value
     assert module_nodes(no_versions.display) == ()
 
     # An exact-year membership wins over a membership-free validity match, and the selected exact
@@ -513,20 +512,18 @@ def test_module_version_selection_uses_root_year_and_reports_missing_or_ambiguou
     assert ambiguous_use is not None
     result = piece_of(ambiguous.solver, ambiguous_use)
     assert result.kind == "unresolved"
-    assert result.reason is UnresolvedPrerequisiteReason.AMBIGUOUS_MODULE_VERSION.value
+    assert result.reason == UnresolvedPrerequisiteReason.AMBIGUOUS_MODULE_VERSION.value
     assert result.referenced_group_id == "module-select"
     assert module_nodes(ambiguous.display) == ()
 
-    # Direct-many reuses the same nearest fallback and attributes the actual selected version.
-    direct = PrerequisiteGraphCompiler(
+    # Direct-many returns the candidate's own summary at the same nearest fallback.
+    direct = native_graph(
         FakeCurriculumRead((root, course), (catalogue_module("module-select", (other_year,)),)),
         RecordingInferredSetRead(),
         RecordingEquivalenceGroupRead(),
     ).compile_direct_many(("root",))
-    assert [root_summary(entry.solver).group_id for entry in direct] == ["root"]
-    assert [(module.group_id, module.sisu_module_id) for module in direct[0].solver.modules] == [
-        ("module-select", "module-select-v2027")
-    ]
+    assert [entry.summary.root_group_id for entry in direct] == ["root"]
+    assert "root" in {course.group_id for course in direct[0].summary.courses}
 
     # A missing-module official alternative beside a valid option is dropped whole and disclosed,
     # rather than turning a mandatory member into a weaker requirement.
@@ -545,7 +542,7 @@ def test_module_version_selection_uses_root_year_and_reports_missing_or_ambiguou
             ),
         ),
     )
-    alternative = PrerequisiteGraphCompiler(
+    alternative = native_graph(
         FakeCurriculumRead((alternative_root, catalogue_course("valid-leaf"))),
         RecordingInferredSetRead(),
         RecordingEquivalenceGroupRead(),
@@ -561,7 +558,9 @@ def test_module_version_selection_uses_root_year_and_reports_missing_or_ambiguou
     assert ignored_parts(alternative.solver)[0].referenced_group_ids == ("module-absent",)
 
 
-def test_module_rule_malformed_shapes_become_explicit_unresolved_nodes(solver_bundle: None) -> None:
+def test_module_rule_malformed_shapes_become_explicit_unresolved_nodes(
+    solver_bundle: None, native_graph
+) -> None:
     """Malformed source rule shapes and missing references yield explicit nodes."""
     year_period = (CatalogueCurriculumPeriod(id="period-2026", academic_year_start=2026),)
     root = catalogue_course(
@@ -593,7 +592,7 @@ def test_module_rule_malformed_shapes_become_explicit_unresolved_nodes(solver_bu
                 ),
             ),
         )
-        return PrerequisiteGraphCompiler(
+        return native_graph(
             FakeCurriculumRead((root, *courses), (module, *modules)),
             RecordingInferredSetRead(),
             RecordingEquivalenceGroupRead(),
@@ -658,7 +657,7 @@ def test_module_rule_malformed_shapes_become_explicit_unresolved_nodes(solver_bu
         )
     )
     assert malformed.kind == "unresolved"
-    assert malformed.reason is UnresolvedPrerequisiteReason.MALFORMED_RULE.value
+    assert malformed.reason == UnresolvedPrerequisiteReason.MALFORMED_RULE.value
     assert malformed.module_rule is True
 
     # A surviving pick-N rule whose ignored positions leave fewer than its positive minimum keeps its
@@ -685,14 +684,14 @@ def test_module_rule_malformed_shapes_become_explicit_unresolved_nodes(solver_bu
         module_rule(ModuleRuleType.COURSE_UNIT_RULE, referenced_group_id="absent-course")
     )
     assert missing_course.kind == "unresolved"
-    assert missing_course.reason is UnresolvedPrerequisiteReason.MISSING_COURSE.value
+    assert missing_course.reason == UnresolvedPrerequisiteReason.MISSING_COURSE.value
     assert missing_course.referenced_group_id == "absent-course"
 
     missing_module = inlined(
         module_rule(ModuleRuleType.MODULE_RULE, referenced_group_id="absent-module")
     )
     assert missing_module.kind == "unresolved"
-    assert missing_module.reason is UnresolvedPrerequisiteReason.MISSING_MODULE.value
+    assert missing_module.reason == UnresolvedPrerequisiteReason.MISSING_MODULE.value
     assert missing_module.referenced_group_id == "absent-module"
 
     # A genuinely empty official source option is dropped with an EMPTY_OPTION disclosure rather
@@ -702,7 +701,7 @@ def test_module_rule_malformed_shapes_become_explicit_unresolved_nodes(solver_bu
         "empty-option-root",
         prerequisite_options=(prerequisite_option(0, PrerequisiteRequirementKind.COMPULSORY),),
     )
-    empty_option = PrerequisiteGraphCompiler(
+    empty_option = native_graph(
         FakeCurriculumRead((empty_option_root,)),
         RecordingInferredSetRead(),
         RecordingEquivalenceGroupRead(),

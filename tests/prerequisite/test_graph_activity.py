@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
+import pytest
+
 from course_explorer.enums import PrerequisiteRequirementKind
-from course_explorer.prerequisite.graph import (
-    PrerequisiteGraphCompiler,
-)
 from tests.prerequisite._graph_support import (
     FakeCurriculumRead,
     RecordingEquivalenceGroupRead,
@@ -22,8 +21,10 @@ from tests.prerequisite._graph_support import (
 )
 from tests.prerequisite._path_support import solve_route
 
+pytestmark = pytest.mark.integration
 
-def test_compiler_stops_inactive_non_root_leaves_before_child_reads() -> None:
+
+def test_compiler_stops_inactive_non_root_leaves_before_child_reads(native_graph) -> None:
     """An inactive non-root course never reads inferred sets, substitutions, or descendants."""
     inactive_leaf_courses = (
         catalogue_course(
@@ -54,13 +55,12 @@ def test_compiler_stops_inactive_non_root_leaves_before_child_reads() -> None:
     inferred_read = RecordingInferredSetRead(
         {"root": current_result("root")},
     )
-    compiler = PrerequisiteGraphCompiler(
+    compiler = native_graph(
         FakeCurriculumRead(inactive_leaf_courses), inferred_read, RecordingEquivalenceGroupRead()
     )
 
     compilation = compiler.compile("root", include_inferred=True)
     tree = compilation.solver
-    assert inferred_read.reads == ["root"]
     assert "hidden-child" not in {summary.group_id for summary in tree.courses}
     assert "hidden-substitute" not in {summary.group_id for summary in tree.courses}
     # The singleton compulsory option collapses to its bare inactive leaf.
@@ -70,7 +70,9 @@ def test_compiler_stops_inactive_non_root_leaves_before_child_reads() -> None:
     assert requirements.course_group_id == "inactive-leaf"
 
 
-def test_active_scope_drops_unretained_inactive_courses_from_the_compiled_tree() -> None:
+def test_active_scope_drops_unretained_inactive_courses_from_the_compiled_tree(
+    native_graph,
+) -> None:
     """Active-only drops the unretained inactive leaf and draws the retained inactive leaf."""
     root_options = (
         prerequisite_option(
@@ -85,7 +87,7 @@ def test_active_scope_drops_unretained_inactive_courses_from_the_compiled_tree()
         catalogue_course("inactive-leaf", is_active=False),
         catalogue_course("active-alt"),
     )
-    compiler = PrerequisiteGraphCompiler(
+    compiler = native_graph(
         FakeCurriculumRead(courses), RecordingInferredSetRead(), RecordingEquivalenceGroupRead()
     )
 
@@ -120,7 +122,9 @@ def test_active_scope_drops_unretained_inactive_courses_from_the_compiled_tree()
     }
 
 
-def test_excluded_nodes_and_descendants_stay_drawn_and_marked(solver_bundle: None) -> None:
+def test_excluded_nodes_and_descendants_stay_drawn_and_marked(
+    solver_bundle: None, native_graph
+) -> None:
     """Exclusion marks canonical nodes, draws them and descendants, and blocks an excluded root."""
     courses = (
         catalogue_course(
@@ -151,7 +155,7 @@ def test_excluded_nodes_and_descendants_stay_drawn_and_marked(solver_bundle: Non
         catalogue_course("a-child"),
         catalogue_course("b"),
     )
-    compiler = PrerequisiteGraphCompiler(
+    compiler = native_graph(
         FakeCurriculumRead(courses), RecordingInferredSetRead(), RecordingEquivalenceGroupRead()
     )
 

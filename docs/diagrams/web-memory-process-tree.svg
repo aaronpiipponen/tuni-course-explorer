@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 420" role="img"
+     aria-labelledby="t d" font-family="system-ui, sans-serif">
+  <title id="t">Web server memory at 750 users</title>
+  <desc id="d">The supervisor holds 222.4 MB and starts the front router, which holds 188.7 MB after
+  growing 83 MB over the light run. The supervisor forks four workers, which hold 1,003.7, 964.7,
+  943.2 and 910.2 MB, each having grown 702 to 757 MB.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a3a4b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="420" rx="12" fill="#232434"/>
+
+  <text x="48" y="56" font-size="16" fill="#a3a4b8">One web process tree at 750 users, light profile</text>
+
+  <rect x="48" y="76" width="300" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="198" y="102" text-anchor="middle" font-size="16" fill="#ececf2">Supervisor</text>
+  <text x="198" y="124" text-anchor="middle" font-size="14" fill="#a3a4b8">222.4 MB, no growth</text>
+
+  <rect x="612" y="76" width="300" height="64" rx="8"
+        fill="#2e3045" stroke="#4a4c6b" stroke-width="1.5"/>
+  <text x="762" y="102" text-anchor="middle" font-size="16" fill="#ececf2">Front router</text>
+  <text x="762" y="124" text-anchor="middle" font-size="14" fill="#a3a4b8">188.7 MB, 83 MB growth</text>
+
+  <line x1="348" y1="108" x2="600" y2="108" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="474" y="100" text-anchor="middle" font-size="14" fill="#a3a4b8">starts</text>
+
+  <line x1="198" y1="140" x2="198" y2="184" stroke="#a3a4b8" stroke-width="1.5"/>
+  <line x1="138" y1="184" x2="822" y2="184" stroke="#a3a4b8" stroke-width="1.5"/>
+  <line x1="138" y1="184" x2="138" y2="212" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="366" y1="184" x2="366" y2="212" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="594" y1="184" x2="594" y2="212" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="822" y1="184" x2="822" y2="212" stroke="#a3a4b8"
+        stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="210" y="168" font-size="14" fill="#a3a4b8">fork</text>
+
+  <rect x="48" y="220" width="180" height="64" rx="8"
+        fill="#2e3045" stroke="#a98ae0" stroke-width="1.5"/>
+  <text x="138" y="246" text-anchor="middle" font-size="16" fill="#ececf2">Worker 1</text>
+  <text x="138" y="268" text-anchor="middle" font-size="14" fill="#a3a4b8">1,003.7 MB</text>
+
+  <rect x="276" y="220" width="180" height="64" rx="8"
+        fill="#2e3045" stroke="#a98ae0" stroke-width="1.5"/>
+  <text x="366" y="246" text-anchor="middle" font-size="16" fill="#ececf2">Worker 2</text>
+  <text x="366" y="268" text-anchor="middle" font-size="14" fill="#a3a4b8">964.7 MB</text>
+
+  <rect x="504" y="220" width="180" height="64" rx="8"
+        fill="#2e3045" stroke="#a98ae0" stroke-width="1.5"/>
+  <text x="594" y="246" text-anchor="middle" font-size="16" fill="#ececf2">Worker 3</text>
+  <text x="594" y="268" text-anchor="middle" font-size="14" fill="#a3a4b8">943.2 MB</text>
+
+  <rect x="732" y="220" width="180" height="64" rx="8"
+        fill="#2e3045" stroke="#a98ae0" stroke-width="1.5"/>
+  <text x="822" y="246" text-anchor="middle" font-size="16" fill="#ececf2">Worker 4</text>
+  <text x="822" y="268" text-anchor="middle" font-size="14" fill="#a3a4b8">910.2 MB</text>
+
+  <text x="48" y="344" font-size="14" fill="#a3a4b8">Each worker grew 702 to 757 MB over the light run.</text>
+  <text x="48" y="368" font-size="14" fill="#a3a4b8">The supervisor and the resource tracker stayed flat.</text>
+</svg>

@@ -4,7 +4,7 @@ The reference area explains the vocabulary of the documentation and holds the gl
 
 ## The glossary
 
-The [Glossary](/docs/reference/glossary.md) defines each term once, in tables grouped by subject: [Courses and the catalogue](/docs/reference/glossary.md#courses-and-the-catalogue), [Configuration](/docs/reference/glossary.md#configuration), [Capture and data preparation](/docs/reference/glossary.md#capture-and-data-preparation), [Search and comparison](/docs/reference/glossary.md#search-and-comparison), [Prerequisites and routes](/docs/reference/glossary.md#prerequisites-and-routes), [Discovery and the structure of studies](/docs/reference/glossary.md#discovery-and-the-structure-of-studies), [Browser app](/docs/reference/glossary.md#browser-app), [Inference](/docs/reference/glossary.md#inference), and [Administration](/docs/reference/glossary.md#administration).
+The [Glossary](/docs/reference/glossary.md) defines each term once, in tables grouped by subject: [Courses and the catalogue](/docs/reference/glossary.md#courses-and-the-catalogue), [Configuration](/docs/reference/glossary.md#configuration), [Capture and data preparation](/docs/reference/glossary.md#capture-and-data-preparation), [Serving data](/docs/reference/glossary.md#serving-data), [Search and comparison](/docs/reference/glossary.md#search-and-comparison), [Prerequisites and routes](/docs/reference/glossary.md#prerequisites-and-routes), [Discovery and the structure of studies](/docs/reference/glossary.md#discovery-and-the-structure-of-studies), [Browser app](/docs/reference/glossary.md#browser-app), [Inference](/docs/reference/glossary.md#inference), and [Administration](/docs/reference/glossary.md#administration).
 
 A page links a term where the exact definition matters, and it uses the defined term rather than a near synonym. A defined term carries one meaning across the documentation set.
 
@@ -21,7 +21,7 @@ A selected course is a course added to the current profile's selection. A comple
 Either set can serve as the basis, the set of courses that counts as already covered in a calculation. The completed courses leave out a course that is picked but not finished, and the selection counts a picked course as covered.
 
 > [!TIP]
-> Marking a selected course completed completes it in place. From a course card or the graph, marking an unselected course completed first asks once to add it to Unplaced studies and complete it. In **Structure of studies**, the **Complete** control on a course card completes the course directly. In the structure drawer, marking an unselected course completed places it in that rule and completes it without asking. Unmarking the completion leaves the course selected and removes only the completion.
+> Marking a selected course completed completes it in place. From a course card or the graph, marking an unselected course completed first asks once to add it to Unplaced studies and complete it. In **Structure of studies**, the **Complete** control on a course card completes the course directly. In the structure drawer, marking an unselected course completed places it in that rule and completes it without asking. If another programme or module holds the course, marking it completed asks once before that move. Unmarking the completion leaves the course selected and removes only the completion.
 
 ## Official and inferred
 
@@ -33,7 +33,7 @@ An inferred prerequisite is a prerequisite found by analysis of teaching text. O
 
 The word coverage has a defined meaning each time it appears, and each meaning measures a different thing.
 
-- Coverage report: a read-only report on how much of the selected dataset has translations, embeddings, and inferred prerequisites.
+- Coverage report: a read-only report on how much of the named dataset role has translations, embeddings, and inferred prerequisites.
 - Prerequisite coverage: the share of a next course's prerequisites that the basis covers, shown separately for required and recommended prerequisites.
 - Inference coverage: the counts of eligible, retained complete, published, and uncovered target courses that the inference coverage report gives.
 

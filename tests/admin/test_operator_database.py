@@ -23,8 +23,9 @@ from course_explorer.administration import administrative_json, atomic_write_pri
 from course_explorer.config import load_inference_settings, load_normalization_settings
 from course_explorer.datasets import (
     DatabaseSchemaMismatchError,
+    DatasetPointer,
     DatasetReceipt,
-    SelectedDatasetPointer,
+    clear_dataset_cache,
 )
 from course_explorer.db.models import (
     Course,
@@ -40,8 +41,6 @@ from course_explorer.enums import (
     TeachingTextLanguage,
 )
 from course_explorer_admin import commands, worker_session
-from course_explorer_admin import datasets as datasets_module
-from course_explorer_admin import lifecycle as lifecycle_module
 from course_explorer_admin.inference import controller_worker as inference_worker
 from course_explorer_admin.inference import disposition as disposition_module
 from course_explorer_admin.lifecycle import (
@@ -55,6 +54,7 @@ from tests.admin.inference import _worker_support as inference_support
 from tests.admin.translation import _worker_support as translation_support
 from tests.datasets._support import sample_receipt, sample_verification
 from tests.inference._scheduling_support import reconcile, seed_courses
+from tests.support.repository import scratch_repository
 
 SESSION_ID = "0123456789abcdef0123456789abcdef"
 _REAL_WORKER_SCHEMA = worker_session.require_worker_database_schema
@@ -200,7 +200,7 @@ def test_operator_reports_read_selected_disposable_fixture_without_writes(
 ) -> None:
     """The real administrative reports read the selected disposable fixture and write nothing."""
     engine, factory = database
-    repo_root = tmp_path / "repo"
+    repo_root = scratch_repository(tmp_path / "repo")
     try:
         _seed_report_catalogue(factory)
         receipt = sample_receipt(database_name=engine.url.database)
@@ -210,23 +210,20 @@ def test_operator_reports_read_selected_disposable_fixture_without_writes(
         atomic_write_private_text(dataset_dir / "receipt.json", administrative_json(receipt))
         atomic_write_private_text(
             admin_root / "selected-dataset.json",
-            administrative_json(
-                SelectedDatasetPointer(schema_version=1, dataset_id=receipt.dataset_id)
-            ),
+            administrative_json(DatasetPointer(schema_version=1, dataset_id=receipt.dataset_id)),
         )
         monkeypatch.setattr(administration, "repository_root", lambda: repo_root)
-        monkeypatch.setenv("SELECTED_DATASET_ENABLED", "1")
         monkeypatch.setenv("ADMIN_STATE_ROOT", "data/admin")
 
         markers_before = _count(engine, InferenceCourseProcessing)
         attempts_before = _count(engine, InferenceModelAttempt)
         proposals_before = _count(engine, InferenceProposal)
 
-        catalogue = commands.run_administrative_summary("catalogue")
+        catalogue = commands.run_administrative_summary("catalogue", role="selected")
         assert catalogue.canonical_course_count == 1003
         assert catalogue.active_course_count == 3
 
-        teaching = commands.run_administrative_coverage("teaching-text")
+        teaching = commands.run_administrative_coverage("teaching-text", role="selected")
         assert (
             _field(teaching, TeachingTextField.CONTENT, TeachingTextLanguage.EN).missing_count == 3
         )
@@ -236,17 +233,17 @@ def test_operator_reports_read_selected_disposable_fixture_without_writes(
         )
         assert all(count.derived_count == 0 for count in teaching.fields)
 
-        embedding = commands.run_administrative_coverage("embedding")
+        embedding = commands.run_administrative_coverage("embedding", role="selected")
         assert embedding.total_chunk_count == 0
         assert embedding.completed_count == 0
 
-        inference = commands.run_administrative_coverage("inference")
+        inference = commands.run_administrative_coverage("inference", role="selected")
         assert inference.eligible_targets == 3
         assert inference.retained_complete_targets == 0
         assert inference.published_targets == 0
         assert inference.uncovered_targets == 3
 
-        summary = commands.run_administrative_summary("inference")
+        summary = commands.run_administrative_summary("inference", role="selected")
         assert summary.dataset_scope == "retained_server"
         assert summary.coverage.eligible_targets == 3
         assert summary.coverage.retained_complete_targets == 0
@@ -263,7 +260,7 @@ def test_operator_reports_read_selected_disposable_fixture_without_writes(
         assert _count(engine, InferenceModelAttempt) == attempts_before
         assert _count(engine, InferenceProposal) == proposals_before
     finally:
-        monkeypatch.setenv("SELECTED_DATASET_ENABLED", "0")
+        clear_dataset_cache()
 
 
 def _forbidden(*args, **kwargs):
@@ -285,7 +282,6 @@ def test_worker_schema_mismatch_refuses_before_work(
         stage_root.mkdir()
         translation_support.configure(m, stage_root)
         m.setattr(worker_session, "require_worker_database_schema", _REAL_WORKER_SCHEMA)
-        m.setenv("SELECTED_DATASET_ENABLED", "0")
         session_value = translation_support.session()
         m.setenv("POSTGRES_DB", session_value.database_name)
         directory, session_value = translation_support.seed_directory(stage_root, session_value)
@@ -323,7 +319,6 @@ def test_worker_schema_mismatch_refuses_before_work(
         stage_root.mkdir()
         directory = inference_support.seed_session(m, stage_root, lifecycle="prepared")
         m.setattr(worker_session, "require_worker_database_schema", _REAL_WORKER_SCHEMA)
-        m.setenv("SELECTED_DATASET_ENABLED", "0")
         session_value = inference_support.session()
         m.setenv("POSTGRES_DB", session_value.database_name)
         m.setattr(worker_session, "OwnedWorkerRuntime", _forbidden)
@@ -414,39 +409,49 @@ def test_disposition_reads_selected_schema_and_guards_writes(
     store empty.
     """
     engine, factory = database
-    repo_root = tmp_path / "repo"
-    # The shared owners bind ``repository_root`` into their own module namespace, so redirect every
-    # one the guarded context actually uses instead of only the shared source name.
+    repo_root = scratch_repository(tmp_path / "repo")
     monkeypatch.setattr(administration, "repository_root", lambda: repo_root)
-    monkeypatch.setattr(datasets_module, "repository_root", lambda: repo_root)
-    monkeypatch.setattr(lifecycle_module, "repository_root", lambda: repo_root)
     monkeypatch.setattr(disposition_module, "database_context", _fixture_database_context(factory))
     monkeypatch.setattr(disposition_module.mechanics, "SubprocessRunner", _forbidden)
-    monkeypatch.setenv("SELECTED_DATASET_ENABLED", "1")
     monkeypatch.setenv("ADMIN_STATE_ROOT", "data/admin")
 
     _seed_disposition_catalogue(factory)
-    dataset_id = "b" * 32
+    selected_id = "a" * 32
+    working_id = "b" * 32
+    selected_receipt = DatasetReceipt(
+        schema_version=1,
+        dataset_id=selected_id,
+        database_name="selected_fixture_db",
+        predecessor_id="0" * 32,
+        kind="returned",
+        dump_sha256="c" * 64,
+        verification=sample_verification(),
+    )
     if admission == "initial_selection":
-        receipt = sample_receipt(database_name=engine.url.database)
+        working_receipt = sample_receipt(database_name=engine.url.database)
     else:
-        receipt = DatasetReceipt(
+        working_receipt = DatasetReceipt(
             schema_version=1,
-            dataset_id=dataset_id,
+            dataset_id=working_id,
             database_name=engine.url.database,
-            predecessor_id="a" * 32,
+            predecessor_id=selected_id,
             kind="returned",
             dump_sha256="d" * 64,
             verification=sample_verification(),
         )
     admin_root = repo_root / "data" / "admin"
-    dataset_dir = admin_root / "datasets" / receipt.dataset_id
-    dataset_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
-    atomic_write_private_text(dataset_dir / "receipt.json", administrative_json(receipt))
+    for receipt in (selected_receipt, working_receipt):
+        dataset_dir = admin_root / "datasets" / receipt.dataset_id
+        dataset_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+        atomic_write_private_text(dataset_dir / "receipt.json", administrative_json(receipt))
     atomic_write_private_text(
         admin_root / "selected-dataset.json",
+        administrative_json(DatasetPointer(schema_version=1, dataset_id=selected_id)),
+    )
+    atomic_write_private_text(
+        admin_root / "working-dataset.json",
         administrative_json(
-            SelectedDatasetPointer(schema_version=1, dataset_id=receipt.dataset_id)
+            DatasetPointer(schema_version=1, dataset_id=working_receipt.dataset_id)
         ),
     )
     if admission == "non_idle_stage":
@@ -490,7 +495,7 @@ def test_disposition_reads_selected_schema_and_guards_writes(
             )
             # The real report carries the canonical identity and the real durable decision, and the
             # publisher ran once through its sole owner.
-            assert report.dataset_id == dataset_id
+            assert report.dataset_id == working_receipt.dataset_id
             assert report.target_group_id == _DISPOSITION_TARGET
             assert report.course_code == "DISP.T"
             assert report.course_name == "Name DISP.T"
@@ -514,7 +519,7 @@ def test_disposition_reads_selected_schema_and_guards_writes(
                         disposition_module.mechanics, "exclusive_action_lock", _forbidden
                     )
                     read = disposition_module.read_inference_target_disposition(_DISPOSITION_TARGET)
-                assert read.dataset_id == receipt.dataset_id
+                assert read.dataset_id == working_receipt.dataset_id
                 assert read.target_group_id == _DISPOSITION_TARGET
                 assert read.disposition is None
             with pytest.raises((ValueError, DatabaseSchemaMismatchError)):

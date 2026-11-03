@@ -6,7 +6,7 @@ import type {
   StructureRule,
   StudyStructureReport,
 } from "../../api/types";
-import type { StructureChoices, StructureEdits } from "./state";
+import type { CourseHolder, StructureChoices, StructureEdits } from "./state";
 import { UNPLACED_KEY } from "./state";
 import { nodeWordingKind } from "./presentation";
 import { reasonText, uiText, type UiTextKey } from "../../shared/wording";
@@ -41,14 +41,10 @@ export type StructureEntry =
     };
 /** One choice option and its entries. */
 export type StructureOption = { key: string; entries: StructureEntry[] };
-/** One rule's requirement counts and its options. */
+/** One rule's label and its options. */
 export type StructureRuleGroup = {
   key: string;
   rule: string;
-  required: boolean;
-  requiredCount: number;
-  requiredCredits: number | null;
-  choiceNode: StructureNode | null;
   options: StructureOption[];
 };
 /** One projected official structure node. */
@@ -75,14 +71,9 @@ export type ResolvedNode = {
   chosen: StructureOption[];
   subtree: CourseSummary[];
   added: boolean;
-  removed: RemovedEntry[];
 };
 /** One course displayed in a node, with whether an operation added it. */
 export type PlacedCourse = { course: CourseSummary; added: boolean };
-/** One course or module an operation removed. */
-export type RemovedEntry =
-  | { kind: "course"; course: CourseSummary }
-  | { kind: "module"; module: ApiModule["module"] };
 /** The reports and course summaries a resolved tree reads. */
 export type PlacedContent = {
   reports: Readonly<Record<string, StudyStructureReport>>;
@@ -207,10 +198,6 @@ function moduleNode(
       ruleGroups.push({
         key: ruleKey,
         rule: ruleLabel(module.rule, language),
-        required: true,
-        requiredCount: options.length,
-        requiredCredits: null,
-        choiceNode: null,
         options,
       });
   }
@@ -344,10 +331,6 @@ function project(
       ruleGroups.push({
         key,
         rule: ruleLabel(rule, language),
-        required: true,
-        requiredCount: options.length,
-        requiredCredits: null,
-        choiceNode: null,
         options,
       });
     ruleGroups.push(...nestedGroups);
@@ -378,10 +361,6 @@ function project(
       ruleGroups.push({
         key,
         rule: ruleLabel(rule, language),
-        required: true,
-        requiredCount: options.length,
-        requiredCredits: null,
-        choiceNode: null,
         options,
       });
     ruleGroups.push(...nestedGroups);
@@ -417,13 +396,6 @@ function project(
         ruleGroups.push({
           key,
           rule: ruleLabel(rule, language),
-          required: true,
-          requiredCount: options.length,
-          requiredCredits:
-            rule.node_type === "CreditsRule" && rule.credits_min !== null
-              ? Number(rule.credits_min)
-              : null,
-          choiceNode: null,
           options,
         });
       ruleGroups.push(...nestedGroups);
@@ -456,13 +428,6 @@ function project(
         ruleGroups.push({
           key,
           rule: ruleLabel(rule, language),
-          required: true,
-          requiredCount: options.length,
-          requiredCredits:
-            rule.node_type === "CreditsRule" && rule.credits_min !== null
-              ? Number(rule.credits_min)
-              : null,
-          choiceNode: null,
           options,
         });
       ruleGroups.push(...nestedGroups);
@@ -590,16 +555,6 @@ function project(
       ruleGroups.push({
         key,
         rule: label,
-        required: false,
-        requiredCount:
-          optionRule.node_type === "CompositeRule"
-            ? (optionRule.require_min ?? 0)
-            : 0,
-        requiredCredits:
-          rule.node_type === "CreditsRule" && rule.credits_min !== null
-            ? Number(rule.credits_min)
-            : null,
-        choiceNode: node,
         options,
       });
     ruleGroups.push(...nestedGroups);
@@ -687,6 +642,30 @@ export function buildProgrammeForest(
   };
 }
 
+/** Return each placed course's holder module, keyed by canonical course identity. */
+export function courseHolders(
+  root: ResolvedNode,
+): Record<string, CourseHolder> {
+  const holders: Record<string, CourseHolder> = {};
+  const walk = (node: ResolvedNode, inherited: CourseHolder | null): void => {
+    const module = node.node.module;
+    const holder = module
+      ? {
+          group_id: module.group_id,
+          name_fi: module.name_fi,
+          name_en: module.name_en,
+        }
+      : inherited;
+    if (holder) {
+      for (const placed of node.courses)
+        holders[placed.course.group_id] = holder;
+    }
+    for (const child of node.children) walk(child, holder);
+  };
+  walk(root, null);
+  return holders;
+}
+
 /** Resolve one structure tree against the edits and the placed content. */
 export function resolveStructure(
   root: StructureNode,
@@ -738,31 +717,23 @@ export function resolveStructure(
     versionSelectionRequiredIds: string[];
     children: ResolvedNode[];
     subtree: CourseSummary[];
-    removed: RemovedEntry[];
   } => {
     const courses: PlacedCourse[] = [],
       notes: string[] = [],
       versionSelectionRequiredIds: string[] = [],
       children: ResolvedNode[] = [],
-      subtree: CourseSummary[] = [],
-      removed: RemovedEntry[] = [];
+      subtree: CourseSummary[] = [];
     for (const entry of entries) {
       if (entry.kind === "course") {
         const id = entry.course.group_id;
         const placement = edits.coursePlacements[id];
-        if (placement !== undefined && placement !== node.key) {
-          if (
-            !removed.some(
-              (item) => item.kind === "course" && item.course.group_id === id,
-            )
-          )
-            removed.push({ kind: "course", course: entry.course });
-        } else if (!seenCourses.has(id)) {
-          seenCourses.add(id);
-          const placed = { course: entry.course, added: false };
-          courses.push(placed);
-          subtree.push(entry.course);
-        }
+        // A record that names another node leaves this occurrence out of the tree.
+        if (placement !== undefined && placement !== node.key) continue;
+        if (seenCourses.has(id)) continue;
+        seenCourses.add(id);
+        const placed = { course: entry.course, added: false };
+        courses.push(placed);
+        subtree.push(entry.course);
       } else if (entry.kind === "note") {
         const groupId = entry.versionSelectionGroupId;
         // An ambiguity note names a module reference, so it follows the same boundary as a module
@@ -784,15 +755,6 @@ export function resolveStructure(
           versionSelectionRequiredIds.push(
             ...child.versionSelectionRequiredIds,
           );
-        } else if (placementRemoves(moduleId, node)) {
-          if (
-            entry.node.module &&
-            !removed.some(
-              (item) =>
-                item.kind === "module" && item.module.group_id === moduleId,
-            )
-          )
-            removed.push({ kind: "module", module: entry.node.module });
         }
       }
     }
@@ -843,7 +805,6 @@ export function resolveStructure(
       versionSelectionRequiredIds,
       children,
       subtree,
-      removed,
     };
   };
   const visit = (node: StructureNode, added = false): ResolvedNode => {
@@ -866,7 +827,6 @@ export function resolveStructure(
       ...content,
       chosen,
       added,
-      removed: content.removed,
     };
   };
   return visit(root);
@@ -877,11 +837,9 @@ export function nextChoices(
   node: StructureNode,
   optionKey: string,
 ): StructureChoices {
+  // A rule labels the official structure, so a click adds or removes one option and never
+  // drops the options already chosen beside it.
   const current = choices[node.key] ?? [];
-  if (node.single) {
-    if (current.length === 1 && current[0] === optionKey) return choices;
-    return { ...choices, [node.key]: [optionKey] };
-  }
   const next = current.includes(optionKey)
     ? current.filter((key) => key !== optionKey)
     : [...current, optionKey];

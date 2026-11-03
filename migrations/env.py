@@ -5,7 +5,7 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import Connection, create_engine, pool
 
-from course_explorer.config import load_database_settings
+from course_explorer.config import load_raw_database_settings
 from course_explorer.db.models import Base
 
 config = context.config
@@ -17,8 +17,8 @@ target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
-    """Run migrations without a live connection using validated settings."""
-    settings = load_database_settings()
+    """Run migrations without a live connection against the configured database."""
+    settings = load_raw_database_settings()
     context.configure(
         url=settings.sqlalchemy_url,
         target_metadata=target_metadata,
@@ -44,13 +44,13 @@ def run_migrations_online() -> None:
 
     A caller may supply its own connection through ``config.attributes["connection"]``. The
     connection's lifetime and resolved credential are then owned by that caller. Otherwise the
-    composed settings resolve the target database on a short-lived NullPool engine.
+    composed raw settings name the configured database on a short-lived NullPool engine.
     """
     supplied = config.attributes.get("connection")
     if supplied is not None:
         _run_migrations(supplied)
         return
-    settings = load_database_settings()
+    settings = load_raw_database_settings()
     connectable = create_engine(settings.sqlalchemy_url, poolclass=pool.NullPool)
 
     with connectable.connect() as connection:

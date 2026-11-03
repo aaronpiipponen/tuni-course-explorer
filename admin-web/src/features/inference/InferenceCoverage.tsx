@@ -3,13 +3,15 @@
  *
  * The counts are the summary's coverage member under its own field names, and the explicit operator
  * DONE count is the summary's own operator_done_targets, shown separately rather than as a fabricated
- * model identity row. This panel is the retained server dataset's coverage, not an unreturned worker
- * cycle's progress.
+ * model identity row. The panel names the dataset role the summary read resolved, Working first and
+ * Selected when Working is absent. This is the retained server dataset's coverage, not an unreturned
+ * worker cycle's progress.
  */
 import { AutoMarker } from "../../shared/AutoMarker";
+import { DatasetRoleStatus } from "../../shared/DatasetRoleStatus";
 import { count, stateText } from "../../shared/format";
 import { Panel, Row, Rows } from "../../shared/Panel";
-import type { SummaryView } from "./Inference";
+import { SummaryStateNote, type SummaryView } from "./summaryView";
 import { wording } from "../../shared/wording";
 
 /** Render the coverage panel from the shared summary read. */
@@ -33,6 +35,9 @@ export function InferenceCoverage({ view }: { view: SummaryView }) {
     >
       {view.selectionEnabled === true ? (
         <>
+          {view.scope === null ? null : (
+            <DatasetRoleStatus role={view.scope.role} />
+          )}
           <p className="note">{detail.retainedScope}</p>
           {coverage === null || summary === null ? null : (
             <Rows>
@@ -83,9 +88,9 @@ export function InferenceCoverage({ view }: { view: SummaryView }) {
             </Rows>
           )}
         </>
-      ) : view.selectionEnabled === false ? (
-        <p className="note">{wording.selectionDisabled}</p>
-      ) : null}
+      ) : (
+        <SummaryStateNote view={view} />
+      )}
     </Panel>
   );
 }
