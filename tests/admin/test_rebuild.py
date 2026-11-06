@@ -343,12 +343,19 @@ _STAGE_GUARD = (
 def test_deploy_refuses_busy_stages_before_mutation(tmp_path: Path) -> None:
     """The deploy script stops at a non-idle stage before any build or restart.
 
-    The real script runs against a scratch checkout holding only a Python wrapper, which recognizes
-    the exact guard string and runs it with this suite's interpreter after binding the checkout.
-    Rejecting npm, sudo, systemctl and ss stubs come first on the child path, and every other
-    interpreter invocation is rejected and logged.
+    The real script runs from a scratch checkout beside the tracked example serving.conf, with a
+    Python wrapper that recognizes the exact guard string and runs it with this suite's interpreter
+    after binding the checkout. Rejecting npm, sudo, systemctl and ss stubs come first on the child
+    path, and every other interpreter invocation is rejected and logged.
     """
     root = tmp_path / "checkout"
+    deploy = root / "deploy"
+    deploy.mkdir(parents=True)
+    script = deploy / "deploy.sh"
+    script.write_bytes(_DEPLOY_SCRIPT.read_bytes())
+    (deploy / "serving.conf").write_bytes(
+        (REPO_ROOT / "examples" / "deploy" / "serving.conf").read_bytes()
+    )
     (root / ".venv" / "bin").mkdir(parents=True)
     stubs = tmp_path / "bin"
     stubs.mkdir()
@@ -428,7 +435,7 @@ def test_deploy_refuses_busy_stages_before_mutation(tmp_path: Path) -> None:
         }
     )
     result = subprocess.run(
-        ("bash", str(_DEPLOY_SCRIPT), "a" * 40),
+        ("bash", str(script), "a" * 40),
         cwd=root,
         env=environment,
         capture_output=True,
