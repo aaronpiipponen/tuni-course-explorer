@@ -11,7 +11,7 @@ The tab opens on the list the profile last showed, which is **Next courses** for
 
 A site that serves no embedding features serves **Next courses** alone.
 
-The **Next courses** list opens with a header holding its name and the number of results, and the **Recommended** list opens with a header reading "recommended for you" and the same count.
+The **Next courses** list opens with a header holding its name and the number of results, and the **Recommended** list opens with a header reading "recommended for you" and the same count. The **Recommended** header carries the note "Similarity analysis is based on official teaching text and derived translations" to the right of its rule.
 
 ![The Discover tab on the Partially covered mode, with the list switch, the mode switch, the Completed and Selected basis switch, the Active only toggle and the help button. The basis line counts three completed courses with their chips, and the two next-course rows each carry a Required meter, at 100% and 50%.](/docs/screenshots/discover-next-courses.png)
 

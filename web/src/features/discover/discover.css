@@ -182,6 +182,7 @@ button.discover-chip {
 }
 .discover-tier {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 14px;
   margin: 24px 0 8px;
@@ -193,11 +194,23 @@ button.discover-chip {
   letter-spacing: 0.08em;
   text-transform: lowercase;
 }
+.discover-tier-label {
+  flex: none;
+}
 .discover-tier::after {
   height: 1px;
   flex: 1;
   background: rgb(255 255 255 / 12%);
   content: "";
+}
+/* The note follows the generated rule, so it takes a later flex order than the pseudo-element. */
+.discover-tier-note {
+  order: 1;
+  flex: 0 1 auto;
+  color: rgb(255 255 255 / 45%);
+  font-size: 11px;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .discover-result-list {
   display: flex;

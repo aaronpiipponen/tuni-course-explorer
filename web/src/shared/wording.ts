@@ -149,6 +149,11 @@ const UI_TEXT = {
     en: "Source code on GitHub.",
     fi: "Lähdekoodi GitHubissa.",
   },
+  "Tampere University curriculum data, retrieved from Tampere University's Sisu KORI API.":
+    {
+      en: "Tampere University curriculum data, retrieved from Tampere University's Sisu KORI API.",
+      fi: "Tampereen yliopiston opetussuunnitelmatiedot. Tiedot on haettu Tampereen yliopiston Sisun KORI-rajapinnasta.",
+    },
 
   active: { en: "active", fi: "aktiivinen" },
   inactive: { en: "inactive", fi: "ei-aktiivinen" },
@@ -701,6 +706,11 @@ const UI_TEXT = {
     en: "recommended for you · {count}",
     fi: "sinulle suositellut · {count}",
   },
+  "Similarity analysis is based on official teaching text and derived translations":
+    {
+      en: "Similarity analysis is based on official teaching text and derived translations",
+      fi: "Samankaltaisuusanalyysi perustuu viralliseen opetustekstiin ja johdettuihin käännöksiin",
+    },
   Required: { en: "Required", fi: "Pakolliset" },
   Similarity: { en: "Similarity", fi: "Samankaltaisuus" },
   percentages: { en: "percentages", fi: "prosentit" },

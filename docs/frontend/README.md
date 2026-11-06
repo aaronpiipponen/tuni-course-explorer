@@ -4,7 +4,7 @@ The frontend is the browser app over the tabs a site serves, the state it holds 
 
 ## The app and its tabs
 
-The app is one shell with a header, a tab area and a bottom row. On desktop the header is a top bar that carries a button for each tab the site serves, **Feedback**, **Docs**, the profile control and the language control, and the footer holds the independent-project notice and the source link.
+The app is one shell with a header, a tab area and a bottom row. On desktop the header is a top bar that carries a button for each tab the site serves, **Feedback**, **Docs**, the profile control and the language control, and the footer holds the independent-project notice, the source link and the curriculum source line.
 
 On a phone the header is an empty safe-area strip and one bottom bar carries the served tabs plus **More**, whose sheet holds the profile control, the language control, **Feedback** and **Docs**. The app runs in Finnish and English.
 

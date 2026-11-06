@@ -83,8 +83,15 @@ export function DiscoverResults({
       {list === "recommended" && similarity.length > 0 && (
         <section aria-label={t("Recommended for you")}>
           <h2 className="discover-tier">
-            //{" "}
-            {t("recommended for you · {count}", { count: similarity.length })}
+            <span className="discover-tier-label">
+              //{" "}
+              {t("recommended for you · {count}", { count: similarity.length })}
+            </span>
+            <span className="discover-tier-note">
+              {t(
+                "Similarity analysis is based on official teaching text and derived translations",
+              )}
+            </span>
           </h2>
           <div className="discover-result-list">
             {similarity.map((result) => (

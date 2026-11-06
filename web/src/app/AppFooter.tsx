@@ -1,8 +1,8 @@
-/** Independent-project notice and repository link pinned to the bottom of the application shell. */
+/** Independent-project notice, repository link and curriculum source line pinned to the bottom of the application shell. */
 import { useLayoutEffect, useRef } from "react";
 import { useWording } from "../shared/useWording";
 
-/** Render the application notice and repository link. */
+/** Render the application notice, repository link and curriculum source line. */
 export function AppFooter({
   repositoryUrl,
   measures = true,
@@ -44,6 +44,11 @@ export function AppFooter({
       <a href={repositoryUrl} target="_blank" rel="noopener noreferrer">
         {t("Source code on GitHub.")}
       </a>
+      <div className="app-footer-source">
+        {t(
+          "Tampere University curriculum data, retrieved from Tampere University's Sisu KORI API.",
+        )}
+      </div>
     </footer>
   );
 }
